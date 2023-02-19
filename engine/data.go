@@ -1,11 +1,79 @@
 package engine
 
+import (
+	"math/rand"
+	"time"
+)
+
 const MaxMoves = 2048
+
+// const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+const StartFEN = "1QR2b1Q/P1K2bp1/1PPP1p2/1r2RB1q/2PqNBpp/p1p1ppnP/1nP4P/1k6 w - - 0 1"
 
 const (
 	False = iota
 	True  = iota
 )
+
+var PceChar = []string{
+	".",
+	"P",
+	"N",
+	"B",
+	"R",
+	"Q",
+	"K",
+	"p",
+	"n",
+	"b",
+	"r",
+	"q",
+	"k",
+}
+
+var SideChar = []string{
+	"w",
+	"b",
+	"-",
+}
+
+var RankChars = []string{
+	"1",
+	"2",
+	"3",
+	"4",
+	"5",
+	"6",
+	"7",
+	"8",
+}
+
+var FileChars = []string{
+	"a",
+	"b",
+	"c",
+	"d",
+	"e",
+	"f",
+	"g",
+	"h",
+}
+var Pieces = map[int]string{
+	0:  "Empty",
+	1:  "WP",
+	2:  "WN",
+	3:  "WB",
+	4:  "WR",
+	5:  "WQ",
+	6:  "WK",
+	7:  "BP",
+	8:  "BN",
+	9:  "BB",
+	10: "BR",
+	11: "BQ",
+	12: "BK",
+	13: "OffBoard",
+}
 
 const (
 	Empty = iota
@@ -21,7 +89,6 @@ const (
 	BR    = iota
 	BQ    = iota
 	BK    = iota
-	O     = iota
 )
 
 const (
@@ -64,6 +131,7 @@ const (
 	A7, B7, C7, D7, E7, F7, G7, H7 = 81, 82, 83, 84, 85, 86, 87, 88
 	A8, B8, C8, D8, E8, F8, G8, H8 = 91, 92, 93, 94, 95, 96, 97, 98
 	noSqaure                       = 99
+	OffBoard                       = 100
 )
 
 const (
@@ -72,6 +140,13 @@ const (
 	BlackKingCastle  = 4
 	BlackQueenCastle = 8
 )
+
+var BitTable = [64]int{
+	63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
+	51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
+	26, 60, 6, 23, 44, 46, 27, 56, 16, 7, 39, 48, 24, 59, 14, 12, 55, 38, 28,
+	58, 20, 37, 17, 36, 8,
+}
 
 type Board struct {
 	Pieces           [120]int
@@ -87,6 +162,7 @@ type Board struct {
 	BigPiece         [3]int
 	MajorPiece       [3]int
 	MinPiece         [3]int
+	PieceList        [13][10]int
 	CastlePermission int
 	History          [MaxMoves]Undo
 }
@@ -102,7 +178,45 @@ type Undo struct {
 var Sqaure120ToSquare64 [120]int
 var Sqaure64ToSquare120 [64]int
 
-func SetSquares() {
+var SetMask [64]uint64
+var ClearMask [64]uint64
+
+var PieceKeys [13][120]uint64
+var SideKey uint64
+var CastleKeys [16]uint64
+
+func init() {
+	setSquares()
+	setBitMasks()
+	setPieceKeys()
+}
+
+// FileRankToSquare converts file & rank to the 120 sqaure
+func FileRankToSquare(file, rank int) int {
+	return (21 + file) + (rank * 10)
+}
+
+// GenerateRandomUint64 returns a random uint64
+func generateRandomUint64() uint64 {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Uint64()
+}
+
+func setPieceKeys() {
+	for i := 0; i < 13; i++ {
+		for j := 0; j < 120; j++ {
+			PieceKeys[i][j] = generateRandomUint64()
+		}
+	}
+
+	SideKey = generateRandomUint64()
+	for i := 0; i < 16; i++ {
+		CastleKeys[i] = generateRandomUint64()
+	}
+}
+
+// setSquares populates Sqaure120ToSquare64 & Sqaure64ToSquare120
+func setSquares() {
 	index := 0
 	sqaure64 := 0
 
@@ -116,7 +230,7 @@ func SetSquares() {
 
 	for rank := Rank1; rank < RankEmpty; rank++ {
 		for file := FileA; file < FileEmpty; file++ {
-			sq := fileRankToSquare(file, rank)
+			sq := FileRankToSquare(file, rank)
 			Sqaure64ToSquare120[sqaure64] = sq
 			Sqaure120ToSquare64[sq] = sqaure64
 			sqaure64++
@@ -124,6 +238,15 @@ func SetSquares() {
 	}
 }
 
-func fileRankToSquare(file, rank int) int {
-	return (21 + file) + (rank * 10)
+// setBitMasks populates ClearMask & SetMask
+func setBitMasks() {
+	for index := 0; index < 64; index++ {
+		SetMask[index] = 0
+		ClearMask[index] = 0
+	}
+
+	for index := 0; index < 64; index++ {
+		SetMask[index] = 1 << index
+		ClearMask[index] = ^SetMask[index]
+	}
 }
