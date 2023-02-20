@@ -2,7 +2,6 @@ package engine
 
 import "fmt"
 
-//TODO Refactor
 func SquareAttacked(square int, side int, pos *Board) bool {
 	if !SideValid(side) {
 		panic(fmt.Errorf("SquareAttacked: side %v is invalid", side))
@@ -11,29 +10,78 @@ func SquareAttacked(square int, side int, pos *Board) bool {
 		panic(fmt.Errorf("SquareAttacked: square %v is invalid", side))
 	}
 	CheckBoard(pos)
-	//Pawns
-	if side == White {
-		if pos.Pieces[square-11] == WP || pos.Pieces[square-9] == WP {
-			return true
-		}
-	} else {
-		if pos.Pieces[square+11] == BP || pos.Pieces[square+9] == BP {
-			return true
+
+	if isAttackedByPawn(square, side, pos) {
+		return true
+	}
+
+	if isAttackedByKnight(square, side, pos) {
+		return true
+	}
+
+	if isAttackedByRookQueen(square, side, pos) {
+		return true
+	}
+
+	if isAttackedByBishopQueen(square, side, pos) {
+		return true
+	}
+
+	if isAttackedByKing(square, side, pos) {
+		return true
+	}
+
+	return false
+}
+
+//isAttackedByKing checks if the square is being attacked by the King
+func isAttackedByKing(sq int, side int, pos *Board) bool {
+	for i := 0; i < 8; i++ {
+		piece := pos.Pieces[sq+KingDirection[i]]
+		if piece != OffBoard && piece != Empty {
+			if PieceKing[piece] == True && PieceCol[piece] == side {
+				return true
+			}
 		}
 	}
-	//Knights
+	return false
+}
+
+//isAttackedByKnight checks if the square is being attacked by a knight
+func isAttackedByKnight(sq int, side int, pos *Board) bool {
 	for i := 0; i < 8; i++ {
-		piece := pos.Pieces[square+KnightDirection[i]]
+		piece := pos.Pieces[sq+KnightDirection[i]]
 		if piece != OffBoard && piece != Empty {
 			if PieceKnight[piece] == True && PieceCol[piece] == side {
 				return true
 			}
 		}
 	}
-	//Rooks & Queens
+	return false
+}
+
+//isAttackedByPawn checks if the square is being attacked by a pawn
+func isAttackedByPawn(sq int, side int, pos *Board) bool {
+	var pawnDir int
+	var piece int
+	if side == White {
+		pawnDir = -11
+		piece = WP
+	} else {
+		pawnDir = 11
+		piece = BP
+	}
+	if pos.Pieces[sq+pawnDir] == piece || pos.Pieces[sq-pawnDir] == piece {
+		return true
+	}
+	return false
+}
+
+//isAttackedByRookQueen checks if the square is being attacked by a rook or queen
+func isAttackedByRookQueen(sq int, side int, pos *Board) bool {
 	for i := 0; i < 4; i++ {
 		direction := RookDirection[i]
-		tempSq := square + direction
+		tempSq := sq + direction
 		piece := pos.Pieces[tempSq]
 		for piece != OffBoard {
 			if piece != Empty {
@@ -46,10 +94,13 @@ func SquareAttacked(square int, side int, pos *Board) bool {
 			piece = pos.Pieces[tempSq]
 		}
 	}
-	//Bishops & Queens
+	return false
+}
+
+func isAttackedByBishopQueen(sq int, side int, pos *Board) bool {
 	for i := 0; i < 4; i++ {
 		direction := BishopDirection[i]
-		tempSq := square + direction
+		tempSq := sq + direction
 		piece := pos.Pieces[tempSq]
 		for piece != OffBoard {
 			if piece != Empty {
@@ -62,15 +113,5 @@ func SquareAttacked(square int, side int, pos *Board) bool {
 			piece = pos.Pieces[tempSq]
 		}
 	}
-	//Kings
-	for i := 0; i < 8; i++ {
-		piece := pos.Pieces[square+KingDirection[i]]
-		if piece != OffBoard && piece != Empty {
-			if PieceKing[piece] == True && PieceCol[piece] == side {
-				return true
-			}
-		}
-	}
-
 	return false
 }
