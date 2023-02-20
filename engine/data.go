@@ -6,9 +6,16 @@ import (
 )
 
 const MaxMoves = 2048
+const MaxPositionMoves = 256
 
 // const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-const StartFEN = "1QR2b1Q/P1K2bp1/1PPP1p2/1r2RB1q/2PqNBpp/p1p1ppnP/1nP4P/1k6 w - - 0 1"
+// const StartFEN = "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w WKkq e6 0 1"
+// const StartFEN = "rnbqkbnr/p1p1p3/3p3p/1p1p4/2P1Pp2/8/PP1P1PpP/RNBQKB1R b KQkq e3 0 1"
+// const StartFEN = "5k2/1n6/4n3/6N1/8/3N4/8/5K2 w - - 0 1"
+// const StartFEN = "6k1/8/5r2/8/1nR5/5N2/86K1 b - - 0 1"
+// const StartFEN = "r3k23/8/8/8/8/8/8/R3K2R b KQkq - 0 1"
+// const StartFEN = "3rk2r/8/8/8/8/8/6p1/R3K2R b KQk - 0 1"
+const StartFEN = "r3k2r/p1ppqb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 
 const (
 	False = iota
@@ -148,6 +155,16 @@ var BitTable = [64]int{
 	58, 20, 37, 17, 36, 8,
 }
 
+type MoveList struct {
+	Moves [MaxPositionMoves]Move
+	Count int
+}
+
+type Move struct {
+	Score int
+	Move  int
+}
+
 type Board struct {
 	Pieces           [120]int
 	KingSqaure       [2]int
@@ -159,9 +176,10 @@ type Board struct {
 	PosistionKey     uint64
 	PieceNumber      [13]int
 	Pawns            [3]uint64
-	BigPiece         [3]int
-	MajorPiece       [3]int
-	MinPiece         [3]int
+	BigPiece         [2]int
+	MajorPiece       [2]int
+	MinPiece         [2]int
+	Material         [2]int
 	PieceList        [13][10]int
 	CastlePermission int
 	History          [MaxMoves]Undo
@@ -185,10 +203,53 @@ var PieceKeys [13][120]uint64
 var SideKey uint64
 var CastleKeys [16]uint64
 
+var PieceBig = [13]int{0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1}
+var PieceMajor = [13]int{0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1}
+var PieceMin = [13]int{0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0}
+var PieceVal = [13]int{0, 100, 325, 325, 550, 1000, 5000, 100, 325, 325, 550, 1000, 5000}
+var PieceCol = [13]int{Both, White, White, White, White, White, White, Black, Black, Black, Black, Black, Black}
+
+var FilesBoard [120]int
+var RanksBoard [120]int
+
+var KnightDirection = [8]int{-8, -19, -21, -12, 8, 19, 21, 12}
+var RookDirection = [4]int{-1, -10, 1, 10}
+var BishopDirection = [4]int{-9, -11, 11, 9}
+var KingDirection = [8]int{-1, -10, 1, 10, -9, -11, 11, 9}
+
+var PieceKnight = [13]int{False, False, True, False, False, False, False, False, True, False, False, False, False}
+var PieceKing = [13]int{False, False, False, False, False, False, True, False, False, False, False, False, True}
+var PieceRookQueen = [13]int{False, False, False, False, True, True, False, False, False, False, True, True, False}
+var PieceBishopQueen = [13]int{False, False, False, True, False, True, False, False, False, True, False, True, False}
+var PieceSlides = [13]int{False, False, False, True, True, True, False, False, False, True, True, True, False}
+
+var LoopSlidePiece = [8]int{WB, WR, WQ, 0, BB, BR, BQ, 0}
+var LoopSlideIndex = [2]int{0, 4}
+var LoopNonSlidePiece = [6]int{WN, WK, 0, BN, BK, 0}
+var LoopNonSlideIndex = [2]int{0, 3}
+
+var NumDir = [13]int{0, 0, 8, 4, 4, 8, 8, 0, 8, 4, 4, 8, 8}
+var PieceDir = [13][8]int{
+	{0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0},
+	{-8, -19, -21, -12, 8, 19, 21, 12},
+	{-9, -11, 11, 9, 0, 0, 0, 0},
+	{-1, -10, 1, 10, 0, 0, 0, 0},
+	{-1, -10, 1, 10, -9, -11, 11, 9},
+	{-1, -10, 1, 10, -9, -11, 11, 9},
+	{0, 0, 0, 0, 0, 0, 0},
+	{-8, -19, -21, -12, 8, 19, 21, 12},
+	{-9, -11, 11, 9, 0, 0, 0, 0},
+	{-1, -10, 1, 10, 0, 0, 0, 0},
+	{-1, -10, 1, 10, -9, -11, 11, 9},
+	{-1, -10, 1, 10, -9, -11, 11, 9},
+}
+
 func init() {
 	setSquares()
 	setBitMasks()
 	setPieceKeys()
+	setFilesAndRanks()
 }
 
 // FileRankToSquare converts file & rank to the 120 sqaure
@@ -202,6 +263,7 @@ func generateRandomUint64() uint64 {
 	return rand.Uint64()
 }
 
+// setPieceKeys sets the keys to a random Uinit64
 func setPieceKeys() {
 	for i := 0; i < 13; i++ {
 		for j := 0; j < 120; j++ {
@@ -241,12 +303,61 @@ func setSquares() {
 // setBitMasks populates ClearMask & SetMask
 func setBitMasks() {
 	for index := 0; index < 64; index++ {
-		SetMask[index] = 0
-		ClearMask[index] = 0
+		SetMask[index] = uint64(0)
+		ClearMask[index] = uint64(0)
 	}
 
 	for index := 0; index < 64; index++ {
-		SetMask[index] = 1 << index
+		SetMask[index] |= uint64(1) << index
 		ClearMask[index] = ^SetMask[index]
 	}
 }
+
+// setFilesAndRanks populates FilesBoard & RanksBoard
+func setFilesAndRanks() {
+	for i := 0; i < 120; i++ {
+		FilesBoard[i] = OffBoard
+		RanksBoard[i] = OffBoard
+	}
+
+	for rank := Rank1; rank <= Rank8; rank++ {
+		for file := FileA; file <= FileH; file++ {
+			sq := FileRankToSquare(file, rank)
+			FilesBoard[sq] = file
+			RanksBoard[sq] = rank
+		}
+	}
+}
+
+/*
+0000 0000 0000 0000 0000 0111 1111 -> From 0x7F
+0000 0000 0000 0011 1111 1000 0000 -> To >> 7, 0x7F
+0000 0000 0011 1100 0000 0000 0000 -> Captured >> 14, 0xF
+0000 0000 0100 0000 0000 0000 0000 -> EP 0x40000
+0000 0000 1000 0000 0000 0000 0000 -> Pawn Start 0x80000
+0000 1111 0000 0000 0000 0000 0000 -> Promoted Piece >> 20, 0xF
+0001 0000 0000 0000 0000 0000 0000 -> Castle 0x1000000
+*/
+
+func FromSquare(move int) int {
+	return move & 0x7F
+}
+
+func ToSqaure(move int) int {
+	return move >> 7 & 0x7F
+}
+
+func Captured(move int) int {
+	return move >> 14 & 0xF
+}
+
+func Promoted(move int) int {
+	return move >> 20 & 0xF
+}
+
+const MFLAGEP int = 0x40000
+const MFLAGPS int = 0x80000
+const MFLAGGCA int = 0x1000000
+
+const MFLAGCAP int = 0x7C000
+const MFLAGPRO int = 0xF00000
