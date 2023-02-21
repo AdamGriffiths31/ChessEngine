@@ -1,6 +1,9 @@
 package engine
 
 func SqaureString(square int) string {
+	if !SqaureOnBoard(square) {
+		return "Sqaure not on board"
+	}
 	file := FilesBoard[square] + 'a'
 	rank := RanksBoard[square] + '1'
 	return string([]byte{byte(file), byte(rank)})

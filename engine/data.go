@@ -8,14 +8,17 @@ import (
 const MaxMoves = 2048
 const MaxPositionMoves = 256
 
-// const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+//const StartFEN = "rnbqkbnr/pppppppp/8/8/8/7N/PPPPPPPP/RNBQKB1R b KQkq - 0 1"
+
+const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
 // const StartFEN = "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w WKkq e6 0 1"
 // const StartFEN = "rnbqkbnr/p1p1p3/3p3p/1p1p4/2P1Pp2/8/PP1P1PpP/RNBQKB1R b KQkq e3 0 1"
 // const StartFEN = "5k2/1n6/4n3/6N1/8/3N4/8/5K2 w - - 0 1"
 // const StartFEN = "6k1/8/5r2/8/1nR5/5N2/86K1 b - - 0 1"
 // const StartFEN = "r3k23/8/8/8/8/8/8/R3K2R b KQkq - 0 1"
 // const StartFEN = "3rk2r/8/8/8/8/8/6p1/R3K2R b KQk - 0 1"
-const StartFEN = "r3k2r/p1ppqb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+// const StartFEN = "r3k2r/p1ppqb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 
 const (
 	False = iota
@@ -30,7 +33,7 @@ var PceChar = []string{
 	"R",
 	"Q",
 	"K",
-	"p",
+	"u",
 	"n",
 	"b",
 	"r",
@@ -217,11 +220,12 @@ var RookDirection = [4]int{-1, -10, 1, 10}
 var BishopDirection = [4]int{-9, -11, 11, 9}
 var KingDirection = [8]int{-1, -10, 1, 10, -9, -11, 11, 9}
 
+var PiecePawn = [13]int{False, True, False, False, False, False, False, True, False, False, False, False, False}
 var PieceKnight = [13]int{False, False, True, False, False, False, False, False, True, False, False, False, False}
 var PieceKing = [13]int{False, False, False, False, False, False, True, False, False, False, False, False, True}
 var PieceRookQueen = [13]int{False, False, False, False, True, True, False, False, False, False, True, True, False}
 var PieceBishopQueen = [13]int{False, False, False, True, False, True, False, False, False, True, False, True, False}
-var PieceSlides = [13]int{False, False, False, True, True, True, False, False, False, True, True, True, False}
+var PieceSlides = [13]int{False, False, False, True, True, True, True, False, False, True, True, True, True}
 
 var LoopSlidePiece = [8]int{WB, WR, WQ, 0, BB, BR, BQ, 0}
 var LoopSlideIndex = [2]int{0, 4}
@@ -243,6 +247,21 @@ var PieceDir = [13][8]int{
 	{-1, -10, 1, 10, 0, 0, 0, 0},
 	{-1, -10, 1, 10, -9, -11, 11, 9},
 	{-1, -10, 1, 10, -9, -11, 11, 9},
+}
+
+var CastlePerm = [120]int{
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 13, 15, 15, 15, 12, 15, 15, 14, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 7, 15, 15, 15, 3, 15, 15, 11, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
 }
 
 func init() {

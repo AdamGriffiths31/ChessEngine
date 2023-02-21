@@ -30,12 +30,13 @@ func CheckBoard(pos *Board) {
 		piece := pos.Pieces[sq120]
 		pieceNumber[piece]++
 		color := PieceCol[piece]
-		switch {
-		case PieceBig[piece] == True:
+		if PieceBig[piece] == True {
 			bigPiece[color]++
-		case PieceMajor[piece] == True:
+		}
+		if PieceMajor[piece] == True {
 			majorPiece[color]++
-		case PieceMin[piece] == True:
+		}
+		if PieceMin[piece] == True {
 			minPiece[color]++
 		}
 		if PieceVal[piece] > 0 {
@@ -45,7 +46,7 @@ func CheckBoard(pos *Board) {
 
 	for piece := WP; piece <= BK; piece++ {
 		if pieceNumber[piece] != pos.PieceNumber[piece] {
-			panic(fmt.Errorf("CheckBoard: piece %v does not match %v count", pieceNumber[piece], pos.PieceNumber[piece]))
+			panic(fmt.Errorf("CheckBoard: piece %v [%v] does not match count %v - was %v", piece, Pieces[piece], pos.PieceNumber[piece], pieceNumber[piece]))
 		}
 	}
 
@@ -106,6 +107,7 @@ func CheckBoard(pos *Board) {
 	}
 
 	if minPiece[Black] != pos.MinPiece[Black] {
+		PrintBoard(pos)
 		panic(fmt.Errorf("CheckBoard: Black min Piece was %v but wanted %v ", minPiece[Black], pos.MinPiece[Black]))
 	}
 
@@ -122,7 +124,7 @@ func CheckBoard(pos *Board) {
 	}
 
 	if pos.PosistionKey != GeneratePositionKey(pos) {
-		panic(fmt.Errorf("CheckBoard: PosistionKey: %v did not match", pos.PosistionKey))
+		panic(fmt.Errorf("CheckBoard: PosistionKey: %v did not match %v", pos.PosistionKey, GeneratePositionKey(pos)))
 	}
 
 	if pos.EnPas != noSqaure {
@@ -136,11 +138,11 @@ func CheckBoard(pos *Board) {
 	}
 
 	if pos.Pieces[pos.KingSqaure[White]] != WK {
-		panic(fmt.Errorf("CheckBoard: White king was not found at %v instead %v was found ", pos.KingSqaure[White], pos.Pieces[pos.KingSqaure[White]]))
+		panic(fmt.Errorf("CheckBoard: White king was not found at %v instead %v was found", pos.KingSqaure[White], pos.Pieces[pos.KingSqaure[White]]))
 	}
 
 	if pos.Pieces[pos.KingSqaure[Black]] != BK {
-		panic(fmt.Errorf("CheckBoard: Black king was not found at %v instead %v was found ", pos.KingSqaure[Black], pos.Pieces[pos.KingSqaure[Black]]))
+		panic(fmt.Errorf("CheckBoard: Black king was not found at %v instead %v was found ", SqaureString(pos.KingSqaure[Black]), pos.Pieces[pos.KingSqaure[Black]]))
 	}
 }
 
@@ -160,20 +162,29 @@ func UpdateListMaterial(pos *Board) {
 
 		if piece == WK {
 			pos.KingSqaure[White] = sq
-		} else if piece == BK {
+		}
+
+		if piece == BK {
 			pos.KingSqaure[Black] = sq
 		}
-		switch {
-		case PieceBig[piece] == True:
+
+		if PieceBig[piece] == True {
 			pos.BigPiece[colour]++
-		case PieceMajor[piece] == True:
+		}
+
+		if PieceMajor[piece] == True {
 			pos.MajorPiece[colour]++
-		case PieceMin[piece] == True:
+		}
+		if PieceMin[piece] == True {
 			pos.MinPiece[colour]++
-		case piece == WP:
+		}
+
+		if piece == WP {
 			SetBit(&pos.Pawns[White], Sqaure120ToSquare64[sq])
 			SetBit(&pos.Pawns[Both], Sqaure120ToSquare64[sq])
-		case piece == BP:
+		}
+
+		if piece == BP {
 			SetBit(&pos.Pawns[Black], Sqaure120ToSquare64[sq])
 			SetBit(&pos.Pawns[Both], Sqaure120ToSquare64[sq])
 		}
@@ -217,11 +228,10 @@ func resetBoard(pos *Board) {
 		pos.MajorPiece[i] = 0
 		pos.MinPiece[i] = 0
 		pos.Material[i] = 0
-		pos.Pawns[i] = 0
 	}
 
 	for i := 0; i < 3; i++ {
-		pos.Pawns[i] = uint64(0)
+		pos.Pawns[i] = 0
 	}
 
 	for i := 0; i < 13; i++ {

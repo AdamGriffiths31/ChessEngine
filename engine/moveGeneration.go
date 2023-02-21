@@ -24,9 +24,6 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 	if pos.Side == White {
 		for pieceNum := 0; pieceNum < pos.PieceNumber[WP]; pieceNum++ {
 			sq := pos.PieceList[WP][pieceNum]
-			if !SqaureOnBoard(sq) {
-				panic(fmt.Errorf("GenerateAllMoves: white pawn number %v was at square %v", pieceNum, sq))
-			}
 			if pos.Pieces[sq+10] == Empty {
 				addWhitePawnMove(pos, sq, sq+10, moveList)
 				if RanksBoard[sq] == Rank2 && pos.Pieces[sq+20] == Empty {
@@ -41,13 +38,14 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 			if SqaureOnBoard(sq+11) && PieceCol[pos.Pieces[sq+11]] == Black {
 				addWhitePawnCaptureMove(pos, moveList, sq, sq+11, pos.Pieces[sq+11])
 			}
+			if pos.EnPas != noSqaure {
+				if sq+9 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq+9, Empty, Empty, MFLAGEP), moveList)
+				}
 
-			if sq+9 == pos.EnPas {
-				addEnPasMove(pos, MakeMoveInt(sq, sq+9, Empty, Empty, MFLAGEP), moveList)
-			}
-
-			if sq+11 == pos.EnPas {
-				addEnPasMove(pos, MakeMoveInt(sq, sq+11, Empty, Empty, MFLAGEP), moveList)
+				if sq+11 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq+11, Empty, Empty, MFLAGEP), moveList)
+				}
 			}
 		}
 
@@ -68,9 +66,6 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 	} else {
 		for pieceNum := 0; pieceNum < pos.PieceNumber[BP]; pieceNum++ {
 			sq := pos.PieceList[BP][pieceNum]
-			if !SqaureOnBoard(sq) {
-				panic(fmt.Errorf("GenerateAllMoves: black pawn number %v was at square %v", pieceNum, sq))
-			}
 			if pos.Pieces[sq-10] == Empty {
 				addBlackPawnMove(pos, sq, sq-10, moveList)
 				if RanksBoard[sq] == Rank7 && pos.Pieces[sq-20] == Empty {
@@ -85,12 +80,14 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 				addBlackPawnCaptureMove(pos, moveList, sq, sq-11, pos.Pieces[sq-11])
 			}
 
-			if sq-9 == pos.EnPas {
-				addEnPasMove(pos, MakeMoveInt(sq, sq-9, Empty, Empty, MFLAGEP), moveList)
-			}
+			if pos.EnPas != noSqaure {
+				if sq-9 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq-9, Empty, Empty, MFLAGEP), moveList)
+				}
 
-			if sq-11 == pos.EnPas {
-				addEnPasMove(pos, MakeMoveInt(sq, sq-11, Empty, Empty, MFLAGEP), moveList)
+				if sq-11 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq-11, Empty, Empty, MFLAGEP), moveList)
+				}
 			}
 		}
 		if (pos.CastlePermission & BlackKingCastle) != 0 {
@@ -116,7 +113,6 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 	for piece != 0 {
 		for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 			sq := pos.PieceList[piece][pieceNum]
-
 			for i := 0; i < NumDir[piece]; i++ {
 				dir := PieceDir[piece][i]
 				tempSq := sq + dir
@@ -144,7 +140,6 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 	for piece != 0 {
 		for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 			sq := pos.PieceList[piece][pieceNum]
-
 			for i := 0; i < NumDir[piece]; i++ {
 				dir := PieceDir[piece][i]
 				tempSq := sq + dir
@@ -169,18 +164,21 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 }
 
 func addQuiteMove(pos *Board, move int, moveList *MoveList) {
+
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = 0
 	moveList.Count++
 }
 
 func addCaptureMove(pos *Board, move int, moveList *MoveList) {
+
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = 0
 	moveList.Count++
 }
 
 func addEnPasMove(pos *Board, move int, moveList *MoveList) {
+
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = 0
 	moveList.Count++
@@ -213,7 +211,7 @@ func addBlackPawnCaptureMove(pos *Board, moveList *MoveList, from, to, cap int) 
 		addCaptureMove(pos, MakeMoveInt(from, to, cap, BQ, 0), moveList)
 		addCaptureMove(pos, MakeMoveInt(from, to, cap, BR, 0), moveList)
 		addCaptureMove(pos, MakeMoveInt(from, to, cap, BB, 0), moveList)
-		addCaptureMove(pos, MakeMoveInt(from, to, cap, B2, 0), moveList)
+		addCaptureMove(pos, MakeMoveInt(from, to, cap, BN, 0), moveList)
 	} else {
 		addCaptureMove(pos, MakeMoveInt(from, to, cap, Empty, 0), moveList)
 	}

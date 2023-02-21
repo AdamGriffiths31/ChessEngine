@@ -10,6 +10,7 @@ func SquareAttacked(square int, side int, pos *Board) bool {
 	if !SqaureOnBoard(square) {
 		panic(fmt.Errorf("SquareAttacked: square %v is invalid", side))
 	}
+
 	CheckBoard(pos)
 
 	if isAttackedByPawn(square, side, pos) {
@@ -63,18 +64,16 @@ func isAttackedByKnight(sq int, side int, pos *Board) bool {
 
 //isAttackedByPawn checks if the square is being attacked by a pawn
 func isAttackedByPawn(sq int, side int, pos *Board) bool {
-	var pawnDir int
-	var piece int
 	if side == White {
-		pawnDir = -11
-		piece = WP
+		if pos.Pieces[sq-11] == WP || pos.Pieces[sq-9] == WP {
+			return true
+		}
 	} else {
-		pawnDir = 11
-		piece = BP
+		if pos.Pieces[sq+11] == BP || pos.Pieces[sq+9] == BP {
+			return true
+		}
 	}
-	if pos.Pieces[sq+pawnDir] == piece || pos.Pieces[sq-pawnDir] == piece {
-		return true
-	}
+
 	return false
 }
 
