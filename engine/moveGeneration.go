@@ -5,12 +5,11 @@ import (
 )
 
 func PrintMoveList(moveList *MoveList) {
-	fmt.Println("\nPRINTING MOVE LIST")
+	fmt.Println("\nPrinting move list:")
 	for i := 0; i < moveList.Count; i++ {
-		fmt.Printf("Move: %v > %v (Score: %v)\n", i+1, PrintMove(moveList.Moves[i].Move), moveList.Moves[i].Score)
+		fmt.Printf("Move %v: %v (score: %v)\n", i+1, PrintMove(moveList.Moves[i].Move), moveList.Moves[i].Score)
 	}
-	fmt.Printf("PRINTING MOVE DONE - %v total moves", moveList.Count)
-
+	fmt.Printf("Printed %v total moves.\n", moveList.Count)
 }
 
 // MakeMoveInt Builds the move int

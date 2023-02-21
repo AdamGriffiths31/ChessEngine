@@ -2,6 +2,7 @@ package engine
 
 import "fmt"
 
+//SquareAttacked checks if the square is under attack
 func SquareAttacked(square int, side int, pos *Board) bool {
 	if !SideValid(side) {
 		panic(fmt.Errorf("SquareAttacked: side %v is invalid", side))
@@ -97,6 +98,7 @@ func isAttackedByRookQueen(sq int, side int, pos *Board) bool {
 	return false
 }
 
+//isAttackedByBishopQueen checks if the square is being attacked by a bishop or queen
 func isAttackedByBishopQueen(sq int, side int, pos *Board) bool {
 	for i := 0; i < 4; i++ {
 		direction := BishopDirection[i]

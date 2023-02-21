@@ -180,76 +180,6 @@ func UpdateListMaterial(pos *Board) {
 	}
 }
 
-func ParseFEN(fen string, pos *Board) {
-	resetBoard(pos)
-
-	var piece int
-	rank, file := Rank8, FileA
-	counter := 0
-	for _, ch := range fen {
-		counter++
-		switch {
-		case ch == '/':
-			rank--
-			file = FileA
-		case ch == ' ':
-			goto end
-		case '1' <= ch && ch <= '8':
-			file += int(ch - '0')
-		default:
-			piece = getPieceType(ch)
-			sq64 := rank*8 + file
-			sq120 := Sqaure64ToSquare120[sq64]
-			if piece != Empty {
-				pos.Pieces[sq120] = piece
-			}
-			file++
-		}
-	}
-end:
-	fen = fen[counter:]
-
-	if fen[0] == 'w' {
-		pos.Side = White
-	} else if fen[0] == 'b' {
-		pos.Side = Black
-	}
-	fen = fen[2:]
-
-	if fen[0] == '-' {
-		fen = fen[2:]
-	} else {
-		index := 0
-		for fen[index] != ' ' {
-			switch fen[index] {
-			case 'K':
-				pos.CastlePermission |= WhiteKingCastle
-			case 'Q':
-				pos.CastlePermission |= WhiteQueenCastle
-			case 'k':
-				pos.CastlePermission |= BlackKingCastle
-			case 'q':
-				pos.CastlePermission |= BlackQueenCastle
-			}
-			index++
-		}
-		index++
-		fen = fen[index:]
-	}
-
-	if fen[0] == '-' {
-		fen = fen[2:]
-	} else {
-		pos.EnPas = FileRankToSquare(int(fen[0])-'a', int(fen[1])-'1')
-		fen = fen[3:]
-	}
-
-	//TODO Set moves from fen
-
-	pos.PosistionKey = GeneratePositionKey(pos)
-	UpdateListMaterial(pos)
-}
-
 func PrintBoard(pos *Board) {
 	println("Printing board...")
 	for rank := Rank8; rank >= Rank1; rank-- {
@@ -270,7 +200,6 @@ func PrintBoard(pos *Board) {
 	fmt.Printf("Side:%v\n", pos.Side)
 	fmt.Printf("EnPas:%v\n", SqaureString(pos.EnPas))
 	fmt.Printf("PosKey:%11X\n", pos.PosistionKey)
-
 }
 
 // resetBoard restores Board to a default state
@@ -313,34 +242,26 @@ func resetBoard(pos *Board) {
 	pos.PosistionKey = 0
 }
 
-// getPieceType returns the iota value for a fen char
+// getPieceType returns returns the corresponding piece type integer
 func getPieceType(ch rune) int {
-	piece := 0
-	switch ch {
-	case 'p':
-		piece = BP
-	case 'r':
-		piece = BR
-	case 'n':
-		piece = BN
-	case 'b':
-		piece = BB
-	case 'q':
-		piece = BQ
-	case 'k':
-		piece = BK
-	case 'P':
-		piece = WP
-	case 'R':
-		piece = WR
-	case 'N':
-		piece = WN
-	case 'B':
-		piece = WB
-	case 'Q':
-		piece = WQ
-	case 'K':
-		piece = WK
+	pieceMap := map[rune]int{
+		'p': BP,
+		'r': BR,
+		'n': BN,
+		'b': BB,
+		'q': BQ,
+		'k': BK,
+		'P': WP,
+		'R': WR,
+		'N': WN,
+		'B': WB,
+		'Q': WQ,
+		'K': WK,
+	}
+
+	piece, ok := pieceMap[ch]
+	if !ok {
+		panic(fmt.Errorf("getPieceType: could not find value for %v", ch))
 	}
 
 	return piece
