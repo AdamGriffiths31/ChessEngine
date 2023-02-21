@@ -1,31 +1,39 @@
 package main
 
-import "github.com/AdamGriffiths31/ChessEngine/engine"
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/AdamGriffiths31/ChessEngine/engine"
+)
 
 func main() {
 
-	// b := &engine.Board{}
-	// engine.ParseFEN(engine.StartFEN, b)
+	b := &engine.Board{}
+	engine.ParseFEN("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1", b)
 
-	// engine.CheckBoard(b)
-	// engine.PrintBoard(b)
+	engine.CheckBoard(b)
 
-	// ml := &engine.MoveList{}
-	// engine.GenerateAllMoves(b, ml)
-	// engine.PrintMoveList(ml)
+	reader := bufio.NewReader(os.Stdin)
 
-	// for moveNum := 0; moveNum < ml.Count; moveNum++ {
-	// 	move := ml.Moves[moveNum].Move
-	// 	fmt.Printf("Move = %v\n", engine.PrintMove(move))
-	// 	if !engine.MakeMove(move, b) {
-	// 		continue
-	// 	}
-	// 	engine.PrintBoard(b)
-	// 	fmt.Printf("Made %s \n", engine.PrintMove(move))
-	// 	engine.TakeMoveBack(b)
-	// 	fmt.Printf("Take back %s \n", engine.PrintMove(move))
-	// 	engine.PrintBoard(b)
-	// }
+	for {
+		engine.PrintBoard(b)
+		fmt.Printf("Please enter a move:")
+		text, _ := reader.ReadString('\n')
+		text = strings.TrimSpace(text) // remove leading/trailing white space
+		fmt.Println("You entered:", text)
+		// if text == "t" {
+		// 	fmt.Printf("Take Back\n")
+		// 	engine.TakeMoveBack(b)
+		// } else {
+		move := engine.ParseMove([]byte(text), b)
+		if move != engine.NoMove {
+			fmt.Printf("Making move\n")
+			engine.MakeMove(move, b)
+			//}
+		}
+	}
 
-	engine.PerftTest(4, "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
 }

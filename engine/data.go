@@ -380,3 +380,5 @@ const MFLAGGCA int = 0x1000000
 
 const MFLAGCAP int = 0x7C000
 const MFLAGPRO int = 0xF00000
+
+var NoMove = 0

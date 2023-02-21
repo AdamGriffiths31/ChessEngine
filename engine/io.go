@@ -1,5 +1,7 @@
 package engine
 
+import "fmt"
+
 func SqaureString(square int) string {
 	if !SqaureOnBoard(square) {
 		return "Sqaure not on board"
@@ -29,4 +31,49 @@ func PrintMove(move int) string {
 	}
 
 	return string([]byte{byte(fromFile), byte(fromRank), byte(toFile), byte(toRank)})
+}
+
+func ParseMove(move []byte, pos *Board) int {
+	if move[1] > '8' || move[1] < '1' {
+		return NoMove
+	}
+	if move[3] > '8' || move[3] < '1' {
+		return NoMove
+	}
+	if move[0] > 'h' || move[0] < 'a' {
+		return NoMove
+	}
+	if move[2] > 'h' || move[2] < 'a' {
+		return NoMove
+	}
+
+	from := FileRankToSquare(int(move[0]-'a'), int(move[1]-'1'))
+	to := FileRankToSquare(int(move[2]-'a'), int(move[3]-'1'))
+
+	fmt.Printf("move %s from %d to %d\n", move, from, to)
+
+	ml := &MoveList{}
+	GenerateAllMoves(pos, ml)
+
+	for MoveNum := 0; MoveNum < ml.Count; MoveNum++ {
+		userMove := ml.Moves[MoveNum].Move
+		if FromSquare(userMove) == from && ToSqaure(userMove) == to {
+			promPce := Promoted(userMove)
+			if promPce != Empty {
+				if PieceRookQueen[promPce] == True && PieceBishopQueen[promPce] == False && move[4] == 'r' {
+					return userMove
+				} else if PieceRookQueen[promPce] == False && PieceBishopQueen[promPce] == True && move[4] == 'b' {
+					return userMove
+				} else if PieceRookQueen[promPce] == True && PieceBishopQueen[promPce] == True && move[4] == 'q' {
+					return userMove
+				} else if PieceKnight[promPce] == True && move[4] == 'n' {
+					return userMove
+				}
+				continue
+			}
+			return userMove
+		}
+	}
+
+	return NoMove
 }

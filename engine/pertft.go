@@ -50,6 +50,6 @@ func PerftTest(depth int, fen string) int64 {
 		//oldNodes := leafNodes - total
 		//fmt.Printf("move %d : %s : %v\n", moveNum+1, PrintMove(move), oldNodes)
 	}
-	//fmt.Printf("\nTest Complete : %d nodes\n", leafNodes)
+	fmt.Printf("\nTest Complete : %d nodes\n", leafNodes)
 	return leafNodes
 }
