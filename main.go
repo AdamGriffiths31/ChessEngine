@@ -4,36 +4,37 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/AdamGriffiths31/ChessEngine/engine"
 )
 
 func main() {
+	// p := &engine.PVTable{}
+	search := &engine.SearchInfo{}
+	search.Depth = 4
+	pvTable := &engine.PVTable{}
+	b := &engine.Board{PvTable: pvTable}
 
-	b := &engine.Board{}
-	engine.ParseFEN("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1", b)
+	engine.ParseFEN(engine.StartFEN, b)
 
 	engine.CheckBoard(b)
 
 	reader := bufio.NewReader(os.Stdin)
-
+	engine.PrintBoard(b)
+	engine.InitPvTable(b.PvTable)
 	for {
-		engine.PrintBoard(b)
 		fmt.Printf("Please enter a move:")
 		text, _ := reader.ReadString('\n')
-		text = strings.TrimSpace(text) // remove leading/trailing white space
 		fmt.Println("You entered:", text)
-		// if text == "t" {
-		// 	fmt.Printf("Take Back\n")
-		// 	engine.TakeMoveBack(b)
-		// } else {
-		move := engine.ParseMove([]byte(text), b)
+
+		move := engine.ParseMove([]byte(text), b, search)
 		if move != engine.NoMove {
-			fmt.Printf("Making move\n")
+			fmt.Printf("Storing: %v for %v\n", engine.PrintMove(move), b.PosistionKey)
+			engine.StorePvMove(b, move)
 			engine.MakeMove(move, b)
-			//}
+			engine.PrintBoard(b)
 		}
+
 	}
 
 }

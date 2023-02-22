@@ -163,6 +163,23 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 
 }
 
+func MoveExists(pos *Board, move int) bool {
+	ml := MoveList{}
+	GenerateAllMoves(pos, &ml)
+
+	for moveNum := 0; moveNum < ml.Count; moveNum++ {
+		if !MakeMove(ml.Moves[moveNum].Move, pos) {
+			continue
+		}
+		TakeMoveBack(pos)
+		if ml.Moves[moveNum].Move == move {
+			return true
+		}
+	}
+
+	return false
+}
+
 func addQuiteMove(pos *Board, move int, moveList *MoveList) {
 
 	moveList.Moves[moveList.Count].Move = move

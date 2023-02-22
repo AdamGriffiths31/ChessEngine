@@ -33,7 +33,29 @@ func PrintMove(move int) string {
 	return string([]byte{byte(fromFile), byte(fromRank), byte(toFile), byte(toRank)})
 }
 
-func ParseMove(move []byte, pos *Board) int {
+func ParseMove(move []byte, pos *Board, info *SearchInfo) int {
+	if move[0] == 't' {
+		fmt.Printf("Take back\n")
+		TakeMoveBack(pos)
+		PrintBoard(pos)
+		return NoMove
+	}
+	if move[0] == 'p' {
+		PerftTest(4, StartFEN)
+		return NoMove
+	}
+	if move[0] == 's' {
+		SearchPosistion(pos, info)
+		return NoMove
+	}
+	if move[0] == 'r' {
+		max := GetPvLine(1, pos)
+		fmt.Printf("PvLine of %d moves:", max)
+		for i := 0; i < max; i++ {
+			move := pos.PvArray[i]
+			fmt.Printf("%s\n", PrintMove(move))
+		}
+	}
 	if move[1] > '8' || move[1] < '1' {
 		return NoMove
 	}
@@ -49,8 +71,6 @@ func ParseMove(move []byte, pos *Board) int {
 
 	from := FileRankToSquare(int(move[0]-'a'), int(move[1]-'1'))
 	to := FileRankToSquare(int(move[2]-'a'), int(move[3]-'1'))
-
-	fmt.Printf("move %s from %d to %d\n", move, from, to)
 
 	ml := &MoveList{}
 	GenerateAllMoves(pos, ml)

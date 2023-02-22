@@ -7,6 +7,7 @@ import (
 
 const MaxMoves = 2048
 const MaxPositionMoves = 256
+const MaxDepth = 64
 
 //const StartFEN = "rnbqkbnr/pppppppp/8/8/8/7N/PPPPPPPP/RNBQKB1R b KQkq - 0 1"
 
@@ -186,6 +187,12 @@ type Board struct {
 	PieceList        [13][10]int
 	CastlePermission int
 	History          [MaxMoves]Undo
+
+	PvTable *PVTable
+	PvArray [MaxDepth]int
+
+	SearchHistory [13][120]int
+	SearchKillers [2][MaxDepth]int
 }
 
 type Undo struct {
@@ -194,6 +201,34 @@ type Undo struct {
 	EnPas            int
 	FiftyMove        int
 	PosistionKey     uint64
+}
+
+type PVEntry struct {
+	PosistionKey uint64
+	Move         int
+}
+
+type PVTable struct {
+	PTable        []PVEntry
+	NumberEntries int
+}
+
+type SearchInfo struct {
+	StartTime int64
+	StopTime  int64
+	Depth     int
+	DepthSet  int
+	TimeSet   int
+	MovesToGo int
+	Infinite  int
+
+	Node int64
+
+	Quite   int
+	Stopped int
+
+	FailHigh      float32
+	FailHighFirst float32
 }
 
 var Sqaure120ToSquare64 [120]int

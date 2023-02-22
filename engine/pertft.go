@@ -1,6 +1,9 @@
 package engine
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 var leafNodes int64 = 0
 
@@ -28,6 +31,7 @@ func Perft(depth int, pos *Board) {
 }
 
 func PerftTest(depth int, fen string) int64 {
+	defer TimeTrackNano(time.Now(), "time: ")
 
 	b := Board{}
 	ParseFEN(fen, &b)
