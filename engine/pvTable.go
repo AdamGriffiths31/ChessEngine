@@ -15,42 +15,42 @@ func InitPvTable(table *PVTable) {
 }
 
 func GetPvLine(depth int, pos *Board) int {
+	//PrintBoard(pos)
 	move := ProbePvTable(pos)
 	count := 0
 	for move != NoMove && count < depth {
+		fmt.Printf("Move:%v\n", PrintMove(move))
 		if MoveExists(pos, move) {
 			MakeMove(move, pos)
-			//fmt.Printf("Move added %v at %v\n", PrintMove(move), count)
+			fmt.Printf("Move added %v at %v\n", PrintMove(move), count)
 			pos.PvArray[count] = move
 			count++
 		} else {
+			PrintBoard(pos)
 			fmt.Printf("GetPvLine break %v [%v](depth:%v)\n", move, PrintMove(move), depth)
 			break
 		}
 		move = ProbePvTable(pos)
 	}
-	for pos.Play == 0 {
+	for pos.Play != 0 {
 		TakeMoveBack(pos)
 	}
-
 	return count
 }
 
 func StorePvMove(pos *Board, move int) {
 	index := pos.PosistionKey % uint64(pos.PvTable.NumberEntries)
-	fmt.Printf("StorePvMove: %v %v %v (%v - %v)\n", index, PrintMove(move), pos.PosistionKey, pos.PvTable.NumberEntries, uint64(pos.PvTable.NumberEntries))
+	fmt.Printf("key: %v move: %v index:%v\n", pos.PosistionKey, PrintMove(move), index)
 	pos.PvTable.PTable[index].Move = move
 	pos.PvTable.PTable[index].PosistionKey = pos.PosistionKey
 }
 
 func ProbePvTable(pos *Board) int {
 	index := pos.PosistionKey % uint64(pos.PvTable.NumberEntries)
-
+	fmt.Printf("Retrival for %v pos: %v index: %v", PrintMove(pos.PvTable.PTable[index].Move), pos.PvTable.PTable[index].PosistionKey, index)
 	if pos.PvTable.PTable[index].PosistionKey == pos.PosistionKey {
-		fmt.Printf("ProbePvTable:  move %v found for %v %v\n", PrintMove(pos.PvTable.PTable[index].Move), index, pos.PvTable.NumberEntries)
 		return pos.PvTable.PTable[index].Move
 	}
-	fmt.Printf("ProbePvTable: no move found for %v %v %v\n", index, pos.PosistionKey, pos.PvTable.NumberEntries)
 	return NoMove
 }
 

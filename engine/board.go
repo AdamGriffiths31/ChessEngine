@@ -210,9 +210,9 @@ func PrintBoard(pos *Board) {
 		fmt.Printf("%3c", 'a'+file)
 	}
 	fmt.Print("\n")
-	fmt.Printf("Side:%v\n", pos.Side)
+	fmt.Printf("Side:%v\n", SideChar[pos.Side])
 	fmt.Printf("EnPas:%v\n", SqaureString(pos.EnPas))
-	fmt.Printf("PosKey:%11X\n", pos.PosistionKey)
+	fmt.Printf("PosKey:%11X (%v)\n", pos.PosistionKey, pos.PosistionKey)
 }
 
 // resetBoard restores Board to a default state

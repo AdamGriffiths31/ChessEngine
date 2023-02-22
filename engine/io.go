@@ -55,6 +55,7 @@ func ParseMove(move []byte, pos *Board, info *SearchInfo) int {
 			move := pos.PvArray[i]
 			fmt.Printf("%s\n", PrintMove(move))
 		}
+		PrintBoard(pos)
 	}
 	if move[1] > '8' || move[1] < '1' {
 		return NoMove

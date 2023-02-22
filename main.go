@@ -11,10 +11,9 @@ import (
 func main() {
 	// p := &engine.PVTable{}
 	search := &engine.SearchInfo{}
-	search.Depth = 4
+	search.Depth = 5
 	pvTable := &engine.PVTable{}
 	b := &engine.Board{PvTable: pvTable}
-
 	engine.ParseFEN(engine.StartFEN, b)
 
 	engine.CheckBoard(b)
@@ -22,6 +21,11 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	engine.PrintBoard(b)
 	engine.InitPvTable(b.PvTable)
+	// ml := &engine.MoveList{}
+	// engine.GenerateAllMoves(b, ml)
+	// for moveNum := 0; moveNum < ml.Count; moveNum++ {
+	// 	fmt.Printf("%v\n", engine.PrintMove(ml.Moves[moveNum].Move))
+	// }
 	for {
 		fmt.Printf("Please enter a move:")
 		text, _ := reader.ReadString('\n')

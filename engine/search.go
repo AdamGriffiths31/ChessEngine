@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"math"
 )
 
 func IsRepetition(pos *Board) bool {
@@ -15,14 +14,13 @@ func IsRepetition(pos *Board) bool {
 }
 
 func SearchPosistion(pos *Board, info *SearchInfo) {
-	bestScore := math.MinInt
-	currentDepth := 0
+	bestScore := 30000
 	bestMove := NoMove
 	clearForSearch(pos, info)
 
-	for currentDepth = 1; currentDepth < info.Depth; currentDepth++ {
+	for currentDepth := 1; currentDepth < info.Depth; currentDepth++ {
 		fmt.Printf("Depth: %v\n", currentDepth)
-		bestScore = alphaBeta(math.MinInt, math.MaxInt, currentDepth, pos, info)
+		bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info)
 		pvMoves := GetPvLine(currentDepth, pos)
 		bestMove = pos.PvArray[0]
 		fmt.Printf("Depth %v score: %v move: %v nodes %v\n", currentDepth, bestScore, PrintMove(bestMove), info.Node)
@@ -38,6 +36,14 @@ func SearchPosistion(pos *Board, info *SearchInfo) {
 func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 	CheckBoard(pos)
 
+	if beta < alpha {
+		panic(fmt.Errorf("alphaBeta beta %v < alpha %v", beta, alpha))
+	}
+
+	if depth < 0 {
+		panic(fmt.Errorf("alphaBeta depth %v", depth))
+	}
+
 	if depth == 0 {
 		info.Node++
 		return EvalPosistion(pos)
@@ -46,7 +52,7 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 	info.Node++
 
 	if IsRepetition(pos) || pos.FiftyMove >= 100 {
-		fmt.Printf("\n\nError\n\n")
+		fmt.Printf("FiftyMove: %v or rep \n", pos.FiftyMove)
 		return 0
 	}
 
@@ -54,13 +60,12 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 		return EvalPosistion(pos)
 	}
 
-	ml := MoveList{}
-	GenerateAllMoves(pos, &ml)
+	ml := &MoveList{}
+	GenerateAllMoves(pos, ml)
 
 	legal := 0
 	oldAlpha := alpha
 	bestMove := NoMove
-	score := math.MinInt
 
 	for i := 0; i < ml.Count; i++ {
 		if !MakeMove(ml.Moves[i].Move, pos) {
@@ -68,8 +73,14 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 		}
 
 		legal++
-		score = -alphaBeta(-beta, -alpha, depth-1, pos, info)
+		score := -alphaBeta(-beta, -alpha, depth-1, pos, info)
 		TakeMoveBack(pos)
+
+		if !MoveExists(pos, ml.Moves[i].Move) {
+			PrintBoard(pos)
+			panic(fmt.Errorf("alphaBeta move error %v", PrintMove(ml.Moves[i].Move)))
+		}
+		CheckBoard(pos)
 
 		if score > alpha {
 			if score >= beta {
@@ -97,9 +108,9 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 	}
 
 	if alpha != oldAlpha {
+		fmt.Printf("store score %v", alpha)
 		StorePvMove(pos, bestMove)
 	}
-	fmt.Printf("Score: %v %v (%v)\n", alpha, bestMove, PrintMove(bestMove))
 
 	return alpha
 }

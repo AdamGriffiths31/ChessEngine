@@ -214,12 +214,12 @@ func addWhitePawnCaptureMove(pos *Board, moveList *MoveList, from, to, cap int) 
 
 func addWhitePawnMove(pos *Board, from, to int, moveList *MoveList) {
 	if RanksBoard[from] == Rank7 {
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, WQ, 0), moveList)
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, WR, 0), moveList)
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, WB, 0), moveList)
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, WN, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, WQ, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, WR, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, WB, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, WN, 0), moveList)
 	} else {
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, Empty, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, Empty, 0), moveList)
 	}
 }
 
@@ -236,11 +236,11 @@ func addBlackPawnCaptureMove(pos *Board, moveList *MoveList, from, to, cap int) 
 
 func addBlackPawnMove(pos *Board, from, to int, moveList *MoveList) {
 	if RanksBoard[from] == Rank2 {
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, BQ, 0), moveList)
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, BR, 0), moveList)
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, BB, 0), moveList)
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, BN, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, BQ, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, BR, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, BB, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, BN, 0), moveList)
 	} else {
-		addCaptureMove(pos, MakeMoveInt(from, to, Empty, Empty, 0), moveList)
+		addQuiteMove(pos, MakeMoveInt(from, to, Empty, Empty, 0), moveList)
 	}
 }
