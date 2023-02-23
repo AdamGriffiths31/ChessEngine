@@ -160,7 +160,110 @@ func GenerateAllMoves(pos *Board, moveList *MoveList) {
 		piece = LoopNonSlidePiece[pieceIndex]
 		pieceIndex++
 	}
+}
 
+func GenerateAllCaptures(pos *Board, moveList *MoveList) {
+	CheckBoard(pos)
+	moveList.Count = 0
+
+	if pos.Side == White {
+		for pieceNum := 0; pieceNum < pos.PieceNumber[WP]; pieceNum++ {
+			sq := pos.PieceList[WP][pieceNum]
+
+			if SqaureOnBoard(sq+9) && PieceCol[pos.Pieces[sq+9]] == Black {
+				addWhitePawnCaptureMove(pos, moveList, sq, sq+9, pos.Pieces[sq+9])
+			}
+
+			if SqaureOnBoard(sq+11) && PieceCol[pos.Pieces[sq+11]] == Black {
+				addWhitePawnCaptureMove(pos, moveList, sq, sq+11, pos.Pieces[sq+11])
+			}
+			if pos.EnPas != noSqaure {
+				if sq+9 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq+9, Empty, Empty, MFLAGEP), moveList)
+				}
+
+				if sq+11 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq+11, Empty, Empty, MFLAGEP), moveList)
+				}
+			}
+		}
+
+	} else {
+		for pieceNum := 0; pieceNum < pos.PieceNumber[BP]; pieceNum++ {
+			sq := pos.PieceList[BP][pieceNum]
+
+			if SqaureOnBoard(sq-9) && PieceCol[pos.Pieces[sq-9]] == White {
+				addBlackPawnCaptureMove(pos, moveList, sq, sq-9, pos.Pieces[sq-9])
+			}
+
+			if SqaureOnBoard(sq-11) && PieceCol[pos.Pieces[sq-11]] == White {
+				addBlackPawnCaptureMove(pos, moveList, sq, sq-11, pos.Pieces[sq-11])
+			}
+
+			if pos.EnPas != noSqaure {
+				if sq-9 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq-9, Empty, Empty, MFLAGEP), moveList)
+				}
+
+				if sq-11 == pos.EnPas {
+					addEnPasMove(pos, MakeMoveInt(sq, sq-11, Empty, Empty, MFLAGEP), moveList)
+				}
+			}
+		}
+	}
+
+	pieceIndex := LoopSlideIndex[pos.Side]
+	piece := LoopSlidePiece[pieceIndex]
+	pieceIndex++
+
+	for piece != 0 {
+		for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+			sq := pos.PieceList[piece][pieceNum]
+			for i := 0; i < NumDir[piece]; i++ {
+				dir := PieceDir[piece][i]
+				tempSq := sq + dir
+
+				for SqaureOnBoard(tempSq) {
+					if pos.Pieces[tempSq] != Empty {
+						if PieceCol[pos.Pieces[tempSq]] == pos.Side^1 {
+							addCaptureMove(pos, MakeMoveInt(sq, tempSq, pos.Pieces[tempSq], Empty, 0), moveList)
+						}
+						break
+					}
+					tempSq += dir
+				}
+			}
+		}
+		piece = LoopSlidePiece[pieceIndex]
+		pieceIndex++
+	}
+
+	pieceIndex = LoopNonSlideIndex[pos.Side]
+	piece = LoopNonSlidePiece[pieceIndex]
+	pieceIndex++
+
+	for piece != 0 {
+		for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+			sq := pos.PieceList[piece][pieceNum]
+			for i := 0; i < NumDir[piece]; i++ {
+				dir := PieceDir[piece][i]
+				tempSq := sq + dir
+
+				if !SqaureOnBoard(tempSq) {
+					continue
+				}
+
+				if pos.Pieces[tempSq] != Empty {
+					if PieceCol[pos.Pieces[tempSq]] == pos.Side^1 {
+						addCaptureMove(pos, MakeMoveInt(sq, tempSq, pos.Pieces[tempSq], Empty, 0), moveList)
+					}
+					continue
+				}
+			}
+		}
+		piece = LoopNonSlidePiece[pieceIndex]
+		pieceIndex++
+	}
 }
 
 func MoveExists(pos *Board, move int) bool {
@@ -183,21 +286,29 @@ func MoveExists(pos *Board, move int) bool {
 func addQuiteMove(pos *Board, move int, moveList *MoveList) {
 
 	moveList.Moves[moveList.Count].Move = move
-	moveList.Moves[moveList.Count].Score = 0
+
+	if pos.SearchKillers[0][pos.Play] == move {
+		moveList.Moves[moveList.Count].Score = 900000
+	} else if pos.SearchKillers[1][pos.Play] == move {
+		moveList.Moves[moveList.Count].Score = 800000
+	} else {
+		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[FromSquare(move)]][pos.Pieces[ToSqaure(move)]]
+	}
+
 	moveList.Count++
 }
 
 func addCaptureMove(pos *Board, move int, moveList *MoveList) {
 
 	moveList.Moves[moveList.Count].Move = move
-	moveList.Moves[moveList.Count].Score = 0
+	moveList.Moves[moveList.Count].Score = MvvLvaScores[Captured(move)][pos.Pieces[FromSquare(move)]] + 1000000
 	moveList.Count++
 }
 
 func addEnPasMove(pos *Board, move int, moveList *MoveList) {
 
 	moveList.Moves[moveList.Count].Move = move
-	moveList.Moves[moveList.Count].Score = 0
+	moveList.Moves[moveList.Count].Score = 105 + 1000000
 	moveList.Count++
 }
 

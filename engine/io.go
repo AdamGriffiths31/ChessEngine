@@ -33,7 +33,7 @@ func PrintMove(move int) string {
 	return string([]byte{byte(fromFile), byte(fromRank), byte(toFile), byte(toRank)})
 }
 
-func ParseMove(move []byte, pos *Board, info *SearchInfo) int {
+func ParseMove(move []byte, pos *Board) int {
 	if move[0] == 't' {
 		fmt.Printf("Take back\n")
 		TakeMoveBack(pos)
@@ -41,13 +41,13 @@ func ParseMove(move []byte, pos *Board, info *SearchInfo) int {
 		return NoMove
 	}
 	if move[0] == 'p' {
-		PerftTest(4, StartFEN)
+		PerftTest(6, StartFEN)
 		return NoMove
 	}
-	if move[0] == 's' {
-		SearchPosistion(pos, info)
-		return NoMove
-	}
+	// if move[0] == 's' {
+	// 	SearchPosistion(pos, )
+	// 	return NoMove
+	// }
 	if move[0] == 'r' {
 		max := GetPvLine(1, pos)
 		fmt.Printf("PvLine of %d moves:", max)

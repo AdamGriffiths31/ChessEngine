@@ -6,7 +6,7 @@ import (
 
 func CheckBoard(pos *Board) {
 	//TODO Need a config to turn this on off (perf is hit when its on and also not need when not deving)
-
+	return
 	var pieceNumber = [13]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	var bigPiece = [2]int{0, 0}
 	var majorPiece = [2]int{0, 0}

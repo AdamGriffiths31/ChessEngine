@@ -10,8 +10,11 @@ const MaxPositionMoves = 256
 const MaxDepth = 64
 
 // const StartFEN = "rnbqkbnr/pppppppp/8/8/8/7N/PPPPPPPP/RNBQKB1R b KQkq - 0 1"
-// const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
+const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+//const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
+
+//const StartFEN = "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1"
 
 //const StartFEN = "rnbqkbnr/ppp1pppp/8/3p4/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 0 2"
 
@@ -223,10 +226,13 @@ type SearchInfo struct {
 	TimeSet   int
 	MovesToGo int
 	Infinite  int
+	MoveTime  int
+	Time      int
+	Inc       int
 
 	Node int64
 
-	Quite   int
+	Quit    int
 	Stopped int
 
 	FailHigh      float32
@@ -307,6 +313,7 @@ func init() {
 	setBitMasks()
 	setPieceKeys()
 	setFilesAndRanks()
+	initMvvLva()
 }
 
 // FileRankToSquare converts file & rank to the 120 sqaure
@@ -419,3 +426,14 @@ const MFLAGCAP int = 0x7C000
 const MFLAGPRO int = 0xF00000
 
 var NoMove = 0
+
+var VictimScore = [13]int{0, 100, 200, 300, 400, 500, 600, 100, 200, 300, 400, 500, 600}
+var MvvLvaScores [13][13]int
+
+func initMvvLva() {
+	for attacker := WP; attacker <= BK; attacker++ {
+		for victim := WP; victim <= BK; victim++ {
+			MvvLvaScores[victim][attacker] = VictimScore[victim] + 6 - (VictimScore[attacker] / 100)
+		}
+	}
+}

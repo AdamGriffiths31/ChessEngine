@@ -1,6 +1,18 @@
 # ChessEngine
 
+## Rating
+
+| Version | Time Control | Est Rating |
+| ------- | ------------ | ---------- |
+| 0.2     | 5 +6         | 1900       |
+
 ## Versions
+
+### v0.2 (done)
+
+- AB Logic
+- Quiescence
+- UCI intergration
 
 ### v0.1 (done)
 

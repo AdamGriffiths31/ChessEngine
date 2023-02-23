@@ -1,0 +1,33 @@
+[Event "Computer chess game"]
+[Site "DESKTOP-FCOD23S"]
+[Date "2023.02.23"]
+[Round "?"]
+[White "Adam"]
+[Black "ChessEngine_0.2"]
+[Result "0-1"]
+[BlackElo "2200"]
+[ECO "C42"]
+[Opening "Russian Game"]
+[Time "20:43:03"]
+[Variation "Classical, 6.Bd3"]
+[WhiteElo "2400"]
+[TimeControl "300+6"]
+[Termination "normal"]
+[PlyCount "76"]
+[WhiteType "human"]
+[BlackType "program"]
+
+1. e4 e5 {-0.15/8 15} 2. Nf3 Nf6 {-0.15/8 15} 3. Nxe5 d6 {-0.20/8 15} 4.
+Nf3 Nxe4 {-0.20/8 14} 5. d4 d5 {-0.10/8 14} 6. Bd3 Nc6 {0.00/8 14} 7. O-O
+Bb4 {0.00/8 14} 8. a3 Be7 {0.00/8 13} 9. Bf4 Bg4 {+0.05/8 13} 10. h3 Bxf3
+{+0.25/8 13} 11. Qxf3 Nxd4 {+1.15/8 13} 12. Qe3 c5 {+0.45/8 12} 13. Bxe4
+dxe4 {+0.50/8 12} 14. Qxe4 f5 {+0.45/8 12} 15. Qd3 Qb6 {+0.40/8 12} 16. c3
+Qxb2 {+2.25/8 11} 17. Bd2 Nc6 {+5.70/8 11} 18. Qd5 Qxa1 {+5.85/8 11} 19. g3
+Rf8 {+7.00/8 11} 20. Kg2 Qb2 {+7.15/8 11} 21. Qe6 Rd8 {+7.10/8 11} 22. Bg5
+Rf7 {+7.10/8 10} 23. Bf4 Qc2 {+7.15/8 10} 24. Bc7 Rd1 {+7.20/9 10} 25. h4
+Rxf1 {+10.50/9 10} 26. Kxf1 Qxb1+ {+11.20/9 10} 27. Kg2 Qe4+ {+11.25/9 10}
+28. Kh2 Qxe6 {+21.60/9 9} 29. Bf4 Qa2 {+22.40/8 9} 30. Kg2 Qxa3 {+22.45/8
+9} 31. Kh1 Qxc3 {+22.55/8 9} 32. Kg1 Qf3 {+23.45/8 9} 33. Bd2 Qd1+
+{+25.95/8 9} 34. Kg2 Qxd2 {+26.90/8 9} 35. h5 Ne5 {+289.93/8 9} 36. Kg1 Ng4
+{+289.95/8 9} 37. Kg2 Qxf2+ {+289.97/8 8} 38. Kh1 Qf1# {+289.99/8 8} 0-1
+

@@ -19,18 +19,24 @@ func SearchPosistion(pos *Board, info *SearchInfo) {
 	clearForSearch(pos, info)
 
 	for currentDepth := 1; currentDepth < info.Depth; currentDepth++ {
-		fmt.Printf("Depth: %v\n", currentDepth)
+		//fmt.Printf("----------------------------------------------------------\n")
+		//fmt.Printf("Current depth: %v Nodes: %v\n", currentDepth, info.Node)
 		bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info)
-		pvMoves := GetPvLine(currentDepth, pos)
-		bestMove = pos.PvArray[0]
-		fmt.Printf("Depth %v score: %v move: %v nodes %v\n", currentDepth, bestScore, PrintMove(bestMove), info.Node)
-		fmt.Printf("Count PV: %d\n", pvMoves)
-		for i := 0; i < pvMoves; i++ {
-			fmt.Printf("\t%s", PrintMove(pos.PvArray[i]))
+		if info.Stopped == True {
+			break
 		}
-		fmt.Printf("\n")
-		fmt.Printf("Ordering :%.2f\n", info.FailHighFirst/info.FailHigh)
+		GetPvLine(currentDepth, pos)
+		bestMove = pos.PvArray[0]
+		fmt.Printf("info score cp %d depth %d nodes %v time %d\n", bestScore, currentDepth, info.Node, GetTimeMs()-info.StartTime)
+		//fmt.Printf("Count PV: %d\n", pvMoves)
+		// for i := 0; i < pvMoves; i++ {
+		// 	fmt.Printf("\t%s", PrintMove(pos.PvArray[i]))
+		// }
+		//fmt.Printf("\n")
+		//fmt.Printf("Ordering :%.2f\n", info.FailHighFirst/info.FailHigh)
 	}
+	fmt.Printf("bestmove %s\n", PrintMove(bestMove))
+	//fmt.Printf("----------------------------------------------------------\n")
 }
 
 func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
@@ -45,8 +51,11 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 	}
 
 	if depth == 0 {
-		info.Node++
-		return EvalPosistion(pos)
+		return quiescence(alpha, beta, pos, info)
+	}
+
+	if info.Node&2047 == 0 {
+		checkUp(info)
 	}
 
 	info.Node++
@@ -65,8 +74,18 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 	legal := 0
 	oldAlpha := alpha
 	bestMove := NoMove
+	pvMove := ProbePvTable(pos)
+
+	if pvMove != NoMove {
+		for i := 0; i < ml.Count; i++ {
+			if ml.Moves[i].Move == pvMove {
+				ml.Moves[i].Score = 2000000
+			}
+		}
+	}
 
 	for i := 0; i < ml.Count; i++ {
+		pickNextMove(i, ml)
 		if !MakeMove(ml.Moves[i].Move, pos) {
 			continue
 		}
@@ -74,11 +93,18 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 		legal++
 		score := -alphaBeta(-beta, -alpha, depth-1, pos, info)
 		TakeMoveBack(pos)
-
+		if info.Stopped == True {
+			return 0
+		}
 		if score > alpha {
 			if score >= beta {
 				if legal == 1 {
 					info.FailHighFirst++
+				}
+
+				if ml.Moves[i].Move&MFLAGCAP == 0 {
+					pos.SearchKillers[1][pos.Play] = pos.SearchKillers[0][pos.Play]
+					pos.SearchKillers[0][pos.Play] = ml.Moves[i].Move
 				}
 
 				info.FailHigh++
@@ -87,6 +113,10 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 
 			alpha = score
 			bestMove = ml.Moves[i].Move
+
+			if ml.Moves[i].Move&MFLAGCAP == 0 {
+				pos.SearchHistory[pos.Pieces[FromSquare(bestMove)]][pos.Pieces[ToSqaure(bestMove)]] += depth
+			}
 		}
 	}
 
@@ -106,7 +136,73 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 }
 
 func quiescence(alpha, beta int, pos *Board, info *SearchInfo) int {
-	return 0
+	CheckBoard(pos)
+
+	if info.Node&2047 == 0 {
+		checkUp(info)
+	}
+
+	info.Node++
+
+	if IsRepetition(pos) || pos.FiftyMove >= 100 {
+		return 0
+	}
+
+	if pos.Play > MaxDepth-1 {
+		return EvalPosistion(pos)
+	}
+
+	score := EvalPosistion(pos)
+
+	if score >= beta {
+		return beta
+	}
+
+	if score > alpha {
+		alpha = score
+	}
+
+	ml := &MoveList{}
+	GenerateAllCaptures(pos, ml)
+
+	oldAlpha := alpha
+	bestMove := NoMove
+	pvMove := ProbePvTable(pos)
+
+	if pvMove != NoMove {
+		for i := 0; i < ml.Count; i++ {
+			if ml.Moves[i].Move == pvMove {
+				ml.Moves[i].Score = 2000000
+			}
+		}
+	}
+
+	for i := 0; i < ml.Count; i++ {
+		pickNextMove(i, ml)
+		if !MakeMove(ml.Moves[i].Move, pos) {
+			continue
+		}
+
+		score := -quiescence(-beta, -alpha, pos, info)
+		TakeMoveBack(pos)
+		if info.Stopped == True {
+			return 0
+		}
+		if score > alpha {
+			if score >= beta {
+				return beta
+			}
+
+			alpha = score
+			bestMove = ml.Moves[i].Move
+		}
+	}
+
+	if alpha != oldAlpha {
+		StorePvMove(pos, bestMove)
+	}
+
+	return alpha
 }
 
 func clearForSearch(pos *Board, info *SearchInfo) {
@@ -132,5 +228,22 @@ func clearForSearch(pos *Board, info *SearchInfo) {
 	info.FailHigh = 0
 }
 
-func checkUp() {
+func pickNextMove(moveNum int, ml *MoveList) {
+	bestScore := 0
+	bestNum := 0
+	for i := moveNum; i < ml.Count; i++ {
+		if ml.Moves[i].Score > bestScore {
+			bestScore = ml.Moves[i].Score
+			bestNum = i
+		}
+	}
+	holder := ml.Moves[moveNum]
+	ml.Moves[moveNum] = ml.Moves[bestNum]
+	ml.Moves[bestNum] = holder
+}
+
+func checkUp(info *SearchInfo) {
+	if info.TimeSet == True && GetTimeMs() > info.StopTime {
+		info.Stopped = True
+	}
 }
