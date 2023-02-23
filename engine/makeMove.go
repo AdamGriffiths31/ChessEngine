@@ -12,21 +12,6 @@ func MakeMove(move int, pos *Board) bool {
 	to := ToSqaure(move)
 	side := pos.Side
 
-	if !SqaureOnBoard(from) {
-		panic("Err")
-	}
-	if !SqaureOnBoard(to) {
-		panic("Err")
-	}
-
-	if side != White && side != Black {
-		panic("Err")
-	}
-
-	if !PieceValid(pos.Pieces[from]) {
-		panic("Err")
-	}
-
 	if pos.Play < 0 {
 		panic("Err")
 	}
@@ -143,13 +128,6 @@ func TakeMoveBack(pos *Board) {
 	move := pos.History[pos.HistoryPlay].Move
 	from := FromSquare(move)
 	to := ToSqaure(move)
-
-	if !SqaureOnBoard(from) {
-		panic("Err")
-	}
-	if !SqaureOnBoard(to) {
-		panic("Err")
-	}
 
 	if pos.EnPas != noSqaure {
 		hashEnPas(pos)

@@ -10,7 +10,8 @@ const MaxPositionMoves = 256
 const MaxDepth = 64
 
 // const StartFEN = "rnbqkbnr/pppppppp/8/8/8/7N/PPPPPPPP/RNBQKB1R b KQkq - 0 1"
-const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+// const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
 
 //const StartFEN = "rnbqkbnr/ppp1pppp/8/3p4/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 0 2"
 
@@ -301,6 +302,7 @@ var CastlePerm = [120]int{
 }
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
 	setSquares()
 	setBitMasks()
 	setPieceKeys()
@@ -314,7 +316,6 @@ func FileRankToSquare(file, rank int) int {
 
 // GenerateRandomUint64 returns a random uint64
 func generateRandomUint64() uint64 {
-	rand.Seed(time.Now().UnixNano())
 	return rand.Uint64()
 }
 

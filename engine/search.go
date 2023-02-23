@@ -52,7 +52,6 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 	info.Node++
 
 	if IsRepetition(pos) || pos.FiftyMove >= 100 {
-		fmt.Printf("FiftyMove: %v or rep \n", pos.FiftyMove)
 		return 0
 	}
 
@@ -76,12 +75,6 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 		score := -alphaBeta(-beta, -alpha, depth-1, pos, info)
 		TakeMoveBack(pos)
 
-		if !MoveExists(pos, ml.Moves[i].Move) {
-			PrintBoard(pos)
-			panic(fmt.Errorf("alphaBeta move error %v", PrintMove(ml.Moves[i].Move)))
-		}
-		CheckBoard(pos)
-
 		if score > alpha {
 			if score >= beta {
 				if legal == 1 {
@@ -98,17 +91,14 @@ func alphaBeta(alpha, beta, depth int, pos *Board, info *SearchInfo) int {
 	}
 
 	if legal == 0 {
-		fmt.Printf("\n\nLegal = 0\n\n")
 		if SquareAttacked(pos.KingSqaure[pos.Side], pos.Side^1, pos) {
-			fmt.Printf("\nMate?\n")
-			return pos.Play //TODO Check this
+			return -29000 + pos.Play
 		} else {
 			return 0
 		}
 	}
 
 	if alpha != oldAlpha {
-		fmt.Printf("store score %v", alpha)
 		StorePvMove(pos, bestMove)
 	}
 
