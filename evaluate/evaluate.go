@@ -1,4 +1,8 @@
-package engine
+package evaluate
+
+import (
+	"github.com/AdamGriffiths31/ChessEngine/data"
+)
 
 var pawnTable = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -55,55 +59,55 @@ var mirror64 = [64]int{
 	0, 1, 2, 3, 4, 5, 6, 7,
 }
 
-func EvalPosistion(pos *Board) int {
-	score := pos.Material[White] - pos.Material[Black]
+func EvalPosistion(pos *data.Board) int {
+	score := pos.Material[data.White] - pos.Material[data.Black]
 
 	//Pawns
-	piece := WP
+	piece := data.WP
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score += pawnTable[Sqaure120ToSquare64[sq]]
+		score += pawnTable[data.Sqaure120ToSquare64[sq]]
 	}
-	piece = BP
+	piece = data.BP
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= pawnTable[mirror64[Sqaure120ToSquare64[sq]]]
+		score -= pawnTable[mirror64[data.Sqaure120ToSquare64[sq]]]
 	}
 	//Knights
-	piece = WN
+	piece = data.WN
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score += knightTable[Sqaure120ToSquare64[sq]]
+		score += knightTable[data.Sqaure120ToSquare64[sq]]
 	}
-	piece = BN
+	piece = data.BN
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= knightTable[mirror64[Sqaure120ToSquare64[sq]]]
+		score -= knightTable[mirror64[data.Sqaure120ToSquare64[sq]]]
 	}
 	//Bishop
-	piece = WB
+	piece = data.WB
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score += bishopTable[Sqaure120ToSquare64[sq]]
+		score += bishopTable[data.Sqaure120ToSquare64[sq]]
 	}
-	piece = BB
+	piece = data.BB
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= bishopTable[mirror64[Sqaure120ToSquare64[sq]]]
+		score -= bishopTable[mirror64[data.Sqaure120ToSquare64[sq]]]
 	}
 	//Rook
-	piece = WR
+	piece = data.WR
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score += rookTable[Sqaure120ToSquare64[sq]]
+		score += rookTable[data.Sqaure120ToSquare64[sq]]
 	}
-	piece = BR
+	piece = data.BR
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= rookTable[mirror64[Sqaure120ToSquare64[sq]]]
+		score -= rookTable[mirror64[data.Sqaure120ToSquare64[sq]]]
 	}
 
-	if pos.Side == White {
+	if pos.Side == data.White {
 		return score
 	} else {
 		return -score

@@ -1,4 +1,4 @@
-package engine
+package uci
 
 import (
 	"bufio"
@@ -6,6 +6,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/AdamGriffiths31/ChessEngine/board"
+	"github.com/AdamGriffiths31/ChessEngine/data"
+	movegen "github.com/AdamGriffiths31/ChessEngine/moveGen"
+	"github.com/AdamGriffiths31/ChessEngine/search"
+	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
 func Uci() {
@@ -14,11 +20,11 @@ func Uci() {
 	fmt.Println("id author Adam")
 	fmt.Println("uciok")
 
-	pvTable := &PVTable{}
-	pos := &Board{PvTable: pvTable}
-	info := &SearchInfo{}
-	InitPvTable(pos.PvTable)
-	ParseFEN(StartFEN, pos)
+	pvTable := &data.PVTable{}
+	pos := &data.Board{PvTable: pvTable}
+	info := &data.SearchInfo{}
+	movegen.InitPvTable(pos.PvTable)
+	board.ParseFEN(data.StartFEN, pos)
 
 	for {
 		text, err := reader.ReadString('\n')
@@ -37,21 +43,21 @@ func Uci() {
 		} else if strings.HasPrefix(text, "position") {
 			parsePosition(text, pos)
 		} else if text == "ucinewgame" {
-			ParseFEN(StartFEN, pos)
+			board.ParseFEN(data.StartFEN, pos)
 		} else if strings.HasPrefix(text, "go") {
 			parseGo(text, info, pos)
 		} else if text == "quit" {
-			info.Quit = True
+			info.Quit = data.True
 			break
 		}
 
-		if info.Quit == True {
+		if info.Quit == data.True {
 			break
 		}
 	}
 }
 
-func parseGo(line string, info *SearchInfo, pos *Board) {
+func parseGo(line string, info *data.SearchInfo, pos *data.Board) {
 	tokens := strings.Split(line, " ")
 	info.MoveTime = -1
 	info.MovesToGo = 30
@@ -61,13 +67,13 @@ func parseGo(line string, info *SearchInfo, pos *Board) {
 	for i := 0; i < len(tokens); i++ {
 		switch tokens[i] {
 		case "binc":
-			parseInc(tokens[i+1], Black, pos, info)
+			parseInc(tokens[i+1], data.Black, pos, info)
 		case "winc":
-			parseInc(tokens[i+1], White, pos, info)
+			parseInc(tokens[i+1], data.White, pos, info)
 		case "wtime":
-			parseTime(tokens[i+1], White, pos, info)
+			parseTime(tokens[i+1], data.White, pos, info)
 		case "btime":
-			parseTime(tokens[i+1], Black, pos, info)
+			parseTime(tokens[i+1], data.Black, pos, info)
 		case "movestogo":
 			parseMovesToGo(tokens[i+1], pos, info)
 		case "movetime":
@@ -77,14 +83,14 @@ func parseGo(line string, info *SearchInfo, pos *Board) {
 		}
 	}
 
-	info.StartTime = GetTimeMs()
+	info.StartTime = util.GetTimeMs()
 
 	if info.MoveTime != -1 {
-		info.TimeSet = True
+		info.TimeSet = data.True
 		info.MovesToGo = 1
 		info.StopTime = info.StartTime + int64(info.MoveTime)
 	} else if info.Time != -1 {
-		info.TimeSet = True
+		info.TimeSet = data.True
 		info.MovesToGo = 30
 		time := info.Time / info.MovesToGo
 		time -= 50
@@ -92,45 +98,45 @@ func parseGo(line string, info *SearchInfo, pos *Board) {
 		info.StopTime = info.StartTime + int64(time) + int64(info.Inc)
 	}
 
-	if info.Depth == -1 || info.Depth > MaxDepth {
-		info.Depth = MaxDepth
+	if info.Depth == -1 || info.Depth > data.MaxDepth {
+		info.Depth = data.MaxDepth
 	}
 
 	fmt.Printf("time:%d start:%d stop:%d depth:%d timeset:%v\n", info.Time, info.StartTime, info.StopTime, info.Depth, info.TimeSet)
 
-	SearchPosistion(pos, info)
+	search.SearchPosistion(pos, info)
 }
 
-func parseInc(token string, side int, pos *Board, info *SearchInfo) {
+func parseInc(token string, side int, pos *data.Board, info *data.SearchInfo) {
 	inc, _ := strconv.Atoi(token)
 	if pos.Side == side {
 		info.Inc = inc
 	}
 }
 
-func parseTime(token string, side int, pos *Board, info *SearchInfo) {
+func parseTime(token string, side int, pos *data.Board, info *data.SearchInfo) {
 	time, _ := strconv.Atoi(token)
 	if pos.Side == side {
 		info.Time = time
 	}
 }
 
-func parseMovesToGo(token string, pos *Board, info *SearchInfo) {
+func parseMovesToGo(token string, pos *data.Board, info *data.SearchInfo) {
 	movesToGo, _ := strconv.Atoi(token)
 	info.MovesToGo = movesToGo
 }
 
-func parseMoveTime(token string, pos *Board, info *SearchInfo) {
+func parseMoveTime(token string, pos *data.Board, info *data.SearchInfo) {
 	moveTime, _ := strconv.Atoi(token)
 	info.MoveTime = moveTime
 }
 
-func parseDepth(token string, info *SearchInfo) {
+func parseDepth(token string, info *data.SearchInfo) {
 	depth, _ := strconv.Atoi(token)
 	info.Depth = depth
 }
 
-func parsePosition(lineIn string, pos *Board) {
+func parsePosition(lineIn string, pos *data.Board) {
 	parts := strings.Split(lineIn, " ")
 
 	if len(parts) < 2 {
@@ -138,12 +144,12 @@ func parsePosition(lineIn string, pos *Board) {
 	}
 
 	if parts[1] == "startpos" {
-		ParseFEN(StartFEN, pos)
+		board.ParseFEN(data.StartFEN, pos)
 	}
 
 	if parts[1] == "fen" {
 		fen := strings.Join(parts[2:], " ")
-		ParseFEN(fen, pos)
+		board.ParseFEN(fen, pos)
 	}
 
 	startIndex := 0
@@ -155,8 +161,8 @@ func parsePosition(lineIn string, pos *Board) {
 
 	if startIndex != 0 {
 		for i := startIndex + 1; i < len(parts); i++ {
-			move := ParseMove([]byte(parts[i]), pos)
-			MakeMove(move, pos)
+			move := movegen.ParseMove([]byte(parts[i]), pos)
+			movegen.MakeMove(move, pos)
 			pos.Play = 0
 		}
 

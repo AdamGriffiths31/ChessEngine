@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/AdamGriffiths31/ChessEngine/engine"
+	"github.com/AdamGriffiths31/ChessEngine/uci"
 )
 
 func main() {
-	engine.Uci()
+	uci.Uci()
 }

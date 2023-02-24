@@ -1,6 +1,10 @@
-package engine
+package board
 
-func ParseFEN(fen string, pos *Board) {
+import (
+	"github.com/AdamGriffiths31/ChessEngine/data"
+)
+
+func ParseFEN(fen string, pos *data.Board) {
 	resetBoard(pos)
 
 	fen = parsePiecePlacement(fen, pos)
@@ -14,13 +18,13 @@ func ParseFEN(fen string, pos *Board) {
 	UpdateListMaterial(pos)
 }
 
-func parsePiecePlacement(fen string, pos *Board) string {
-	rank, file := Rank8, FileA
+func parsePiecePlacement(fen string, pos *data.Board) string {
+	rank, file := data.Rank8, data.FileA
 	for i, ch := range fen {
 		switch {
 		case ch == '/':
 			rank--
-			file = FileA
+			file = data.FileA
 		case ch == ' ':
 			i++
 			return fen[i:]
@@ -29,8 +33,8 @@ func parsePiecePlacement(fen string, pos *Board) string {
 		default:
 			piece := getPieceType(ch)
 			sq64 := rank*8 + file
-			sq120 := Sqaure64ToSquare120[sq64]
-			if piece != Empty {
+			sq120 := data.Sqaure64ToSquare120[sq64]
+			if piece != data.Empty {
 				pos.Pieces[sq120] = piece
 			}
 			file++
@@ -39,16 +43,16 @@ func parsePiecePlacement(fen string, pos *Board) string {
 	return fen
 }
 
-func parseActiveColor(fen string, pos *Board) string {
+func parseActiveColor(fen string, pos *data.Board) string {
 	if fen[0] == 'w' {
-		pos.Side = White
+		pos.Side = data.White
 	} else if fen[0] == 'b' {
-		pos.Side = Black
+		pos.Side = data.Black
 	}
 	return fen[2:]
 }
 
-func parseCastlingAvailability(fen string, pos *Board) string {
+func parseCastlingAvailability(fen string, pos *data.Board) string {
 	if fen[0] == '-' {
 		return fen[2:]
 	}
@@ -56,13 +60,13 @@ func parseCastlingAvailability(fen string, pos *Board) string {
 	for fen[index] != ' ' {
 		switch fen[index] {
 		case 'K':
-			pos.CastlePermission |= WhiteKingCastle
+			pos.CastlePermission |= data.WhiteKingCastle
 		case 'Q':
-			pos.CastlePermission |= WhiteQueenCastle
+			pos.CastlePermission |= data.WhiteQueenCastle
 		case 'k':
-			pos.CastlePermission |= BlackKingCastle
+			pos.CastlePermission |= data.BlackKingCastle
 		case 'q':
-			pos.CastlePermission |= BlackQueenCastle
+			pos.CastlePermission |= data.BlackQueenCastle
 		}
 		index++
 	}
@@ -70,10 +74,10 @@ func parseCastlingAvailability(fen string, pos *Board) string {
 	return fen[index:]
 }
 
-func parseEnPassantTarget(fen string, pos *Board) string {
+func parseEnPassantTarget(fen string, pos *data.Board) string {
 	if fen[0] == '-' {
 		return fen[2:]
 	}
-	pos.EnPas = FileRankToSquare(int(fen[0])-'a', int(fen[1])-'1')
+	pos.EnPas = data.FileRankToSquare(int(fen[0])-'a', int(fen[1])-'1')
 	return fen[3:]
 }

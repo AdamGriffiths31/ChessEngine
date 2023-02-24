@@ -1,4 +1,4 @@
-package engine
+package data
 
 import (
 	"math/rand"
@@ -146,7 +146,7 @@ const (
 	A6, B6, C6, D6, E6, F6, G6, H6 = 71, 72, 73, 74, 75, 76, 77, 78
 	A7, B7, C7, D7, E7, F7, G7, H7 = 81, 82, 83, 84, 85, 86, 87, 88
 	A8, B8, C8, D8, E8, F8, G8, H8 = 91, 92, 93, 94, 95, 96, 97, 98
-	noSqaure                       = 99
+	NoSqaure                       = 99
 	OffBoard                       = 100
 )
 
