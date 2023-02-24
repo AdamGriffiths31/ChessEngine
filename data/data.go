@@ -6,11 +6,22 @@ import (
 	"unsafe"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+	setSquares()
+	setBitMasks()
+	setPieceKeys()
+	setFilesAndRanks()
+	setEvalMasks()
+	initMvvLva()
+}
+
 const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
 
-// const StartFEN = "rnbqkbnr/pppppppp/8/8/8/7N/PPPPPPPP/RNBQKB1R b KQkq - 0 1"
+//const StartFEN = "1q2kbr1/rR2pppB/3p1P1p/1Pp5/Q7/2P2N1n/1P1P3P/1NB1K2R w K c6"
+
 const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 //const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
@@ -254,6 +265,12 @@ var Sqaure64ToSquare120 [64]int
 
 var SetMask [64]uint64
 var ClearMask [64]uint64
+var FileBBMask [64]uint64
+var RankBBMask [64]uint64
+
+var BlackPassedMask [64]uint64
+var WhitePassedMask [64]uint64
+var IsolatedMask [64]uint64
 
 var PieceKeys [13][120]uint64
 var SideKey uint64
@@ -317,13 +334,15 @@ var CastlePerm = [120]int{
 	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
 }
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-	setSquares()
-	setBitMasks()
-	setPieceKeys()
-	setFilesAndRanks()
-	initMvvLva()
+var Mirror64 = [64]int{
+	56, 57, 58, 59, 60, 61, 62, 63,
+	48, 49, 50, 51, 52, 53, 54, 55,
+	40, 41, 42, 43, 44, 45, 46, 47,
+	32, 33, 34, 35, 36, 37, 38, 39,
+	24, 25, 26, 27, 28, 29, 30, 31,
+	16, 17, 18, 19, 20, 21, 22, 23,
+	8, 9, 10, 11, 12, 13, 14, 15,
+	0, 1, 2, 3, 4, 5, 6, 7,
 }
 
 // FileRankToSquare converts file & rank to the 120 sqaure
@@ -398,6 +417,72 @@ func setFilesAndRanks() {
 			sq := FileRankToSquare(file, rank)
 			FilesBoard[sq] = file
 			RanksBoard[sq] = rank
+		}
+	}
+}
+
+func setEvalMasks() {
+	for sq := 0; sq < 8; sq++ {
+		FileBBMask[sq] = 0
+		RankBBMask[sq] = 0
+	}
+
+	for r := Rank8; r >= Rank1; r-- {
+		for f := FileA; f <= FileH; f++ {
+			sq := r*8 + f
+			FileBBMask[f] |= 1 << sq
+			RankBBMask[r] |= 1 << sq
+		}
+	}
+
+	// Initialize IsolatedMask, WhitePassedMask, and BlackPassedMask
+	for sq := 0; sq < 64; sq++ {
+		IsolatedMask[sq] = 0
+		WhitePassedMask[sq] = 0
+		BlackPassedMask[sq] = 0
+
+		tsq := sq + 8
+		for tsq < 64 {
+			WhitePassedMask[sq] |= 1 << tsq
+			tsq += 8
+		}
+
+		tsq = sq - 8
+		for tsq >= 0 {
+			BlackPassedMask[sq] |= 1 << tsq
+			tsq -= 8
+		}
+
+		if FilesBoard[Sqaure64ToSquare120[sq]] > FileA {
+			IsolatedMask[sq] |= FileBBMask[FilesBoard[Sqaure64ToSquare120[sq]]-1]
+
+			tsq = sq + 7
+			for tsq < 64 {
+				WhitePassedMask[sq] |= 1 << tsq
+				tsq += 8
+			}
+
+			tsq = sq - 9
+			for tsq >= 0 {
+				BlackPassedMask[sq] |= 1 << tsq
+				tsq -= 8
+			}
+		}
+
+		if FilesBoard[Sqaure64ToSquare120[sq]] < FileH {
+			IsolatedMask[sq] |= FileBBMask[FilesBoard[Sqaure64ToSquare120[sq]]+1]
+
+			tsq = sq + 9
+			for tsq < 64 {
+				WhitePassedMask[sq] |= 1 << tsq
+				tsq += 8
+			}
+
+			tsq = sq - 7
+			for tsq >= 0 {
+				BlackPassedMask[sq] |= 1 << tsq
+				tsq -= 8
+			}
 		}
 	}
 }

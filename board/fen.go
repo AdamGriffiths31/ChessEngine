@@ -6,7 +6,6 @@ import (
 
 func ParseFEN(fen string, pos *data.Board) {
 	resetBoard(pos)
-
 	fen = parsePiecePlacement(fen, pos)
 	fen = parseActiveColor(fen, pos)
 	fen = parseCastlingAvailability(fen, pos)
@@ -76,8 +75,12 @@ func parseCastlingAvailability(fen string, pos *data.Board) string {
 
 func parseEnPassantTarget(fen string, pos *data.Board) string {
 	if fen[0] == '-' {
+		if len(fen) == 1 {
+			return ""
+		}
 		return fen[2:]
 	}
+
 	pos.EnPas = data.FileRankToSquare(int(fen[0])-'a', int(fen[1])-'1')
-	return fen[3:]
+	return fen[2:]
 }

@@ -16,10 +16,8 @@ func PrintBitboard(bitBoard uint64) {
 			sq := data.FileRankToSquare(file, rank)
 			sq64 := data.Sqaure120ToSquare64[sq]
 			if ((shiftMe << sq64) & bitBoard) == 0 {
-				fmt.Printf("%v", ((shiftMe << sq64) & bitBoard))
-				//fmt.Printf("-")
+				fmt.Printf("-")
 			} else {
-				//fmt.Printf("%v", ((shiftMe << sq64) & bitBoard))
 				fmt.Printf("X")
 			}
 		}

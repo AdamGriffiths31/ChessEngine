@@ -21,7 +21,7 @@ func main() {
 	for {
 		input, err := reader.ReadString('\n')
 		if err != nil {
-			panic(fmt.Errorf("Main reader loop: %v", err))
+			panic(fmt.Errorf("main reader loop: %v", err))
 		}
 		input = strings.TrimSpace(input)
 

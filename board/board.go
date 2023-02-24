@@ -196,6 +196,51 @@ func UpdateListMaterial(pos *data.Board) {
 	}
 }
 
+func MirrorBoard(pos *data.Board) {
+	var pieceArray [64]int
+	swapPiece := [13]int{data.Empty, data.BP, data.BN, data.BB, data.BR, data.BQ, data.BK, data.WP, data.WN, data.WB, data.WR, data.WQ, data.WK}
+	tempEnPas := data.NoSqaure
+	tempCastlePerm := 0
+	tempSide := pos.Side ^ 1
+
+	if pos.CastlePermission&data.WhiteKingCastle != 0 {
+		tempCastlePerm |= data.BlackKingCastle
+	}
+	if pos.CastlePermission&data.WhiteQueenCastle != 0 {
+		tempCastlePerm |= data.BlackQueenCastle
+	}
+	if pos.CastlePermission&data.BlackKingCastle != 0 {
+		tempCastlePerm |= data.WhiteKingCastle
+	}
+	if pos.CastlePermission&data.BlackQueenCastle != 0 {
+		tempCastlePerm |= data.WhiteQueenCastle
+	}
+
+	if pos.EnPas != data.NoSqaure {
+		tempEnPas = data.Sqaure64ToSquare120[data.Mirror64[data.Sqaure120ToSquare64[pos.EnPas]]]
+	}
+
+	for sq := 0; sq < 64; sq++ {
+		pieceArray[sq] = pos.Pieces[data.Sqaure64ToSquare120[data.Mirror64[sq]]]
+	}
+
+	resetBoard(pos)
+
+	for sq := 0; sq < 64; sq++ {
+		tp := swapPiece[pieceArray[sq]]
+		pos.Pieces[data.Sqaure64ToSquare120[sq]] = tp
+	}
+
+	pos.Side = tempSide
+	pos.CastlePermission = tempCastlePerm
+	pos.EnPas = tempEnPas
+
+	pos.PosistionKey = GeneratePositionKey(pos)
+	UpdateListMaterial(pos)
+
+	CheckBoard(pos)
+}
+
 // resetBoard restores Board to a default state
 func resetBoard(pos *data.Board) {
 	for i := 0; i < 120; i++ {

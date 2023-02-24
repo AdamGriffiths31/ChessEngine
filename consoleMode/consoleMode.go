@@ -9,6 +9,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	"github.com/AdamGriffiths31/ChessEngine/evaluate"
 	"github.com/AdamGriffiths31/ChessEngine/io"
 	"github.com/AdamGriffiths31/ChessEngine/moveGen"
 	"github.com/AdamGriffiths31/ChessEngine/search"
@@ -97,11 +98,29 @@ func ConsoleMode(pos *data.Board, info *data.SearchInfo) {
 				continue
 			}
 
-			if strings.HasPrefix(input, "setboard") {
-				parts := strings.Split(input, " ")
-
+			if input == "force" {
 				engineSide = data.Both
-				board.ParseFEN(parts[1], pos)
+				continue
+			}
+
+			if input == "mirror" {
+				io.PrintBoard(pos)
+				fmt.Printf("Eval: %d\n", evaluate.EvalPosistion(pos))
+				board.MirrorBoard(pos)
+				io.PrintBoard(pos)
+				fmt.Printf("Eval: %d\n", evaluate.EvalPosistion(pos))
+				continue
+			}
+
+			if input == "eval" {
+				fmt.Printf("Eval:%d\n", evaluate.EvalPosistion(pos))
+
+			}
+			if strings.HasPrefix(input, "setboard") {
+				input = strings.ReplaceAll(input, "setboard ", "")
+				engineSide = data.Both
+				board.ParseFEN(input, pos)
+				io.PrintBoard(pos)
 				continue
 			}
 

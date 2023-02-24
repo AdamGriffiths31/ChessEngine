@@ -48,16 +48,12 @@ var rookTable = [64]int{
 	0, 0, 5, 10, 10, 5, 0, 0,
 }
 
-var mirror64 = [64]int{
-	56, 57, 58, 59, 60, 61, 62, 63,
-	48, 49, 50, 51, 52, 53, 54, 55,
-	40, 41, 42, 43, 44, 45, 46, 47,
-	32, 33, 34, 35, 36, 37, 38, 39,
-	24, 25, 26, 27, 28, 29, 30, 31,
-	16, 17, 18, 19, 20, 21, 22, 23,
-	8, 9, 10, 11, 12, 13, 14, 15,
-	0, 1, 2, 3, 4, 5, 6, 7,
-}
+var pawnIsolated = -10
+var pawnPassed = [8]int{0, 5, 10, 20, 35, 60, 100, 200}
+var rookOpenFile = 10
+var rookSemiOpenFile = 5
+var queenOpenFile = 5
+var queenSemiOpenFile = 3
 
 func EvalPosistion(pos *data.Board) int {
 	score := pos.Material[data.White] - pos.Material[data.Black]
@@ -67,11 +63,27 @@ func EvalPosistion(pos *data.Board) int {
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
 		score += pawnTable[data.Sqaure120ToSquare64[sq]]
+
+		if data.IsolatedMask[data.Sqaure120ToSquare64[sq]]&pos.Pawns[data.White] == 0 {
+			score += pawnIsolated
+		}
+
+		if data.WhitePassedMask[data.Sqaure120ToSquare64[sq]]&pos.Pawns[data.Black] == 0 {
+			score += pawnPassed[data.RanksBoard[sq]]
+		}
 	}
 	piece = data.BP
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= pawnTable[mirror64[data.Sqaure120ToSquare64[sq]]]
+		score -= pawnTable[data.Mirror64[data.Sqaure120ToSquare64[sq]]]
+
+		if data.IsolatedMask[data.Sqaure120ToSquare64[sq]]&pos.Pawns[data.Black] == 0 {
+			score -= pawnIsolated
+		}
+
+		if data.BlackPassedMask[data.Sqaure120ToSquare64[sq]]&pos.Pawns[data.White] == 0 {
+			score -= pawnPassed[data.Rank8-data.RanksBoard[sq]]
+		}
 	}
 	//Knights
 	piece = data.WN
@@ -82,7 +94,7 @@ func EvalPosistion(pos *data.Board) int {
 	piece = data.BN
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= knightTable[mirror64[data.Sqaure120ToSquare64[sq]]]
+		score -= knightTable[data.Mirror64[data.Sqaure120ToSquare64[sq]]]
 	}
 	//Bishop
 	piece = data.WB
@@ -93,18 +105,50 @@ func EvalPosistion(pos *data.Board) int {
 	piece = data.BB
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= bishopTable[mirror64[data.Sqaure120ToSquare64[sq]]]
+		score -= bishopTable[data.Mirror64[data.Sqaure120ToSquare64[sq]]]
 	}
 	//Rook
 	piece = data.WR
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
 		score += rookTable[data.Sqaure120ToSquare64[sq]]
+
+		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score += rookOpenFile
+		} else if pos.Pawns[data.White]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score += rookSemiOpenFile
+		}
 	}
 	piece = data.BR
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
 		sq := pos.PieceList[piece][pieceNum]
-		score -= rookTable[mirror64[data.Sqaure120ToSquare64[sq]]]
+		score -= rookTable[data.Mirror64[data.Sqaure120ToSquare64[sq]]]
+
+		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score -= rookOpenFile
+		} else if pos.Pawns[data.Black]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score -= rookSemiOpenFile
+		}
+	}
+	//Queen
+	piece = data.WQ
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
+		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score += queenOpenFile
+		} else if pos.Pawns[data.White]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score += queenSemiOpenFile
+		}
+	}
+
+	piece = data.BQ
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
+		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score -= queenOpenFile
+		} else if pos.Pawns[data.Black]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
+			score -= queenSemiOpenFile
+		}
 	}
 
 	if pos.Side == data.White {
