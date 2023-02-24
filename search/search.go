@@ -8,7 +8,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/evaluate"
 	"github.com/AdamGriffiths31/ChessEngine/io"
-	movegen "github.com/AdamGriffiths31/ChessEngine/moveGen"
+	"github.com/AdamGriffiths31/ChessEngine/moveGen"
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
@@ -27,24 +27,39 @@ func SearchPosistion(pos *data.Board, info *data.SearchInfo) {
 	clearForSearch(pos, info)
 
 	for currentDepth := 1; currentDepth < info.Depth; currentDepth++ {
-		//fmt.Printf("----------------------------------------------------------\n")
-		//fmt.Printf("Current depth: %v Nodes: %v\n", currentDepth, info.Node)
 		bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info)
 		if info.Stopped == data.True {
 			break
 		}
-		movegen.GetPvLine(currentDepth, pos)
+		pvMoves := moveGen.GetPvLine(currentDepth, pos)
 		bestMove = pos.PvArray[0]
-		fmt.Printf("info score cp %d depth %d nodes %v time %d\n", bestScore, currentDepth, info.Node, util.GetTimeMs()-info.StartTime)
-		//fmt.Printf("Count PV: %d\n", pvMoves)
-		// for i := 0; i < pvMoves; i++ {
-		// 	fmt.Printf("\t%s", PrintMove(pos.PvArray[i]))
-		// }
-		//fmt.Printf("\n")
-		//fmt.Printf("Ordering :%.2f\n", info.FailHighFirst/info.FailHigh)
+		if info.GameMode == data.UCIMode {
+			fmt.Printf("info score cp %d depth %d nodes %v time %d\n", bestScore, currentDepth, info.Node, util.GetTimeMs()-info.StartTime)
+		} else if info.GameMode == data.XboardMode && info.PostThinking {
+			fmt.Printf("%d %d %d %v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
+		} else if info.PostThinking {
+			fmt.Printf("depth: %d score: %d time:%d  nodes:%v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
+		}
+
+		if info.GameMode == data.UCIMode || info.PostThinking {
+			fmt.Printf("pv")
+			for i := 0; i < pvMoves; i++ {
+				fmt.Printf(" %s", io.PrintMove(pos.PvArray[i]))
+			}
+			fmt.Printf("\n")
+		}
+
 	}
-	fmt.Printf("bestmove %s\n", io.PrintMove(bestMove))
-	//fmt.Printf("----------------------------------------------------------\n")
+	if info.GameMode == data.UCIMode {
+		fmt.Printf("bestmove %s\n", io.PrintMove(bestMove))
+	} else if info.GameMode == data.XboardMode {
+		fmt.Printf("move %s\n", io.PrintMove(bestMove))
+		moveGen.MakeMove(bestMove, pos)
+	} else {
+		fmt.Printf("Engine plays %s\n", io.PrintMove(bestMove))
+		moveGen.MakeMove(bestMove, pos)
+		io.PrintBoard(pos)
+	}
 }
 
 func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo) int {
@@ -68,7 +83,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo) i
 
 	info.Node++
 
-	if IsRepetition(pos) || pos.FiftyMove >= 100 {
+	if (IsRepetition(pos) || pos.FiftyMove >= 100) && pos.Play != 0 {
 		return 0
 	}
 
@@ -77,12 +92,12 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo) i
 	}
 
 	ml := &data.MoveList{}
-	movegen.GenerateAllMoves(pos, ml)
+	moveGen.GenerateAllMoves(pos, ml)
 
 	legal := 0
 	oldAlpha := alpha
 	bestMove := data.NoMove
-	pvMove := movegen.ProbePvTable(pos)
+	pvMove := moveGen.ProbePvTable(pos)
 
 	if pvMove != data.NoMove {
 		for i := 0; i < ml.Count; i++ {
@@ -94,13 +109,13 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo) i
 
 	for i := 0; i < ml.Count; i++ {
 		pickNextMove(i, ml)
-		if !movegen.MakeMove(ml.Moves[i].Move, pos) {
+		if !moveGen.MakeMove(ml.Moves[i].Move, pos) {
 			continue
 		}
 
 		legal++
 		score := -alphaBeta(-beta, -alpha, depth-1, pos, info)
-		movegen.TakeMoveBack(pos)
+		moveGen.TakeMoveBack(pos)
 		if info.Stopped == data.True {
 			return 0
 		}
@@ -137,7 +152,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo) i
 	}
 
 	if alpha != oldAlpha {
-		movegen.StorePvMove(pos, bestMove)
+		moveGen.StorePvMove(pos, bestMove)
 	}
 
 	return alpha
@@ -171,11 +186,11 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 	}
 
 	ml := &data.MoveList{}
-	movegen.GenerateAllCaptures(pos, ml)
+	moveGen.GenerateAllCaptures(pos, ml)
 
 	oldAlpha := alpha
 	bestMove := data.NoMove
-	pvMove := movegen.ProbePvTable(pos)
+	pvMove := moveGen.ProbePvTable(pos)
 
 	if pvMove != data.NoMove {
 		for i := 0; i < ml.Count; i++ {
@@ -187,12 +202,12 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 
 	for i := 0; i < ml.Count; i++ {
 		pickNextMove(i, ml)
-		if !movegen.MakeMove(ml.Moves[i].Move, pos) {
+		if !moveGen.MakeMove(ml.Moves[i].Move, pos) {
 			continue
 		}
 
 		score := -quiescence(-beta, -alpha, pos, info)
-		movegen.TakeMoveBack(pos)
+		moveGen.TakeMoveBack(pos)
 		if info.Stopped == data.True {
 			return 0
 		}
@@ -207,7 +222,7 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 	}
 
 	if alpha != oldAlpha {
-		movegen.StorePvMove(pos, bestMove)
+		moveGen.StorePvMove(pos, bestMove)
 	}
 
 	return alpha
@@ -226,7 +241,7 @@ func clearForSearch(pos *data.Board, info *data.SearchInfo) {
 		}
 	}
 
-	movegen.ClearTable(pos.PvTable)
+	moveGen.ClearTable(pos.PvTable)
 	pos.Play = 0
 
 	info.StartTime = util.GetTimeMs()
@@ -252,6 +267,7 @@ func pickNextMove(moveNum int, ml *data.MoveList) {
 
 func checkUp(info *data.SearchInfo) {
 	if info.TimeSet == data.True && util.GetTimeMs() > info.StopTime {
+		fmt.Printf("Flagged to stop\n")
 		info.Stopped = data.True
 	}
 }

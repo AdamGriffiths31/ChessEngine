@@ -39,23 +39,28 @@ func PrintMove(move int) string {
 }
 
 func PrintBoard(pos *data.Board) {
-	println("Printing board...")
+	fmt.Println("Printing board...")
+
+	// Print the board grid
 	for rank := data.Rank8; rank >= data.Rank1; rank-- {
-		fmt.Printf("%v ", rank+1)
+		fmt.Printf("%d ", rank+1)
 		for file := data.FileA; file <= data.FileH; file++ {
 			sq := data.FileRankToSquare(file, rank)
 			piece := pos.Pieces[sq]
-			fmt.Printf("%3v", data.PceChar[piece])
+			fmt.Printf("%3s", data.PceChar[piece])
 		}
-		fmt.Print("\n")
-
+		fmt.Println()
 	}
+
+	// Print file labels
 	fmt.Print("  ")
 	for file := data.FileA; file <= data.FileH; file++ {
 		fmt.Printf("%3c", 'a'+file)
 	}
-	fmt.Print("\n")
-	fmt.Printf("Side:%v\n", data.SideChar[pos.Side])
-	fmt.Printf("EnPas:%v\n", SqaureString(pos.EnPas))
-	fmt.Printf("PosKey:%11X (%v)\n", pos.PosistionKey, pos.PosistionKey)
+	fmt.Println()
+
+	// Print side, en passant, and position key information
+	fmt.Printf("Side: %s\n", data.SideChar[pos.Side])
+	fmt.Printf("EnPas: %s\n", SqaureString(pos.EnPas))
+	fmt.Printf("PosKey: %11X (%v)\n", pos.PosistionKey, pos.PosistionKey)
 }

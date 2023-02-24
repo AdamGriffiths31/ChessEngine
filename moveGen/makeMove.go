@@ -1,4 +1,4 @@
-package movegen
+package moveGen
 
 import (
 	"fmt"
@@ -16,18 +16,6 @@ func MakeMove(move int, pos *data.Board) bool {
 	from := data.FromSquare(move)
 	to := data.ToSqaure(move)
 	side := pos.Side
-
-	if pos.Play < 0 {
-		panic("Err")
-	}
-
-	if pos.HistoryPlay < 0 {
-		panic("Err")
-	}
-
-	if pos.Play > data.MaxDepth {
-		panic("Err")
-	}
 
 	pos.History[pos.HistoryPlay].PosistionKey = pos.PosistionKey
 
@@ -298,25 +286,6 @@ func ClearPiece(sq int, pos *data.Board) {
 }
 
 func ParseMove(move []byte, pos *data.Board) int {
-	if move[0] == 't' {
-		fmt.Printf("Take back\n")
-		TakeMoveBack(pos)
-		io.PrintBoard(pos)
-		return data.NoMove
-	}
-	// if move[0] == 's' {
-	// 	SearchPosistion(pos, )
-	// 	return NoMove
-	// }
-	if move[0] == 'r' {
-		max := GetPvLine(1, pos)
-		fmt.Printf("PvLine of %d moves:", max)
-		for i := 0; i < max; i++ {
-			move := pos.PvArray[i]
-			fmt.Printf("%s\n", io.PrintMove(move))
-		}
-		io.PrintBoard(pos)
-	}
 	if move[1] > '8' || move[1] < '1' {
 		return data.NoMove
 	}

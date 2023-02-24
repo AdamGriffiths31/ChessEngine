@@ -14,16 +14,14 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
-func Uci() {
+func Uci(pos *data.Board, info *data.SearchInfo) {
+	info.GameMode = data.UCIMode
+
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("id name MyGoEngine")
 	fmt.Println("id author Adam")
 	fmt.Println("uciok")
 
-	pvTable := &data.PVTable{}
-	pos := &data.Board{PvTable: pvTable}
-	info := &data.SearchInfo{}
-	movegen.InitPvTable(pos.PvTable)
 	board.ParseFEN(data.StartFEN, pos)
 
 	for {

@@ -1,21 +1,11 @@
-package movegen
+package moveGen
 
 import (
 	"fmt"
-	"unsafe"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/io"
 )
-
-var pvSize = 0x100000 * 2
-
-func InitPvTable(table *data.PVTable) {
-	table.NumberEntries = pvSize / int(unsafe.Sizeof(data.PVEntry{}))
-	table.NumberEntries -= 2
-	table.PTable = make([]data.PVEntry, table.NumberEntries)
-	fmt.Printf("InitPvTable completed with: %d\n", table.NumberEntries)
-}
 
 func GetPvLine(depth int, pos *data.Board) int {
 	move := ProbePvTable(pos)

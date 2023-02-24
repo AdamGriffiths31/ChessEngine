@@ -8,6 +8,11 @@
 
 ## Versions
 
+### v0.3 (done)
+
+- Xboard intergration
+- Console mode
+
 ### v0.2 (done)
 
 - AB Logic

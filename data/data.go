@@ -3,6 +3,7 @@ package data
 import (
 	"math/rand"
 	"time"
+	"unsafe"
 )
 
 const MaxMoves = 2048
@@ -29,6 +30,12 @@ const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 const (
 	False = iota
 	True  = iota
+)
+
+const (
+	UCIMode     = iota
+	XboardMode  = iota
+	ConsoleMode = iota
 )
 
 var PceChar = []string{
@@ -219,16 +226,17 @@ type PVTable struct {
 }
 
 type SearchInfo struct {
-	StartTime int64
-	StopTime  int64
-	Depth     int
-	DepthSet  int
-	TimeSet   int
-	MovesToGo int
-	Infinite  int
-	MoveTime  int
-	Time      int
-	Inc       int
+	StartTime    int64
+	StopTime     int64
+	Depth        int
+	DepthSet     int
+	TimeSet      int
+	MovesToGo    int
+	Infinite     int
+	MoveTime     int
+	Time         int
+	Inc          int
+	PostThinking bool
 
 	Node int64
 
@@ -237,6 +245,8 @@ type SearchInfo struct {
 
 	FailHigh      float32
 	FailHighFirst float32
+
+	GameMode int
 }
 
 var Sqaure120ToSquare64 [120]int
@@ -436,4 +446,18 @@ func initMvvLva() {
 			MvvLvaScores[victim][attacker] = VictimScore[victim] + 6 - (VictimScore[attacker] / 100)
 		}
 	}
+}
+
+func NewBoardPos() *Board {
+	pvTable := &PVTable{}
+	pos := &Board{PvTable: pvTable}
+	InitPvTable(pos.PvTable)
+	return pos
+}
+
+func InitPvTable(table *PVTable) {
+	var pvSize = 0x100000 * 2
+	table.NumberEntries = pvSize / int(unsafe.Sizeof(PVEntry{}))
+	table.NumberEntries -= 2
+	table.PTable = make([]PVEntry, table.NumberEntries)
 }
