@@ -14,7 +14,7 @@ func MakeMove(move int, pos *data.Board) bool {
 	board.CheckBoard(pos)
 
 	from := data.FromSquare(move)
-	to := data.ToSqaure(move)
+	to := data.ToSquare(move)
 	side := pos.Side
 
 	pos.History[pos.HistoryPlay].PosistionKey = pos.PosistionKey
@@ -40,7 +40,7 @@ func MakeMove(move int, pos *data.Board) bool {
 		}
 	}
 
-	if pos.EnPas != data.NoSqaure {
+	if pos.EnPas != data.NoSquare {
 		hashEnPas(pos)
 	}
 
@@ -53,7 +53,7 @@ func MakeMove(move int, pos *data.Board) bool {
 
 	pos.CastlePermission &= data.CastlePerm[from]
 	pos.CastlePermission &= data.CastlePerm[to]
-	pos.EnPas = data.NoSqaure
+	pos.EnPas = data.NoSquare
 	hashCastle(pos)
 
 	captured := data.Captured(move)
@@ -97,14 +97,14 @@ func MakeMove(move int, pos *data.Board) bool {
 	}
 
 	if data.PieceKing[pos.Pieces[to]] == data.True {
-		pos.KingSqaure[pos.Side] = to
+		pos.KingSquare[pos.Side] = to
 	}
 
 	pos.Side ^= 1
 
 	hashSide(pos)
 
-	if attack.SquareAttacked(pos.KingSqaure[side], pos.Side, pos) {
+	if attack.SquareAttacked(pos.KingSquare[side], pos.Side, pos) {
 		TakeMoveBack(pos)
 		return false
 	}
@@ -120,9 +120,9 @@ func TakeMoveBack(pos *data.Board) {
 
 	move := pos.History[pos.HistoryPlay].Move
 	from := data.FromSquare(move)
-	to := data.ToSqaure(move)
+	to := data.ToSquare(move)
 
-	if pos.EnPas != data.NoSqaure {
+	if pos.EnPas != data.NoSquare {
 		hashEnPas(pos)
 	}
 
@@ -131,7 +131,7 @@ func TakeMoveBack(pos *data.Board) {
 	pos.FiftyMove = pos.History[pos.HistoryPlay].FiftyMove
 	pos.EnPas = pos.History[pos.HistoryPlay].EnPas
 
-	if pos.EnPas != data.NoSqaure {
+	if pos.EnPas != data.NoSquare {
 		hashEnPas(pos)
 	}
 	hashCastle(pos)
@@ -163,7 +163,7 @@ func TakeMoveBack(pos *data.Board) {
 	MovePiece(to, from, pos)
 
 	if data.PieceKing[pos.Pieces[from]] == data.True {
-		pos.KingSqaure[pos.Side] = from
+		pos.KingSquare[pos.Side] = from
 	}
 
 	captured := data.Captured(move)
@@ -196,21 +196,21 @@ func MovePiece(from, to int, pos *data.Board) {
 	pos.Pieces[to] = piece
 
 	if data.PieceBig[piece] == data.False {
-		board.ClearBit(&pos.Pawns[col], data.Sqaure120ToSquare64[from])
-		board.ClearBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[from])
-		board.SetBit(&pos.Pawns[col], data.Sqaure120ToSquare64[to])
-		board.SetBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[to])
+		board.ClearBit(&pos.Pawns[col], data.Square120ToSquare64[from])
+		board.ClearBit(&pos.Pawns[data.Both], data.Square120ToSquare64[from])
+		board.SetBit(&pos.Pawns[col], data.Square120ToSquare64[to])
+		board.SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[to])
 	}
 
 	if col == data.White {
-		board.ClearBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[from])
-		board.SetBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[to])
+		board.ClearBit(&pos.WhitePiecesBB, data.Square120ToSquare64[from])
+		board.SetBit(&pos.WhitePiecesBB, data.Square120ToSquare64[to])
 	} else {
-		board.ClearBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[from])
-		board.SetBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[to])
+		board.ClearBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[from])
+		board.SetBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[to])
 	}
-	board.ClearBit(&pos.PiecesBB, data.Sqaure120ToSquare64[from])
-	board.SetBit(&pos.PiecesBB, data.Sqaure120ToSquare64[to])
+	board.ClearBit(&pos.PiecesBB, data.Square120ToSquare64[from])
+	board.SetBit(&pos.PiecesBB, data.Square120ToSquare64[to])
 
 	found := false
 	for i := 0; i < pos.PieceNumber[piece]; i++ {
@@ -223,7 +223,7 @@ func MovePiece(from, to int, pos *data.Board) {
 
 	if !found {
 		io.PrintBoard(pos)
-		panic(fmt.Errorf("MovePiece: piece not found at %v [%v] going to %v [%v]", from, io.SqaureString(from), to, io.SqaureString(to)))
+		panic(fmt.Errorf("MovePiece: piece not found at %v [%v] going to %v [%v]", from, io.SquareString(from), to, io.SquareString(to)))
 	}
 }
 
@@ -245,16 +245,16 @@ func AddPiece(sq, piece int, pos *data.Board) {
 			panic(fmt.Errorf("AddPiece: PieceBig error for %v", piece))
 		}
 	} else {
-		board.SetBit(&pos.Pawns[col], data.Sqaure120ToSquare64[sq])
-		board.SetBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[sq])
+		board.SetBit(&pos.Pawns[col], data.Square120ToSquare64[sq])
+		board.SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
 	}
 
 	if col == data.White {
-		board.SetBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[sq])
+		board.SetBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
 	} else {
-		board.SetBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[sq])
+		board.SetBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
 	}
-	board.SetBit(&pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+	board.SetBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
 
 	pos.Material[col] += data.PieceVal[piece]
 	pos.PieceList[piece][pos.PieceNumber[piece]] = sq
@@ -281,16 +281,16 @@ func ClearPiece(sq int, pos *data.Board) {
 			panic(fmt.Errorf("AddPiece: PieceBig error for %v", piece))
 		}
 	} else {
-		board.ClearBit(&pos.Pawns[col], data.Sqaure120ToSquare64[sq])
-		board.ClearBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[sq])
+		board.ClearBit(&pos.Pawns[col], data.Square120ToSquare64[sq])
+		board.ClearBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
 	}
 
 	if col == data.White {
-		board.ClearBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[sq])
+		board.ClearBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
 	} else {
-		board.ClearBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[sq])
+		board.ClearBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
 	}
-	board.ClearBit(&pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+	board.ClearBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
 
 	tempPiece := -1
 	for i := 0; i < pos.PieceNumber[piece]; i++ {
@@ -302,7 +302,7 @@ func ClearPiece(sq int, pos *data.Board) {
 
 	if tempPiece == -1 {
 		io.PrintBoard(pos)
-		panic(fmt.Errorf("ClearPiece: could not find piece [%v] at sq %v [%v]", data.Pieces[piece], sq, io.SqaureString(sq)))
+		panic(fmt.Errorf("ClearPiece: could not find piece [%v] at sq %v [%v]", data.Pieces[piece], sq, io.SquareString(sq)))
 	}
 
 	pos.PieceNumber[piece]--
@@ -331,7 +331,7 @@ func ParseMove(move []byte, pos *data.Board) int {
 
 	for MoveNum := 0; MoveNum < ml.Count; MoveNum++ {
 		userMove := ml.Moves[MoveNum].Move
-		if data.FromSquare(userMove) == from && data.ToSqaure(userMove) == to {
+		if data.FromSquare(userMove) == from && data.ToSquare(userMove) == to {
 			promPce := data.Promoted(userMove)
 			if promPce != data.Empty {
 				if data.PieceRookQueen[promPce] == data.True && data.PieceBishopQueen[promPce] == data.False && move[4] == 'r' {

@@ -4,8 +4,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
-// SqaureOnBoard Check the sq is not off board
-func SqaureOnBoard(sq int) bool {
+// SquareOnBoard Check the sq is not off board
+func SquareOnBoard(sq int) bool {
 	return data.FilesBoard[sq] != data.OffBoard
 }
 

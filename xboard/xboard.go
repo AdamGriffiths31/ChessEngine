@@ -202,7 +202,7 @@ func CheckResult(pos *data.Board) bool {
 	if legal != 0 {
 		return false
 	}
-	inCheck := attack.SquareAttacked(pos.KingSqaure[pos.Side], pos.Side^1, pos)
+	inCheck := attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos)
 
 	if inCheck {
 		if pos.Side == data.White {

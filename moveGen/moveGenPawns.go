@@ -23,7 +23,7 @@ func generateBlackPawnQuietMoves(pos *data.Board, moveList *data.MoveList) {
 	for pawns != 0 {
 		sq := bits.TrailingZeros64(pawns)
 		pawns ^= (1 << sq)
-		sq = data.Sqaure64ToSquare120[sq]
+		sq = data.Square64ToSquare120[sq]
 
 		// Check for single pawn push
 		to := sq - 10
@@ -47,7 +47,7 @@ func generateBlackPawnCaptureMoves(pos *data.Board, moveList *data.MoveList) {
 	for leftAttacks != 0 {
 		sq := bits.TrailingZeros64(leftAttacks)
 		leftAttacks &= leftAttacks - 1
-		sq = data.Sqaure64ToSquare120[sq]
+		sq = data.Square64ToSquare120[sq]
 		addBlackPawnCaptureMove(pos, moveList, sq+11, sq, pos.Pieces[sq])
 	}
 
@@ -56,25 +56,25 @@ func generateBlackPawnCaptureMoves(pos *data.Board, moveList *data.MoveList) {
 	for rightAttacks != 0 {
 		sq := bits.TrailingZeros64(rightAttacks)
 		rightAttacks &= rightAttacks - 1
-		sq = data.Sqaure64ToSquare120[sq]
+		sq = data.Square64ToSquare120[sq]
 		addBlackPawnCaptureMove(pos, moveList, sq+9, sq, pos.Pieces[sq])
 	}
 }
 
 func generateBlackPawnEnPassantMoves(pos *data.Board, moveList *data.MoveList) {
-	if pos.EnPas != data.NoSqaure {
+	if pos.EnPas != data.NoSquare {
 		pawns := pos.Pawns[data.Black] &^ (data.RankBBMask[data.Rank1] | data.RankBBMask[data.Rank2])
-		leftAttacks := (pawns >> 9) &^ data.FileBBMask[data.FileH] & data.SquareBB[data.Sqaure120ToSquare64[pos.EnPas]]
-		rightAttacks := (pawns >> 7) &^ data.FileBBMask[data.FileA] & data.SquareBB[data.Sqaure120ToSquare64[pos.EnPas]]
+		leftAttacks := (pawns >> 9) &^ data.FileBBMask[data.FileH] & data.SquareBB[data.Square120ToSquare64[pos.EnPas]]
+		rightAttacks := (pawns >> 7) &^ data.FileBBMask[data.FileA] & data.SquareBB[data.Square120ToSquare64[pos.EnPas]]
 		if leftAttacks != 0 {
 			sq := bits.TrailingZeros64(leftAttacks)
-			sq = data.Sqaure64ToSquare120[sq]
+			sq = data.Square64ToSquare120[sq]
 			addEnPasMove(pos, MakeMoveInt(sq+11, pos.EnPas, data.Empty, data.Empty, data.MFLAGEP), moveList)
 		}
 
 		if rightAttacks != 0 {
 			sq := bits.TrailingZeros64(rightAttacks)
-			sq = data.Sqaure64ToSquare120[sq]
+			sq = data.Square64ToSquare120[sq]
 			addEnPasMove(pos, MakeMoveInt(sq+9, pos.EnPas, data.Empty, data.Empty, data.MFLAGEP), moveList)
 		}
 	}
@@ -85,7 +85,7 @@ func generateWhitePawnQuietMoves(pos *data.Board, moveList *data.MoveList) {
 	for pawns != 0 {
 		sq := bits.TrailingZeros64(pawns)
 		pawns ^= (1 << sq)
-		sq = data.Sqaure64ToSquare120[sq]
+		sq = data.Square64ToSquare120[sq]
 
 		// Check for single pawn push
 		to := sq + 10
@@ -110,7 +110,7 @@ func generateWhitePawnCaptureMoves(pos *data.Board, moveList *data.MoveList) {
 	for leftAttacks != 0 {
 		sq := bits.TrailingZeros64(leftAttacks)
 		leftAttacks &= leftAttacks - 1
-		sq = data.Sqaure64ToSquare120[sq]
+		sq = data.Square64ToSquare120[sq]
 		addWhitePawnCaptureMove(pos, moveList, sq-9, sq, pos.Pieces[sq])
 	}
 
@@ -119,26 +119,26 @@ func generateWhitePawnCaptureMoves(pos *data.Board, moveList *data.MoveList) {
 	for rightAttacks != 0 {
 		sq := bits.TrailingZeros64(rightAttacks)
 		rightAttacks &= rightAttacks - 1
-		sq = data.Sqaure64ToSquare120[sq]
+		sq = data.Square64ToSquare120[sq]
 		addWhitePawnCaptureMove(pos, moveList, sq-11, sq, pos.Pieces[sq])
 	}
 }
 
 func generateWhitePawnEnPassantMoves(pos *data.Board, moveList *data.MoveList) {
-	if pos.EnPas != data.NoSqaure {
+	if pos.EnPas != data.NoSquare {
 		pawns := pos.Pawns[data.White] &^ (data.RankBBMask[data.Rank8] | data.RankBBMask[data.Rank7])
-		leftAttacks := (pawns << 7) &^ data.FileBBMask[data.FileH] & data.SquareBB[data.Sqaure120ToSquare64[pos.EnPas]]
-		rightAttacks := (pawns << 9) &^ data.FileBBMask[data.FileA] & data.SquareBB[data.Sqaure120ToSquare64[pos.EnPas]]
+		leftAttacks := (pawns << 7) &^ data.FileBBMask[data.FileH] & data.SquareBB[data.Square120ToSquare64[pos.EnPas]]
+		rightAttacks := (pawns << 9) &^ data.FileBBMask[data.FileA] & data.SquareBB[data.Square120ToSquare64[pos.EnPas]]
 
 		if leftAttacks != 0 {
 			sq := bits.TrailingZeros64(leftAttacks)
-			sq = data.Sqaure64ToSquare120[sq]
+			sq = data.Square64ToSquare120[sq]
 			addEnPasMove(pos, MakeMoveInt(sq-9, pos.EnPas, data.Empty, data.Empty, data.MFLAGEP), moveList)
 		}
 
 		if rightAttacks != 0 {
 			sq := bits.TrailingZeros64(rightAttacks)
-			sq = data.Sqaure64ToSquare120[sq]
+			sq = data.Square64ToSquare120[sq]
 			addEnPasMove(pos, MakeMoveInt(sq-11, pos.EnPas, data.Empty, data.Empty, data.MFLAGEP), moveList)
 		}
 	}

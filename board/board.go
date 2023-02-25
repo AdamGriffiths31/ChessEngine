@@ -31,7 +31,7 @@ func CheckBoard(pos *data.Board) {
 	}
 
 	for sq64 := 0; sq64 < 64; sq64++ {
-		sq120 := data.Sqaure64ToSquare120[sq64]
+		sq120 := data.Square64ToSquare120[sq64]
 		piece := pos.Pieces[sq120]
 		pieceNumber[piece]++
 		color := data.PieceCol[piece]
@@ -73,20 +73,20 @@ func CheckBoard(pos *data.Board) {
 	for i := uint64(0); i < 64; i++ {
 		if (pawns[data.White] & (1 << i)) != 0 {
 			sq64 := PopBit(&pawns[data.White])
-			if pos.Pieces[data.Sqaure64ToSquare120[sq64]] != data.WP {
-				panic(fmt.Errorf("CheckBoard: PopBit white  wanted %v but got %v", data.WP, pos.Pieces[data.Sqaure64ToSquare120[sq64]]))
+			if pos.Pieces[data.Square64ToSquare120[sq64]] != data.WP {
+				panic(fmt.Errorf("CheckBoard: PopBit white  wanted %v but got %v", data.WP, pos.Pieces[data.Square64ToSquare120[sq64]]))
 			}
 		}
 		if (pawns[data.Black] & (1 << i)) != 0 {
 			sq64 := PopBit(&pawns[data.Black])
-			if pos.Pieces[data.Sqaure64ToSquare120[sq64]] != data.BP {
-				panic(fmt.Errorf("CheckBoard: PopBit black  wanted %v but got %v", data.BP, pos.Pieces[data.Sqaure64ToSquare120[sq64]]))
+			if pos.Pieces[data.Square64ToSquare120[sq64]] != data.BP {
+				panic(fmt.Errorf("CheckBoard: PopBit black  wanted %v but got %v", data.BP, pos.Pieces[data.Square64ToSquare120[sq64]]))
 			}
 		}
 		if (pawns[data.Black] & (1 << i)) != 0 {
 			sq64 := PopBit(&pawns[data.Both])
-			if pos.Pieces[data.Sqaure64ToSquare120[sq64]] != data.BP || pos.Pieces[data.Sqaure120ToSquare64[sq64]] != data.WP {
-				panic(fmt.Errorf("CheckBoard: PopBit both wanted %v but got %v", data.BP, pos.Pieces[data.Sqaure64ToSquare120[sq64]]))
+			if pos.Pieces[data.Square64ToSquare120[sq64]] != data.BP || pos.Pieces[data.Square120ToSquare64[sq64]] != data.WP {
+				panic(fmt.Errorf("CheckBoard: PopBit both wanted %v but got %v", data.BP, pos.Pieces[data.Square64ToSquare120[sq64]]))
 			}
 		}
 	}
@@ -132,7 +132,7 @@ func CheckBoard(pos *data.Board) {
 		panic(fmt.Errorf("CheckBoard: PosistionKey: %v did not match %v", pos.PosistionKey, GeneratePositionKey(pos)))
 	}
 
-	if pos.EnPas != data.NoSqaure {
+	if pos.EnPas != data.NoSquare {
 		if pos.Side == data.White && data.RanksBoard[pos.EnPas] != data.Rank6 {
 			panic(fmt.Errorf("CheckBoard: white EnPas error: %v was not on rank %v", pos.EnPas, data.Rank6))
 		}
@@ -142,12 +142,12 @@ func CheckBoard(pos *data.Board) {
 		}
 	}
 
-	if pos.Pieces[pos.KingSqaure[data.White]] != data.WK {
-		panic(fmt.Errorf("CheckBoard: White king was not found at %v instead %v was found", pos.KingSqaure[data.White], pos.Pieces[pos.KingSqaure[data.White]]))
+	if pos.Pieces[pos.KingSquare[data.White]] != data.WK {
+		panic(fmt.Errorf("CheckBoard: White king was not found at %v instead %v was found", pos.KingSquare[data.White], pos.Pieces[pos.KingSquare[data.White]]))
 	}
 
-	if pos.Pieces[pos.KingSqaure[data.Black]] != data.BK {
-		panic(fmt.Errorf("CheckBoard: Black king was not found at %v instead %v was found ", io.SqaureString(pos.KingSqaure[data.Black]), pos.Pieces[pos.KingSqaure[data.Black]]))
+	if pos.Pieces[pos.KingSquare[data.Black]] != data.BK {
+		panic(fmt.Errorf("CheckBoard: Black king was not found at %v instead %v was found ", io.SquareString(pos.KingSquare[data.Black]), pos.Pieces[pos.KingSquare[data.Black]]))
 	}
 }
 
@@ -166,11 +166,11 @@ func UpdateListMaterial(pos *data.Board) {
 		pos.PieceNumber[piece]++
 
 		if piece == data.WK {
-			pos.KingSqaure[data.White] = sq
+			pos.KingSquare[data.White] = sq
 		}
 
 		if piece == data.BK {
-			pos.KingSqaure[data.Black] = sq
+			pos.KingSquare[data.Black] = sq
 		}
 
 		if data.PieceBig[piece] == data.True {
@@ -185,28 +185,28 @@ func UpdateListMaterial(pos *data.Board) {
 		}
 
 		if piece == data.WP {
-			SetBit(&pos.Pawns[data.White], data.Sqaure120ToSquare64[sq])
-			SetBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[sq])
+			SetBit(&pos.Pawns[data.White], data.Square120ToSquare64[sq])
+			SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
 		}
 
 		if piece == data.BP {
-			SetBit(&pos.Pawns[data.Black], data.Sqaure120ToSquare64[sq])
-			SetBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[sq])
+			SetBit(&pos.Pawns[data.Black], data.Square120ToSquare64[sq])
+			SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
 		}
 
 		if data.PieceCol[piece] == data.White {
-			SetBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[sq])
+			SetBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
 		} else {
-			SetBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[sq])
+			SetBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
 		}
-		SetBit(&pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+		SetBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
 	}
 }
 
 func MirrorBoard(pos *data.Board) {
 	var pieceArray [64]int
 	swapPiece := [13]int{data.Empty, data.BP, data.BN, data.BB, data.BR, data.BQ, data.BK, data.WP, data.WN, data.WB, data.WR, data.WQ, data.WK}
-	tempEnPas := data.NoSqaure
+	tempEnPas := data.NoSquare
 	tempCastlePerm := 0
 	tempSide := pos.Side ^ 1
 
@@ -223,19 +223,19 @@ func MirrorBoard(pos *data.Board) {
 		tempCastlePerm |= data.WhiteQueenCastle
 	}
 
-	if pos.EnPas != data.NoSqaure {
-		tempEnPas = data.Sqaure64ToSquare120[data.Mirror64[data.Sqaure120ToSquare64[pos.EnPas]]]
+	if pos.EnPas != data.NoSquare {
+		tempEnPas = data.Square64ToSquare120[data.Mirror64[data.Square120ToSquare64[pos.EnPas]]]
 	}
 
 	for sq := 0; sq < 64; sq++ {
-		pieceArray[sq] = pos.Pieces[data.Sqaure64ToSquare120[data.Mirror64[sq]]]
+		pieceArray[sq] = pos.Pieces[data.Square64ToSquare120[data.Mirror64[sq]]]
 	}
 
 	resetBoard(pos)
 
 	for sq := 0; sq < 64; sq++ {
 		tp := swapPiece[pieceArray[sq]]
-		pos.Pieces[data.Sqaure64ToSquare120[sq]] = tp
+		pos.Pieces[data.Square64ToSquare120[sq]] = tp
 	}
 
 	pos.Side = tempSide
@@ -255,7 +255,7 @@ func resetBoard(pos *data.Board) {
 	}
 
 	for i := 0; i < 64; i++ {
-		pos.Pieces[data.Sqaure64ToSquare120[i]] = data.Empty
+		pos.Pieces[data.Square64ToSquare120[i]] = data.Empty
 	}
 
 	for i := 0; i < 2; i++ {
@@ -273,10 +273,10 @@ func resetBoard(pos *data.Board) {
 		pos.PieceNumber[i] = 0
 	}
 
-	pos.KingSqaure[data.White], pos.KingSqaure[data.Black] = data.NoSqaure, data.NoSqaure
+	pos.KingSquare[data.White], pos.KingSquare[data.Black] = data.NoSquare, data.NoSquare
 
 	pos.Side = data.Both
-	pos.EnPas = data.NoSqaure
+	pos.EnPas = data.NoSquare
 	pos.FiftyMove = 0
 
 	pos.Play = 0

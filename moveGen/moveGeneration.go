@@ -80,7 +80,7 @@ func addQuiteMove(pos *data.Board, move int, moveList *data.MoveList) {
 		moveList.Moves[moveList.Count].Score = 800000
 	default:
 		fromSq := data.FromSquare(move)
-		toSq := data.ToSqaure(move)
+		toSq := data.ToSquare(move)
 		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[fromSq]][pos.Pieces[toSq]]
 	}
 

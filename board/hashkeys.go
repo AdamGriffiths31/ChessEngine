@@ -10,7 +10,7 @@ func GeneratePositionKey(pos *data.Board) uint64 {
 
 	for sq := 0; sq < 120; sq++ {
 		piece = pos.Pieces[sq]
-		if sq != data.NoSqaure && piece != data.Empty && piece != data.OffBoard {
+		if sq != data.NoSquare && piece != data.Empty && piece != data.OffBoard {
 			finalKey ^= data.PieceKeys[piece][sq]
 		}
 	}
@@ -19,7 +19,7 @@ func GeneratePositionKey(pos *data.Board) uint64 {
 		finalKey ^= data.SideKey
 	}
 
-	if pos.EnPas != data.NoSqaure {
+	if pos.EnPas != data.NoSquare {
 		finalKey ^= data.PieceKeys[data.Empty][pos.EnPas]
 	}
 

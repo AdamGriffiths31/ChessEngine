@@ -17,7 +17,7 @@ func generateNonSliderMoves(pos *data.Board, moveList *data.MoveList, includeQui
 				dir := data.PieceDir[piece][i]
 				tempSq := sq + dir
 
-				if !validate.SqaureOnBoard(tempSq) {
+				if !validate.SquareOnBoard(tempSq) {
 					continue
 				}
 

@@ -32,7 +32,7 @@ func parsePiecePlacement(fen string, pos *data.Board) string {
 		default:
 			piece := getPieceType(ch)
 			sq64 := rank*8 + file
-			sq120 := data.Sqaure64ToSquare120[sq64]
+			sq120 := data.Square64ToSquare120[sq64]
 			if piece != data.Empty {
 				pos.Pieces[sq120] = piece
 			}

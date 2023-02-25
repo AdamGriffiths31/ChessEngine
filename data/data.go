@@ -167,7 +167,7 @@ const (
 	A6, B6, C6, D6, E6, F6, G6, H6 = 71, 72, 73, 74, 75, 76, 77, 78
 	A7, B7, C7, D7, E7, F7, G7, H7 = 81, 82, 83, 84, 85, 86, 87, 88
 	A8, B8, C8, D8, E8, F8, G8, H8 = 91, 92, 93, 94, 95, 96, 97, 98
-	NoSqaure                       = 99
+	NoSquare                       = 99
 	OffBoard                       = 100
 )
 
@@ -197,7 +197,7 @@ type Move struct {
 
 type Board struct {
 	Pieces           [120]int
-	KingSqaure       [2]int
+	KingSquare       [2]int
 	Side             int
 	EnPas            int
 	FiftyMove        int
@@ -267,8 +267,8 @@ type SearchInfo struct {
 	GameMode int
 }
 
-var Sqaure120ToSquare64 [120]int
-var Sqaure64ToSquare120 [64]int
+var Square120ToSquare64 [120]int
+var Square64ToSquare120 [64]int
 
 var SetMask [64]uint64
 var ClearMask [64]uint64
@@ -353,7 +353,7 @@ var Mirror64 = [64]int{
 	0, 1, 2, 3, 4, 5, 6, 7,
 }
 
-// FileRankToSquare converts file & rank to the 120 sqaure
+// FileRankToSquare converts file & rank to the 120 square
 func FileRankToSquare(file, rank int) int {
 	return (21 + file) + (rank * 10)
 }
@@ -377,25 +377,25 @@ func setPieceKeys() {
 	}
 }
 
-// setSquares populates Sqaure120ToSquare64 & Sqaure64ToSquare120
+// setSquares populates Square120ToSquare64 & Square64ToSquare120
 func setSquares() {
 	index := 0
-	sqaure64 := 0
+	square64 := 0
 
 	for index = 0; index < 120; index++ {
-		Sqaure120ToSquare64[index] = 65
+		Square120ToSquare64[index] = 65
 	}
 
 	for index = 0; index < 64; index++ {
-		Sqaure64ToSquare120[index] = 120
+		Square64ToSquare120[index] = 120
 	}
 
 	for rank := Rank1; rank < RankEmpty; rank++ {
 		for file := FileA; file < FileEmpty; file++ {
 			sq := FileRankToSquare(file, rank)
-			Sqaure64ToSquare120[sqaure64] = sq
-			Sqaure120ToSquare64[sq] = sqaure64
-			sqaure64++
+			Square64ToSquare120[square64] = sq
+			Square120ToSquare64[sq] = square64
+			square64++
 		}
 	}
 }
@@ -467,8 +467,8 @@ func setEvalMasks() {
 			tsq -= 8
 		}
 
-		if FilesBoard[Sqaure64ToSquare120[sq]] > FileA {
-			IsolatedMask[sq] |= FileBBMask[FilesBoard[Sqaure64ToSquare120[sq]]-1]
+		if FilesBoard[Square64ToSquare120[sq]] > FileA {
+			IsolatedMask[sq] |= FileBBMask[FilesBoard[Square64ToSquare120[sq]]-1]
 
 			tsq = sq + 7
 			for tsq < 64 {
@@ -483,8 +483,8 @@ func setEvalMasks() {
 			}
 		}
 
-		if FilesBoard[Sqaure64ToSquare120[sq]] < FileH {
-			IsolatedMask[sq] |= FileBBMask[FilesBoard[Sqaure64ToSquare120[sq]]+1]
+		if FilesBoard[Square64ToSquare120[sq]] < FileH {
+			IsolatedMask[sq] |= FileBBMask[FilesBoard[Square64ToSquare120[sq]]+1]
 
 			tsq = sq + 9
 			for tsq < 64 {
@@ -515,7 +515,7 @@ func FromSquare(move int) int {
 	return move & 0x7F
 }
 
-func ToSqaure(move int) int {
+func ToSquare(move int) int {
 	return move >> 7 & 0x7F
 }
 

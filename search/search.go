@@ -138,13 +138,13 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo) i
 			bestMove = ml.Moves[i].Move
 
 			if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-				pos.SearchHistory[pos.Pieces[data.FromSquare(bestMove)]][pos.Pieces[data.ToSqaure(bestMove)]] += depth
+				pos.SearchHistory[pos.Pieces[data.FromSquare(bestMove)]][pos.Pieces[data.ToSquare(bestMove)]] += depth
 			}
 		}
 	}
 
 	if legal == 0 {
-		if attack.SquareAttacked(pos.KingSqaure[pos.Side], pos.Side^1, pos) {
+		if attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos) {
 			return -29000 + pos.Play
 		} else {
 			return 0

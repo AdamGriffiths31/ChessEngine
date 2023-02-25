@@ -13,7 +13,7 @@ func SquareAttacked(square int, side int, pos *data.Board) bool {
 	if !validate.SideValid(side) {
 		panic(fmt.Errorf("SquareAttacked: side %v is invalid", side))
 	}
-	if !validate.SqaureOnBoard(square) {
+	if !validate.SquareOnBoard(square) {
 		panic(fmt.Errorf("SquareAttacked: square %v is invalid", side))
 	}
 

@@ -16,20 +16,20 @@ func generateSliderMoves(pos *data.Board, moveList *data.MoveList, includeQuite 
 			sq := pos.PieceList[piece][pieceNum]
 			//White
 			if piece == data.WR || piece == data.WQ {
-				attack := data.GetRookAttacks(pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+				attack := data.GetRookAttacks(pos.PiecesBB, data.Square120ToSquare64[sq])
 				generateMoves(pos, moveList, includeQuite, sq, attack, pos.ColoredPiecesBB)
 			}
 			if piece == data.WB || piece == data.WQ {
-				attack := data.GetBishopAttacks(pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+				attack := data.GetBishopAttacks(pos.PiecesBB, data.Square120ToSquare64[sq])
 				generateMoves(pos, moveList, includeQuite, sq, attack, pos.ColoredPiecesBB)
 			}
 			//Black
 			if piece == data.BR || piece == data.BQ {
-				attack := data.GetRookAttacks(pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+				attack := data.GetRookAttacks(pos.PiecesBB, data.Square120ToSquare64[sq])
 				generateMoves(pos, moveList, includeQuite, sq, attack, pos.WhitePiecesBB)
 			}
 			if piece == data.BB || piece == data.BQ {
-				attack := data.GetBishopAttacks(pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+				attack := data.GetBishopAttacks(pos.PiecesBB, data.Square120ToSquare64[sq])
 				generateMoves(pos, moveList, includeQuite, sq, attack, pos.WhitePiecesBB)
 			}
 		}
@@ -38,13 +38,13 @@ func generateSliderMoves(pos *data.Board, moveList *data.MoveList, includeQuite 
 	}
 }
 
-func generateMoves(pos *data.Board, moveList *data.MoveList, includeQuite bool, sqaure int, attackBB, oppositeBB uint64) {
+func generateMoves(pos *data.Board, moveList *data.MoveList, includeQuite bool, square int, attackBB, oppositeBB uint64) {
 	captures := attackBB & oppositeBB
 	for captures != 0 {
 		sq := bits.TrailingZeros64(captures)
 		captures &= captures - 1
-		sq = data.Sqaure64ToSquare120[sq]
-		addCaptureMove(pos, MakeMoveInt(sqaure, sq, pos.Pieces[sq], data.Empty, 0), moveList)
+		sq = data.Square64ToSquare120[sq]
+		addCaptureMove(pos, MakeMoveInt(square, sq, pos.Pieces[sq], data.Empty, 0), moveList)
 	}
 
 	if includeQuite {
@@ -52,8 +52,8 @@ func generateMoves(pos *data.Board, moveList *data.MoveList, includeQuite bool, 
 		for quite != 0 {
 			sq := bits.TrailingZeros64(quite)
 			quite &= quite - 1
-			sq = data.Sqaure64ToSquare120[sq]
-			addQuiteMove(pos, MakeMoveInt(sqaure, sq, data.Empty, data.Empty, 0), moveList)
+			sq = data.Square64ToSquare120[sq]
+			addQuiteMove(pos, MakeMoveInt(square, sq, data.Empty, data.Empty, 0), moveList)
 		}
 	}
 }

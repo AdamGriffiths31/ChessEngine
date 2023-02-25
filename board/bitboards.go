@@ -14,7 +14,7 @@ func PrintBitboard(bitBoard uint64) {
 	for rank := data.Rank8; rank >= data.Rank1; rank-- {
 		for file := data.FileA; file <= data.FileH; file++ {
 			sq := data.FileRankToSquare(file, rank)
-			sq64 := data.Sqaure120ToSquare64[sq]
+			sq64 := data.Square120ToSquare64[sq]
 			if ((shiftMe << sq64) & bitBoard) == 0 {
 				x := "-"
 				fmt.Printf("%3s", x)
@@ -47,12 +47,12 @@ func CountBits(b uint64) int {
 	return r
 }
 
-// ClearBit clears the bit at the given sqaure
-func ClearBit(bb *uint64, sqaure int) {
-	*bb &= data.ClearMask[sqaure]
+// ClearBit clears the bit at the given square
+func ClearBit(bb *uint64, square int) {
+	*bb &= data.ClearMask[square]
 }
 
 // SetBit sets the bit at the given square
-func SetBit(bb *uint64, sqaure int) {
-	*bb |= data.SetMask[sqaure]
+func SetBit(bb *uint64, square int) {
+	*bb |= data.SetMask[square]
 }
