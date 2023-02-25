@@ -41,18 +41,12 @@ func GenerateAllCaptures(pos *data.Board, moveList *data.MoveList) {
 	moveList.Count = 0
 
 	if pos.Side == data.White {
-		for pieceNum := 0; pieceNum < pos.PieceNumber[data.WP]; pieceNum++ {
-			sq := pos.PieceList[data.WP][pieceNum]
-			generateWhitePawnCaptureMoves(pos, sq, moveList)
-			generateWhitePawnEnPassantMoves(pos, sq, moveList)
-		}
+		generateWhitePawnEnPassantMoves(pos, moveList)
+		generateWhitePawnCaptureMoves(pos, moveList)
 
 	} else {
-		for pieceNum := 0; pieceNum < pos.PieceNumber[data.BP]; pieceNum++ {
-			sq := pos.PieceList[data.BP][pieceNum]
-			generateBlackPawnCaptureMoves(pos, sq, moveList)
-			generateBlackPawnEnPassantMoves(pos, sq, moveList)
-		}
+		generateBlackPawnCaptureMoves(pos, moveList)
+		generateBlackPawnEnPassantMoves(pos, moveList)
 	}
 
 	generateSliderMoves(pos, moveList, false)
@@ -77,15 +71,17 @@ func MoveExists(pos *data.Board, move int) bool {
 }
 
 func addQuiteMove(pos *data.Board, move int, moveList *data.MoveList) {
-
 	moveList.Moves[moveList.Count].Move = move
 
-	if pos.SearchKillers[0][pos.Play] == move {
+	switch move {
+	case pos.SearchKillers[0][pos.Play]:
 		moveList.Moves[moveList.Count].Score = 900000
-	} else if pos.SearchKillers[1][pos.Play] == move {
+	case pos.SearchKillers[1][pos.Play]:
 		moveList.Moves[moveList.Count].Score = 800000
-	} else {
-		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[data.FromSquare(move)]][pos.Pieces[data.ToSqaure(move)]]
+	default:
+		fromSq := data.FromSquare(move)
+		toSq := data.ToSqaure(move)
+		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[fromSq]][pos.Pieces[toSq]]
 	}
 
 	moveList.Count++

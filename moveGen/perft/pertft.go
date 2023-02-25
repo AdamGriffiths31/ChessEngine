@@ -22,7 +22,6 @@ func Perft(depth int, pos *data.Board) {
 
 	ml := data.MoveList{}
 	movegen.GenerateAllMoves(pos, &ml)
-
 	for moveNum := 0; moveNum < ml.Count; moveNum++ {
 		if !movegen.MakeMove(ml.Moves[moveNum].Move, pos) {
 			continue

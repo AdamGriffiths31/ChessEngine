@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 	"unsafe"
@@ -10,19 +11,22 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 	setSquares()
 	setBitMasks()
+	initSquareBB()
 	setPieceKeys()
 	setFilesAndRanks()
 	setEvalMasks()
 	initMvvLva()
+	init_sliders_attacks()
+
 }
 
 const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
 
-//const StartFEN = "1q2kbr1/rR2pppB/3p1P1p/1Pp5/Q7/2P2N1n/1P1P3P/1NB1K2R w K c6"
+const StartFEN = "4k3/4n3/8/p1N1R2p/8/1b2R1BK/4P3/4r3 w - - 0 0"
 
-const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+//const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 //const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
 
@@ -216,6 +220,10 @@ type Board struct {
 
 	SearchHistory [13][120]int
 	SearchKillers [2][MaxDepth]int
+
+	ColoredPiecesBB uint64
+	WhitePiecesBB   uint64
+	PiecesBB        uint64
 }
 
 type Undo struct {
@@ -267,6 +275,7 @@ var SetMask [64]uint64
 var ClearMask [64]uint64
 var FileBBMask [64]uint64
 var RankBBMask [64]uint64
+var SquareBB [64]uint64
 
 var BlackPassedMask [64]uint64
 var WhitePassedMask [64]uint64
@@ -389,6 +398,12 @@ func setSquares() {
 			Sqaure120ToSquare64[sq] = sqaure64
 			sqaure64++
 		}
+	}
+}
+
+func initSquareBB() {
+	for sq := 0; sq < 64; sq++ {
+		SquareBB[sq] = 1 << uint64(sq)
 	}
 }
 
@@ -545,4 +560,198 @@ func InitPvTable(table *PVTable) {
 	table.NumberEntries = pvSize / int(unsafe.Sizeof(PVEntry{}))
 	table.NumberEntries -= 2
 	table.PTable = make([]PVEntry, table.NumberEntries)
+}
+
+var RookMask [64]uint64
+var RookAttacks [64][4096]uint64
+var RookMagics = [64]uint64{
+	0xa8002c000108020,
+	0x6c00049b0002001,
+	0x100200010090040,
+	0x2480041000800801,
+	0x280028004000800,
+	0x900410008040022,
+	0x280020001001080,
+	0x2880002041000080,
+	0xa000800080400034,
+	0x4808020004000,
+	0x2290802004801000,
+	0x411000d00100020,
+	0x402800800040080,
+	0xb000401004208,
+	0x2409000100040200,
+	0x1002100004082,
+	0x22878001e24000,
+	0x1090810021004010,
+	0x801030040200012,
+	0x500808008001000,
+	0xa08018014000880,
+	0x8000808004000200,
+	0x201008080010200,
+	0x801020000441091,
+	0x800080204005,
+	0x1040200040100048,
+	0x120200402082,
+	0xd14880480100080,
+	0x12040280080080,
+	0x100040080020080,
+	0x9020010080800200,
+	0x813241200148449,
+	0x491604001800080,
+	0x100401000402001,
+	0x4820010021001040,
+	0x400402202000812,
+	0x209009005000802,
+	0x810800601800400,
+	0x4301083214000150,
+	0x204026458e001401,
+	0x40204000808000,
+	0x8001008040010020,
+	0x8410820820420010,
+	0x1003001000090020,
+	0x804040008008080,
+	0x12000810020004,
+	0x1000100200040208,
+	0x430000a044020001,
+	0x280009023410300,
+	0xe0100040002240,
+	0x200100401700,
+	0x2244100408008080,
+	0x8000400801980,
+	0x2000810040200,
+	0x8010100228810400,
+	0x2000009044210200,
+	0x4080008040102101,
+	0x40002080411d01,
+	0x2005524060000901,
+	0x502001008400422,
+	0x489a000810200402,
+	0x1004400080a13,
+	0x4000011008020084,
+	0x26002114058042,
+}
+
+var rookRellevantBits = [64]int{
+	12, 11, 11, 11, 11, 11, 11, 12,
+	11, 10, 10, 10, 10, 10, 10, 11,
+	11, 10, 10, 10, 10, 10, 10, 11,
+	11, 10, 10, 10, 10, 10, 10, 11,
+	11, 10, 10, 10, 10, 10, 10, 11,
+	11, 10, 10, 10, 10, 10, 10, 11,
+	11, 10, 10, 10, 10, 10, 10, 11,
+	12, 11, 11, 11, 11, 11, 11, 12,
+}
+
+func GetRookAttacks(occ uint64, sq int) uint64 {
+	occ &= RookMask[sq]
+	occ *= RookMagics[sq]
+	occ >>= 64 - rookRellevantBits[sq]
+	fmt.Printf("occ: %v\n", occ)
+	return RookAttacks[sq][occ]
+}
+
+func mask_rook_attacks(square int) uint64 {
+	var attacks uint64 = 0
+
+	tr := square / 8
+	tf := square % 8
+
+	for r := tr + 1; r <= 6; r++ {
+		attacks |= (1 << (r*8 + tf))
+	}
+	for r := tr - 1; r >= 1; r-- {
+		attacks |= (1 << (r*8 + tf))
+	}
+	for f := tf + 1; f <= 6; f++ {
+		attacks |= (1 << (tr*8 + f))
+	}
+	for f := tf - 1; f >= 1; f-- {
+		attacks |= (1 << (tr*8 + f))
+	}
+
+	return attacks
+}
+
+func init_sliders_attacks() {
+	for square := 0; square < 64; square++ {
+		RookMask[square] = mask_rook_attacks(square)
+
+		mask := mask_rook_attacks(square)
+
+		bitCount := countBits(mask)
+
+		occupancyVariations := 1 << bitCount
+
+		for count := 0; count < occupancyVariations; count++ {
+			occupancy := setOccupancy(count, bitCount, mask)
+			magic_index := occupancy * RookMagics[square] >> (64 - uint64(rookRellevantBits[square]))
+			RookAttacks[square][magic_index] = rookAttacksOnTheFly(square, occupancy)
+		}
+
+	}
+}
+
+func setOccupancy(index, bitsInMask int, attackMask uint64) uint64 {
+	var occupancy uint64
+	for count := 0; count < bitsInMask; count++ {
+		square := getLs1bIndex(attackMask)
+		attackMask &= attackMask - 1
+		if index&(1<<count) != 0 {
+			occupancy |= (1 << square)
+		}
+	}
+	return occupancy
+}
+
+func countBits(b uint64) int {
+	r := 0
+	for ; b > 0; r++ {
+		b &= b - 1
+	}
+	return r
+}
+
+func rookAttacksOnTheFly(square int, block uint64) uint64 {
+	var attacks uint64 = 0
+	var f, r int
+
+	tr := square / 8
+	tf := square % 8
+
+	for r = tr + 1; r <= 7; r++ {
+		attacks |= (uint64(1) << (r*8 + tf))
+		if (block & (uint64(1) << (r*8 + tf))) != 0 {
+			break
+		}
+	}
+
+	for r = tr - 1; r >= 0; r-- {
+		attacks |= (uint64(1) << (r*8 + tf))
+		if (block & (uint64(1) << (r*8 + tf))) != 0 {
+			break
+		}
+	}
+
+	for f = tf + 1; f <= 7; f++ {
+		attacks |= (uint64(1) << (tr*8 + f))
+		if (block & (uint64(1) << (tr*8 + f))) != 0 {
+			break
+		}
+	}
+
+	for f = tf - 1; f >= 0; f-- {
+		attacks |= (uint64(1) << (tr*8 + f))
+		if (block & (uint64(1) << (tr*8 + f))) != 0 {
+			break
+		}
+	}
+
+	return attacks
+}
+
+func getLs1bIndex(bitboard uint64) int {
+	if bitboard != 0 {
+		return countBits((bitboard & -bitboard) - 1)
+	}
+	return -1
 }

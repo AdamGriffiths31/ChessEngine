@@ -202,6 +202,16 @@ func MovePiece(from, to int, pos *data.Board) {
 		board.SetBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[to])
 	}
 
+	if col == data.White {
+		board.ClearBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[from])
+		board.SetBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[to])
+	} else {
+		board.ClearBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[from])
+		board.SetBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[to])
+	}
+	board.ClearBit(&pos.PiecesBB, data.Sqaure120ToSquare64[from])
+	board.SetBit(&pos.PiecesBB, data.Sqaure120ToSquare64[to])
+
 	found := false
 	for i := 0; i < pos.PieceNumber[piece]; i++ {
 		if pos.PieceList[piece][i] == from {
@@ -239,6 +249,13 @@ func AddPiece(sq, piece int, pos *data.Board) {
 		board.SetBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[sq])
 	}
 
+	if col == data.White {
+		board.SetBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[sq])
+	} else {
+		board.SetBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[sq])
+	}
+	board.SetBit(&pos.PiecesBB, data.Sqaure120ToSquare64[sq])
+
 	pos.Material[col] += data.PieceVal[piece]
 	pos.PieceList[piece][pos.PieceNumber[piece]] = sq
 	pos.PieceNumber[piece]++
@@ -267,6 +284,13 @@ func ClearPiece(sq int, pos *data.Board) {
 		board.ClearBit(&pos.Pawns[col], data.Sqaure120ToSquare64[sq])
 		board.ClearBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[sq])
 	}
+
+	if col == data.White {
+		board.ClearBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[sq])
+	} else {
+		board.ClearBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[sq])
+	}
+	board.ClearBit(&pos.PiecesBB, data.Sqaure120ToSquare64[sq])
 
 	tempPiece := -1
 	for i := 0; i < pos.PieceNumber[piece]; i++ {

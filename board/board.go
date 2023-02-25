@@ -193,6 +193,13 @@ func UpdateListMaterial(pos *data.Board) {
 			SetBit(&pos.Pawns[data.Black], data.Sqaure120ToSquare64[sq])
 			SetBit(&pos.Pawns[data.Both], data.Sqaure120ToSquare64[sq])
 		}
+
+		if data.PieceCol[piece] == data.White {
+			SetBit(&pos.WhitePiecesBB, data.Sqaure120ToSquare64[sq])
+		} else {
+			SetBit(&pos.ColoredPiecesBB, data.Sqaure120ToSquare64[sq])
+		}
+		SetBit(&pos.PiecesBB, data.Sqaure120ToSquare64[sq])
 	}
 }
 
