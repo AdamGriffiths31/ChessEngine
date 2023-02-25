@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 	"unsafe"
@@ -24,7 +23,7 @@ const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
 
-const StartFEN = "4k3/4n3/8/p1N1R2p/8/1b2R1BK/4P3/4r3 w - - 0 0"
+const StartFEN = "3r3k/8/1p1P4/b7/8/8/7B/b1B1R1nK w - - 0 0"
 
 //const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -562,6 +561,75 @@ func InitPvTable(table *PVTable) {
 	table.PTable = make([]PVEntry, table.NumberEntries)
 }
 
+var BishopMask [64]uint64
+var BishopAttacks [64][512]uint64
+var BishopMagics = [64]uint64{
+	0x89a1121896040240,
+	0x2004844802002010,
+	0x2068080051921000,
+	0x62880a0220200808,
+	0x4042004000000,
+	0x100822020200011,
+	0xc00444222012000a,
+	0x28808801216001,
+	0x400492088408100,
+	0x201c401040c0084,
+	0x840800910a0010,
+	0x82080240060,
+	0x2000840504006000,
+	0x30010c4108405004,
+	0x1008005410080802,
+	0x8144042209100900,
+	0x208081020014400,
+	0x4800201208ca00,
+	0xf18140408012008,
+	0x1004002802102001,
+	0x841000820080811,
+	0x40200200a42008,
+	0x800054042000,
+	0x88010400410c9000,
+	0x520040470104290,
+	0x1004040051500081,
+	0x2002081833080021,
+	0x400c00c010142,
+	0x941408200c002000,
+	0x658810000806011,
+	0x188071040440a00,
+	0x4800404002011c00,
+	0x104442040404200,
+	0x511080202091021,
+	0x4022401120400,
+	0x80c0040400080120,
+	0x8040010040820802,
+	0x480810700020090,
+	0x102008e00040242,
+	0x809005202050100,
+	0x8002024220104080,
+	0x431008804142000,
+	0x19001802081400,
+	0x200014208040080,
+	0x3308082008200100,
+	0x41010500040c020,
+	0x4012020c04210308,
+	0x208220a202004080,
+	0x111040120082000,
+	0x6803040141280a00,
+	0x2101004202410000,
+	0x8200000041108022,
+	0x21082088000,
+	0x2410204010040,
+	0x40100400809000,
+	0x822088220820214,
+	0x40808090012004,
+	0x910224040218c9,
+	0x402814422015008,
+	0x90014004842410,
+	0x1000042304105,
+	0x10008830412a00,
+	0x2520081090008908,
+	0x40102000a0a60140,
+}
+
 var RookMask [64]uint64
 var RookAttacks [64][4096]uint64
 var RookMagics = [64]uint64{
@@ -642,15 +710,54 @@ var rookRellevantBits = [64]int{
 	12, 11, 11, 11, 11, 11, 11, 12,
 }
 
+var bishopRellevantBits = [64]int{
+	6, 5, 5, 5, 5, 5, 5, 6,
+	5, 5, 5, 5, 5, 5, 5, 5,
+	5, 5, 7, 7, 7, 7, 5, 5,
+	5, 5, 7, 9, 9, 7, 5, 5,
+	5, 5, 7, 9, 9, 7, 5, 5,
+	5, 5, 7, 7, 7, 7, 5, 5,
+	5, 5, 5, 5, 5, 5, 5, 5,
+	6, 5, 5, 5, 5, 5, 5, 6,
+}
+
 func GetRookAttacks(occ uint64, sq int) uint64 {
 	occ &= RookMask[sq]
 	occ *= RookMagics[sq]
 	occ >>= 64 - rookRellevantBits[sq]
-	fmt.Printf("occ: %v\n", occ)
 	return RookAttacks[sq][occ]
 }
 
-func mask_rook_attacks(square int) uint64 {
+func GetBishopAttacks(occ uint64, sq int) uint64 {
+	occ &= BishopMask[sq]
+	occ *= BishopMagics[sq]
+	occ >>= 64 - bishopRellevantBits[sq]
+	return BishopAttacks[sq][occ]
+}
+
+func maskBishopAttacks(square int) uint64 {
+	var attacks uint64 = 0
+	var f, r int
+
+	tr := square / 8
+	tf := square % 8
+
+	for r, f = tr+1, tf+1; r <= 6 && f <= 6; r, f = r+1, f+1 {
+		attacks |= (1 << (r*8 + f))
+	}
+	for r, f = tr+1, tf-1; r <= 6 && f >= 1; r, f = r+1, f-1 {
+		attacks |= (1 << (r*8 + f))
+	}
+	for r, f = tr-1, tf+1; r >= 1 && f <= 6; r, f = r-1, f+1 {
+		attacks |= (1 << (r*8 + f))
+	}
+	for r, f = tr-1, tf-1; r >= 1 && f >= 1; r, f = r-1, f-1 {
+		attacks |= (1 << (r*8 + f))
+	}
+
+	return attacks
+}
+func maskRookAttacks(square int) uint64 {
 	var attacks uint64 = 0
 
 	tr := square / 8
@@ -674,18 +781,28 @@ func mask_rook_attacks(square int) uint64 {
 
 func init_sliders_attacks() {
 	for square := 0; square < 64; square++ {
-		RookMask[square] = mask_rook_attacks(square)
+		RookMask[square] = maskRookAttacks(square)
+		BishopMask[square] = maskBishopAttacks(square)
 
-		mask := mask_rook_attacks(square)
+		mask := maskRookAttacks(square)
+		maskB := maskBishopAttacks(square)
 
 		bitCount := countBits(mask)
+		bitCountB := countBits(maskB)
 
 		occupancyVariations := 1 << bitCount
+		occupancyVariationsB := 1 << bitCountB
 
 		for count := 0; count < occupancyVariations; count++ {
 			occupancy := setOccupancy(count, bitCount, mask)
 			magic_index := occupancy * RookMagics[square] >> (64 - uint64(rookRellevantBits[square]))
 			RookAttacks[square][magic_index] = rookAttacksOnTheFly(square, occupancy)
+		}
+
+		for count := 0; count < occupancyVariationsB; count++ {
+			occupancy := setOccupancy(count, bitCountB, maskB)
+			magic_index := occupancy * BishopMagics[square] >> (64 - uint64(bishopRellevantBits[square]))
+			BishopAttacks[square][magic_index] = bishopAttacksOnTheFly(square, occupancy)
 		}
 
 	}
@@ -709,6 +826,44 @@ func countBits(b uint64) int {
 		b &= b - 1
 	}
 	return r
+}
+func bishopAttacksOnTheFly(square int, block uint64) uint64 {
+	var attacks uint64 = 0
+
+	var f, r int
+
+	tr := square / 8
+	tf := square % 8
+
+	for r, f = tr+1, tf+1; r <= 7 && f <= 7; r, f = r+1, f+1 {
+		attacks |= (uint64(1) << (r*8 + f))
+		if block&(uint64(1)<<(r*8+f)) != 0 {
+			break
+		}
+	}
+
+	for r, f = tr+1, tf-1; r <= 7 && f >= 0; r, f = r+1, f-1 {
+		attacks |= (uint64(1) << (r*8 + f))
+		if block&(uint64(1)<<(r*8+f)) != 0 {
+			break
+		}
+	}
+
+	for r, f = tr-1, tf+1; r >= 0 && f <= 7; r, f = r-1, f+1 {
+		attacks |= (uint64(1) << (r*8 + f))
+		if block&(uint64(1)<<(r*8+f)) != 0 {
+			break
+		}
+	}
+
+	for r, f = tr-1, tf-1; r >= 0 && f >= 0; r, f = r-1, f-1 {
+		attacks |= (uint64(1) << (r*8 + f))
+		if block&(uint64(1)<<(r*8+f)) != 0 {
+			break
+		}
+	}
+
+	return attacks
 }
 
 func rookAttacksOnTheFly(square int, block uint64) uint64 {

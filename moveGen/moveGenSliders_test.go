@@ -12,7 +12,7 @@ func TestGenerateRookMoves(t *testing.T) {
 	pos := data.NewBoardPos()
 	board.ParseFEN(data.StartFEN, pos)
 	moveList := &data.MoveList{}
-	generateRookMoves(pos, moveList, true)
+	generateSliderMoves(pos, moveList, true)
 	if moveList.Count != 110 {
 		t.Errorf("got %d, want %d", moveList.Count, 0)
 	}
