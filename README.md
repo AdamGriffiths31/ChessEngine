@@ -2,8 +2,6 @@
 
 Go implementation of a UCI compatible chess engine.
 
-[![Go Report Card](https://goreportcard.com/report/github.com/AdamGriffiths31/ChessEngine)](https://goreportcard.com/report/github.com/AdamGriffiths31/ChessEngine)
-
 ## Rating
 
 | Version | Time Control | Est Rating |
