@@ -20,6 +20,10 @@ Go implementation of a UCI compatible chess engine.
 
 ## Versions
 
+### v0.4
+
+- Moved MoveGen to a bitboard system
+
 ### v0.3 (done)
 
 - Xboard intergration

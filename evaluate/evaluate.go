@@ -1,6 +1,8 @@
 package evaluate
 
 import (
+	"math"
+
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
@@ -48,6 +50,28 @@ var rookTable = [64]int{
 	0, 0, 5, 10, 10, 5, 0, 0,
 }
 
+var kingE = [64]int{
+	-50, -10, 0, 0, 0, 0, -10, -50,
+	-10, 0, 10, 10, 10, 10, 0, -10,
+	0, 10, 20, 20, 20, 20, 10, 0,
+	0, 10, 20, 40, 40, 20, 10, 0,
+	0, 10, 20, 40, 40, 20, 10, 0,
+	0, 10, 20, 20, 20, 20, 10, 0,
+	-10, 0, 10, 10, 10, 10, 0, -10,
+	-50, -10, 0, 0, 0, 0, -10, -50,
+}
+
+var kingO = [64]int{
+	0, 5, 5, -10, -10, 0, 10, 5,
+	-30, -30, -30, -30, -30, -30, -30, -30,
+	-50, -50, -50, -50, -50, -50, -50, -50,
+	-70, -70, -70, -70, -70, -70, -70, -70,
+	-70, -70, -70, -70, -70, -70, -70, -70,
+	-70, -70, -70, -70, -70, -70, -70, -70,
+	-70, -70, -70, -70, -70, -70, -70, -70,
+	-70, -70, -70, -70, -70, -70, -70, -70,
+}
+
 var pawnIsolated = -10
 var pawnPassed = [8]int{0, 5, 10, 20, 35, 60, 100, 200}
 var rookOpenFile = 10
@@ -56,6 +80,11 @@ var queenOpenFile = 5
 var queenSemiOpenFile = 3
 
 func EvalPosistion(pos *data.Board) int {
+
+	if materialDraw(pos) {
+		return 0
+	}
+
 	score := pos.Material[data.White] - pos.Material[data.Black]
 
 	//Pawns
@@ -150,10 +179,62 @@ func EvalPosistion(pos *data.Board) int {
 			score -= queenSemiOpenFile
 		}
 	}
+	//King
+	piece = data.WK
+	sq := pos.PieceList[piece][0]
+	if pos.PieceNumber[data.BQ] == 0 || pos.Material[data.Black] <= isEndGame() {
+		score += kingE[data.Square120ToSquare64[sq]]
+	} else {
+		score += kingO[data.Square120ToSquare64[sq]]
+	}
+	piece = data.BK
+	sq = pos.PieceList[piece][0]
+	if pos.PieceNumber[data.WQ] == 0 || pos.Material[data.White] <= isEndGame() {
+		score -= kingE[data.Mirror64[data.Square120ToSquare64[sq]]]
+	} else {
+		score -= kingO[data.Mirror64[data.Square120ToSquare64[sq]]]
+	}
 
 	if pos.Side == data.White {
 		return score
 	} else {
 		return -score
 	}
+}
+
+func materialDraw(pos *data.Board) bool {
+	if pos.PieceNumber[data.WR] == 0 && pos.PieceNumber[data.BR] == 0 && pos.PieceNumber[data.WQ] == 0 && pos.PieceNumber[data.BQ] == 0 {
+		if pos.PieceNumber[data.WB] == 0 && pos.PieceNumber[data.BB] == 0 {
+			if pos.PieceNumber[data.WN] < 3 && pos.PieceNumber[data.BN] < 3 {
+				return true
+			}
+		} else if pos.PieceNumber[data.WN] == 0 && pos.PieceNumber[data.BN] == 0 {
+			if math.Abs(float64(pos.PieceNumber[data.WB]-pos.PieceNumber[data.BB])) < 2 {
+				return true
+			}
+		} else if (pos.PieceNumber[data.WN] < 3 && pos.PieceNumber[data.WB] == 0) || (pos.PieceNumber[data.WB] == 1 && pos.PieceNumber[data.WN] == 0) {
+			if (pos.PieceNumber[data.BN] < 3 && pos.PieceNumber[data.BB] == 0) || (pos.PieceNumber[data.BB] == 1 && pos.PieceNumber[data.BN] == 0) {
+				return true
+			}
+		}
+	} else if pos.PieceNumber[data.WQ] == 0 && pos.PieceNumber[data.BQ] == 0 {
+		if pos.PieceNumber[data.WR] == 1 && pos.PieceNumber[data.BR] == 1 {
+			if (pos.PieceNumber[data.WN]+pos.PieceNumber[data.WB]) < 2 && (pos.PieceNumber[data.BN]+pos.PieceNumber[data.BB]) < 2 {
+				return true
+			}
+		} else if pos.PieceNumber[data.WR] == 1 && pos.PieceNumber[data.BR] == 0 {
+			if (pos.PieceNumber[data.WN]+pos.PieceNumber[data.WB] == 0) && (((pos.PieceNumber[data.BN] + pos.PieceNumber[data.BB]) == 1) || ((pos.PieceNumber[data.BN] + pos.PieceNumber[data.BB]) == 2)) {
+				return true
+			}
+		} else if pos.PieceNumber[data.BR] == 1 && pos.PieceNumber[data.WR] == 0 {
+			if (pos.PieceNumber[data.BN]+pos.PieceNumber[data.BB] == 0) && (((pos.PieceNumber[data.WN] + pos.PieceNumber[data.WB]) == 1) || ((pos.PieceNumber[data.WN] + pos.PieceNumber[data.WB]) == 2)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isEndGame() int {
+	return (2 * data.PieceVal[data.WR]) + (4 * data.PieceVal[data.WN]) + (8 * data.PieceVal[data.WP])
 }

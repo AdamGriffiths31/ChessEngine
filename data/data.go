@@ -23,7 +23,7 @@ const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
 
-const StartFEN = "3r3k/8/1p1P4/b7/8/8/7B/b1B1R1nK w - - 0 0"
+const StartFEN = "8/4P1K1/2P5/b3k2b/8/8/2P5/8 w - - 0 0"
 
 //const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
