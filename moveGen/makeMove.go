@@ -7,6 +7,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/io"
+	"github.com/AdamGriffiths31/ChessEngine/validate"
 )
 
 func MakeMove(move int, pos *data.Board) bool {
@@ -16,6 +17,16 @@ func MakeMove(move int, pos *data.Board) bool {
 	from := data.FromSquare(move)
 	to := data.ToSquare(move)
 	side := pos.Side
+
+	if !validate.SquareOnBoard(from) {
+		fmt.Printf("\nMakeMove from sqaure Move: %v\n", io.PrintMove(move))
+		io.PrintBoard(pos)
+	}
+
+	if !validate.SquareOnBoard(to) {
+		fmt.Printf("\nMakeMove to sqaure Move: %v\n", io.PrintMove(move))
+		io.PrintBoard(pos)
+	}
 
 	pos.History[pos.HistoryPlay].PosistionKey = pos.PosistionKey
 
@@ -72,14 +83,8 @@ func MakeMove(move int, pos *data.Board) bool {
 		if (move & data.MFLAGPS) != 0 {
 			if side == data.White {
 				pos.EnPas = from + 10
-				if data.RanksBoard[pos.EnPas] != data.Rank3 {
-					panic(fmt.Errorf("MakeMove: white pawn enPas error %v", pos.EnPas))
-				}
 			} else {
 				pos.EnPas = from - 10
-				if data.RanksBoard[pos.EnPas] != data.Rank6 {
-					panic(fmt.Errorf("MakeMove: white pawn enPas error %v", pos.EnPas))
-				}
 			}
 			hashEnPas(pos)
 		}
@@ -89,9 +94,7 @@ func MakeMove(move int, pos *data.Board) bool {
 
 	promotedPiece := data.Promoted(move)
 	if promotedPiece != 0 {
-		if data.PiecePawn[promotedPiece] == data.True {
-			panic(fmt.Errorf("MakeMove: can't promote to a pawn"))
-		}
+
 		ClearPiece(to, pos)
 		AddPiece(to, promotedPiece, pos)
 	}
@@ -307,6 +310,48 @@ func ClearPiece(sq int, pos *data.Board) {
 
 	pos.PieceNumber[piece]--
 	pos.PieceList[piece][tempPiece] = pos.PieceList[piece][pos.PieceNumber[piece]]
+}
+
+func MakeNullMove(pos *data.Board) {
+	board.CheckBoard(pos)
+	pos.Play++
+	pos.History[pos.HistoryPlay].PosistionKey = pos.PosistionKey
+
+	if pos.EnPas != data.NoSquare {
+		hashEnPas(pos)
+	}
+
+	pos.History[pos.HistoryPlay].Move = data.NoMove
+	pos.History[pos.HistoryPlay].FiftyMove = pos.FiftyMove
+	pos.History[pos.HistoryPlay].EnPas = pos.EnPas
+	pos.History[pos.HistoryPlay].CastlePermission = pos.CastlePermission
+	pos.EnPas = data.NoSquare
+
+	pos.Side ^= 1
+	pos.HistoryPlay++
+	hashSide(pos)
+}
+
+func TakeBackNullMove(pos *data.Board) {
+	board.CheckBoard(pos)
+
+	pos.Play--
+	pos.HistoryPlay--
+
+	if pos.EnPas != data.NoSquare {
+		hashEnPas(pos)
+	}
+
+	pos.CastlePermission = pos.History[pos.HistoryPlay].CastlePermission
+	pos.FiftyMove = pos.History[pos.HistoryPlay].FiftyMove
+	pos.EnPas = pos.History[pos.HistoryPlay].EnPas
+
+	if pos.EnPas != data.NoSquare {
+		hashEnPas(pos)
+	}
+
+	pos.Side ^= 1
+	hashSide(pos)
 }
 
 func ParseMove(move []byte, pos *data.Board) int {

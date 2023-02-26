@@ -285,6 +285,10 @@ func resetBoard(pos *data.Board) {
 	pos.CastlePermission = 0
 
 	pos.PosistionKey = 0
+
+	pos.PiecesBB = 0
+	pos.ColoredPiecesBB = 0
+	pos.WhitePiecesBB = 0
 }
 
 // getPieceType returns returns the corresponding piece type integer

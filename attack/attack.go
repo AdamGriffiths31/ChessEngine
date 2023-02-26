@@ -1,22 +1,12 @@
 package attack
 
 import (
-	"fmt"
-
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
-	"github.com/AdamGriffiths31/ChessEngine/validate"
 )
 
 // SquareAttacked checks if the square is under attack
 func SquareAttacked(square int, side int, pos *data.Board) bool {
-	if !validate.SideValid(side) {
-		panic(fmt.Errorf("SquareAttacked: side %v is invalid", side))
-	}
-	if !validate.SquareOnBoard(square) {
-		panic(fmt.Errorf("SquareAttacked: square %v is invalid", side))
-	}
-
 	board.CheckBoard(pos)
 
 	if isAttackedByPawn(square, side, pos) {

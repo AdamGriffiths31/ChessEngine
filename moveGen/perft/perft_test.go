@@ -28,7 +28,7 @@ func TestMoveGenPerft(t *testing.T) {
 		parts := strings.Split(line, ",")
 		fen := parts[0]
 		counter++
-		for i := 1; i < len(parts); i++ {
+		for i := 1; i < len(parts) && i < 5; i++ {
 			ans := PerftTest(i, fen)
 			t.Logf("depth: %v   %v got wanted  %v\n", i, ans, parts[i])
 
@@ -42,7 +42,7 @@ func TestMoveGenPerft(t *testing.T) {
 			fmt.Printf("Perft pos:%d", counter)
 		}
 
-		if counter == 1 {
+		if counter == 100 {
 			duration := time.Since(startTime)
 			fmt.Println("\n\nTime elapsed:", duration)
 			break

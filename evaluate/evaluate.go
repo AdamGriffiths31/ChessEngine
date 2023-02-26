@@ -78,10 +78,11 @@ var rookOpenFile = 10
 var rookSemiOpenFile = 5
 var queenOpenFile = 5
 var queenSemiOpenFile = 3
+var bishopPair = 30
 
 func EvalPosistion(pos *data.Board) int {
 
-	if materialDraw(pos) {
+	if pos.PieceNumber[data.WP] == 0 && pos.PieceNumber[data.BP] == 0 && materialDraw(pos) {
 		return 0
 	}
 
@@ -136,6 +137,13 @@ func EvalPosistion(pos *data.Board) int {
 		sq := pos.PieceList[piece][pieceNum]
 		score -= bishopTable[data.Mirror64[data.Square120ToSquare64[sq]]]
 	}
+
+	if pos.PieceNumber[data.WB] >= 2 {
+		score += bishopPair
+	}
+	if pos.PieceNumber[data.BB] >= 2 {
+		score -= bishopPair
+	}
 	//Rook
 	piece = data.WR
 	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
@@ -182,14 +190,14 @@ func EvalPosistion(pos *data.Board) int {
 	//King
 	piece = data.WK
 	sq := pos.PieceList[piece][0]
-	if pos.PieceNumber[data.BQ] == 0 || pos.Material[data.Black] <= isEndGame() {
+	if pos.Material[data.Black] <= isEndGame() {
 		score += kingE[data.Square120ToSquare64[sq]]
 	} else {
 		score += kingO[data.Square120ToSquare64[sq]]
 	}
 	piece = data.BK
 	sq = pos.PieceList[piece][0]
-	if pos.PieceNumber[data.WQ] == 0 || pos.Material[data.White] <= isEndGame() {
+	if pos.Material[data.White] <= isEndGame() {
 		score -= kingE[data.Mirror64[data.Square120ToSquare64[sq]]]
 	} else {
 		score -= kingO[data.Mirror64[data.Square120ToSquare64[sq]]]
@@ -236,5 +244,5 @@ func materialDraw(pos *data.Board) bool {
 }
 
 func isEndGame() int {
-	return (2 * data.PieceVal[data.WR]) + (4 * data.PieceVal[data.WN]) + (8 * data.PieceVal[data.WP])
+	return (1 * data.PieceVal[data.WR]) + (2 * data.PieceVal[data.WN]) + (2 * data.PieceVal[data.WP])
 }

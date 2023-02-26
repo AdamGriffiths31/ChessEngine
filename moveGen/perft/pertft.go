@@ -26,7 +26,6 @@ func Perft(depth int, pos *data.Board) {
 		if !movegen.MakeMove(ml.Moves[moveNum].Move, pos) {
 			continue
 		}
-
 		Perft(depth-1, pos)
 
 		movegen.TakeMoveBack(pos)

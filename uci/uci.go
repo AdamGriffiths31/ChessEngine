@@ -9,6 +9,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	"github.com/AdamGriffiths31/ChessEngine/io"
 	movegen "github.com/AdamGriffiths31/ChessEngine/moveGen"
 	"github.com/AdamGriffiths31/ChessEngine/search"
 	"github.com/AdamGriffiths31/ChessEngine/util"
@@ -44,6 +45,8 @@ func Uci(pos *data.Board, info *data.SearchInfo) {
 			board.ParseFEN(data.StartFEN, pos)
 		} else if strings.HasPrefix(text, "go") {
 			parseGo(text, info, pos)
+		} else if text == "print" {
+			io.PrintBoard(pos)
 		} else if text == "quit" {
 			info.Quit = data.True
 			break
@@ -142,6 +145,7 @@ func parsePosition(lineIn string, pos *data.Board) {
 	}
 
 	if parts[1] == "startpos" {
+		fmt.Printf("startpos called\n\n")
 		board.ParseFEN(data.StartFEN, pos)
 	}
 
@@ -160,6 +164,10 @@ func parsePosition(lineIn string, pos *data.Board) {
 	if startIndex != 0 {
 		for i := startIndex + 1; i < len(parts); i++ {
 			move := movegen.ParseMove([]byte(parts[i]), pos)
+			if move == data.NoMove {
+				io.PrintBoard(pos)
+				fmt.Printf("UCI move error: Parsing UCI (%v) (%v) %v - %v\n", parts[i], lineIn, move, io.PrintMove(move))
+			}
 			movegen.MakeMove(move, pos)
 			pos.Play = 0
 		}

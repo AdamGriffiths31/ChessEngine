@@ -15,17 +15,16 @@ func init() {
 	setFilesAndRanks()
 	setEvalMasks()
 	initMvvLva()
-	init_sliders_attacks()
-
+	Init_sliders_attacks()
 }
 
 const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
 
-const StartFEN = "8/4P1K1/2P5/b3k2b/8/8/2P5/8 w - - 0 0"
+//const StartFEN = "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq d6 0 2"
 
-//const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 //const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
 
@@ -178,6 +177,13 @@ const (
 	BlackQueenCastle = 8
 )
 
+const (
+	PVNone  = iota
+	PVAlpha = iota
+	PVBeta  = iota
+	PVExact = iota
+)
+
 var BitTable = [64]int{
 	63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
 	51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
@@ -236,11 +242,16 @@ type Undo struct {
 type PVEntry struct {
 	PosistionKey uint64
 	Move         int
+	Score        int
+	Depth        int
+	Flag         int
 }
 
 type PVTable struct {
 	PTable        []PVEntry
 	NumberEntries int
+	Hit           int
+	Cut           int
 }
 
 type SearchInfo struct {
@@ -266,6 +277,8 @@ type SearchInfo struct {
 
 	GameMode int
 }
+
+const Mate = 30000 - MaxDepth
 
 var Square120ToSquare64 [120]int
 var Square64ToSquare120 [64]int
@@ -555,7 +568,7 @@ func NewBoardPos() *Board {
 }
 
 func InitPvTable(table *PVTable) {
-	var pvSize = 0x100000 * 2
+	var pvSize = 0x100000 * 16
 	table.NumberEntries = pvSize / int(unsafe.Sizeof(PVEntry{}))
 	table.NumberEntries -= 2
 	table.PTable = make([]PVEntry, table.NumberEntries)
@@ -779,7 +792,8 @@ func maskRookAttacks(square int) uint64 {
 	return attacks
 }
 
-func init_sliders_attacks() {
+func Init_sliders_attacks() {
+
 	for square := 0; square < 64; square++ {
 		RookMask[square] = maskRookAttacks(square)
 		BishopMask[square] = maskBishopAttacks(square)
