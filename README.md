@@ -20,6 +20,10 @@ Go implementation of a UCI compatible chess engine.
 
 ## Versions
 
+### v0.5
+
+- PolyGlot openning book
+
 ### v0.4 (done)
 
 - Moved MoveGen to a bitboard system

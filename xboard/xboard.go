@@ -10,7 +10,9 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/attack"
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	"github.com/AdamGriffiths31/ChessEngine/io"
 	"github.com/AdamGriffiths31/ChessEngine/moveGen"
+	polyglot "github.com/AdamGriffiths31/ChessEngine/polyGlot"
 	"github.com/AdamGriffiths31/ChessEngine/search"
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
@@ -120,6 +122,13 @@ func Xboard(pos *data.Board, info *data.SearchInfo) {
 				inputTime, _ := strconv.Atoi(parts[1])
 				inputTime *= 10
 				time = inputTime
+				continue
+			}
+
+			if input == "polykey" {
+				io.PrintBoard(pos)
+				fmt.Printf("Poly: %11X\n", polyglot.PolyKeyFromBoard(pos))
+				continue
 			}
 
 			if input == "go" {
@@ -136,6 +145,7 @@ func Xboard(pos *data.Board, info *data.SearchInfo) {
 				}
 				moveGen.MakeMove(move, pos)
 				pos.Play = 0
+				continue
 			}
 
 			if len(input) >= 3 {

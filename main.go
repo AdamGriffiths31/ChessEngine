@@ -8,11 +8,13 @@ import (
 
 	consolemode "github.com/AdamGriffiths31/ChessEngine/consoleMode"
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	polyglot "github.com/AdamGriffiths31/ChessEngine/polyGlot"
 	"github.com/AdamGriffiths31/ChessEngine/uci"
 	"github.com/AdamGriffiths31/ChessEngine/xboard"
 )
 
 func main() {
+	polyglot.InitPolyBook(&polyglot.Entries{})
 	pos := data.NewBoardPos()
 	info := &data.SearchInfo{}
 
