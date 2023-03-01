@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	polyglot.InitPolyBook(&polyglot.Entries{})
+	polyglot.InitPolyBook()
 	pos := data.NewBoardPos()
 	info := &data.SearchInfo{}
 

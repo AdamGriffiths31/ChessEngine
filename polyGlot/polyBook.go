@@ -1,28 +1,24 @@
 package polyglot
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log"
+	"io"
 	"os"
 	"unsafe"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	ioInternal "github.com/AdamGriffiths31/ChessEngine/io"
+	"github.com/AdamGriffiths31/ChessEngine/moveGen"
 )
 
-func InitPolyBook(entries *Entries) {
+func InitPolyBook() {
 	file, err := os.Open("performance.bin")
 	if err != nil {
 		fmt.Println(os.Getwd())
 		panic(fmt.Errorf("InitPolyBook: open performance.bin. %v", err))
 	}
 	defer file.Close()
-
-	// position, err := file.Seek(0, io.SeekEnd)
-	// if err != nil {
-	// 	panic(fmt.Errorf("InitPolyBook: position error %v", err))
-	// }
 
 	fi, err := os.Stat("performance.bin")
 	if err != nil {
@@ -33,17 +29,68 @@ func InitPolyBook(entries *Entries) {
 	NumEntries = uint64(size) / uint64(unsafe.Sizeof(PolyBookEntry{}))
 	fmt.Printf("NumEntries: %d\n", NumEntries)
 
-	entries.PolyEntry = make([]PolyBookEntry, NumEntries)
+	PolyEntry = make([]PolyBookEntry, NumEntries)
 
+	reader := io.Reader(file)
+	_ = binary.Read(reader, binary.LittleEndian, &PolyEntry)
+	//fmt.Printf("readSlice:%v\nAfter read:\n%#v\n", len(entries.PolyEntry), entries.PolyEntry)
+	fmt.Printf("readSlice:%v", len(PolyEntry))
+}
+
+func ListBookMoves(polyKey uint64, pos *data.Board) {
+	var bookMoves [32]int
+	count := 0
 	for i := 0; i < int(NumEntries); i++ {
-		data := readNextBytes(file, int(unsafe.Sizeof(PolyBookEntry{})))
-		buffer := bytes.NewBuffer(data)
-		err = binary.Read(buffer, binary.LittleEndian, &entries.PolyEntry[i])
-		if err != nil {
-			panic(fmt.Errorf("InitPolyBook: binary Read failed %v", err))
+		if polyKey == littleEndianToBigEndianUint64(PolyEntry[i].Key) {
+			move := littleEndianToBigEndianUint16(PolyEntry[i].Move)
+			tempMove := ConvertPolyMove(move, pos)
+			if tempMove != data.NoMove {
+				bookMoves[count] = tempMove
+				count++
+				if count > 32 {
+					return
+				}
+			}
 		}
 	}
+	for i, v := range bookMoves {
+		if v == 0 {
+			break
+		}
+		fmt.Printf("Book move %v : %v\n", i, ioInternal.PrintMove(v))
+	}
+}
 
+func ConvertPolyMove(polyMove uint16, pos *data.Board) int {
+
+	ff := data.FileChars[(polyMove >> 6 & 7)]
+	fr := data.RankChars[(polyMove >> 9 & 7)]
+	tf := data.FileChars[(polyMove >> 0 & 7)]
+	tr := data.RankChars[(polyMove >> 3 & 7)]
+	pp := (polyMove >> 12 & 7)
+	var move string
+	promotedPiece := "q"
+	if pp != 0 {
+		switch pp {
+		case 1:
+			promotedPiece = "n"
+		case 2:
+			promotedPiece = "b"
+		case 3:
+			promotedPiece = "r"
+		}
+		move = fmt.Sprintf("%s%s%s%s%s", ff, fr, tf, tr, promotedPiece)
+	} else {
+		move = fmt.Sprintf("%s%s%s%s", ff, fr, tf, tr)
+	}
+
+	return moveGen.ParseMove([]byte(move), pos)
+}
+
+func GetBookMove(pos *data.Board) {
+	polyKey := PolyKeyFromBoard(pos)
+	fmt.Printf("Poly: %11X\n", polyKey)
+	ListBookMoves(polyKey, pos)
 }
 
 func PolyKeyFromBoard(pos *data.Board) uint64 {
@@ -111,22 +158,27 @@ func hasPawnForCapture(pos *data.Board) bool {
 	return false
 }
 
-func readNextBytes(file *os.File, number int) []byte {
-	bytes := make([]byte, number)
-
-	_, err := file.Read(bytes)
-	if err != nil {
-		log.Fatal(err)
+func clearEntries() {
+	for i := range PolyEntry {
+		PolyEntry[i].Key = 0
+		PolyEntry[i].Move = 0
+		PolyEntry[i].Weight = 0
+		PolyEntry[i].Learn = 0
 	}
-
-	return bytes
 }
 
-func clearEntries(entries *Entries) {
-	for i := range entries.PolyEntry {
-		entries.PolyEntry[i].Key = 0
-		entries.PolyEntry[i].Move = 0
-		entries.PolyEntry[i].Weight = 0
-		entries.PolyEntry[i].Learn = 0
-	}
+func littleToBigEndian(l uint32) uint32 {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, l)
+	return binary.BigEndian.Uint32(b)
+}
+
+func littleEndianToBigEndianUint64(littleEndian uint64) uint64 {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, littleEndian)
+	return binary.BigEndian.Uint64(b)
+}
+
+func littleEndianToBigEndianUint16(n uint16) uint16 {
+	return (n >> 8) | (n << 8)
 }

@@ -8,12 +8,10 @@ type PolyBookEntry struct {
 	Key    uint64
 	Move   uint16
 	Weight uint16
-	Learn  uint16
+	Learn  uint32
 }
 
-type Entries struct {
-	PolyEntry []PolyBookEntry
-}
+var PolyEntry []PolyBookEntry
 
 var NumEntries uint64 = 0
 

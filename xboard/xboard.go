@@ -127,7 +127,7 @@ func Xboard(pos *data.Board, info *data.SearchInfo) {
 
 			if input == "polykey" {
 				io.PrintBoard(pos)
-				fmt.Printf("Poly: %11X\n", polyglot.PolyKeyFromBoard(pos))
+				polyglot.GetBookMove(pos)
 				continue
 			}
 
