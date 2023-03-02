@@ -278,6 +278,12 @@ type SearchInfo struct {
 	GameMode int
 }
 
+type EngineOptions struct {
+	UseBook bool
+}
+
+var EngineSettings EngineOptions
+
 const Mate = 30000 - MaxDepth
 
 var Square120ToSquare64 [120]int
@@ -568,7 +574,7 @@ func NewBoardPos() *Board {
 }
 
 func InitPvTable(table *PVTable) {
-	var pvSize = 0x100000 * 16
+	var pvSize = 0x100000 * 64
 	table.NumberEntries = pvSize / int(unsafe.Sizeof(PVEntry{}))
 	table.NumberEntries -= 2
 	table.PTable = make([]PVEntry, table.NumberEntries)

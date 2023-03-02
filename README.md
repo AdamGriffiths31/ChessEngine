@@ -6,8 +6,8 @@ Go implementation of a UCI compatible chess engine.
 
 | Version | Time Control | Est Rating |
 | ------- | ------------ | ---------- |
-| 0.4     | 5 +6         | 2100       |
-| 0.2     | 5 +6         | 1900       |
+| 0.4     | 5 +6         | 1900       |
+| 0.2     | 5 +6         | 1800       |
 
 ## Perft
 
@@ -20,7 +20,7 @@ Go implementation of a UCI compatible chess engine.
 
 ## Versions
 
-### v0.5
+### v0.5 (done)
 
 - PolyGlot openning book
 

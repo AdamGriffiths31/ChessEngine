@@ -10,6 +10,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/evaluate"
 	"github.com/AdamGriffiths31/ChessEngine/io"
 	"github.com/AdamGriffiths31/ChessEngine/moveGen"
+	polyglot "github.com/AdamGriffiths31/ChessEngine/polyGlot"
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
@@ -26,30 +27,35 @@ func SearchPosistion(pos *data.Board, info *data.SearchInfo) {
 	bestScore := 30000
 	bestMove := data.NoMove
 	clearForSearch(pos, info)
+	if data.EngineSettings.UseBook {
+		bestMove = polyglot.GetBookMove(pos)
+	}
 
-	for currentDepth := 1; currentDepth < info.Depth; currentDepth++ {
-		bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info, true)
-		if info.Stopped == data.True {
-			break
-		}
-		pvMoves := moveGen.GetPvLine(currentDepth, pos)
-		bestMove = pos.PvArray[0]
-		if info.GameMode == data.UCIMode {
-			fmt.Printf("info score cp %d depth %d nodes %v time %d ", bestScore, currentDepth, info.Node, util.GetTimeMs()-info.StartTime)
-		} else if info.GameMode == data.XboardMode && info.PostThinking {
-			fmt.Printf("%d %d %d %v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
-		} else if info.PostThinking {
-			fmt.Printf("depth: %d score: %d time:%d  nodes:%v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
-		}
-
-		if info.GameMode == data.UCIMode || info.PostThinking {
-			fmt.Printf("pv")
-			for i := 0; i < pvMoves; i++ {
-				fmt.Printf(" %s", io.PrintMove(pos.PvArray[i]))
+	if bestMove == data.NoMove {
+		for currentDepth := 1; currentDepth < info.Depth+1; currentDepth++ {
+			bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info, true)
+			if info.Stopped == data.True {
+				break
 			}
-			fmt.Printf("\n")
-		}
+			pvMoves := moveGen.GetPvLine(currentDepth, pos)
+			bestMove = pos.PvArray[0]
+			if info.GameMode == data.UCIMode {
+				fmt.Printf("info score cp %d depth %d nodes %v time %d ", bestScore, currentDepth, info.Node, util.GetTimeMs()-info.StartTime)
+			} else if info.GameMode == data.XboardMode && info.PostThinking {
+				fmt.Printf("%d %d %d %v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
+			} else if info.PostThinking {
+				fmt.Printf("depth: %d score: %d time:%d  nodes:%v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
+			}
 
+			if info.GameMode == data.UCIMode || info.PostThinking {
+				fmt.Printf("pv")
+				for i := 0; i < pvMoves; i++ {
+					fmt.Printf(" %s", io.PrintMove(pos.PvArray[i]))
+				}
+				fmt.Printf("\n")
+			}
+
+		}
 	}
 	if info.GameMode == data.UCIMode {
 		fmt.Printf("bestmove %s\n", io.PrintMove(bestMove))
@@ -99,7 +105,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		return score
 	}
 
-	if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 0 && depth >= 4 {
+	if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
 		moveGen.MakeNullMove(pos)
 		score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false)
 		moveGen.TakeBackNullMove(pos)

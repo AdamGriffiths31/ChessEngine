@@ -22,6 +22,7 @@ func Uci(pos *data.Board, info *data.SearchInfo) {
 	fmt.Println("id name MyGoEngine")
 	fmt.Println("id author Adam")
 	fmt.Println("uciok")
+	fmt.Printf("engine book: %v\n", data.EngineSettings.UseBook)
 
 	board.ParseFEN(data.StartFEN, pos)
 
@@ -45,8 +46,14 @@ func Uci(pos *data.Board, info *data.SearchInfo) {
 			board.ParseFEN(data.StartFEN, pos)
 		} else if strings.HasPrefix(text, "go") {
 			parseGo(text, info, pos)
+		} else if strings.HasPrefix(text, "setoption") {
+			parseOption(text, info, pos)
 		} else if text == "print" {
 			io.PrintBoard(pos)
+		} else if text == "run" {
+			data.EngineSettings.UseBook = false
+			board.ParseFEN(data.StartFEN, pos)
+			parseGo("go infinite", info, pos)
 		} else if text == "quit" {
 			info.Quit = data.True
 			break
@@ -54,6 +61,17 @@ func Uci(pos *data.Board, info *data.SearchInfo) {
 
 		if info.Quit == data.True {
 			break
+		}
+	}
+}
+
+func parseOption(line string, info *data.SearchInfo, pos *data.Board) {
+	tokens := strings.Split(line, " ")
+
+	for i := 0; i < len(tokens); i++ {
+		switch tokens[i] {
+		case "book":
+			parseBook(tokens[i+1], info, pos)
 		}
 	}
 }
@@ -106,6 +124,19 @@ func parseGo(line string, info *data.SearchInfo, pos *data.Board) {
 	fmt.Printf("time:%d start:%d stop:%d depth:%d timeset:%v\n", info.Time, info.StartTime, info.StopTime, info.Depth, info.TimeSet)
 
 	search.SearchPosistion(pos, info)
+}
+
+func parseBook(line string, info *data.SearchInfo, pos *data.Board) {
+	switch line {
+	case "true":
+		data.EngineSettings.UseBook = true
+		fmt.Printf("book turned on\n")
+	case "false":
+		data.EngineSettings.UseBook = false
+		fmt.Printf("book turned off\n")
+	default:
+		fmt.Printf("Unkown book command expected true / false ")
+	}
 }
 
 func parseInc(token string, side int, pos *data.Board, info *data.SearchInfo) {

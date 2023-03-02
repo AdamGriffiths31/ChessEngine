@@ -4,15 +4,16 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"unsafe"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
-	ioInternal "github.com/AdamGriffiths31/ChessEngine/io"
 	"github.com/AdamGriffiths31/ChessEngine/moveGen"
 )
 
 func InitPolyBook() {
+	data.EngineSettings.UseBook = false
 	file, err := os.Open("performance.bin")
 	if err != nil {
 		fmt.Println(os.Getwd())
@@ -27,18 +28,20 @@ func InitPolyBook() {
 	size := fi.Size()
 
 	NumEntries = uint64(size) / uint64(unsafe.Sizeof(PolyBookEntry{}))
-	fmt.Printf("NumEntries: %d\n", NumEntries)
 
 	PolyEntry = make([]PolyBookEntry, NumEntries)
 
 	reader := io.Reader(file)
 	_ = binary.Read(reader, binary.LittleEndian, &PolyEntry)
-	//fmt.Printf("readSlice:%v\nAfter read:\n%#v\n", len(entries.PolyEntry), entries.PolyEntry)
-	fmt.Printf("readSlice:%v", len(PolyEntry))
+
+	if NumEntries > 0 {
+		data.EngineSettings.UseBook = true
+	}
 }
 
-func ListBookMoves(polyKey uint64, pos *data.Board) {
+func GetBookMove(pos *data.Board) int {
 	var bookMoves [32]int
+	polyKey := PolyKeyFromBoard(pos)
 	count := 0
 	for i := 0; i < int(NumEntries); i++ {
 		if polyKey == littleEndianToBigEndianUint64(PolyEntry[i].Key) {
@@ -48,17 +51,16 @@ func ListBookMoves(polyKey uint64, pos *data.Board) {
 				bookMoves[count] = tempMove
 				count++
 				if count > 32 {
-					return
+					break
 				}
 			}
 		}
 	}
-	for i, v := range bookMoves {
-		if v == 0 {
-			break
-		}
-		fmt.Printf("Book move %v : %v\n", i, ioInternal.PrintMove(v))
+	if count != 0 {
+		randMove := rand.Intn(count)
+		return bookMoves[randMove]
 	}
+	return data.NoMove
 }
 
 func ConvertPolyMove(polyMove uint16, pos *data.Board) int {
@@ -85,12 +87,6 @@ func ConvertPolyMove(polyMove uint16, pos *data.Board) int {
 	}
 
 	return moveGen.ParseMove([]byte(move), pos)
-}
-
-func GetBookMove(pos *data.Board) {
-	polyKey := PolyKeyFromBoard(pos)
-	fmt.Printf("Poly: %11X\n", polyKey)
-	ListBookMoves(polyKey, pos)
 }
 
 func PolyKeyFromBoard(pos *data.Board) uint64 {
