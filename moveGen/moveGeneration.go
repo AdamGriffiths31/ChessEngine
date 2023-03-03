@@ -81,21 +81,19 @@ func addQuiteMove(pos *data.Board, move int, moveList *data.MoveList) {
 	default:
 		fromSq := data.FromSquare(move)
 		toSq := data.ToSquare(move)
-		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[fromSq]][pos.Pieces[toSq]]
+		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[fromSq]][toSq]
 	}
 
 	moveList.Count++
 }
 
 func addCaptureMove(pos *data.Board, move int, moveList *data.MoveList) {
-
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = data.MvvLvaScores[data.Captured(move)][pos.Pieces[data.FromSquare(move)]] + 1000000
 	moveList.Count++
 }
 
 func addEnPasMove(pos *data.Board, move int, moveList *data.MoveList) {
-
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = 105 + 1000000
 	moveList.Count++

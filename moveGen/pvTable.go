@@ -8,7 +8,7 @@ import (
 )
 
 func GetPvLine(depth int, pos *data.Board) int {
-	move := ProbePvTableSingle(pos)
+	move := ProbePvMove(pos)
 	count := 0
 	for move != data.NoMove && count < depth {
 		if MoveExists(pos, move) {
@@ -20,10 +20,11 @@ func GetPvLine(depth int, pos *data.Board) int {
 			fmt.Printf("GetPvLine break %v [%v](depth:%v)\n", move, io.PrintMove(move), depth)
 			break
 		}
-		move = ProbePvTableSingle(pos)
+		move = ProbePvMove(pos)
 	}
 
-	takeMovesBack(count, pos)
+	takeMovesBack(pos)
+
 	return count
 }
 
@@ -42,7 +43,7 @@ func StorePvMove(pos *data.Board, move, score, flag, depth int) {
 	pos.PvTable.PTable[index].Flag = flag
 }
 
-func ProbePvTable(pos *data.Board, move *int, score *int, alpha, beta, depth int) int {
+func ProbePvTable(pos *data.Board, move *int, score *int, alpha, beta, depth int) bool {
 	index := pos.PosistionKey % uint64(pos.PvTable.NumberEntries)
 	if pos.PvTable.PTable[index].PosistionKey == pos.PosistionKey {
 		*move = pos.PvTable.PTable[index].Move
@@ -56,31 +57,31 @@ func ProbePvTable(pos *data.Board, move *int, score *int, alpha, beta, depth int
 			}
 			switch pos.PvTable.PTable[index].Flag {
 			case data.PVAlpha:
-				*score = alpha
-				return data.True
+				if *score <= alpha {
+					*score = alpha
+					return true
+				}
 			case data.PVBeta:
-				*score = beta
-				return data.True
+				if *score >= beta {
+					*score = beta
+					return true
+				}
 			case data.PVExact:
-				return data.True
+				return true
+			default:
+				panic(fmt.Errorf("ProbePvTable: flag was not found"))
 			}
 		}
 	}
-	return data.False
+	return false
 }
 
-func ProbePvTableSingle(pos *data.Board) int {
+func ProbePvMove(pos *data.Board) int {
 	index := pos.PosistionKey % uint64(pos.PvTable.NumberEntries)
 	if pos.PvTable.PTable[index].PosistionKey == pos.PosistionKey {
 		return pos.PvTable.PTable[index].Move
 	}
 	return data.NoMove
-}
-
-func showTable(table *data.PVTable) {
-	for i := range table.PTable {
-		fmt.Printf("%v %v %v\n", i, table.PTable[i].PosistionKey, table.PTable[i].Move)
-	}
 }
 
 func ClearTable(table *data.PVTable) {
@@ -93,8 +94,8 @@ func ClearTable(table *data.PVTable) {
 	}
 }
 
-func takeMovesBack(count int, pos *data.Board) {
-	for i := 0; i < count; i++ {
+func takeMovesBack(pos *data.Board) {
+	for pos.Play != 0 {
 		TakeMoveBack(pos)
 	}
 }

@@ -40,5 +40,9 @@ func main() {
 		if input == "console" {
 			consolemode.ConsoleMode(pos, info)
 		}
+
+		if input == "quit" {
+			break
+		}
 	}
 }

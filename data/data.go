@@ -276,6 +276,9 @@ type SearchInfo struct {
 	FailHighFirst float32
 
 	GameMode int
+
+	Cut     int
+	NullCut int
 }
 
 type EngineOptions struct {

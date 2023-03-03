@@ -17,6 +17,9 @@ func SquareString(square int) string {
 }
 
 func PrintMove(move int) string {
+	if move == data.NoMove {
+		return "NoMove"
+	}
 	fromFile := data.FilesBoard[data.FromSquare(move)] + 'a'
 	fromRank := data.RanksBoard[data.FromSquare(move)] + '1'
 	toFile := data.FilesBoard[data.ToSquare(move)] + 'a'
