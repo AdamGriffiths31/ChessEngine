@@ -17,7 +17,6 @@ import (
 
 func Uci(pos *data.Board, info *data.SearchInfo) {
 	info.GameMode = data.UCIMode
-
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("id name MyGoEngine")
 	fmt.Println("id author Adam")
@@ -43,6 +42,7 @@ func Uci(pos *data.Board, info *data.SearchInfo) {
 		} else if strings.HasPrefix(text, "position") {
 			parsePosition(text, pos)
 		} else if text == "ucinewgame" {
+			movegen.ClearTable(pos.PvTable)
 			board.ParseFEN(data.StartFEN, pos)
 		} else if strings.HasPrefix(text, "go") {
 			parseGo(text, info, pos)

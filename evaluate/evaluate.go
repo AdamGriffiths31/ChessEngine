@@ -244,5 +244,5 @@ func materialDraw(pos *data.Board) bool {
 }
 
 func isEndGame() int {
-	return (1 * data.PieceVal[data.WR]) + (2 * data.PieceVal[data.WN]) + (2 * data.PieceVal[data.WP])
+	return (1 * data.PieceVal[data.WR]) + (2 * data.PieceVal[data.WN]) + (2 * data.PieceVal[data.WP]) + data.PieceVal[data.WK]
 }

@@ -31,6 +31,20 @@ func GetPvLine(depth int, pos *data.Board) int {
 func StorePvMove(pos *data.Board, move, score, flag, depth int) {
 	index := pos.PosistionKey % uint64(pos.PvTable.NumberEntries)
 
+	replace := false
+
+	if pos.PvTable.PTable[index].PosistionKey == 0 {
+		replace = true
+	} else {
+		if pos.PvTable.PTable[index].Age < pos.PvTable.CurrentAge || pos.PvTable.PTable[index].Depth <= depth {
+			replace = true
+		}
+	}
+
+	if !replace {
+		return
+	}
+
 	if score > data.Mate {
 		score += pos.Play
 	} else if score < -data.Mate {
@@ -41,6 +55,7 @@ func StorePvMove(pos *data.Board, move, score, flag, depth int) {
 	pos.PvTable.PTable[index].Depth = depth
 	pos.PvTable.PTable[index].Score = score
 	pos.PvTable.PTable[index].Flag = flag
+	pos.PvTable.PTable[index].Age = pos.PvTable.CurrentAge
 }
 
 func ProbePvTable(pos *data.Board, move *int, score *int, alpha, beta, depth int) bool {
@@ -91,7 +106,9 @@ func ClearTable(table *data.PVTable) {
 		table.PTable[i].Depth = 0
 		table.PTable[i].Score = 0
 		table.PTable[i].Flag = 0
+		table.PTable[i].Age = 0
 	}
+	table.CurrentAge = 0
 }
 
 func takeMovesBack(pos *data.Board) {

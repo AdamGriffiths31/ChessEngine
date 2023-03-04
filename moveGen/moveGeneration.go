@@ -54,16 +54,15 @@ func GenerateAllCaptures(pos *data.Board, moveList *data.MoveList) {
 }
 
 func MoveExists(pos *data.Board, move int) bool {
-	ml := data.MoveList{}
-	GenerateAllMoves(pos, &ml)
+	ml := &data.MoveList{}
+	GenerateAllMoves(pos, ml)
 
 	for moveNum := 0; moveNum < ml.Count; moveNum++ {
-		if !MakeMove(ml.Moves[moveNum].Move, pos) {
-			continue
-		}
-		TakeMoveBack(pos)
-		if ml.Moves[moveNum].Move == move {
-			return true
+		if MakeMove(ml.Moves[moveNum].Move, pos) {
+			TakeMoveBack(pos)
+			if ml.Moves[moveNum].Move == move {
+				return true
+			}
 		}
 	}
 
@@ -79,9 +78,7 @@ func addQuiteMove(pos *data.Board, move int, moveList *data.MoveList) {
 	case pos.SearchKillers[1][pos.Play]:
 		moveList.Moves[moveList.Count].Score = 800000
 	default:
-		fromSq := data.FromSquare(move)
-		toSq := data.ToSquare(move)
-		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[fromSq]][toSq]
+		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[data.FromSquare(move)]][data.ToSquare(move)]
 	}
 
 	moveList.Count++

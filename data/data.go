@@ -245,6 +245,7 @@ type PVEntry struct {
 	Score        int
 	Depth        int
 	Flag         int
+	Age          int
 }
 
 type PVTable struct {
@@ -252,6 +253,7 @@ type PVTable struct {
 	NumberEntries int
 	Hit           int
 	Cut           int
+	CurrentAge    int
 }
 
 type SearchInfo struct {
@@ -270,7 +272,7 @@ type SearchInfo struct {
 	Node int64
 
 	Quit    int
-	Stopped int
+	Stopped bool
 
 	FailHigh      float32
 	FailHighFirst float32
@@ -287,7 +289,8 @@ type EngineOptions struct {
 
 var EngineSettings EngineOptions
 
-const Mate = 30000 - MaxDepth
+const Infinite = 30000
+const Mate = Infinite - MaxDepth
 
 var Square120ToSquare64 [120]int
 var Square64ToSquare120 [64]int
