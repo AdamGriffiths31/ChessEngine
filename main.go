@@ -20,7 +20,7 @@ func main() {
 	data.InitPvTable(hash.HashTable)
 	pos := data.NewBoardPos()
 	info := &data.SearchInfo{}
-	info.WorkerNumber = 3
+	info.WorkerNumber = 0
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Printf("PVTable: %v entries (%v)\n", hash.HashTable.NumberEntries, hash.HashTable.CurrentAge)
 
