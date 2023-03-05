@@ -20,6 +20,11 @@ Go implementation of a UCI compatible chess engine.
 
 ## Versions
 
+### v0.6
+
+- Age Hashing
+- Search optimisation
+
 ### v0.5 (done)
 
 - PolyGlot openning book

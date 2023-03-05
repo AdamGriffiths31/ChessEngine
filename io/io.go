@@ -65,5 +65,5 @@ func PrintBoard(pos *data.Board) {
 	// Print side, en passant, and position key information
 	fmt.Printf("Side: %s\n", data.SideChar[pos.Side])
 	fmt.Printf("EnPas: %s\n", SquareString(pos.EnPas))
-	fmt.Printf("PosKey: %11X (%v)\n", pos.PosistionKey, pos.PosistionKey)
+	fmt.Printf("PosKey: %11X (%v)\n", pos.PositionKey, pos.PositionKey)
 }

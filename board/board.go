@@ -128,8 +128,8 @@ func CheckBoard(pos *data.Board) {
 		panic(fmt.Errorf("CheckBoard: side was %v", pos.Side))
 	}
 
-	if pos.PosistionKey != GeneratePositionKey(pos) {
-		panic(fmt.Errorf("CheckBoard: PosistionKey: %v did not match %v", pos.PosistionKey, GeneratePositionKey(pos)))
+	if pos.PositionKey != GeneratePositionKey(pos) {
+		panic(fmt.Errorf("CheckBoard: PositionKey: %v did not match %v", pos.PositionKey, GeneratePositionKey(pos)))
 	}
 
 	if pos.EnPas != data.NoSquare {
@@ -242,7 +242,7 @@ func MirrorBoard(pos *data.Board) {
 	pos.CastlePermission = tempCastlePerm
 	pos.EnPas = tempEnPas
 
-	pos.PosistionKey = GeneratePositionKey(pos)
+	pos.PositionKey = GeneratePositionKey(pos)
 	UpdateListMaterial(pos)
 
 	CheckBoard(pos)
@@ -284,7 +284,7 @@ func resetBoard(pos *data.Board) {
 
 	pos.CastlePermission = 0
 
-	pos.PosistionKey = 0
+	pos.PositionKey = 0
 
 	pos.PiecesBB = 0
 	pos.ColoredPiecesBB = 0
@@ -314,4 +314,33 @@ func getPieceType(ch rune) int {
 	}
 
 	return piece
+}
+
+func Clone(b *data.Board) *data.Board {
+	clone := &data.Board{}
+	clone.Side = b.Side
+	clone.Play = b.Play
+	clone.HistoryPlay = b.HistoryPlay
+	clone.EnPas = b.EnPas
+	clone.FiftyMove = b.FiftyMove
+	clone.PositionKey = b.PositionKey
+	clone.CastlePermission = b.CastlePermission
+	clone.ColoredPiecesBB = b.ColoredPiecesBB
+	clone.WhitePiecesBB = b.WhitePiecesBB
+	clone.PiecesBB = b.PiecesBB
+
+	copy(clone.History[:], b.History[:])
+	copy(clone.Pieces[:], b.Pieces[:])
+	copy(clone.KingSquare[:], b.KingSquare[:])
+	copy(clone.PieceNumber[:], b.PieceNumber[:])
+	copy(clone.BigPiece[:], b.BigPiece[:])
+	copy(clone.MajorPiece[:], b.MajorPiece[:])
+	copy(clone.MinPiece[:], b.MinPiece[:])
+	copy(clone.Material[:], b.Material[:])
+	copy(clone.PieceList[:], b.PieceList[:])
+	copy(clone.PvArray[:], b.PvArray[:])
+	copy(clone.SearchHistory[:], b.SearchHistory[:])
+	copy(clone.SearchKillers[:], b.SearchKillers[:])
+
+	return clone
 }

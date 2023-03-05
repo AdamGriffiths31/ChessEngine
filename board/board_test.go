@@ -29,9 +29,9 @@ func TestMirror(t *testing.T) {
 		line := scanner.Text()
 		board.ParseFEN(line, pos)
 		counter++
-		eval1 := evaluate.EvalPosistion(pos)
+		eval1 := evaluate.EvalPosition(pos)
 		board.MirrorBoard(pos)
-		eval2 := evaluate.EvalPosistion(pos)
+		eval2 := evaluate.EvalPosition(pos)
 
 		if eval1 != eval2 {
 			t.Errorf("got %d, want %d for %v", eval2, eval1, line)

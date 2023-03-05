@@ -15,10 +15,14 @@ import (
 
 func main() {
 	polyglot.InitPolyBook()
+	table := &data.PVTable{}
+	hash := &data.PvHashTable{HashTable: table}
+	data.InitPvTable(hash.HashTable)
 	pos := data.NewBoardPos()
 	info := &data.SearchInfo{}
-
+	info.WorkerNumber = 3
 	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("PVTable: %v entries (%v)\n", hash.HashTable.NumberEntries, hash.HashTable.CurrentAge)
 
 	for {
 		input, err := reader.ReadString('\n')
@@ -28,17 +32,17 @@ func main() {
 		input = strings.TrimSpace(input)
 
 		if input == "uci" {
-			uci.Uci(pos, info)
+			uci.Uci(pos, info, hash)
 			continue
 		}
 
 		if input == "xboard" {
-			xboard.Xboard(pos, info)
+			xboard.Xboard(pos, info, hash)
 			continue
 		}
 
 		if input == "console" {
-			consolemode.ConsoleMode(pos, info)
+			consolemode.ConsoleMode(pos, info, hash)
 		}
 
 		if input == "quit" {

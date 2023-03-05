@@ -4,6 +4,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
+// GeneratePositionKey generates a unique key based on the position
 func GeneratePositionKey(pos *data.Board) uint64 {
 	var finalKey uint64 = 0
 	piece := data.Empty

@@ -28,7 +28,7 @@ func MakeMove(move int, pos *data.Board) bool {
 		io.PrintBoard(pos)
 	}
 
-	pos.History[pos.HistoryPlay].PosistionKey = pos.PosistionKey
+	pos.History[pos.HistoryPlay].PositionKey = pos.PositionKey
 
 	if (move & data.MFLAGEP) != 0 {
 		if side == data.White {
@@ -315,7 +315,7 @@ func ClearPiece(sq int, pos *data.Board) {
 func MakeNullMove(pos *data.Board) {
 	board.CheckBoard(pos)
 	pos.Play++
-	pos.History[pos.HistoryPlay].PosistionKey = pos.PosistionKey
+	pos.History[pos.HistoryPlay].PositionKey = pos.PositionKey
 
 	if pos.EnPas != data.NoSquare {
 		hashEnPas(pos)
@@ -398,17 +398,17 @@ func ParseMove(move []byte, pos *data.Board) int {
 }
 
 func hashPiece(piece, square int, pos *data.Board) {
-	pos.PosistionKey ^= data.PieceKeys[piece][square]
+	pos.PositionKey ^= data.PieceKeys[piece][square]
 }
 
 func hashCastle(pos *data.Board) {
-	pos.PosistionKey ^= data.CastleKeys[pos.CastlePermission]
+	pos.PositionKey ^= data.CastleKeys[pos.CastlePermission]
 }
 
 func hashSide(pos *data.Board) {
-	pos.PosistionKey ^= data.SideKey
+	pos.PositionKey ^= data.SideKey
 }
 
 func hashEnPas(pos *data.Board) {
-	pos.PosistionKey ^= data.PieceKeys[data.Empty][pos.EnPas]
+	pos.PositionKey ^= data.PieceKeys[data.Empty][pos.EnPas]
 }

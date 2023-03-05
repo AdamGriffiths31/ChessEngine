@@ -4,6 +4,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
+// ParseFEN update the board for the given FEN position
 func ParseFEN(fen string, pos *data.Board) {
 	resetBoard(pos)
 	fen = parsePiecePlacement(fen, pos)
@@ -13,7 +14,7 @@ func ParseFEN(fen string, pos *data.Board) {
 
 	//TODO Set moves from fen
 
-	pos.PosistionKey = GeneratePositionKey(pos)
+	pos.PositionKey = GeneratePositionKey(pos)
 	UpdateListMaterial(pos)
 }
 

@@ -15,7 +15,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
-func Xboard(pos *data.Board, info *data.SearchInfo) {
+func Xboard(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	var (
 		depth      = -1
 		movestogo  = [2]int{30, 30}
@@ -162,8 +162,7 @@ func Xboard(pos *data.Board, info *data.SearchInfo) {
 				}
 
 				fmt.Printf("time:%d start:%d stop:%d depth:%d timeset:%d movestogo:%d mps:%d inc:%d\n", time, info.StartTime, info.StopTime, info.Depth, info.TimeSet, movestogo[pos.Side], mps, inc)
-				search.SearchPosistion(pos, info)
-
+				search.SearchPosition(pos, info, table)
 				if mps != 0 {
 					movestogo[pos.Side^1]--
 					if movestogo[pos.Side^1] < 1 {
@@ -242,7 +241,7 @@ func drawMaterial(pos *data.Board) bool {
 func isThreeFoldRepetition(pos *data.Board) bool {
 	rep := 0
 	for i := 0; i < pos.HistoryPlay && rep < 2; i++ {
-		if pos.History[i].PosistionKey == pos.PosistionKey {
+		if pos.History[i].PositionKey == pos.PositionKey {
 			rep++
 		}
 	}

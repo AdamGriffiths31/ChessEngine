@@ -80,7 +80,7 @@ var queenOpenFile = 5
 var queenSemiOpenFile = 3
 var bishopPair = 30
 
-func EvalPosistion(pos *data.Board) int {
+func EvalPosition(pos *data.Board) int {
 
 	if pos.PieceNumber[data.WP] == 0 && pos.PieceNumber[data.BP] == 0 && materialDraw(pos) {
 		return 0

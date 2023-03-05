@@ -3,6 +3,7 @@ package search
 import (
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/AdamGriffiths31/ChessEngine/attack"
 	"github.com/AdamGriffiths31/ChessEngine/board"
@@ -14,37 +15,66 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
-func IsRepetition(pos *data.Board) bool {
-	for i := pos.HistoryPlay - pos.FiftyMove; i < pos.HistoryPlay-1; i++ {
-		if pos.PosistionKey == pos.History[i].PosistionKey {
-			return true
-		}
-	}
-	return false
-}
-
-func SearchPosistion(pos *data.Board, info *data.SearchInfo) {
+// SearchPosition starts the iterative deepening alpha beta search
+func SearchPosition(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	bestMove := data.NoMove
-	clearForSearch(pos, info)
+	clearForSearch(pos, info, table)
 	if data.EngineSettings.UseBook {
 		bestMove = polyglot.GetBookMove(pos)
 	}
 
 	if bestMove == data.NoMove {
-		for currentDepth := 1; currentDepth < info.Depth+1; currentDepth++ {
-			bestScore := alphaBeta(-data.Infinite, data.Infinite, currentDepth, pos, info, true)
-			if info.Stopped {
-				break
-			}
-			pvMoves := moveGen.GetPvLine(currentDepth, pos)
-			bestMove = pos.PvArray[0]
-			printPVData(info, currentDepth, bestScore)
-			printPVLine(pos, info, pvMoves)
-		}
+		createWorkers(pos, info, table)
+	} else {
+		printSearchResult(pos, info, bestMove)
 	}
-	printSearchResult(pos, info, bestMove)
 }
 
+func createWorkers(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
+	fmt.Printf("Creating workers\n")
+	var wg sync.WaitGroup
+	var workerSlice []*data.SearchWorker
+	for i := 0; i < info.WorkerNumber; i++ {
+		workerSlice = append(workerSlice, setupWorker(i, pos, info, table))
+	}
+	for i := 0; i < info.WorkerNumber; i++ {
+		wg.Add(1)
+		go func(number int) {
+			iterativeDeepen(workerSlice[number], &wg)
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func setupWorker(number int, pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) *data.SearchWorker {
+	posCopy := board.Clone(pos)
+	return &data.SearchWorker{Pos: posCopy, Info: info, Hash: table, Number: number}
+}
+
+// iterativeDeepen the search performed by the worker
+func iterativeDeepen(worker *data.SearchWorker, wg *sync.WaitGroup) {
+	defer wg.Done()
+	worker.BestMove = data.NoMove
+
+	for currentDepth := 1; currentDepth < worker.Info.Depth+1; currentDepth++ {
+		bestScore := alphaBeta(-data.ABInfinite, data.ABInfinite, currentDepth, worker.Pos, worker.Info, true, worker.Hash)
+		if worker.Info.Stopped {
+			break
+		}
+		if worker.Number == 0 {
+			pvMoves := moveGen.GetPvLine(currentDepth, worker.Pos, worker.Hash)
+			worker.BestMove = worker.Pos.PvArray[0]
+			printPVData(worker.Info, currentDepth, bestScore)
+			printPVLine(worker.Pos, worker.Info, pvMoves)
+		}
+	}
+	if worker.Number == 0 {
+		printSearchResult(worker.Pos, worker.Info, worker.BestMove)
+	}
+}
+
+// printPVData prints the principle variation data
 func printPVData(info *data.SearchInfo, currentDepth, bestScore int) {
 	if info.GameMode == data.UCIMode {
 		fmt.Printf("info score cp %d depth %d nodes %v time %d ", bestScore, currentDepth, info.Node, util.GetTimeMs()-info.StartTime)
@@ -55,17 +85,19 @@ func printPVData(info *data.SearchInfo, currentDepth, bestScore int) {
 	}
 }
 
+// printPVLine prints the principle variation line data
 func printPVLine(pos *data.Board, info *data.SearchInfo, pvMoves int) {
 	if info.GameMode == data.UCIMode || info.PostThinking {
 		fmt.Printf("pv")
-		for i := 0; i < pvMoves; i++ {
-			fmt.Printf(" %s", io.PrintMove(pos.PvArray[i]))
+		for _, move := range pos.PvArray[:pvMoves] {
+			fmt.Printf(" %s", io.PrintMove(move))
 		}
 		fmt.Printf("\n")
 		fmt.Printf("Ordering: %.2f\n", info.FailHighFirst/info.FailHigh)
 	}
 }
 
+// printSearchResult prints the result of the search
 func printSearchResult(pos *data.Board, info *data.SearchInfo, bestMove int) {
 	if info.GameMode == data.UCIMode {
 		fmt.Printf("bestmove %s\n", io.PrintMove(bestMove))
@@ -79,7 +111,9 @@ func printSearchResult(pos *data.Board, info *data.SearchInfo, bestMove int) {
 	}
 }
 
-func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, doNull bool) int {
+// alphaBeta generates the score / best move for a position using quiescence, transposition tables
+// and null move pruning
+func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, doNull bool, table *data.PvHashTable) int {
 	board.CheckBoard(pos)
 
 	if depth < 0 {
@@ -97,29 +131,34 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 
 	info.Node++
 
-	if IsRepetitionOrFityMove(pos) {
+	if isRepetitionOrFiftyMove(pos) {
 		return 0
 	}
 
 	if pos.Play > data.MaxDepth-1 {
-		return evaluate.EvalPosistion(pos)
+		return evaluate.EvalPosition(pos)
 	}
 
+	// limited value in checking the position if in check
 	inCheck := attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos)
 	if inCheck {
 		depth++
 	}
 
-	score := -data.Infinite
+	// check principle variation for a transposition score to save repeating searches
+	score := -data.ABInfinite
 	pvMove := data.NoMove
-	if moveGen.ProbePvTable(pos, &pvMove, &score, alpha, beta, depth) {
-		pos.PvTable.Cut++
+	if moveGen.ProbePvTable(pos, &pvMove, &score, alpha, beta, depth, table) {
+		table.HashTable.Cut++
 		return score
 	}
 
+	// null move check reduces the search by trying a 'null' move, then seeing if the score
+	// of the subtree search is still high enough to cause a beta cutoff. Nodes are saved by
+	//reducing the depth of the subtree under the null move.
 	if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
 		moveGen.MakeNullMove(pos)
-		score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false)
+		score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false, table)
 		moveGen.TakeBackNullMove(pos)
 		if info.Stopped {
 			return 0
@@ -136,8 +175,8 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 	legal := 0
 	oldAlpha := alpha
 	bestMove := data.NoMove
-	score = -data.Infinite
-	bestScore := -data.Infinite
+	score = -data.ABInfinite
+	bestScore := -data.ABInfinite
 
 	if pvMove != data.NoMove {
 		for i := 0; i < ml.Count; i++ {
@@ -152,7 +191,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		pickNextMove(i, ml)
 		if moveGen.MakeMove(ml.Moves[i].Move, pos) {
 			legal++
-			score = -alphaBeta(-beta, -alpha, depth-1, pos, info, true)
+			score = -alphaBeta(-beta, -alpha, depth-1, pos, info, true, table)
 			moveGen.TakeMoveBack(pos)
 			if info.Stopped {
 				return 0
@@ -172,7 +211,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 						}
 
 						info.FailHigh++
-						moveGen.StorePvMove(pos, bestMove, beta, data.PVBeta, depth)
+						moveGen.StorePvMove(pos, bestMove, beta, data.PVBeta, depth, table)
 						return beta
 					}
 
@@ -186,9 +225,10 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		}
 	}
 
+	// if no legal moves then the position must be either mate or stalemate
 	if legal == 0 {
 		if attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos) {
-			return -data.Infinite + pos.Play
+			return -data.ABInfinite + pos.Play
 		} else {
 			return 0
 		}
@@ -197,13 +237,17 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		panic(fmt.Errorf("alphaBeta alpha %v oldAlpha %v", score, oldAlpha))
 	}
 	if alpha != oldAlpha {
-		moveGen.StorePvMove(pos, bestMove, bestScore, data.PVExact, depth)
+		moveGen.StorePvMove(pos, bestMove, bestScore, data.PVExact, depth, table)
 	} else {
-		moveGen.StorePvMove(pos, bestMove, alpha, data.PVAlpha, depth)
+		moveGen.StorePvMove(pos, bestMove, alpha, data.PVAlpha, depth, table)
 	}
 	return alpha
 }
 
+// quiescence the purpose of this search is to only evaluate "quiet" positions, or
+// positions where there are no winning tactical moves to be made. This search is
+// needed to avoid the horizon effect.
+// TODO Delta Pruning
 func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 	board.CheckBoard(pos)
 
@@ -211,17 +255,17 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 
 	info.Node++
 
-	if IsRepetitionOrFityMove(pos) {
+	if isRepetitionOrFiftyMove(pos) {
 		return 0
 	}
 
 	if pos.Play > data.MaxDepth-1 {
-		return evaluate.EvalPosistion(pos)
+		return evaluate.EvalPosition(pos)
 	}
 
-	score := evaluate.EvalPosistion(pos)
+	score := evaluate.EvalPosition(pos)
 
-	if !(score > -data.Infinite) && !(score < data.Infinite) {
+	if !(score > -data.ABInfinite) && !(score < data.ABInfinite) {
 		panic(fmt.Errorf("quiescence score error  %v", score))
 	}
 	if score >= beta {
@@ -259,7 +303,8 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 	return alpha
 }
 
-func clearForSearch(pos *data.Board, info *data.SearchInfo) {
+// clearForSearch resets data used in search
+func clearForSearch(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	for i := 0; i < 13; i++ {
 		for j := 0; j < 120; j++ {
 			pos.SearchHistory[i][j] = 0
@@ -274,9 +319,9 @@ func clearForSearch(pos *data.Board, info *data.SearchInfo) {
 
 	pos.Play = 0
 
-	pos.PvTable.Cut = 0
-	pos.PvTable.Hit = 0
-	pos.PvTable.CurrentAge++
+	table.HashTable.Cut = 0
+	table.HashTable.Hit = 0
+	table.HashTable.CurrentAge++
 
 	info.StartTime = util.GetTimeMs()
 	info.Stopped = false
@@ -287,6 +332,7 @@ func clearForSearch(pos *data.Board, info *data.SearchInfo) {
 	info.Cut = 0
 }
 
+// pickNextMove improves the order the moves are searched in
 func pickNextMove(moveNum int, ml *data.MoveList) {
 	bestScore := 0
 	bestNum := moveNum
@@ -312,6 +358,7 @@ func pickNextMove(moveNum int, ml *data.MoveList) {
 	ml.Moves[bestNum] = holder
 }
 
+// checkUp determines if the engine needs to stop searching and return its findings
 func checkUp(info *data.SearchInfo) {
 	if info.Node&2047 == 0 {
 		if info.TimeSet == data.True && util.GetTimeMs() > info.StopTime {
@@ -320,6 +367,18 @@ func checkUp(info *data.SearchInfo) {
 	}
 }
 
-func IsRepetitionOrFityMove(pos *data.Board) bool {
-	return IsRepetition(pos) || pos.FiftyMove >= 100 && pos.Play > 0
+// isRepetitionOrFiftyMove evaluate if its a repetition or a fifty move draw
+func isRepetitionOrFiftyMove(pos *data.Board) bool {
+	return isRepetition(pos) || pos.FiftyMove >= 100 && pos.Play > 0
+}
+
+// isRepetition check if the position has been seen before
+// TODO Convert this to var repetitionTable = make(map[uint64]int) in data
+func isRepetition(pos *data.Board) bool {
+	for i := pos.HistoryPlay - pos.FiftyMove; i < pos.HistoryPlay-1; i++ {
+		if pos.PositionKey == pos.History[i].PositionKey {
+			return true
+		}
+	}
+	return false
 }

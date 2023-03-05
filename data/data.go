@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 	"unsafe"
@@ -21,8 +22,9 @@ func init() {
 const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
+const MaxWorkers = 32
 
-//const StartFEN = "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq d6 0 2"
+//const StartFEN = "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - -"
 
 const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -191,6 +193,15 @@ var BitTable = [64]int{
 	58, 20, 37, 17, 36, 8,
 }
 
+type SearchWorker struct {
+	Pos  *Board
+	Info *SearchInfo
+	Hash *PvHashTable
+
+	Number   int
+	Depth    int
+	BestMove int
+}
 type MoveList struct {
 	Moves [MaxPositionMoves]Move
 	Count int
@@ -201,6 +212,10 @@ type Move struct {
 	Move  int
 }
 
+type PvHashTable struct {
+	HashTable *PVTable
+}
+
 type Board struct {
 	Pieces           [120]int
 	KingSquare       [2]int
@@ -209,7 +224,7 @@ type Board struct {
 	FiftyMove        int
 	Play             int
 	HistoryPlay      int
-	PosistionKey     uint64
+	PositionKey      uint64
 	PieceNumber      [13]int
 	Pawns            [3]uint64
 	BigPiece         [2]int
@@ -220,7 +235,6 @@ type Board struct {
 	CastlePermission int
 	History          [MaxMoves]Undo
 
-	PvTable *PVTable
 	PvArray [MaxDepth]int
 
 	SearchHistory [13][120]int
@@ -236,16 +250,13 @@ type Undo struct {
 	CastlePermission int
 	EnPas            int
 	FiftyMove        int
-	PosistionKey     uint64
+	PositionKey      uint64
 }
 
 type PVEntry struct {
-	PosistionKey uint64
-	Move         int
-	Score        int
-	Depth        int
-	Flag         int
-	Age          int
+	Age     int
+	SMPData uint64
+	SMPKey  uint64
 }
 
 type PVTable struct {
@@ -281,6 +292,8 @@ type SearchInfo struct {
 
 	Cut     int
 	NullCut int
+
+	WorkerNumber int
 }
 
 type EngineOptions struct {
@@ -289,8 +302,9 @@ type EngineOptions struct {
 
 var EngineSettings EngineOptions
 
-const Infinite = 30000
-const Mate = Infinite - MaxDepth
+const Infinite = 32000
+const ABInfinite = 30000
+const Mate = ABInfinite - MaxDepth
 
 var Square120ToSquare64 [120]int
 var Square64ToSquare120 [64]int
@@ -388,7 +402,7 @@ func generateRandomUint64() uint64 {
 	return rand.Uint64()
 }
 
-// setPieceKeys sets the keys to a random Uinit64
+// setPieceKeys sets the keys to a random uint64
 func setPieceKeys() {
 	for i := 0; i < 13; i++ {
 		for j := 0; j < 120; j++ {
@@ -573,16 +587,18 @@ func initMvvLva() {
 }
 
 func NewBoardPos() *Board {
-	pvTable := &PVTable{}
-	pos := &Board{PvTable: pvTable}
-	InitPvTable(pos.PvTable)
+	pos := &Board{}
 	return pos
 }
 
 func InitPvTable(table *PVTable) {
+	if table == nil {
+		table = &PVTable{}
+	}
 	var pvSize = 0x100000 * 64
 	table.NumberEntries = pvSize / int(unsafe.Sizeof(PVEntry{}))
 	table.NumberEntries -= 2
+	fmt.Printf("PVTable: %v entries (%v)\n", table.NumberEntries, table.CurrentAge)
 	table.PTable = make([]PVEntry, table.NumberEntries)
 }
 
@@ -724,7 +740,7 @@ var RookMagics = [64]uint64{
 	0x26002114058042,
 }
 
-var rookRellevantBits = [64]int{
+var rookRelevantBits = [64]int{
 	12, 11, 11, 11, 11, 11, 11, 12,
 	11, 10, 10, 10, 10, 10, 10, 11,
 	11, 10, 10, 10, 10, 10, 10, 11,
@@ -735,7 +751,7 @@ var rookRellevantBits = [64]int{
 	12, 11, 11, 11, 11, 11, 11, 12,
 }
 
-var bishopRellevantBits = [64]int{
+var bishopRelevantBits = [64]int{
 	6, 5, 5, 5, 5, 5, 5, 6,
 	5, 5, 5, 5, 5, 5, 5, 5,
 	5, 5, 7, 7, 7, 7, 5, 5,
@@ -749,14 +765,14 @@ var bishopRellevantBits = [64]int{
 func GetRookAttacks(occ uint64, sq int) uint64 {
 	occ &= RookMask[sq]
 	occ *= RookMagics[sq]
-	occ >>= 64 - rookRellevantBits[sq]
+	occ >>= 64 - rookRelevantBits[sq]
 	return RookAttacks[sq][occ]
 }
 
 func GetBishopAttacks(occ uint64, sq int) uint64 {
 	occ &= BishopMask[sq]
 	occ *= BishopMagics[sq]
-	occ >>= 64 - bishopRellevantBits[sq]
+	occ >>= 64 - bishopRelevantBits[sq]
 	return BishopAttacks[sq][occ]
 }
 
@@ -821,13 +837,13 @@ func Init_sliders_attacks() {
 
 		for count := 0; count < occupancyVariations; count++ {
 			occupancy := setOccupancy(count, bitCount, mask)
-			magic_index := occupancy * RookMagics[square] >> (64 - uint64(rookRellevantBits[square]))
+			magic_index := occupancy * RookMagics[square] >> (64 - uint64(rookRelevantBits[square]))
 			RookAttacks[square][magic_index] = rookAttacksOnTheFly(square, occupancy)
 		}
 
 		for count := 0; count < occupancyVariationsB; count++ {
 			occupancy := setOccupancy(count, bitCountB, maskB)
-			magic_index := occupancy * BishopMagics[square] >> (64 - uint64(bishopRellevantBits[square]))
+			magic_index := occupancy * BishopMagics[square] >> (64 - uint64(bishopRelevantBits[square]))
 			BishopAttacks[square][magic_index] = bishopAttacksOnTheFly(square, occupancy)
 		}
 

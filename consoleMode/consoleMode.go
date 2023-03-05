@@ -17,7 +17,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/xboard"
 )
 
-func ConsoleMode(pos *data.Board, info *data.SearchInfo) {
+func ConsoleMode(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	fmt.Printf("Console mode started\nType help for commands\n\n")
 	info.GameMode = data.ConsoleMode
 	info.PostThinking = true
@@ -57,7 +57,7 @@ func ConsoleMode(pos *data.Board, info *data.SearchInfo) {
 					info.StopTime = info.StartTime + int64(moveTime)
 				}
 
-				search.SearchPosistion(pos, info)
+				search.SearchPosition(pos, info, table)
 			}
 
 			if input == "quit" {
@@ -92,7 +92,7 @@ func ConsoleMode(pos *data.Board, info *data.SearchInfo) {
 			}
 
 			if input == "new" {
-				moveGen.ClearTable(pos.PvTable)
+				moveGen.ClearTable(table.HashTable)
 				engineSide = data.Black
 				board.ParseFEN(data.StartFEN, pos)
 				continue
@@ -105,15 +105,15 @@ func ConsoleMode(pos *data.Board, info *data.SearchInfo) {
 
 			if input == "mirror" {
 				io.PrintBoard(pos)
-				fmt.Printf("Eval: %d\n", evaluate.EvalPosistion(pos))
+				fmt.Printf("Eval: %d\n", evaluate.EvalPosition(pos))
 				board.MirrorBoard(pos)
 				io.PrintBoard(pos)
-				fmt.Printf("Eval: %d\n", evaluate.EvalPosistion(pos))
+				fmt.Printf("Eval: %d\n", evaluate.EvalPosition(pos))
 				continue
 			}
 
 			if input == "eval" {
-				fmt.Printf("Eval:%d\n", evaluate.EvalPosistion(pos))
+				fmt.Printf("Eval:%d\n", evaluate.EvalPosition(pos))
 
 			}
 			if strings.HasPrefix(input, "setboard") {
@@ -153,7 +153,7 @@ func ConsoleMode(pos *data.Board, info *data.SearchInfo) {
 					info.StopTime = info.StartTime + int64(moveTime)
 				}
 
-				search.SearchPosistion(pos, info)
+				search.SearchPosition(pos, info, table)
 			}
 		}
 	}

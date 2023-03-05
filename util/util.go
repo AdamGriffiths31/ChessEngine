@@ -10,7 +10,7 @@ func TimeTrackNano(start time.Time, name string) {
 	fmt.Printf("%s took %d ns (%fs)\n", name, elapsed.Nanoseconds(), elapsed.Seconds())
 }
 
-func TimeTrackMili(start time.Time, name string) {
+func TimeTrackMilliseconds(start time.Time, name string) {
 	elapsed := time.Since(start)
 	fmt.Printf("%s took %d ns (%fs)\n", name, elapsed.Milliseconds(), elapsed.Seconds())
 }

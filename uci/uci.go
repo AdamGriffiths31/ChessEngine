@@ -15,7 +15,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
-func Uci(pos *data.Board, info *data.SearchInfo) {
+func Uci(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	info.GameMode = data.UCIMode
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("id name MyGoEngine")
@@ -42,10 +42,10 @@ func Uci(pos *data.Board, info *data.SearchInfo) {
 		} else if strings.HasPrefix(text, "position") {
 			parsePosition(text, pos)
 		} else if text == "ucinewgame" {
-			movegen.ClearTable(pos.PvTable)
+			movegen.ClearTable(table.HashTable)
 			board.ParseFEN(data.StartFEN, pos)
 		} else if strings.HasPrefix(text, "go") {
-			parseGo(text, info, pos)
+			parseGo(text, info, pos, table)
 		} else if strings.HasPrefix(text, "setoption") {
 			parseOption(text, info, pos)
 		} else if text == "print" {
@@ -53,7 +53,7 @@ func Uci(pos *data.Board, info *data.SearchInfo) {
 		} else if text == "run" {
 			data.EngineSettings.UseBook = false
 			board.ParseFEN(data.StartFEN, pos)
-			parseGo("go infinite", info, pos)
+			parseGo("go infinite", info, pos, table)
 		} else if text == "quit" {
 			info.Quit = data.True
 			break
@@ -76,7 +76,7 @@ func parseOption(line string, info *data.SearchInfo, pos *data.Board) {
 	}
 }
 
-func parseGo(line string, info *data.SearchInfo, pos *data.Board) {
+func parseGo(line string, info *data.SearchInfo, pos *data.Board, table *data.PvHashTable) {
 	tokens := strings.Split(line, " ")
 	info.MoveTime = -1
 	info.MovesToGo = 30
@@ -123,7 +123,7 @@ func parseGo(line string, info *data.SearchInfo, pos *data.Board) {
 
 	fmt.Printf("time:%d start:%d stop:%d depth:%d timeset:%v\n", info.Time, info.StartTime, info.StopTime, info.Depth, info.TimeSet)
 
-	search.SearchPosistion(pos, info)
+	search.SearchPosition(pos, info, table)
 }
 
 func parseBook(line string, info *data.SearchInfo, pos *data.Board) {
@@ -135,7 +135,7 @@ func parseBook(line string, info *data.SearchInfo, pos *data.Board) {
 		data.EngineSettings.UseBook = false
 		fmt.Printf("book turned off\n")
 	default:
-		fmt.Printf("Unkown book command expected true / false ")
+		fmt.Printf("Unknown book command expected true / false ")
 	}
 }
 
