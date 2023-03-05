@@ -3,7 +3,6 @@ package search
 import (
 	"fmt"
 	"math"
-	"sync"
 
 	"github.com/AdamGriffiths31/ChessEngine/attack"
 	"github.com/AdamGriffiths31/ChessEngine/board"
@@ -32,58 +31,6 @@ func SearchPosition(pos *data.Board, info *data.SearchInfo, table *data.PvHashTa
 	} else {
 		printSearchResult(pos, info, bestMove)
 	}
-}
-
-func createWorkers(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
-	fmt.Printf("Creating workers\n")
-	result := make(chan data.Move)
-	var wg sync.WaitGroup
-	var workerSlice []*data.SearchWorker
-	for i := 0; i < info.WorkerNumber; i++ {
-		workerSlice = append(workerSlice, setupWorker(i, pos, info, table))
-	}
-	for i := 0; i < info.WorkerNumber; i++ {
-		wg.Add(1)
-		go func(number int) {
-			iterativeDeepen(workerSlice[number], result, &wg)
-		}(i)
-	}
-
-	go func() {
-		wg.Wait()
-		close(result)
-	}()
-
-	bestResult := <-result
-	for r := range result {
-		fmt.Printf("%v\n", io.PrintMove(r.Move))
-		if r.Score > bestResult.Score {
-			bestResult = r
-		}
-	}
-	printSearchResult(pos, info, bestResult.Move)
-}
-
-func setupWorker(number int, pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) *data.SearchWorker {
-	posCopy := board.Clone(pos)
-	return &data.SearchWorker{Pos: posCopy, Info: info, Hash: table, Number: number}
-}
-
-// iterativeDeepen the search performed by the worker
-func iterativeDeepen(worker *data.SearchWorker, result chan data.Move, wg *sync.WaitGroup) {
-	defer wg.Done()
-	worker.BestMove = data.NoMove
-	bestScore := -data.Infinite
-	for currentDepth := 1; currentDepth < worker.Info.Depth+1; currentDepth++ {
-		bestScore = alphaBeta(-data.ABInfinite, data.ABInfinite, currentDepth, worker.Pos, worker.Info, true, worker.Hash)
-		if worker.Info.Stopped {
-			break
-		}
-
-		moveGen.GetPvLine(currentDepth, worker.Pos, worker.Hash)
-		worker.BestMove = worker.Pos.PvArray[0]
-	}
-	result <- data.Move{Score: bestScore, Move: worker.BestMove}
 }
 
 func iterativeDeepenNoWorkers(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
