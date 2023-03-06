@@ -17,7 +17,8 @@ func InitPolyBook() {
 	file, err := os.Open("performance.bin")
 	if err != nil {
 		fmt.Println(os.Getwd())
-		panic(fmt.Errorf("InitPolyBook: open performance.bin. %v", err))
+		data.EngineSettings.UseBook = false
+		return
 	}
 	defer file.Close()
 

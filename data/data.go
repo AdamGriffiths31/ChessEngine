@@ -198,9 +198,10 @@ type SearchWorker struct {
 	Info *SearchInfo
 	Hash *PvHashTable
 
-	Number   int
-	Depth    int
-	BestMove int
+	Number    int
+	Depth     int
+	BestMove  int
+	BestScore int
 }
 type MoveList struct {
 	Moves [MaxPositionMoves]Move
@@ -210,6 +211,7 @@ type MoveList struct {
 type Move struct {
 	Score int
 	Move  int
+	Depth int
 }
 
 type PvHashTable struct {
@@ -282,8 +284,9 @@ type SearchInfo struct {
 
 	Node int64
 
-	Quit    int
-	Stopped bool
+	Quit      int
+	Stopped   bool
+	ForceStop bool
 
 	FailHigh      float32
 	FailHighFirst float32

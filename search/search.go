@@ -306,6 +306,7 @@ func clearForSearch(pos *data.Board, info *data.SearchInfo, table *data.PvHashTa
 	table.HashTable.CurrentAge++
 
 	info.StartTime = util.GetTimeMs()
+	info.ForceStop = false
 	info.Stopped = false
 	info.Node = 0
 	info.FailHighFirst = 0
@@ -343,7 +344,7 @@ func pickNextMove(moveNum int, ml *data.MoveList) {
 // checkUp determines if the engine needs to stop searching and return its findings
 func checkUp(info *data.SearchInfo) {
 	if info.Node&2047 == 0 {
-		if info.TimeSet == data.True && util.GetTimeMs() > info.StopTime {
+		if (info.TimeSet == data.True && util.GetTimeMs() > info.StopTime) || info.ForceStop {
 			info.Stopped = true
 		}
 	}

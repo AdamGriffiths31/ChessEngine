@@ -17,22 +17,32 @@ import (
 
 func Uci(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	info.GameMode = data.UCIMode
-	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("id name MyGoEngine")
 	fmt.Println("id author Adam")
 	fmt.Println("uciok")
 	fmt.Printf("engine book: %v\n", data.EngineSettings.UseBook)
-
+	data.EngineSettings.UseBook = false
 	board.ParseFEN(data.StartFEN, pos)
 
-	for {
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			panic(fmt.Errorf("UCI reader loop: %v", err))
+	reader := bufio.NewReader(os.Stdin)
+	inputCh := make(chan string)
+
+	go func() {
+		for {
+			input, err := reader.ReadString('\n')
+			if err != nil {
+				panic(fmt.Errorf("UCI  Mode reader loop: %v", err))
+			}
+
+			input = strings.TrimSpace(input)
+			inputCh <- input
 		}
+	}()
 
-		text = strings.TrimSpace(text)
+	for input := range inputCh {
 
+		text := strings.TrimSpace(input)
+		fmt.Printf("debug: text %v\n", text)
 		if text == "uci" {
 			fmt.Println("id name MyGoEngine")
 			fmt.Println("id author Me")
@@ -50,16 +60,15 @@ func Uci(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 			parseOption(text, info, pos)
 		} else if text == "print" {
 			io.PrintBoard(pos)
+		} else if text == "stop" {
+			info.ForceStop = true
+			fmt.Printf("debug: ForceStop %v\n", info.ForceStop)
 		} else if text == "run" {
 			data.EngineSettings.UseBook = false
 			board.ParseFEN(data.StartFEN, pos)
 			parseGo("go infinite", info, pos, table)
 		} else if text == "quit" {
 			info.Quit = data.True
-			break
-		}
-
-		if info.Quit == data.True {
 			break
 		}
 	}
@@ -123,7 +132,7 @@ func parseGo(line string, info *data.SearchInfo, pos *data.Board, table *data.Pv
 
 	fmt.Printf("time:%d start:%d stop:%d depth:%d timeset:%v\n", info.Time, info.StartTime, info.StopTime, info.Depth, info.TimeSet)
 
-	search.SearchPosition(pos, info, table)
+	go search.SearchPosition(pos, info, table)
 }
 
 func parseBook(line string, info *data.SearchInfo, pos *data.Board) {

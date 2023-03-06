@@ -33,7 +33,7 @@ func createWorkers(pos *data.Board, info *data.SearchInfo, table *data.PvHashTab
 	bestResult := <-result
 	for r := range result {
 		fmt.Printf("%v\n", io.PrintMove(r.Move))
-		if r.Score > bestResult.Score {
+		if r.Score > bestResult.Score && r.Depth >= workerSlice[0].Depth {
 			bestResult = r
 		}
 	}
@@ -50,15 +50,16 @@ func setupWorker(number int, pos *data.Board, info *data.SearchInfo, table *data
 func iterativeDeepen(worker *data.SearchWorker, result chan data.Move, wg *sync.WaitGroup) {
 	defer wg.Done()
 	worker.BestMove = data.NoMove
-	bestScore := -data.Infinite
+	worker.BestScore = -data.Infinite
 	for currentDepth := 1; currentDepth < worker.Info.Depth+1; currentDepth++ {
-		bestScore = alphaBeta(-data.ABInfinite, data.ABInfinite, currentDepth, worker.Pos, worker.Info, true, worker.Hash)
+		worker.BestScore = alphaBeta(-data.ABInfinite, data.ABInfinite, currentDepth, worker.Pos, worker.Info, true, worker.Hash)
 		if worker.Info.Stopped {
 			break
 		}
 
 		moveGen.GetPvLine(currentDepth, worker.Pos, worker.Hash)
 		worker.BestMove = worker.Pos.PvArray[0]
+		worker.Depth = currentDepth
 	}
-	result <- data.Move{Score: bestScore, Move: worker.BestMove}
+	result <- data.Move{Score: worker.BestScore, Move: worker.BestMove, Depth: worker.Depth}
 }
