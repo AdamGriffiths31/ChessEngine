@@ -23,17 +23,13 @@ func SearchPosition(pos *data.Board, info *data.SearchInfo, table *data.PvHashTa
 	}
 
 	if bestMove == data.NoMove {
-		if info.WorkerNumber == 0 {
-			iterativeDeepenNoWorkers(pos, info, table)
-		} else {
-			createWorkers(pos, info, table)
-		}
+		iterativeDeepen(pos, info, table)
 	} else {
 		printSearchResult(pos, info, bestMove)
 	}
 }
 
-func iterativeDeepenNoWorkers(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
+func iterativeDeepen(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	bestScore := 30000
 	bestMove := data.NoMove
 	clearForSearch(pos, info, table)
@@ -42,11 +38,22 @@ func iterativeDeepenNoWorkers(pos *data.Board, info *data.SearchInfo, table *dat
 	}
 
 	if bestMove == data.NoMove {
+		alpha := -data.Infinite
+		beta := data.Infinite
 		for currentDepth := 1; currentDepth < info.Depth+1; currentDepth++ {
-			bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info, true, table)
+			bestScore = alphaBeta(alpha, beta, currentDepth, pos, info, true, table)
 			if info.Stopped {
 				break
 			}
+			if bestScore <= alpha || bestScore >= beta {
+				alpha = -data.Infinite
+				beta = data.Infinite
+				continue
+			}
+
+			alpha = bestScore - data.ValueWindow
+			beta = bestScore + data.ValueWindow
+
 			pvMoves := moveGen.GetPvLine(currentDepth, pos, table)
 			bestMove = pos.PvArray[0]
 			printPVData(info, currentDepth, bestScore)
@@ -112,6 +119,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 	checkUp(info)
 
 	info.Node++
+	oldAlpha := alpha
 
 	if isRepetitionOrFiftyMove(pos) {
 		return 0
@@ -135,10 +143,19 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		return score
 	}
 
+	staticScore := evaluate.EvalPosition(pos)
+	// reverse futility pruning
+	if !(beta != +1) && depth <= 8 && !inCheck {
+		var rfpScore = staticScore - data.PieceVal[data.WP]*depth
+		if rfpScore >= beta {
+			return staticScore
+		}
+	}
+
 	// null move check reduces the search by trying a 'null' move, then seeing if the score
 	// of the subtree search is still high enough to cause a beta cutoff. Nodes are saved by
 	//reducing the depth of the subtree under the null move.
-	if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
+	if doNull && !inCheck && pos.Play != 0 && isBigPieceOnBoard(pos) && depth >= 4 {
 		moveGen.MakeNullMove(pos)
 		score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false, table)
 		moveGen.TakeBackNullMove(pos)
@@ -155,7 +172,6 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 	moveGen.GenerateAllMoves(pos, ml)
 
 	legal := 0
-	oldAlpha := alpha
 	bestMove := data.NoMove
 	score = -data.ABInfinite
 	bestScore := -data.ABInfinite
@@ -252,6 +268,11 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 	}
 	if score >= beta {
 		return beta
+	}
+
+	delta := data.PieceVal[data.WQ]
+	if score < alpha-delta {
+		return alpha
 	}
 
 	if score > alpha {
@@ -364,4 +385,12 @@ func isRepetition(pos *data.Board) bool {
 		}
 	}
 	return false
+}
+
+// TODO Add queen and rooks
+func isBigPieceOnBoard(pos *data.Board) bool {
+	if pos.Side == data.White {
+		return board.CountBits(pos.WhiteBishops) >= 1 || board.CountBits(pos.WhiteBishops) >= 1
+	}
+	return board.CountBits(pos.BlackBishops) >= 1 || board.CountBits(pos.BlackBishops) >= 1
 }

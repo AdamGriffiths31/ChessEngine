@@ -21,7 +21,6 @@ func Uci(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
 	fmt.Println("id author Adam")
 	fmt.Println("uciok")
 	fmt.Printf("engine book: %v\n", data.EngineSettings.UseBook)
-	data.EngineSettings.UseBook = false
 	board.ParseFEN(data.StartFEN, pos)
 
 	reader := bufio.NewReader(os.Stdin)
