@@ -30,6 +30,34 @@ func PrintBitboard(bitBoard uint64) {
 }
 
 // PopBit returns the index of the first set bit and converts it to 0
+func PopBitCopy(bb *uint64, count int) int {
+	copy := *bb
+	var res int
+	for i := 0; i <= count; i++ {
+		b := copy ^ (copy - uint64(1))
+		fold := uint32((b & 0xffffffff) ^ (b >> 32))
+		copy &= (copy - uint64(1))
+		res = data.BitTable[(fold*0x783a9b23)>>26]
+	}
+
+	return res
+}
+
+// PopBitCopyReturn120 returns the index of the bit at the given count
+func PopBitCopyReturn120(bb *uint64, count int) int {
+	copy := *bb
+	var res int
+	for i := 0; i <= count; i++ {
+		b := copy ^ (copy - uint64(1))
+		fold := uint32((b & 0xffffffff) ^ (b >> 32))
+		copy &= (copy - uint64(1))
+		res = data.BitTable[(fold*0x783a9b23)>>26]
+	}
+
+	return data.Square64ToSquare120[res]
+}
+
+// PopBit returns the index of the first set bit and converts it to 0
 func PopBit(bb *uint64) int {
 	b := *bb ^ (*bb - uint64(1))
 	fold := uint32((b & 0xffffffff) ^ (b >> 32))

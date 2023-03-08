@@ -220,19 +220,19 @@ func CheckResult(pos *data.Board) bool {
 }
 
 func drawMaterial(pos *data.Board) bool {
-	if pos.PieceNumber[data.WP] > 0 || pos.PieceNumber[data.BP] > 0 {
+	if board.GetPieceCount(pos, data.WP) > 0 || board.GetPieceCount(pos, data.BP) > 0 {
 		return false
 	}
-	if pos.PieceNumber[data.WQ] > 0 || pos.PieceNumber[data.BQ] > 0 || pos.PieceNumber[data.WR] > 0 || pos.PieceNumber[data.BR] > 0 {
+	if board.GetPieceCount(pos, data.WQ) > 0 || board.GetPieceCount(pos, data.BQ) > 0 || board.GetPieceCount(pos, data.WR) > 0 || board.GetPieceCount(pos, data.BR) > 0 {
 		return false
 	}
-	if pos.PieceNumber[data.WB] > 1 || pos.PieceNumber[data.BB] > 1 {
+	if board.GetPieceCount(pos, data.WB) > 1 || board.GetPieceCount(pos, data.BB) > 1 {
 		return false
 	}
-	if pos.PieceNumber[data.WN] > 0 && pos.PieceNumber[data.WB] > 0 {
+	if board.GetPieceCount(pos, data.WN) > 0 && board.GetPieceCount(pos, data.WB) > 0 {
 		return false
 	}
-	if pos.PieceNumber[data.BN] > 0 && pos.PieceNumber[data.BB] > 0 {
+	if board.GetPieceCount(pos, data.BN) > 0 && board.GetPieceCount(pos, data.BB) > 0 {
 		return false
 	}
 	return true

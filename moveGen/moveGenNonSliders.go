@@ -1,6 +1,7 @@
 package moveGen
 
 import (
+	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/validate"
 )
@@ -11,8 +12,8 @@ func generateNonSliderMoves(pos *data.Board, moveList *data.MoveList, includeQui
 	pieceIndex++
 
 	for piece != 0 {
-		for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
-			sq := pos.PieceList[piece][pieceNum]
+		for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
+			sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
 			for i := 0; i < data.NumDir[piece]; i++ {
 				dir := data.PieceDir[piece][i]
 				tempSq := sq + dir

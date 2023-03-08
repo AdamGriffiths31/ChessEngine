@@ -3,6 +3,7 @@ package moveGen
 import (
 	"math/bits"
 
+	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
@@ -12,8 +13,8 @@ func generateSliderMoves(pos *data.Board, moveList *data.MoveList, includeQuite 
 	pieceIndex++
 
 	for piece != 0 {
-		for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
-			sq := pos.PieceList[piece][pieceNum]
+		for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
+			sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
 			//White
 			if piece == data.WR || piece == data.WQ {
 				attack := data.GetRookAttacks(pos.PiecesBB, data.Square120ToSquare64[sq])

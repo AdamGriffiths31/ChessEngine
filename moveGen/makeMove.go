@@ -199,20 +199,6 @@ func MovePiece(from, to int, pos *data.Board) {
 
 	board.SetPosPieceData(pos, to, piece)
 	board.ClearPosPieceData(pos, from, piece)
-
-	found := false
-	for i := 0; i < pos.PieceNumber[piece]; i++ {
-		if pos.PieceList[piece][i] == from {
-			pos.PieceList[piece][i] = to
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		io.PrintBoard(pos)
-		panic(fmt.Errorf("MovePiece: piece not found at %v [%v] going to %v [%v]", from, io.SquareString(from), to, io.SquareString(to)))
-	}
 }
 
 func AddPiece(sq, piece int, pos *data.Board) {
@@ -223,9 +209,6 @@ func AddPiece(sq, piece int, pos *data.Board) {
 	pos.Pieces[sq] = piece
 
 	board.SetPosPieceData(pos, sq, piece)
-
-	pos.PieceList[piece][pos.PieceNumber[piece]] = sq
-	pos.PieceNumber[piece]++
 }
 
 func ClearPiece(sq int, pos *data.Board) {
@@ -237,22 +220,6 @@ func ClearPiece(sq int, pos *data.Board) {
 	pos.Pieces[sq] = data.Empty
 
 	board.ClearPosPieceData(pos, sq, piece)
-
-	tempPiece := -1
-	for i := 0; i < pos.PieceNumber[piece]; i++ {
-		if pos.PieceList[piece][i] == sq {
-			tempPiece = i
-			break
-		}
-	}
-
-	if tempPiece == -1 {
-		io.PrintBoard(pos)
-		panic(fmt.Errorf("ClearPiece: could not find piece [%v] at sq %v [%v]", data.Pieces[piece], sq, io.SquareString(sq)))
-	}
-
-	pos.PieceNumber[piece]--
-	pos.PieceList[piece][tempPiece] = pos.PieceList[piece][pos.PieceNumber[piece]]
 }
 
 func MakeNullMove(pos *data.Board) {
