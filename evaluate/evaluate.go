@@ -83,7 +83,7 @@ var bishopPair = 30
 
 func EvalPosition(pos *data.Board) int {
 
-	if board.GetPieceCount(pos, data.WP) == 0 && board.GetPieceCount(pos, data.BP) == 0 && materialDraw(pos) {
+	if pos.PieceNumber[data.WP] == 0 && pos.PieceNumber[data.BP] == 0 && materialDraw(pos) {
 		return 0
 	}
 
@@ -91,8 +91,8 @@ func EvalPosition(pos *data.Board) int {
 
 	//Pawns
 	piece := data.WP
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score += pawnTable[data.Square120ToSquare64[sq]]
 
 		if data.IsolatedMask[data.Square120ToSquare64[sq]]&pos.Pawns[data.White] == 0 {
@@ -104,8 +104,8 @@ func EvalPosition(pos *data.Board) int {
 		}
 	}
 	piece = data.BP
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score -= pawnTable[data.Mirror64[data.Square120ToSquare64[sq]]]
 
 		if data.IsolatedMask[data.Square120ToSquare64[sq]]&pos.Pawns[data.Black] == 0 {
@@ -118,37 +118,37 @@ func EvalPosition(pos *data.Board) int {
 	}
 	//Knights
 	piece = data.WN
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score += knightTable[data.Square120ToSquare64[sq]]
 	}
 	piece = data.BN
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score -= knightTable[data.Mirror64[data.Square120ToSquare64[sq]]]
 	}
 	//Bishop
 	piece = data.WB
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score += bishopTable[data.Square120ToSquare64[sq]]
 	}
 	piece = data.BB
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score -= bishopTable[data.Mirror64[data.Square120ToSquare64[sq]]]
 	}
 
-	if board.GetPieceCount(pos, data.WB) >= 2 {
+	if pos.PieceNumber[data.WB] >= 2 {
 		score += bishopPair
 	}
-	if board.GetPieceCount(pos, data.BB) >= 2 {
+	if pos.PieceNumber[data.BB] >= 2 {
 		score -= bishopPair
 	}
 	//Rook
 	piece = data.WR
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score += rookTable[data.Square120ToSquare64[sq]]
 
 		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
@@ -158,8 +158,8 @@ func EvalPosition(pos *data.Board) int {
 		}
 	}
 	piece = data.BR
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		score -= rookTable[data.Mirror64[data.Square120ToSquare64[sq]]]
 
 		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
@@ -170,8 +170,8 @@ func EvalPosition(pos *data.Board) int {
 	}
 	//Queen
 	piece = data.WQ
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
 			score += queenOpenFile
 		} else if pos.Pawns[data.White]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
@@ -180,8 +180,8 @@ func EvalPosition(pos *data.Board) int {
 	}
 
 	piece = data.BQ
-	for pieceNum := 0; pieceNum < board.GetPieceCount(pos, piece); pieceNum++ {
-		sq := board.PopBitCopyReturn120(board.GetPieceBitboard(pos, piece), pieceNum)
+	for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+		sq := pos.PieceList[piece][pieceNum]
 		if pos.Pawns[data.Both]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
 			score -= queenOpenFile
 		} else if pos.Pawns[data.Black]&data.FileBBMask[data.FilesBoard[sq]] == 0 {
@@ -190,14 +190,14 @@ func EvalPosition(pos *data.Board) int {
 	}
 	//King
 	piece = data.WK
-	sq := board.PopBitCopyReturn120(&pos.WhiteKing, 0)
+	sq := pos.PieceList[piece][0]
 	if calcBlackMaterial(pos) <= isEndGame() {
 		score += kingE[data.Square120ToSquare64[sq]]
 	} else {
 		score += kingO[data.Square120ToSquare64[sq]]
 	}
 	piece = data.BK
-	sq = board.PopBitCopyReturn120(&pos.BlackKing, 0)
+	sq = pos.PieceList[piece][0]
 	if calcWhiteMaterial(pos) <= isEndGame() {
 		score -= kingE[data.Mirror64[data.Square120ToSquare64[sq]]]
 	} else {
@@ -212,31 +212,31 @@ func EvalPosition(pos *data.Board) int {
 }
 
 func materialDraw(pos *data.Board) bool {
-	if board.GetPieceCount(pos, data.WR) == 0 && board.GetPieceCount(pos, data.BR) == 0 && board.GetPieceCount(pos, data.WQ) == 0 && board.GetPieceCount(pos, data.BQ) == 0 {
-		if board.GetPieceCount(pos, data.WB) == 0 && board.GetPieceCount(pos, data.BB) == 0 {
-			if board.GetPieceCount(pos, data.WN) < 3 && board.GetPieceCount(pos, data.BN) < 3 {
+	if pos.PieceNumber[data.WR] == 0 && pos.PieceNumber[data.BR] == 0 && pos.PieceNumber[data.WQ] == 0 && pos.PieceNumber[data.BQ] == 0 {
+		if pos.PieceNumber[data.WB] == 0 && pos.PieceNumber[data.BB] == 0 {
+			if pos.PieceNumber[data.WN] < 3 && pos.PieceNumber[data.BN] < 3 {
 				return true
 			}
-		} else if board.GetPieceCount(pos, data.WN) == 0 && board.GetPieceCount(pos, data.BN) == 0 {
-			if math.Abs(float64(board.GetPieceCount(pos, data.WB)-board.GetPieceCount(pos, data.BB))) < 2 {
+		} else if pos.PieceNumber[data.WN] == 0 && pos.PieceNumber[data.BN] == 0 {
+			if math.Abs(float64(pos.PieceNumber[data.WB]-pos.PieceNumber[data.BB])) < 2 {
 				return true
 			}
-		} else if (board.GetPieceCount(pos, data.WN) < 3 && board.GetPieceCount(pos, data.WB) == 0) || (board.GetPieceCount(pos, data.WB) == 1 && board.GetPieceCount(pos, data.WN) == 0) {
-			if (board.GetPieceCount(pos, data.BN) < 3 && board.GetPieceCount(pos, data.BB) == 0) || (board.GetPieceCount(pos, data.BB) == 1 && board.GetPieceCount(pos, data.BN) == 0) {
+		} else if (pos.PieceNumber[data.WN] < 3 && pos.PieceNumber[data.WB] == 0) || (pos.PieceNumber[data.WB] == 1 && pos.PieceNumber[data.WN] == 0) {
+			if (pos.PieceNumber[data.BN] < 3 && pos.PieceNumber[data.BB] == 0) || (pos.PieceNumber[data.BB] == 1 && pos.PieceNumber[data.BN] == 0) {
 				return true
 			}
 		}
-	} else if board.GetPieceCount(pos, data.WQ) == 0 && board.GetPieceCount(pos, data.BQ) == 0 {
-		if board.GetPieceCount(pos, data.WR) == 1 && board.GetPieceCount(pos, data.BR) == 1 {
-			if (board.GetPieceCount(pos, data.WN)+board.GetPieceCount(pos, data.WB)) < 2 && (board.GetPieceCount(pos, data.BN)+board.GetPieceCount(pos, data.BB)) < 2 {
+	} else if pos.PieceNumber[data.WQ] == 0 && pos.PieceNumber[data.BQ] == 0 {
+		if pos.PieceNumber[data.WR] == 1 && pos.PieceNumber[data.BR] == 1 {
+			if (pos.PieceNumber[data.WN]+pos.PieceNumber[data.WB]) < 2 && (pos.PieceNumber[data.BN]+pos.PieceNumber[data.BB]) < 2 {
 				return true
 			}
-		} else if board.GetPieceCount(pos, data.WR) == 1 && board.GetPieceCount(pos, data.BR) == 0 {
-			if (board.GetPieceCount(pos, data.WN)+board.GetPieceCount(pos, data.WB) == 0) && (((board.GetPieceCount(pos, data.BN) + board.GetPieceCount(pos, data.BB)) == 1) || ((board.GetPieceCount(pos, data.BN) + board.GetPieceCount(pos, data.BB)) == 2)) {
+		} else if pos.PieceNumber[data.WR] == 1 && pos.PieceNumber[data.BR] == 0 {
+			if (pos.PieceNumber[data.WN]+pos.PieceNumber[data.WB] == 0) && (((pos.PieceNumber[data.BN] + pos.PieceNumber[data.BB]) == 1) || ((pos.PieceNumber[data.BN] + pos.PieceNumber[data.BB]) == 2)) {
 				return true
 			}
-		} else if board.GetPieceCount(pos, data.BR) == 1 && board.GetPieceCount(pos, data.WR) == 0 {
-			if (board.GetPieceCount(pos, data.BN)+board.GetPieceCount(pos, data.BB) == 0) && (((board.GetPieceCount(pos, data.WN) + board.GetPieceCount(pos, data.WB)) == 1) || ((board.GetPieceCount(pos, data.WN) + board.GetPieceCount(pos, data.WB)) == 2)) {
+		} else if pos.PieceNumber[data.BR] == 1 && pos.PieceNumber[data.WR] == 0 {
+			if (pos.PieceNumber[data.BN]+pos.PieceNumber[data.BB] == 0) && (((pos.PieceNumber[data.WN] + pos.PieceNumber[data.WB]) == 1) || ((pos.PieceNumber[data.WN] + pos.PieceNumber[data.WB]) == 2)) {
 				return true
 			}
 		}

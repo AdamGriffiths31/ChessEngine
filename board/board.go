@@ -8,8 +8,9 @@ import (
 )
 
 func CheckBoard(pos *data.Board) {
-
 	//TODO Need a config to turn this on off (perf is hit when its on and also not need when not deving)
+	return
+	var pieceNumber = [13]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	var pawns = [3]uint64{0, 0}
 
 	fakePos := &data.Board{}
@@ -19,34 +20,36 @@ func CheckBoard(pos *data.Board) {
 	pawns[data.Both] = pos.Pawns[data.Both]
 
 	for piece := data.WP; piece <= data.BK; piece++ {
-		for pieceNum := 0; pieceNum < GetPieceCount(pos, piece); pieceNum++ {
-			sq120 := data.Square64ToSquare120[PopBitCopy(GetPieceBitboard(pos, piece), pieceNum)]
+		for pieceNum := 0; pieceNum < pos.PieceNumber[piece]; pieceNum++ {
+			sq120 := pos.PieceList[piece][pieceNum]
 			if pos.Pieces[sq120] != piece {
 				panic(fmt.Errorf("CheckBoard: %v does not equal %v", pos.Pieces[sq120], piece))
 			}
 		}
 	}
+
 	for sq64 := 0; sq64 < 64; sq64++ {
 		sq120 := data.Square64ToSquare120[sq64]
 		piece := pos.Pieces[sq120]
+		pieceNumber[piece]++
 
 		SetPosPieceData(fakePos, sq120, piece)
 	}
 
 	for piece := data.WP; piece <= data.BK; piece++ {
-		if GetPieceCount(pos, piece) != GetPieceCount(fakePos, piece) {
-			panic(fmt.Errorf("CheckBoard: piece %v [%v] does not match count %v - was %v", piece, data.Pieces[piece], GetPieceCount(pos, piece), GetPieceCount(fakePos, piece)))
+		if pieceNumber[piece] != pos.PieceNumber[piece] {
+			panic(fmt.Errorf("CheckBoard: piece %v [%v] does not match count %v - was %v", piece, data.Pieces[piece], pos.PieceNumber[piece], pieceNumber[piece]))
 		}
 	}
 
 	pawnCountWhite := CountBits(pawns[data.White])
-	if pawnCountWhite != GetPieceCount(pos, data.WP) {
-		panic(fmt.Errorf("CheckBoard: white pawn error wanted %v but got %v", GetPieceCount(pos, data.WP), pawnCountWhite))
+	if pawnCountWhite != pos.PieceNumber[data.WP] {
+		panic(fmt.Errorf("CheckBoard: white pawn error wanted %v but got %v", pos.PieceNumber[data.WP], pawnCountWhite))
 	}
 
 	pawnCountBlack := CountBits(pawns[data.Black])
-	if pawnCountBlack != GetPieceCount(pos, data.BP) {
-		panic(fmt.Errorf("CheckBoard: black pawn error wanted %v but got %v", GetPieceCount(pos, data.BP), pawnCountBlack))
+	if pawnCountBlack != pos.PieceNumber[data.BP] {
+		panic(fmt.Errorf("CheckBoard: black pawn error wanted %v but got %v", pos.PieceNumber[data.BP], pawnCountBlack))
 	}
 
 	pawnCountBoth := CountBits(pawns[data.Both])
@@ -130,6 +133,9 @@ func UpdateListMaterial(pos *data.Board) {
 		if piece == data.OffBoard || piece == data.Empty {
 			continue
 		}
+		pos.PieceList[piece][pos.PieceNumber[piece]] = sq
+		pos.PieceNumber[piece]++
+
 		if piece == data.WK {
 			pos.KingSquare[data.White] = sq
 		}
@@ -202,6 +208,10 @@ func resetBoard(pos *data.Board) {
 		pos.Pawns[i] = 0
 	}
 
+	for i := 0; i < 13; i++ {
+		pos.PieceNumber[i] = 0
+	}
+
 	pos.KingSquare[data.White], pos.KingSquare[data.Black] = data.NoSquare, data.NoSquare
 
 	pos.Side = data.Both
@@ -218,16 +228,6 @@ func resetBoard(pos *data.Board) {
 	pos.PiecesBB = 0
 	pos.ColoredPiecesBB = 0
 	pos.WhitePiecesBB = 0
-	pos.WhiteKnights = 0
-	pos.BlackKnights = 0
-	pos.WhiteBishops = 0
-	pos.BlackBishops = 0
-	pos.WhiteRooks = 0
-	pos.BlackRooks = 0
-	pos.WhiteQueens = 0
-	pos.BlackQueens = 0
-	pos.WhiteKing = 0
-	pos.BlackKing = 0
 }
 
 // getPieceType returns returns the corresponding piece type integer
@@ -383,122 +383,4 @@ func ClearPosPieceData(pos *data.Board, sq int, piece int) {
 		ClearBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
 	}
 	ClearBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
-}
-
-func GetPieceCount(pos *data.Board, piece int) int {
-	//Queens
-	if piece == data.WQ {
-		return CountBits(pos.WhiteQueens)
-	}
-
-	if piece == data.BQ {
-		return CountBits(pos.BlackQueens)
-	}
-
-	//Rooks
-	if piece == data.WR {
-		return CountBits(pos.WhiteRooks)
-	}
-
-	if piece == data.BR {
-		return CountBits(pos.BlackRooks)
-	}
-
-	//Knights
-	if piece == data.WN {
-		return CountBits(pos.WhiteKnights)
-	}
-
-	if piece == data.BN {
-		return CountBits(pos.BlackKnights)
-	}
-
-	//Bishops
-	if piece == data.WB {
-		return CountBits(pos.WhiteBishops)
-	}
-
-	if piece == data.BB {
-		return CountBits(pos.BlackBishops)
-	}
-
-	//Pawns
-	if piece == data.WP {
-		return CountBits(pos.Pawns[data.White])
-
-	}
-
-	if piece == data.BP {
-		return CountBits(pos.Pawns[data.Black])
-	}
-
-	//kings
-	if piece == data.WK {
-		return CountBits(pos.WhiteKing)
-
-	}
-
-	if piece == data.BK {
-		return CountBits(pos.BlackKing)
-	}
-	panic(fmt.Errorf("GetPieceCount: piece not found %v", piece))
-}
-
-func GetPieceBitboard(pos *data.Board, piece int) *uint64 {
-	//Queens
-	if piece == data.WQ {
-		return &pos.WhiteQueens
-	}
-
-	if piece == data.BQ {
-		return &pos.BlackQueens
-	}
-
-	//Rooks
-	if piece == data.WR {
-		return &pos.WhiteRooks
-	}
-
-	if piece == data.BR {
-		return &pos.BlackRooks
-	}
-
-	//Knights
-	if piece == data.WN {
-		return &pos.WhiteKnights
-	}
-
-	if piece == data.BN {
-		return &pos.BlackKnights
-	}
-
-	//Bishops
-	if piece == data.WB {
-		return &pos.WhiteBishops
-	}
-
-	if piece == data.BB {
-		return &pos.BlackBishops
-	}
-
-	//Pawns
-	if piece == data.WP {
-		return &pos.Pawns[data.White]
-
-	}
-
-	if piece == data.BP {
-		return &pos.Pawns[data.Black]
-	}
-
-	//kings
-	if piece == data.WK {
-		return &pos.WhiteKing
-
-	}
-
-	if piece == data.BK {
-		return &pos.BlackKing
-	}
-	panic(fmt.Errorf("GetPieceBitboard: piece not found %v", piece))
 }

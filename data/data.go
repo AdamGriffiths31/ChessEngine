@@ -218,7 +218,9 @@ type Board struct {
 	Play             int
 	HistoryPlay      int
 	PositionKey      uint64
+	PieceNumber      [13]int
 	Pawns            [3]uint64
+	PieceList        [13][10]int
 	CastlePermission int
 	History          [MaxMoves]Undo
 	PvArray          [MaxDepth]int
