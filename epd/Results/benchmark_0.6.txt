@@ -599,3 +599,18 @@ Analyzing engine: ChessEngine_0.2
 44 of 99 matching moves
 07/03/2023 18:31:04, Total time: 00:18:07
 Rated time: 09:19 = 559 Seconds
+ 98 a7e3                
+    Searching move: Ba7-e3
+    Best move (ChessEngine_0.2): Ba7-e3
+    Identical moves! Found in: 00:00
+   09/03/2023 22:28:13, Time for this analysis: 00:00:10, Rated time: 10:32
+
+ 99 c7h7                
+    Searching move: Rc7xh7
+    Best move (ChessEngine_0.2): Rc7xh7
+    Identical moves! Found in: 00:00
+   09/03/2023 22:28:24, Time for this analysis: 00:00:10, Rated time: 10:32
+
+38 of 99 matching moves
+09/03/2023 22:28:25, Total time: 00:17:26
+Rated time: 10:32 = 632 Seconds
