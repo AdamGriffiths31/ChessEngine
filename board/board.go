@@ -11,9 +11,11 @@ func CheckBoard(pos *data.Board) {
 	//TODO Need a config to turn this on off (perf is hit when its on and also not need when not deving)
 	return
 	var pieceNumber = [13]int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	var bigPiece = [2]int{0, 0}
+	var majorPiece = [2]int{0, 0}
+	var minPiece = [2]int{0, 0}
+	var material = [2]int{0, 0}
 	var pawns = [3]uint64{0, 0}
-
-	fakePos := &data.Board{}
 
 	pawns[data.White] = pos.Pawns[data.White]
 	pawns[data.Black] = pos.Pawns[data.Black]
@@ -32,8 +34,19 @@ func CheckBoard(pos *data.Board) {
 		sq120 := data.Square64ToSquare120[sq64]
 		piece := pos.Pieces[sq120]
 		pieceNumber[piece]++
-
-		SetPosPieceData(fakePos, sq120, piece)
+		color := data.PieceCol[piece]
+		if data.PieceBig[piece] == data.True {
+			bigPiece[color]++
+		}
+		if data.PieceMajor[piece] == data.True {
+			majorPiece[color]++
+		}
+		if data.PieceMin[piece] == data.True {
+			minPiece[color]++
+		}
+		if data.PieceVal[piece] > 0 {
+			material[color] += data.PieceVal[piece]
+		}
 	}
 
 	for piece := data.WP; piece <= data.BK; piece++ {
@@ -78,24 +91,37 @@ func CheckBoard(pos *data.Board) {
 		}
 	}
 
-	if CountBits(fakePos.BlackBishops) != CountBits(pos.BlackBishops) || CountBits(fakePos.BlackKnights) != CountBits(pos.BlackKnights) {
-		panic(fmt.Errorf("CheckBoard: black min piece error\n%v-%v\n%v-%v", CountBits(fakePos.BlackBishops), CountBits(pos.BlackBishops), CountBits(fakePos.BlackKnights), CountBits(pos.BlackKnights)))
+	if material[data.White] != pos.Material[data.White] {
+		panic(fmt.Errorf("CheckBoard: White material was %v but wanted %v ", material[data.White], pos.Material[data.White]))
 	}
 
-	if CountBits(fakePos.WhiteBishops) != CountBits(pos.WhiteBishops) || CountBits(fakePos.WhiteKnights) != CountBits(pos.WhiteKnights) {
-		panic(fmt.Errorf("CheckBoard: white min piece error"))
+	if material[data.Black] != pos.Material[data.Black] {
+		panic(fmt.Errorf("CheckBoard: Black material was %v but wanted %v ", material[data.Black], pos.Material[data.Black]))
 	}
 
-	if CountBits(fakePos.WhiteRooks) != CountBits(pos.WhiteRooks) || CountBits(fakePos.BlackRooks) != CountBits(pos.BlackRooks) {
-		panic(fmt.Errorf("CheckBoard: rooks piece error"))
+	if majorPiece[data.White] != pos.MajorPiece[data.White] {
+		panic(fmt.Errorf("CheckBoard: White major Piece was %v but wanted %v ", majorPiece[data.White], pos.MajorPiece[data.White]))
 	}
 
-	if CountBits(fakePos.WhiteQueens) != CountBits(pos.WhiteQueens) || CountBits(fakePos.BlackQueens) != CountBits(pos.BlackQueens) {
-		panic(fmt.Errorf("CheckBoard: queens piece error"))
+	if majorPiece[data.Black] != pos.MajorPiece[data.Black] {
+		panic(fmt.Errorf("CheckBoard: Black major Piece was %v but wanted %v ", majorPiece[data.Black], pos.MajorPiece[data.Black]))
 	}
 
-	if CountBits(fakePos.WhiteKing) != CountBits(pos.WhiteKing) || CountBits(fakePos.BlackKing) != CountBits(pos.BlackKing) {
-		panic(fmt.Errorf("CheckBoard: kings piece error"))
+	if minPiece[data.White] != pos.MinPiece[data.White] {
+		panic(fmt.Errorf("CheckBoard: White min Piece was %v but wanted %v ", minPiece[data.White], pos.MinPiece[data.White]))
+	}
+
+	if minPiece[data.Black] != pos.MinPiece[data.Black] {
+		io.PrintBoard(pos)
+		panic(fmt.Errorf("CheckBoard: Black min Piece was %v but wanted %v ", minPiece[data.Black], pos.MinPiece[data.Black]))
+	}
+
+	if bigPiece[data.White] != pos.BigPiece[data.White] {
+		panic(fmt.Errorf("CheckBoard: White big Piece was %v but wanted %v ", bigPiece[data.White], pos.BigPiece[data.White]))
+	}
+
+	if bigPiece[data.Black] != pos.BigPiece[data.Black] {
+		panic(fmt.Errorf("CheckBoard: Black big Piece was %v but wanted %v ", bigPiece[data.Black], pos.BigPiece[data.Black]))
 	}
 
 	if pos.Side != data.White && pos.Side != data.Black {
@@ -133,6 +159,9 @@ func UpdateListMaterial(pos *data.Board) {
 		if piece == data.OffBoard || piece == data.Empty {
 			continue
 		}
+
+		colour := data.PieceCol[piece]
+		pos.Material[colour] += data.PieceVal[piece]
 		pos.PieceList[piece][pos.PieceNumber[piece]] = sq
 		pos.PieceNumber[piece]++
 
@@ -144,8 +173,33 @@ func UpdateListMaterial(pos *data.Board) {
 			pos.KingSquare[data.Black] = sq
 		}
 
-		SetPosPieceData(pos, sq, piece)
+		if data.PieceBig[piece] == data.True {
+			pos.BigPiece[colour]++
+		}
 
+		if data.PieceMajor[piece] == data.True {
+			pos.MajorPiece[colour]++
+		}
+		if data.PieceMin[piece] == data.True {
+			pos.MinPiece[colour]++
+		}
+
+		if piece == data.WP {
+			SetBit(&pos.Pawns[data.White], data.Square120ToSquare64[sq])
+			SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
+		}
+
+		if piece == data.BP {
+			SetBit(&pos.Pawns[data.Black], data.Square120ToSquare64[sq])
+			SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
+		}
+
+		if data.PieceCol[piece] == data.White {
+			SetBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
+		} else {
+			SetBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
+		}
+		SetBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
 	}
 }
 
@@ -204,6 +258,13 @@ func resetBoard(pos *data.Board) {
 		pos.Pieces[data.Square64ToSquare120[i]] = data.Empty
 	}
 
+	for i := 0; i < 2; i++ {
+		pos.BigPiece[i] = 0
+		pos.MajorPiece[i] = 0
+		pos.MinPiece[i] = 0
+		pos.Material[i] = 0
+	}
+
 	for i := 0; i < 3; i++ {
 		pos.Pawns[i] = 0
 	}
@@ -255,132 +316,31 @@ func getPieceType(ch rune) int {
 	return piece
 }
 
-func SetPosPieceData(pos *data.Board, sq int, piece int) {
-	//King
-	if piece == data.WK {
-		SetBit(&pos.WhiteKing, data.Square120ToSquare64[sq])
-	}
+func Clone(b *data.Board) *data.Board {
+	clone := &data.Board{}
+	clone.Side = b.Side
+	clone.Play = b.Play
+	clone.HistoryPlay = b.HistoryPlay
+	clone.EnPas = b.EnPas
+	clone.FiftyMove = b.FiftyMove
+	clone.PositionKey = b.PositionKey
+	clone.CastlePermission = b.CastlePermission
+	clone.ColoredPiecesBB = b.ColoredPiecesBB
+	clone.WhitePiecesBB = b.WhitePiecesBB
+	clone.PiecesBB = b.PiecesBB
 
-	if piece == data.BK {
-		SetBit(&pos.BlackKing, data.Square120ToSquare64[sq])
-	}
+	copy(clone.History[:], b.History[:])
+	copy(clone.Pieces[:], b.Pieces[:])
+	copy(clone.KingSquare[:], b.KingSquare[:])
+	copy(clone.PieceNumber[:], b.PieceNumber[:])
+	copy(clone.BigPiece[:], b.BigPiece[:])
+	copy(clone.MajorPiece[:], b.MajorPiece[:])
+	copy(clone.MinPiece[:], b.MinPiece[:])
+	copy(clone.Material[:], b.Material[:])
+	copy(clone.PieceList[:], b.PieceList[:])
+	copy(clone.PvArray[:], b.PvArray[:])
+	copy(clone.SearchHistory[:], b.SearchHistory[:])
+	copy(clone.SearchKillers[:], b.SearchKillers[:])
 
-	//Queens
-	if piece == data.WQ {
-		SetBit(&pos.WhiteQueens, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BQ {
-		SetBit(&pos.BlackQueens, data.Square120ToSquare64[sq])
-	}
-
-	//Rooks
-	if piece == data.WR {
-		SetBit(&pos.WhiteRooks, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BR {
-		SetBit(&pos.BlackRooks, data.Square120ToSquare64[sq])
-	}
-
-	//Knights
-	if piece == data.WN {
-		SetBit(&pos.WhiteKnights, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BN {
-		SetBit(&pos.BlackKnights, data.Square120ToSquare64[sq])
-	}
-
-	//Bishops
-	if piece == data.WB {
-		SetBit(&pos.WhiteBishops, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BB {
-		SetBit(&pos.BlackBishops, data.Square120ToSquare64[sq])
-	}
-
-	//Pawns
-	if piece == data.WP {
-		SetBit(&pos.Pawns[data.White], data.Square120ToSquare64[sq])
-		SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BP {
-		SetBit(&pos.Pawns[data.Black], data.Square120ToSquare64[sq])
-		SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
-	}
-
-	if data.PieceCol[piece] == data.White {
-		SetBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
-	} else {
-		SetBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
-	}
-	SetBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
-}
-
-func ClearPosPieceData(pos *data.Board, sq int, piece int) {
-	//King
-	if piece == data.WK {
-		ClearBit(&pos.WhiteKing, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BK {
-		ClearBit(&pos.BlackKing, data.Square120ToSquare64[sq])
-	}
-
-	//Queens
-	if piece == data.WQ {
-		ClearBit(&pos.WhiteQueens, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BQ {
-		ClearBit(&pos.BlackQueens, data.Square120ToSquare64[sq])
-	}
-
-	//Rooks
-	if piece == data.WR {
-		ClearBit(&pos.WhiteRooks, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BR {
-		ClearBit(&pos.BlackRooks, data.Square120ToSquare64[sq])
-	}
-
-	//Knights
-	if piece == data.WN {
-		ClearBit(&pos.WhiteKnights, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BN {
-		ClearBit(&pos.BlackKnights, data.Square120ToSquare64[sq])
-	}
-
-	//Bishops
-	if piece == data.WB {
-		ClearBit(&pos.WhiteBishops, data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BB {
-		ClearBit(&pos.BlackBishops, data.Square120ToSquare64[sq])
-	}
-
-	//Pawns
-	if piece == data.WP {
-		ClearBit(&pos.Pawns[data.White], data.Square120ToSquare64[sq])
-		ClearBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
-	}
-
-	if piece == data.BP {
-		ClearBit(&pos.Pawns[data.Black], data.Square120ToSquare64[sq])
-		ClearBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
-	}
-
-	if data.PieceCol[piece] == data.White {
-		ClearBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
-	} else {
-		ClearBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
-	}
-	ClearBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
+	return clone
 }

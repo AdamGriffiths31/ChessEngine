@@ -23,9 +23,8 @@ const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
 const MaxWorkers = 32
-const ValueWindow = 30
 
-//const StartFEN = "4r1k1/p1qr1p2/2pb1Bp1/1p5p/3P1n1R/1B3P2/PP3PK1/2Q4R w - - 0 1"
+//const StartFEN = "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - -"
 
 const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -194,6 +193,16 @@ var BitTable = [64]int{
 	58, 20, 37, 17, 36, 8,
 }
 
+type SearchWorker struct {
+	Pos  *Board
+	Info *SearchInfo
+	Hash *PvHashTable
+
+	Number    int
+	Depth     int
+	BestMove  int
+	BestScore int
+}
 type MoveList struct {
 	Moves [MaxPositionMoves]Move
 	Count int
@@ -220,10 +229,15 @@ type Board struct {
 	PositionKey      uint64
 	PieceNumber      [13]int
 	Pawns            [3]uint64
+	BigPiece         [2]int
+	MajorPiece       [2]int
+	MinPiece         [2]int
+	Material         [2]int
 	PieceList        [13][10]int
 	CastlePermission int
 	History          [MaxMoves]Undo
-	PvArray          [MaxDepth]int
+
+	PvArray [MaxDepth]int
 
 	SearchHistory [13][120]int
 	SearchKillers [2][MaxDepth]int
@@ -231,25 +245,6 @@ type Board struct {
 	ColoredPiecesBB uint64
 	WhitePiecesBB   uint64
 	PiecesBB        uint64
-
-	WhiteKnights uint64
-	BlackKnights uint64
-
-	WhiteBishops uint64
-	BlackBishops uint64
-
-	WhiteRooks uint64
-	BlackRooks uint64
-
-	WhiteQueens uint64
-	BlackQueens uint64
-
-	WhiteKing uint64
-	BlackKing uint64
-}
-
-type SearchTask struct {
-	Depth int
 }
 
 type Undo struct {
@@ -300,6 +295,8 @@ type SearchInfo struct {
 
 	Cut     int
 	NullCut int
+
+	WorkerNumber int
 }
 
 type EngineOptions struct {

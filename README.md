@@ -4,24 +4,30 @@ Go implementation of a UCI compatible chess engine.
 
 ## Rating
 
-| Version | File          | Time | Score      |
-| ------- | ------------- | ---- | ---------- |
-| 0.6     | benchmark.epd | 10s  | 452 of 948 |
+| Version | Time Control | Est Rating |
+| ------- | ------------ | ---------- |
+| 0.4     | 5 +6         | 1900       |
+| 0.2     | 5 +6         | 1800       |
+
+## Perft
+
+### Perft testing depth 1-6
+
+| Version | Count | Time    |
+| ------- | ----- | ------- |
+| 0.4     | 5     | 262.05s |
+| 0.3     | 5     | 275.03s |
 
 ## Versions
 
-### v0.7
-
-- Delta pruning
-
-### v0.6 (done)
+### v0.6
 
 - Age Hashing
-- Search optimization
+- Search optimisation
 
 ### v0.5 (done)
 
-- PolyGlot opening book
+- PolyGlot openning book
 
 ### v0.4 (done)
 
@@ -31,14 +37,14 @@ Go implementation of a UCI compatible chess engine.
 
 ### v0.3 (done)
 
-- Xboard integration
+- Xboard intergration
 - Console mode
 
 ### v0.2 (done)
 
 - AB Logic
 - Quiescence
-- UCI integration
+- UCI intergration
 
 ### v0.1 (done)
 

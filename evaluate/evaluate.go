@@ -3,7 +3,6 @@ package evaluate
 import (
 	"math"
 
-	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
@@ -87,7 +86,7 @@ func EvalPosition(pos *data.Board) int {
 		return 0
 	}
 
-	score := calcWhiteMaterial(pos) - calcBlackMaterial(pos)
+	score := pos.Material[data.White] - pos.Material[data.Black]
 
 	//Pawns
 	piece := data.WP
@@ -191,14 +190,14 @@ func EvalPosition(pos *data.Board) int {
 	//King
 	piece = data.WK
 	sq := pos.PieceList[piece][0]
-	if calcBlackMaterial(pos) <= isEndGame() {
+	if pos.Material[data.Black] <= isEndGame() {
 		score += kingE[data.Square120ToSquare64[sq]]
 	} else {
 		score += kingO[data.Square120ToSquare64[sq]]
 	}
 	piece = data.BK
 	sq = pos.PieceList[piece][0]
-	if calcWhiteMaterial(pos) <= isEndGame() {
+	if pos.Material[data.White] <= isEndGame() {
 		score -= kingE[data.Mirror64[data.Square120ToSquare64[sq]]]
 	} else {
 		score -= kingO[data.Mirror64[data.Square120ToSquare64[sq]]]
@@ -246,20 +245,4 @@ func materialDraw(pos *data.Board) bool {
 
 func isEndGame() int {
 	return (1 * data.PieceVal[data.WR]) + (2 * data.PieceVal[data.WN]) + (2 * data.PieceVal[data.WP]) + data.PieceVal[data.WK]
-}
-
-func calcWhiteMaterial(pos *data.Board) int {
-	return (board.CountBits(pos.Pawns[0]) * data.PieceVal[data.WP]) +
-		(board.CountBits(pos.WhiteBishops) * data.PieceVal[data.WB]) +
-		(board.CountBits(pos.WhiteKnights) * data.PieceVal[data.WN]) +
-		(board.CountBits(pos.WhiteRooks) * data.PieceVal[data.WR]) +
-		(board.CountBits(pos.WhiteQueens) * data.PieceVal[data.WQ])
-}
-
-func calcBlackMaterial(pos *data.Board) int {
-	return (board.CountBits(pos.Pawns[1]) * data.PieceVal[data.WP]) +
-		(board.CountBits(pos.BlackBishops) * data.PieceVal[data.WB]) +
-		(board.CountBits(pos.BlackKnights) * data.PieceVal[data.WN]) +
-		(board.CountBits(pos.BlackRooks) * data.PieceVal[data.WR]) +
-		(board.CountBits(pos.BlackQueens) * data.PieceVal[data.WQ])
 }

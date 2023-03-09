@@ -191,14 +191,29 @@ func TakeMoveBack(pos *data.Board) {
 func MovePiece(from, to int, pos *data.Board) {
 	//TODO Validate the move
 	piece := pos.Pieces[from]
+	col := data.PieceCol[piece]
 
 	hashPiece(piece, from, pos)
 	pos.Pieces[from] = data.Empty
 	hashPiece(piece, to, pos)
 	pos.Pieces[to] = piece
 
-	board.SetPosPieceData(pos, to, piece)
-	board.ClearPosPieceData(pos, from, piece)
+	if data.PieceBig[piece] == data.False {
+		board.ClearBit(&pos.Pawns[col], data.Square120ToSquare64[from])
+		board.ClearBit(&pos.Pawns[data.Both], data.Square120ToSquare64[from])
+		board.SetBit(&pos.Pawns[col], data.Square120ToSquare64[to])
+		board.SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[to])
+	}
+
+	if col == data.White {
+		board.ClearBit(&pos.WhitePiecesBB, data.Square120ToSquare64[from])
+		board.SetBit(&pos.WhitePiecesBB, data.Square120ToSquare64[to])
+	} else {
+		board.ClearBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[from])
+		board.SetBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[to])
+	}
+	board.ClearBit(&pos.PiecesBB, data.Square120ToSquare64[from])
+	board.SetBit(&pos.PiecesBB, data.Square120ToSquare64[to])
 
 	found := false
 	for i := 0; i < pos.PieceNumber[piece]; i++ {
@@ -218,12 +233,33 @@ func MovePiece(from, to int, pos *data.Board) {
 func AddPiece(sq, piece int, pos *data.Board) {
 	//TODO Validate the move
 
+	col := data.PieceCol[piece]
 	hashPiece(piece, sq, pos)
 
 	pos.Pieces[sq] = piece
 
-	board.SetPosPieceData(pos, sq, piece)
+	if data.PieceBig[piece] == data.True {
+		pos.BigPiece[col]++
+		if data.PieceMajor[piece] == data.True {
+			pos.MajorPiece[col]++
+		} else if data.PieceMin[piece] == data.True {
+			pos.MinPiece[col]++
+		} else {
+			panic(fmt.Errorf("AddPiece: PieceBig error for %v", piece))
+		}
+	} else {
+		board.SetBit(&pos.Pawns[col], data.Square120ToSquare64[sq])
+		board.SetBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
+	}
 
+	if col == data.White {
+		board.SetBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
+	} else {
+		board.SetBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
+	}
+	board.SetBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
+
+	pos.Material[col] += data.PieceVal[piece]
 	pos.PieceList[piece][pos.PieceNumber[piece]] = sq
 	pos.PieceNumber[piece]++
 }
@@ -232,11 +268,32 @@ func ClearPiece(sq int, pos *data.Board) {
 	//TODO Validate the move
 
 	piece := pos.Pieces[sq]
+	col := data.PieceCol[piece]
 	hashPiece(piece, sq, pos)
 
 	pos.Pieces[sq] = data.Empty
+	pos.Material[col] -= data.PieceVal[piece]
 
-	board.ClearPosPieceData(pos, sq, piece)
+	if data.PieceBig[piece] == data.True {
+		pos.BigPiece[col]--
+		if data.PieceMajor[piece] == data.True {
+			pos.MajorPiece[col]--
+		} else if data.PieceMin[piece] == data.True {
+			pos.MinPiece[col]--
+		} else {
+			panic(fmt.Errorf("AddPiece: PieceBig error for %v", piece))
+		}
+	} else {
+		board.ClearBit(&pos.Pawns[col], data.Square120ToSquare64[sq])
+		board.ClearBit(&pos.Pawns[data.Both], data.Square120ToSquare64[sq])
+	}
+
+	if col == data.White {
+		board.ClearBit(&pos.WhitePiecesBB, data.Square120ToSquare64[sq])
+	} else {
+		board.ClearBit(&pos.ColoredPiecesBB, data.Square120ToSquare64[sq])
+	}
+	board.ClearBit(&pos.PiecesBB, data.Square120ToSquare64[sq])
 
 	tempPiece := -1
 	for i := 0; i < pos.PieceNumber[piece]; i++ {
