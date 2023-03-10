@@ -6,14 +6,23 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AdamGriffiths31/ChessEngine/2.0/engine"
 	consolemode "github.com/AdamGriffiths31/ChessEngine/consoleMode"
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	polyglot "github.com/AdamGriffiths31/ChessEngine/polyGlot"
+	"github.com/AdamGriffiths31/ChessEngine/search"
 	"github.com/AdamGriffiths31/ChessEngine/uci"
 	"github.com/AdamGriffiths31/ChessEngine/xboard"
 )
 
 func main() {
+
+	p := engine.Position{}
+	p.ParseFen(data.StartFEN)
+	p.Board.PrintBitboard(p.Board.WhiteRook)
+}
+
+func old() {
 	polyglot.InitPolyBook()
 	table := &data.PVTable{}
 	hash := &data.PvHashTable{HashTable: table}
@@ -43,6 +52,10 @@ func main() {
 
 		if input == "console" {
 			consolemode.ConsoleMode(pos, info, hash)
+		}
+
+		if input == "b" {
+			search.RunBenchmark()
 		}
 
 		if input == "quit" {

@@ -1,0 +1,5695 @@
+Analysis of C:\Users\Adam\Documents\GitHub\Go\ChessEngine\ChessEngine\epd\benchmark.epd   
+10/03/2023 10:24:36 Level: 10 Seconds
+Analyzing engine: ChessEngine_0.2
+
+ 1 b8b7                 
+    Searching move: Rb8xb7
+    Best move (ChessEngine_0.2): Rb8xb7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:24:49, Time for this analysis: 00:00:10, Rated time: 00:00
+
+ 2 c1f4                 
+    Searching move: Qc1xf4
+    Best move (ChessEngine_0.2): Kg2-f1
+    Not found in: 00:10
+   10/03/2023 10:25:00, Time for this analysis: 00:00:10, Rated time: 00:10
+
+ 3 e1g1                 
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:25:11, Time for this analysis: 00:00:10, Rated time: 00:10
+
+ 4 g2g4                 
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): Rh1-e1
+    Not found in: 00:10
+   10/03/2023 10:25:22, Time for this analysis: 00:00:10, Rated time: 00:20
+
+ 5 h5f7                 
+    Searching move: Qh5xf7
+    Best move (ChessEngine_0.2): Qh5xf7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:25:32, Time for this analysis: 00:00:10, Rated time: 00:20
+
+ 6 g2g4                 
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): d5-d6
+    Not found in: 00:10
+   10/03/2023 10:25:43, Time for this analysis: 00:00:10, Rated time: 00:30
+
+ 7 f2f4                 
+    Searching move: f2-f4
+    Best move (ChessEngine_0.2): Nf1-h2
+    Not found in: 00:10
+   10/03/2023 10:25:54, Time for this analysis: 00:00:10, Rated time: 00:40
+
+ 8 e8g8                 
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:26:05, Time for this analysis: 00:00:10, Rated time: 00:40
+
+ 9 b5c7                 
+    Searching move: Nb5xc7
+    Best move (ChessEngine_0.2): Nb5-a7
+    Not found in: 00:10
+   10/03/2023 10:26:16, Time for this analysis: 00:00:10, Rated time: 00:50
+
+ 10 g2g7                
+    Searching move: Rg2xg7
+    Best move (ChessEngine_0.2): Rg2-e2
+    Not found in: 00:10
+   10/03/2023 10:26:27, Time for this analysis: 00:00:10, Rated time: 01:00
+
+ 11 b3c2                
+    Searching move: Bb3-c2
+    Best move (ChessEngine_0.2): Bb3-c2
+    Identical moves! Found in: 00:00
+   10/03/2023 10:26:38, Time for this analysis: 00:00:10, Rated time: 01:00
+
+ 12 d2d1                
+    Searching move: Rd2-d1
+    Best move (ChessEngine_0.2): Bg2-e4
+    Not found in: 00:10
+   10/03/2023 10:26:49, Time for this analysis: 00:00:10, Rated time: 01:10
+
+ 13 a1a7                
+    Searching move: Ra1-a7
+    Best move (ChessEngine_0.2): Ra1-a7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:27:00, Time for this analysis: 00:00:10, Rated time: 01:10
+
+ 14 f3f6                
+    Searching move: Qf3-f6
+    Best move (ChessEngine_0.2): Nc3xa4
+    Not found in: 00:10
+   10/03/2023 10:27:11, Time for this analysis: 00:00:10, Rated time: 01:20
+
+ 15 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:27:22, Time for this analysis: 00:00:10, Rated time: 01:20
+
+ 16 e5e6                
+    Searching move: e5-e6
+    Best move (ChessEngine_0.2): e5-e6
+    Identical moves! Found in: 00:05
+   10/03/2023 10:27:33, Time for this analysis: 00:00:10, Rated time: 01:25
+
+ 17 g4h5                
+    Searching move: Qg4-h5
+    Best move (ChessEngine_0.2): Qg4-h5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:27:44, Time for this analysis: 00:00:10, Rated time: 01:25
+
+ 18 c3b5                
+    Searching move: Nc3-b5
+    Best move (ChessEngine_0.2): Nc3-b5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:27:55, Time for this analysis: 00:00:10, Rated time: 01:25
+
+ 19 e3c5                
+    Searching move: Qe3xc5
+    Best move (ChessEngine_0.2): Qe3xc5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:28:05, Time for this analysis: 00:00:10, Rated time: 01:25
+
+ 20 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): c4-c5
+    Identical moves! Found in: 00:03
+   10/03/2023 10:28:16, Time for this analysis: 00:00:10, Rated time: 01:28
+
+ 21 g5g6                
+    Searching move: g5-g6
+    Best move (ChessEngine_0.2): g5-g6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:28:27, Time for this analysis: 00:00:10, Rated time: 01:28
+
+ 22 h5f6                
+    Searching move: Nh5-f6
+    Best move (ChessEngine_0.2): Nh5-f6
+    Identical moves! Found in: 00:01
+   10/03/2023 10:28:38, Time for this analysis: 00:00:10, Rated time: 01:29
+
+ 23 c3a4                
+    Searching move: Nc3-a4
+    Best move (ChessEngine_0.2): Nc3-a4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:28:49, Time for this analysis: 00:00:10, Rated time: 01:29
+
+ 24 d4d5                
+    Searching move: d4-d5
+    Best move (ChessEngine_0.2): Kf2-g1
+    Not found in: 00:10
+   10/03/2023 10:29:00, Time for this analysis: 00:00:10, Rated time: 01:39
+
+ 25 f4h6                
+    Searching move: Bf4xh6
+    Best move (ChessEngine_0.2): Rg1-f1
+    Not found in: 00:10
+   10/03/2023 10:29:11, Time for this analysis: 00:00:10, Rated time: 01:49
+
+ 26 g4g5                
+    Searching move: g4-g5
+    Best move (ChessEngine_0.2): Ke2-f3
+    Not found in: 00:10
+   10/03/2023 10:29:22, Time for this analysis: 00:00:10, Rated time: 01:59
+
+ 27 e5d3                
+    Searching move: Ne5xd3
+    Best move (ChessEngine_0.2): Ne5xd3
+    Identical moves! Found in: 00:02
+   10/03/2023 10:29:33, Time for this analysis: 00:00:10, Rated time: 02:01
+
+ 28 e6e5                
+    Searching move: e6-e5
+    Best move (ChessEngine_0.2): b5xc4
+    Not found in: 00:10
+   10/03/2023 10:29:44, Time for this analysis: 00:00:10, Rated time: 02:11
+
+ 29 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Nd4xc6
+    Not found in: 00:10
+   10/03/2023 10:29:55, Time for this analysis: 00:00:10, Rated time: 02:21
+
+ 30 f5g3                
+    Searching move: Nf5-g3
+    Best move (ChessEngine_0.2): Nf5-g3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:30:06, Time for this analysis: 00:00:10, Rated time: 02:21
+
+ 31 b2b4                
+    Searching move: b2-b4
+    Best move (ChessEngine_0.2): Bd4xb6
+    Not found in: 00:10
+   10/03/2023 10:30:17, Time for this analysis: 00:00:10, Rated time: 02:31
+
+ 32 g2a8                
+    Searching move: Qg2-a8
+    Best move (ChessEngine_0.2): Qg2-a8
+    Identical moves! Found in: 00:00
+   10/03/2023 10:30:28, Time for this analysis: 00:00:10, Rated time: 02:31
+
+ 33 g3e5                
+    Searching move: Qg3xe5
+    Best move (ChessEngine_0.2): g4xf5
+    Not found in: 00:10
+   10/03/2023 10:30:38, Time for this analysis: 00:00:10, Rated time: 02:41
+
+ 34 d3g6                
+    Searching move: Bd3xg6
+    Best move (ChessEngine_0.2): Ke3-f2
+    Not found in: 00:10
+   10/03/2023 10:30:49, Time for this analysis: 00:00:10, Rated time: 02:51
+
+ 35 d4g1                
+    Searching move: Bd4-g1
+    Best move (ChessEngine_0.2): Bd4-g1
+    Identical moves! Found in: 00:00
+   10/03/2023 10:31:00, Time for this analysis: 00:00:10, Rated time: 02:51
+
+ 36 c6b6                
+    Searching move: Rc6-b6
+    Best move (ChessEngine_0.2): Qd6-b4
+    Not found in: 00:10
+   10/03/2023 10:31:11, Time for this analysis: 00:00:10, Rated time: 03:01
+
+ 37 d4c6                
+    Searching move: Nd4-c6
+    Best move (ChessEngine_0.2): g7-g8B
+    Not found in: 00:10
+   10/03/2023 10:31:22, Time for this analysis: 00:00:10, Rated time: 03:11
+
+ 38 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:31:33, Time for this analysis: 00:00:10, Rated time: 03:11
+
+ 39 e7d5                
+    Searching move: Ne7-d5
+    Best move (ChessEngine_0.2): Ne7-d5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:31:44, Time for this analysis: 00:00:10, Rated time: 03:11
+
+ 40 h5h7                
+    Searching move: Qh5xh7
+    Best move (ChessEngine_0.2): Qh5xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:31:55, Time for this analysis: 00:00:10, Rated time: 03:11
+
+ 41 f7d6                
+    Searching move: Nf7-d6
+    Best move (ChessEngine_0.2): Nf7-h6
+    Not found in: 00:10
+   10/03/2023 10:32:06, Time for this analysis: 00:00:10, Rated time: 03:21
+
+ 42 e3f3                
+    Searching move: Re3xf3
+    Best move (ChessEngine_0.2): Qd7-f5
+    Not found in: 00:10
+   10/03/2023 10:32:17, Time for this analysis: 00:00:10, Rated time: 03:31
+
+ 43 c2c4                
+    Searching move: c2-c4
+    Best move (ChessEngine_0.2): Nd7-c5
+    Not found in: 00:10
+   10/03/2023 10:32:28, Time for this analysis: 00:00:10, Rated time: 03:41
+
+ 44 b7c8                
+    Searching move: Kb7-c8
+    Best move (ChessEngine_0.2): Bf3xg4
+    Not found in: 00:10
+   10/03/2023 10:32:39, Time for this analysis: 00:00:10, Rated time: 03:51
+
+ 45 a5a6                
+    Searching move: a5-a6
+    Best move (ChessEngine_0.2): Kb6-b7
+    Not found in: 00:10
+   10/03/2023 10:32:50, Time for this analysis: 00:00:10, Rated time: 04:01
+
+ 46 d1h5                
+    Searching move: Qd1-h5
+    Best move (ChessEngine_0.2): Qd1-h5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:33:00, Time for this analysis: 00:00:10, Rated time: 04:01
+
+ 47 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Nc6-e7
+    Not found in: 00:10
+   10/03/2023 10:33:11, Time for this analysis: 00:00:10, Rated time: 04:11
+
+ 48 f1f6                
+    Searching move: Rf1xf6
+    Best move (ChessEngine_0.2): Bd4-e3
+    Not found in: 00:10
+   10/03/2023 10:33:22, Time for this analysis: 00:00:10, Rated time: 04:21
+
+ 49 g2g7                
+    Searching move: Qg2xg7
+    Best move (ChessEngine_0.2): Qg2xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:33:33, Time for this analysis: 00:00:10, Rated time: 04:21
+
+ 50 f1e2                
+    Searching move: Bf1-e2
+    Best move (ChessEngine_0.2): Rh1-g1
+    Not found in: 00:10
+   10/03/2023 10:33:44, Time for this analysis: 00:00:10, Rated time: 04:31
+
+ 51 d1d7                
+    Searching move: Rd1-d7
+    Best move (ChessEngine_0.2): Rd1-d7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:33:55, Time for this analysis: 00:00:10, Rated time: 04:31
+
+ 52 g5f6                
+    Searching move: Bg5-f6
+    Best move (ChessEngine_0.2): Bg5-e3
+    Not found in: 00:10
+   10/03/2023 10:34:06, Time for this analysis: 00:00:10, Rated time: 04:41
+
+ 53 d4f6                
+    Searching move: Bd4-f6
+    Best move (ChessEngine_0.2): Qh5-h6
+    Not found in: 00:10
+   10/03/2023 10:34:17, Time for this analysis: 00:00:10, Rated time: 04:51
+
+ 54 c3e4                
+    Searching move: Nc3xe4
+    Best move (ChessEngine_0.2): Nc3xe4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:34:28, Time for this analysis: 00:00:10, Rated time: 04:51
+
+ 55 c5c7                
+    Searching move: Rc5-c7
+    Best move (ChessEngine_0.2): f2-f4
+    Not found in: 00:10
+   10/03/2023 10:34:39, Time for this analysis: 00:00:10, Rated time: 05:01
+
+ 56 b8b4                
+    Searching move: Rb8-b4
+    Best move (ChessEngine_0.2): Rb8-b4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:34:50, Time for this analysis: 00:00:10, Rated time: 05:01
+
+ 57 e7f6                
+    Searching move: Be7-f6
+    Best move (ChessEngine_0.2): Be7-f6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:35:00, Time for this analysis: 00:00:10, Rated time: 05:01
+
+ 58 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): e2-e4
+    Not found in: 00:10
+   10/03/2023 10:35:11, Time for this analysis: 00:00:10, Rated time: 05:11
+
+ 59 e7d5                
+    Searching move: Ne7-d5
+    Best move (ChessEngine_0.2): c7-c8R
+    Not found in: 00:10
+   10/03/2023 10:35:22, Time for this analysis: 00:00:10, Rated time: 05:21
+
+ 60 h5g6                
+    Searching move: h5xg6
+    Best move (ChessEngine_0.2): c5xb6
+    Not found in: 00:10
+   10/03/2023 10:35:33, Time for this analysis: 00:00:10, Rated time: 05:31
+
+ 61 c1f1                
+    Searching move: Rc1xf1
+    Best move (ChessEngine_0.2): Qd8xb6
+    Not found in: 00:10
+   10/03/2023 10:35:44, Time for this analysis: 00:00:10, Rated time: 05:41
+
+ 62 f4g4                
+    Searching move: Rf4-g4
+    Best move (ChessEngine_0.2): Bc4-d5
+    Not found in: 00:10
+   10/03/2023 10:35:55, Time for this analysis: 00:00:10, Rated time: 05:51
+
+ 63 h6h2                
+    Searching move: Rh6xh2
+    Best move (ChessEngine_0.2): g3xh2
+    Not found in: 00:10
+   10/03/2023 10:36:06, Time for this analysis: 00:00:10, Rated time: 06:01
+
+ 64 f3g5                
+    Searching move: Nf3-g5
+    Best move (ChessEngine_0.2): e2-e3
+    Not found in: 00:10
+   10/03/2023 10:36:17, Time for this analysis: 00:00:10, Rated time: 06:11
+
+ 65 b4d3                
+    Searching move: Nb4-d3
+    Best move (ChessEngine_0.2): Nb4-d3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:36:28, Time for this analysis: 00:00:10, Rated time: 06:11
+
+ 66 c4d5                
+    Searching move: Bc4-d5
+    Best move (ChessEngine_0.2): Bc4-d5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:36:39, Time for this analysis: 00:00:10, Rated time: 06:11
+
+ 67 f4f5                
+    Searching move: f4-f5
+    Best move (ChessEngine_0.2): Ra1-a2
+    Not found in: 00:10
+   10/03/2023 10:36:50, Time for this analysis: 00:00:10, Rated time: 06:21
+
+ 68 g4g3                
+    Searching move: g4-g3
+    Best move (ChessEngine_0.2): g4-g3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:37:01, Time for this analysis: 00:00:10, Rated time: 06:21
+
+ 69 g6h6                
+    Searching move: Rg6-h6
+    Best move (ChessEngine_0.2): Rg6-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:37:11, Time for this analysis: 00:00:10, Rated time: 06:21
+
+ 70 g6g3                
+    Searching move: Rg6xg3
+    Best move (ChessEngine_0.2): Rg6xg3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:37:22, Time for this analysis: 00:00:10, Rated time: 06:21
+
+ 71 e5e6                
+    Searching move: e5-e6
+    Best move (ChessEngine_0.2): Bb1-f5
+    Not found in: 00:10
+   10/03/2023 10:37:33, Time for this analysis: 00:00:10, Rated time: 06:31
+
+ 72 h5f7                
+    Searching move: Bh5-f7
+    Best move (ChessEngine_0.2): Bh5-f7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:37:44, Time for this analysis: 00:00:10, Rated time: 06:31
+
+ 73 e5f6                
+    Searching move: Ke5-f6
+    Best move (ChessEngine_0.2): Ke5xf5
+    Not found in: 00:10
+   10/03/2023 10:37:55, Time for this analysis: 00:00:10, Rated time: 06:41
+
+ 74 e5f7                
+    Searching move: Ne5xf7
+    Best move (ChessEngine_0.2): Ne5xf7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:38:06, Time for this analysis: 00:00:10, Rated time: 06:41
+
+ 75 f1f5                
+    Searching move: Rf1-f5
+    Best move (ChessEngine_0.2): Bg4xe6
+    Not found in: 00:10
+   10/03/2023 10:38:17, Time for this analysis: 00:00:10, Rated time: 06:51
+
+ 76 g3g5                
+    Searching move: Rg3-g5
+    Best move (ChessEngine_0.2): Rf3-e3
+    Not found in: 00:10
+   10/03/2023 10:38:28, Time for this analysis: 00:00:10, Rated time: 07:01
+
+ 77 e4g5                
+    Searching move: Ne4-g5
+    Best move (ChessEngine_0.2): Kc1-b1
+    Not found in: 00:10
+   10/03/2023 10:38:39, Time for this analysis: 00:00:10, Rated time: 07:11
+
+ 78 g2g3                
+    Searching move: g2-g3
+    Best move (ChessEngine_0.2): g2-g3
+    Identical moves! Found in: 00:02
+   10/03/2023 10:38:50, Time for this analysis: 00:00:10, Rated time: 07:13
+
+ 79 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qd1-h5
+    Not found in: 00:10
+   10/03/2023 10:39:00, Time for this analysis: 00:00:10, Rated time: 07:23
+
+ 80 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:39:11, Time for this analysis: 00:00:10, Rated time: 07:23
+
+ 81 a1b3                
+    Searching move: Na1-b3
+    Best move (ChessEngine_0.2): Na1-b3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:39:22, Time for this analysis: 00:00:10, Rated time: 07:23
+
+ 82 a4a5                
+    Searching move: a4-a5
+    Best move (ChessEngine_0.2): Bc3-d2
+    Not found in: 00:10
+   10/03/2023 10:39:33, Time for this analysis: 00:00:10, Rated time: 07:33
+
+ 83 e3f5                
+    Searching move: Ne3-f5
+    Best move (ChessEngine_0.2): g4-g5
+    Not found in: 00:10
+   10/03/2023 10:39:44, Time for this analysis: 00:00:10, Rated time: 07:43
+
+ 84 g1f2                
+    Searching move: Kg1-f2
+    Best move (ChessEngine_0.2): Qg3-h2
+    Not found in: 00:10
+   10/03/2023 10:39:55, Time for this analysis: 00:00:10, Rated time: 07:53
+
+ 85 b5c6                
+    Searching move: Bb5xc6
+    Best move (ChessEngine_0.2): Rf1-d1
+    Not found in: 00:10
+   10/03/2023 10:40:06, Time for this analysis: 00:00:10, Rated time: 08:03
+
+ 86 g5g6                
+    Searching move: g5-g6
+    Best move (ChessEngine_0.2): h5-h6
+    Not found in: 00:10
+   10/03/2023 10:40:17, Time for this analysis: 00:00:10, Rated time: 08:13
+
+ 87 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:40:28, Time for this analysis: 00:00:10, Rated time: 08:13
+
+ 88 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Rd1-e1
+    Not found in: 00:10
+   10/03/2023 10:40:39, Time for this analysis: 00:00:10, Rated time: 08:23
+
+ 89 d8e7                
+    Searching move: Qd8-e7
+    Best move (ChessEngine_0.2): Qd8-e7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:40:50, Time for this analysis: 00:00:10, Rated time: 08:23
+
+ 90 g7d4                
+    Searching move: Bg7-d4
+    Best move (ChessEngine_0.2): Bg7-d4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:41:01, Time for this analysis: 00:00:10, Rated time: 08:23
+
+ 91 e3d4                
+    Searching move: Be3-d4
+    Best move (ChessEngine_0.2): Be3-d4
+    Identical moves! Found in: 00:01
+   10/03/2023 10:41:11, Time for this analysis: 00:00:10, Rated time: 08:24
+
+ 92 e2h5                
+    Searching move: Be2-h5
+    Best move (ChessEngine_0.2): Nh3xf2
+    Not found in: 00:10
+   10/03/2023 10:41:22, Time for this analysis: 00:00:10, Rated time: 08:34
+
+ 93 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Bd3-e2
+    Not found in: 00:10
+   10/03/2023 10:41:33, Time for this analysis: 00:00:10, Rated time: 08:44
+
+ 94 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): f6xe7
+    Not found in: 00:10
+   10/03/2023 10:41:44, Time for this analysis: 00:00:10, Rated time: 08:54
+
+ 95 d2d8                
+    Searching move: Rd2-d8
+    Best move (ChessEngine_0.2): Rd2-d8
+    Identical moves! Found in: 00:00
+   10/03/2023 10:41:55, Time for this analysis: 00:00:10, Rated time: 08:54
+
+ 96 f6g4                
+    Searching move: Nf6-g4
+    Best move (ChessEngine_0.2): Nf6-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:42:06, Time for this analysis: 00:00:10, Rated time: 08:54
+
+ 97 c2c1                
+    Searching move: Rc2-c1
+    Best move (ChessEngine_0.2): Rc2-c1
+    Identical moves! Found in: 00:00
+   10/03/2023 10:42:17, Time for this analysis: 00:00:10, Rated time: 08:54
+
+ 98 a7e3                
+    Searching move: Ba7-e3
+    Best move (ChessEngine_0.2): Ba7-e3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:42:28, Time for this analysis: 00:00:10, Rated time: 08:54
+
+ 99 c7h7                
+    Searching move: Rc7xh7
+    Best move (ChessEngine_0.2): Rc7xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:42:39, Time for this analysis: 00:00:10, Rated time: 08:54
+
+100 e4e3                
+    Searching move: e4-e3
+    Best move (ChessEngine_0.2): Ra8-e8
+    Not found in: 00:10
+   10/03/2023 10:42:50, Time for this analysis: 00:00:10, Rated time: 09:04
+
+101 f5f6                
+    Searching move: f5-f6
+    Best move (ChessEngine_0.2): c6-c7
+    Not found in: 00:10
+   10/03/2023 10:43:01, Time for this analysis: 00:00:10, Rated time: 09:14
+
+102 f1e2                
+    Searching move: Bf1-e2
+    Best move (ChessEngine_0.2): Rh1-g1
+    Not found in: 00:10
+   10/03/2023 10:43:12, Time for this analysis: 00:00:10, Rated time: 09:24
+
+103 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:43:23, Time for this analysis: 00:00:10, Rated time: 09:24
+
+104 g2h3                
+    Searching move: Bg2-h3
+    Best move (ChessEngine_0.2): Nh4-f5
+    Not found in: 00:10
+   10/03/2023 10:43:33, Time for this analysis: 00:00:10, Rated time: 09:34
+
+105 b4a5                
+    Searching move: Bb4-a5
+    Best move (ChessEngine_0.2): Bb4-a5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:43:44, Time for this analysis: 00:00:10, Rated time: 09:34
+
+106 f1f6                
+    Searching move: Rf1xf6
+    Best move (ChessEngine_0.2): Bd4-e3
+    Not found in: 00:10
+   10/03/2023 10:43:55, Time for this analysis: 00:00:10, Rated time: 09:44
+
+107 a6c8                
+    Searching move: Ba6-c8
+    Best move (ChessEngine_0.2): Qe8-c6
+    Not found in: 00:10
+   10/03/2023 10:44:06, Time for this analysis: 00:00:10, Rated time: 09:54
+
+108 e5f5                
+    Searching move: Re5xf5
+    Best move (ChessEngine_0.2): Re2-d2
+    Not found in: 00:10
+   10/03/2023 10:44:17, Time for this analysis: 00:00:10, Rated time: 10:04
+
+109 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): Bd5-c4
+    Not found in: 00:10
+   10/03/2023 10:44:28, Time for this analysis: 00:00:10, Rated time: 10:14
+
+110 e4e5                
+    Searching move: e4-e5
+    Best move (ChessEngine_0.2): Bb3-c4
+    Not found in: 00:10
+   10/03/2023 10:44:39, Time for this analysis: 00:00:10, Rated time: 10:24
+
+111 c3d5                
+    Searching move: Nc3-d5
+    Best move (ChessEngine_0.2): Bf1-e2
+    Not found in: 00:10
+   10/03/2023 10:44:50, Time for this analysis: 00:00:10, Rated time: 10:34
+
+112 e8f8                
+    Searching move: Ke8-f8
+    Best move (ChessEngine_0.2): Ke8-f8
+    Identical moves! Found in: 00:00
+   10/03/2023 10:45:01, Time for this analysis: 00:00:10, Rated time: 10:34
+
+113 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Bc1-g5
+    Not found in: 00:10
+   10/03/2023 10:45:12, Time for this analysis: 00:00:10, Rated time: 10:44
+
+114 g8g7                
+    Searching move: Kg8-g7
+    Best move (ChessEngine_0.2): e4xd3
+    Not found in: 00:10
+   10/03/2023 10:45:23, Time for this analysis: 00:00:10, Rated time: 10:54
+
+115 g5h6                
+    Searching move: Qg5-h6
+    Best move (ChessEngine_0.2): Qg5-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:45:34, Time for this analysis: 00:00:10, Rated time: 10:54
+
+116 c3e4                
+    Searching move: Nc3-e4
+    Best move (ChessEngine_0.2): Nc3-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:45:45, Time for this analysis: 00:00:10, Rated time: 10:54
+
+117 h5h6                
+    Searching move: Qh5-h6
+    Best move (ChessEngine_0.2): Qh5-h6
+    Identical moves! Found in: 00:05
+   10/03/2023 10:45:55, Time for this analysis: 00:00:10, Rated time: 10:59
+
+118 h5h7                
+    Searching move: Qh5xh7
+    Best move (ChessEngine_0.2): Qh5xh7
+    Identical moves! Found in: 00:02
+   10/03/2023 10:46:06, Time for this analysis: 00:00:10, Rated time: 11:01
+
+119 d8c8                
+    Searching move: Rd8-c8
+    Best move (ChessEngine_0.2): Rd8-c8
+    Identical moves! Found in: 00:00
+   10/03/2023 10:46:17, Time for this analysis: 00:00:10, Rated time: 11:01
+
+120 h5h7                
+    Searching move: Rh5xh7
+    Best move (ChessEngine_0.2): Rh5xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:46:28, Time for this analysis: 00:00:10, Rated time: 11:01
+
+121 f2e1                
+    Searching move: Kf2-e1
+    Best move (ChessEngine_0.2): Rd5xd4
+    Not found in: 00:10
+   10/03/2023 10:46:39, Time for this analysis: 00:00:10, Rated time: 11:11
+
+122 g6h6                
+    Searching move: Rg6xh6
+    Best move (ChessEngine_0.2): Rg6xh6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:46:50, Time for this analysis: 00:00:10, Rated time: 11:11
+
+123 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:47:01, Time for this analysis: 00:00:10, Rated time: 11:11
+
+124 c5c6                
+    Searching move: c5-c6
+    Best move (ChessEngine_0.2): c5-c6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:47:12, Time for this analysis: 00:00:10, Rated time: 11:11
+
+125 h5f6                
+    Searching move: Nh5-f6
+    Best move (ChessEngine_0.2): Nh5-f6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:47:23, Time for this analysis: 00:00:10, Rated time: 11:11
+
+126 c2a4                
+    Searching move: Bc2-a4
+    Best move (ChessEngine_0.2): c3-c4
+    Not found in: 00:10
+   10/03/2023 10:47:34, Time for this analysis: 00:00:10, Rated time: 11:21
+
+127 d8d4                
+    Searching move: Rd8xd4
+    Best move (ChessEngine_0.2): Nc6-b4
+    Not found in: 00:10
+   10/03/2023 10:47:45, Time for this analysis: 00:00:10, Rated time: 11:31
+
+128 d1d4                
+    Searching move: Rd1xd4
+    Best move (ChessEngine_0.2): Rd1xd4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:47:56, Time for this analysis: 00:00:10, Rated time: 11:31
+
+129 d6h6                
+    Searching move: Rd6-h6
+    Best move (ChessEngine_0.2): e5-e4
+    Not found in: 00:10
+   10/03/2023 10:48:06, Time for this analysis: 00:00:10, Rated time: 11:41
+
+130 d4c6                
+    Searching move: Nd4-c6
+    Best move (ChessEngine_0.2): g7-g8B
+    Not found in: 00:10
+   10/03/2023 10:48:17, Time for this analysis: 00:00:10, Rated time: 11:51
+
+131 d6f6                
+    Searching move: Rd6xf6
+    Best move (ChessEngine_0.2): Rd6-d4
+    Not found in: 00:10
+   10/03/2023 10:48:28, Time for this analysis: 00:00:10, Rated time: 12:01
+
+132 d3c5                
+    Searching move: Nd3xc5
+    Best move (ChessEngine_0.2): Rf5xd5
+    Not found in: 00:10
+   10/03/2023 10:48:39, Time for this analysis: 00:00:10, Rated time: 12:11
+
+133 a1c1                
+    Searching move: Ra1-c1
+    Best move (ChessEngine_0.2): Ra1-c1
+    Identical moves! Found in: 00:00
+   10/03/2023 10:48:50, Time for this analysis: 00:00:10, Rated time: 12:11
+
+134 e5e6                
+    Searching move: e5-e6
+    Best move (ChessEngine_0.2): e5-e6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:49:01, Time for this analysis: 00:00:10, Rated time: 12:11
+
+135 d7h3                
+    Searching move: Bd7-h3
+    Best move (ChessEngine_0.2): Bd7-h3
+    Identical moves! Found in: 00:03
+   10/03/2023 10:49:12, Time for this analysis: 00:00:10, Rated time: 12:14
+
+136 d6e5                
+    Searching move: Qd6xe5
+    Best move (ChessEngine_0.2): Qd6-d5
+    Not found in: 00:10
+   10/03/2023 10:49:23, Time for this analysis: 00:00:10, Rated time: 12:24
+
+137 f6f5                
+    Searching move: f6-f5
+    Best move (ChessEngine_0.2): f6-f5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:49:34, Time for this analysis: 00:00:10, Rated time: 12:24
+
+138 a8c8                
+    Searching move: Ra8-c8
+    Best move (ChessEngine_0.2): Bd7-h3
+    Not found in: 00:10
+   10/03/2023 10:49:45, Time for this analysis: 00:00:10, Rated time: 12:34
+
+139 c7e5                
+    Searching move: Qc7xe5
+    Best move (ChessEngine_0.2): Qc7xe5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:49:56, Time for this analysis: 00:00:10, Rated time: 12:34
+
+140 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:50:07, Time for this analysis: 00:00:10, Rated time: 12:34
+
+141 d4e3                
+    Searching move: Kd4-e3
+    Best move (ChessEngine_0.2): Kd4-e3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:50:18, Time for this analysis: 00:00:10, Rated time: 12:34
+
+142 d7d4                
+    Searching move: Rd7xd4
+    Best move (ChessEngine_0.2): Rd7xg7
+    Not found in: 00:10
+   10/03/2023 10:50:28, Time for this analysis: 00:00:10, Rated time: 12:44
+
+143 e8c8                
+    Searching move: O-O-O
+    Best move (ChessEngine_0.2): O-O-O
+    Identical moves! Found in: 00:03
+   10/03/2023 10:50:39, Time for this analysis: 00:00:10, Rated time: 12:47
+
+144 a5b3                
+    Searching move: Na5-b3
+    Best move (ChessEngine_0.2): Nd4xc2
+    Not found in: 00:10
+   10/03/2023 10:50:50, Time for this analysis: 00:00:10, Rated time: 12:57
+
+145 f4h3                
+    Searching move: Nf4-h3
+    Best move (ChessEngine_0.2): Nf4-h3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:51:01, Time for this analysis: 00:00:10, Rated time: 12:57
+
+146 e2d2                
+    Searching move: Re2xd2
+    Best move (ChessEngine_0.2): Re2xg2
+    Not found in: 00:10
+   10/03/2023 10:51:12, Time for this analysis: 00:00:10, Rated time: 13:07
+
+147 h3d3                
+    Searching move: Qh3-d3
+    Best move (ChessEngine_0.2): Qh3-f1
+    Not found in: 00:10
+   10/03/2023 10:51:23, Time for this analysis: 00:00:10, Rated time: 13:17
+
+148 e5c7                
+    Searching move: Be5-c7
+    Best move (ChessEngine_0.2): Rc3-c7
+    Not found in: 00:10
+   10/03/2023 10:51:34, Time for this analysis: 00:00:10, Rated time: 13:27
+
+149 e8c8                
+    Searching move: O-O-O
+    Best move (ChessEngine_0.2): O-O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:51:45, Time for this analysis: 00:00:10, Rated time: 13:27
+
+150 h2h3                
+    Searching move: h2-h3
+    Best move (ChessEngine_0.2): h2-h3
+    Identical moves! Found in: 00:03
+   10/03/2023 10:51:56, Time for this analysis: 00:00:10, Rated time: 13:30
+
+151 d3g6                
+    Searching move: Bd3-g6
+    Best move (ChessEngine_0.2): h5-h6
+    Not found in: 00:10
+   10/03/2023 10:52:07, Time for this analysis: 00:00:10, Rated time: 13:40
+
+152 f4h3                
+    Searching move: Nf4xh3
+    Best move (ChessEngine_0.2): Nf4xh3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:52:18, Time for this analysis: 00:00:10, Rated time: 13:40
+
+153 h1h7                
+    Searching move: Rh1xh7
+    Best move (ChessEngine_0.2): Rg1xg5
+    Not found in: 00:10
+   10/03/2023 10:52:29, Time for this analysis: 00:00:10, Rated time: 13:50
+
+154 g8h7                
+    Searching move: Kg8-h7
+    Best move (ChessEngine_0.2): Kg8-h7
+    Identical moves! Found in: 00:04
+   10/03/2023 10:52:39, Time for this analysis: 00:00:10, Rated time: 13:54
+
+155 a2d2                
+    Searching move: Ra2-d2
+    Best move (ChessEngine_0.2): Ra2-d2
+    Identical moves! Found in: 00:09
+   10/03/2023 10:52:50, Time for this analysis: 00:00:10, Rated time: 14:03
+
+156 d1a1                
+    Searching move: Rd1-a1
+    Best move (ChessEngine_0.2): Rd1-a1
+    Identical moves! Found in: 00:00
+   10/03/2023 10:53:01, Time for this analysis: 00:00:10, Rated time: 14:03
+
+157 g7h6                
+    Searching move: Bg7-h6
+    Best move (ChessEngine_0.2): Bg7-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:53:12, Time for this analysis: 00:00:10, Rated time: 14:03
+
+158 c7d7                
+    Searching move: Kc7-d7
+    Best move (ChessEngine_0.2): Kc7-d7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:53:23, Time for this analysis: 00:00:10, Rated time: 14:03
+
+159 f5f4                
+    Searching move: f5-f4
+    Best move (ChessEngine_0.2): f5-f4
+    Identical moves! Found in: 00:04
+   10/03/2023 10:53:34, Time for this analysis: 00:00:10, Rated time: 14:07
+
+160 d7d5                
+    Searching move: d7-d5
+    Best move (ChessEngine_0.2): e5xd4
+    Not found in: 00:10
+   10/03/2023 10:53:45, Time for this analysis: 00:00:10, Rated time: 14:17
+
+161 f3f4                
+    Searching move: Qf3xf4
+    Best move (ChessEngine_0.2): Bc4xe6
+    Not found in: 00:10
+   10/03/2023 10:53:56, Time for this analysis: 00:00:10, Rated time: 14:27
+
+162 h4d8                
+    Searching move: Qh4xd8
+    Best move (ChessEngine_0.2): Qh4xd8
+    Identical moves! Found in: 00:00
+   10/03/2023 10:54:07, Time for this analysis: 00:00:10, Rated time: 14:27
+
+163 e2h5                
+    Searching move: Qe2-h5
+    Best move (ChessEngine_0.2): Nf5xe7
+    Not found in: 00:10
+   10/03/2023 10:54:18, Time for this analysis: 00:00:10, Rated time: 14:37
+
+164 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): d4xc5
+    Not found in: 00:10
+   10/03/2023 10:54:29, Time for this analysis: 00:00:10, Rated time: 14:47
+
+165 c6e5                
+    Searching move: Nc6-e5
+    Best move (ChessEngine_0.2): Nc6-e5
+    Identical moves! Found in: 00:02
+   10/03/2023 10:54:40, Time for this analysis: 00:00:10, Rated time: 14:49
+
+166 f4h4                
+    Searching move: Rf4-h4
+    Best move (ChessEngine_0.2): Rf4-h4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:54:51, Time for this analysis: 00:00:10, Rated time: 14:49
+
+167 e3e2                
+    Searching move: e3-e2
+    Best move (ChessEngine_0.2): e3-e2
+    Identical moves! Found in: 00:00
+   10/03/2023 10:55:02, Time for this analysis: 00:00:10, Rated time: 14:49
+
+168 h3h7                
+    Searching move: Rh3xh7
+    Best move (ChessEngine_0.2): Rh3xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:55:12, Time for this analysis: 00:00:10, Rated time: 14:49
+
+169 d6e4                
+    Searching move: Nd6-e4
+    Best move (ChessEngine_0.2): Nd6-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:55:23, Time for this analysis: 00:00:10, Rated time: 14:49
+
+170 d4d3                
+    Searching move: d4-d3
+    Best move (ChessEngine_0.2): d4-d3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:55:34, Time for this analysis: 00:00:10, Rated time: 14:49
+
+171 e4e5                
+    Searching move: e4-e5
+    Best move (ChessEngine_0.2): d4-d5
+    Not found in: 00:10
+   10/03/2023 10:55:45, Time for this analysis: 00:00:10, Rated time: 14:59
+
+172 e4g6                
+    Searching move: Be4-g6
+    Best move (ChessEngine_0.2): Be4-d3
+    Not found in: 00:10
+   10/03/2023 10:55:56, Time for this analysis: 00:00:10, Rated time: 15:09
+
+173 f1g3                
+    Searching move: Nf1-g3
+    Best move (ChessEngine_0.2): g2-g4
+    Not found in: 00:10
+   10/03/2023 10:56:07, Time for this analysis: 00:00:10, Rated time: 15:19
+
+174 c6c4                
+    Searching move: Qc6-c4
+    Best move (ChessEngine_0.2): Qc6-c4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:56:18, Time for this analysis: 00:00:10, Rated time: 15:19
+
+175 e8e5                
+    Searching move: Re8xe5
+    Best move (ChessEngine_0.2): Re8-f8
+    Not found in: 00:10
+   10/03/2023 10:56:29, Time for this analysis: 00:00:10, Rated time: 15:29
+
+176 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): Bf2-e3
+    Not found in: 00:10
+   10/03/2023 10:56:40, Time for this analysis: 00:00:10, Rated time: 15:39
+
+177 g5f3                
+    Searching move: Ng5-f3
+    Best move (ChessEngine_0.2): Ng5-f3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:56:51, Time for this analysis: 00:00:10, Rated time: 15:39
+
+178 d6f8                
+    Searching move: Bd6-f8
+    Best move (ChessEngine_0.2): Rg8-f8
+    Not found in: 00:10
+   10/03/2023 10:57:02, Time for this analysis: 00:00:10, Rated time: 15:49
+
+179 d5f6                
+    Searching move: Nd5xf6
+    Best move (ChessEngine_0.2): Nd5-c3
+    Not found in: 00:10
+   10/03/2023 10:57:13, Time for this analysis: 00:00:10, Rated time: 15:59
+
+180 d7b5                
+    Searching move: Bd7-b5
+    Best move (ChessEngine_0.2): Bd7-b5
+    Identical moves! Found in: 00:00
+   10/03/2023 10:57:24, Time for this analysis: 00:00:10, Rated time: 15:59
+
+181 c4c3                
+    Searching move: c4-c3
+    Best move (ChessEngine_0.2): Re8-d8
+    Not found in: 00:10
+   10/03/2023 10:57:34, Time for this analysis: 00:00:10, Rated time: 16:09
+
+182 c5e4                
+    Searching move: Nc5xe4
+    Best move (ChessEngine_0.2): Nc5xe4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:57:45, Time for this analysis: 00:00:10, Rated time: 16:09
+
+183 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 10:57:56, Time for this analysis: 00:00:10, Rated time: 16:09
+
+184 f4g4                
+    Searching move: Rf4-g4
+    Best move (ChessEngine_0.2): Bc4-d5
+    Not found in: 00:10
+   10/03/2023 10:58:07, Time for this analysis: 00:00:10, Rated time: 16:19
+
+185 f5g7                
+    Searching move: Nf5xg7
+    Best move (ChessEngine_0.2): Nf5xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:58:18, Time for this analysis: 00:00:10, Rated time: 16:19
+
+186 e7h4                
+    Searching move: Qe7-h4
+    Best move (ChessEngine_0.2): Qe7-h4
+    Identical moves! Found in: 00:00
+   10/03/2023 10:58:29, Time for this analysis: 00:00:10, Rated time: 16:19
+
+187 d1d8                
+    Searching move: Rd1-d8
+    Best move (ChessEngine_0.2): Rd1-d8
+    Identical moves! Found in: 00:00
+   10/03/2023 10:58:40, Time for this analysis: 00:00:10, Rated time: 16:19
+
+188 c8c3                
+    Searching move: Rc8xc3
+    Best move (ChessEngine_0.2): Rc8xc3
+    Identical moves! Found in: 00:00
+   10/03/2023 10:58:51, Time for this analysis: 00:00:10, Rated time: 16:19
+
+189 d5c7                
+    Searching move: Nd5-c7
+    Best move (ChessEngine_0.2): Nd5-c7
+    Identical moves! Found in: 00:00
+   10/03/2023 10:59:02, Time for this analysis: 00:00:10, Rated time: 16:19
+
+190 c5b3                
+    Searching move: Nc5-b3
+    Best move (ChessEngine_0.2): f7-f5
+    Not found in: 00:10
+   10/03/2023 10:59:13, Time for this analysis: 00:00:10, Rated time: 16:29
+
+191 c6f3                
+    Searching move: Qc6-f3
+    Best move (ChessEngine_0.2): Be2xa6
+    Not found in: 00:10
+   10/03/2023 10:59:24, Time for this analysis: 00:00:10, Rated time: 16:39
+
+192 f5g4                
+    Searching move: Bf5-g4
+    Best move (ChessEngine_0.2): h2-h3
+    Not found in: 00:10
+   10/03/2023 10:59:34, Time for this analysis: 00:00:10, Rated time: 16:49
+
+193 h5g6                
+    Searching move: Bh5xg6
+    Best move (ChessEngine_0.2): Bh5xg6
+    Identical moves! Found in: 00:00
+   10/03/2023 10:59:45, Time for this analysis: 00:00:10, Rated time: 16:49
+
+194 f6d5                
+    Searching move: Nf6xd5
+    Best move (ChessEngine_0.2): Nf6xd5
+    Identical moves! Found in: 00:05
+   10/03/2023 10:59:56, Time for this analysis: 00:00:10, Rated time: 16:54
+
+195 e7f7                
+    Searching move: Re7-f7
+    Best move (ChessEngine_0.2): Re7-f7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:00:07, Time for this analysis: 00:00:10, Rated time: 16:54
+
+196 f3f6                
+    Searching move: Rf3-f6
+    Best move (ChessEngine_0.2): Rf3-f1
+    Not found in: 00:10
+   10/03/2023 11:00:18, Time for this analysis: 00:00:10, Rated time: 17:04
+
+197 b7f3                
+    Searching move: Bb7-f3
+    Best move (ChessEngine_0.2): Bb7-f3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:00:29, Time for this analysis: 00:00:10, Rated time: 17:04
+
+198 d1d8                
+    Searching move: Rd1xd8
+    Best move (ChessEngine_0.2): Rc7-c1
+    Not found in: 00:10
+   10/03/2023 11:00:40, Time for this analysis: 00:00:10, Rated time: 17:14
+
+199 e3c5                
+    Searching move: Be3xc5
+    Best move (ChessEngine_0.2): Be3xc5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:00:51, Time for this analysis: 00:00:10, Rated time: 17:14
+
+200 g1h2                
+    Searching move: Kg1-h2
+    Best move (ChessEngine_0.2): Nf6-d5
+    Not found in: 00:10
+   10/03/2023 11:01:02, Time for this analysis: 00:00:10, Rated time: 17:24
+
+201 c3e4                
+    Searching move: Nc3-e4
+    Best move (ChessEngine_0.2): Nc3-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:01:13, Time for this analysis: 00:00:10, Rated time: 17:24
+
+202 a1d1                
+    Searching move: Ra1-d1
+    Best move (ChessEngine_0.2): Ra1-d1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:01:24, Time for this analysis: 00:00:10, Rated time: 17:24
+
+203 f1d1                
+    Searching move: Rf1-d1
+    Best move (ChessEngine_0.2): Bc4xe6
+    Not found in: 00:10
+   10/03/2023 11:01:35, Time for this analysis: 00:00:10, Rated time: 17:34
+
+204 d4d3                
+    Searching move: d4-d3
+    Best move (ChessEngine_0.2): Re8-b8
+    Not found in: 00:10
+   10/03/2023 11:01:45, Time for this analysis: 00:00:10, Rated time: 17:44
+
+205 d5d6                
+    Searching move: d5-d6
+    Best move (ChessEngine_0.2): d5-d6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:01:56, Time for this analysis: 00:00:10, Rated time: 17:44
+
+206 g5h6                
+    Searching move: Bg5-h6
+    Best move (ChessEngine_0.2): Bg5-h6
+    Identical moves! Found in: 00:03
+   10/03/2023 11:02:07, Time for this analysis: 00:00:10, Rated time: 17:47
+
+207 f3g4                
+    Searching move: Kf3-g4
+    Best move (ChessEngine_0.2): f4xg5
+    Not found in: 00:10
+   10/03/2023 11:02:18, Time for this analysis: 00:00:10, Rated time: 17:57
+
+208 e1e8                
+    Searching move: Re1-e8
+    Best move (ChessEngine_0.2): Re1-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:02:29, Time for this analysis: 00:00:10, Rated time: 17:57
+
+209 d3b3                
+    Searching move: Rd3xb3
+    Best move (ChessEngine_0.2): Rd3-e3
+    Not found in: 00:10
+   10/03/2023 11:02:40, Time for this analysis: 00:00:10, Rated time: 18:07
+
+210 g5f6                
+    Searching move: Bg5-f6
+    Best move (ChessEngine_0.2): Nf3-d4
+    Not found in: 00:10
+   10/03/2023 11:02:51, Time for this analysis: 00:00:10, Rated time: 18:17
+
+211 e7e1                
+    Searching move: Re7-e1
+    Best move (ChessEngine_0.2): Re7-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:03:02, Time for this analysis: 00:00:10, Rated time: 18:17
+
+212 f3c6                
+    Searching move: Bf3xc6
+    Best move (ChessEngine_0.2): Bf3xc6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:03:13, Time for this analysis: 00:00:10, Rated time: 18:17
+
+213 d5d6                
+    Searching move: d5-d6
+    Best move (ChessEngine_0.2): d5-d6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:03:24, Time for this analysis: 00:00:10, Rated time: 18:17
+
+214 f2f1                
+    Searching move: Qf2-f1
+    Best move (ChessEngine_0.2): Qf2-f1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:03:35, Time for this analysis: 00:00:10, Rated time: 18:17
+
+215 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Ne4xf2
+    Not found in: 00:10
+   10/03/2023 11:03:46, Time for this analysis: 00:00:10, Rated time: 18:27
+
+216 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:03:56, Time for this analysis: 00:00:10, Rated time: 18:27
+
+217 d4d7                
+    Searching move: Qd4xd7
+    Best move (ChessEngine_0.2): Qd4xd7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:04:07, Time for this analysis: 00:00:10, Rated time: 18:27
+
+218 e6e5                
+    Searching move: e6-e5
+    Best move (ChessEngine_0.2): Qe7-f6
+    Not found in: 00:10
+   10/03/2023 11:04:18, Time for this analysis: 00:00:10, Rated time: 18:37
+
+219 f4f5                
+    Searching move: f4-f5
+    Best move (ChessEngine_0.2): f4-f5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:04:29, Time for this analysis: 00:00:10, Rated time: 18:37
+
+220 g7f5                
+    Searching move: Ng7-f5
+    Best move (ChessEngine_0.2): Nf8-e6
+    Not found in: 00:10
+   10/03/2023 11:04:40, Time for this analysis: 00:00:10, Rated time: 18:47
+
+221 d4f6                
+    Searching move: Bd4-f6
+    Best move (ChessEngine_0.2): Qh5-h6
+    Not found in: 00:10
+   10/03/2023 11:04:51, Time for this analysis: 00:00:10, Rated time: 18:57
+
+222 e2d3                
+    Searching move: Ke2-d3
+    Best move (ChessEngine_0.2): Nd1-c3
+    Not found in: 00:10
+   10/03/2023 11:05:02, Time for this analysis: 00:00:10, Rated time: 19:07
+
+223 e5e6                
+    Searching move: e5-e6
+    Best move (ChessEngine_0.2): Qd3-c3
+    Not found in: 00:10
+   10/03/2023 11:05:13, Time for this analysis: 00:00:10, Rated time: 19:17
+
+224 f1f7                
+    Searching move: Rf1xf7
+    Best move (ChessEngine_0.2): Nd4-f5
+    Not found in: 00:10
+   10/03/2023 11:05:24, Time for this analysis: 00:00:10, Rated time: 19:27
+
+225 e4e5                
+    Searching move: e4-e5
+    Best move (ChessEngine_0.2): Rf1-d1
+    Not found in: 00:10
+   10/03/2023 11:05:35, Time for this analysis: 00:00:10, Rated time: 19:37
+
+226 d3f3                
+    Searching move: Qd3-f3
+    Best move (ChessEngine_0.2): Qd3-f3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:05:46, Time for this analysis: 00:00:10, Rated time: 19:37
+
+227 h6g6                
+    Searching move: Qh6xg6
+    Best move (ChessEngine_0.2): Qh6xg6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:05:57, Time for this analysis: 00:00:10, Rated time: 19:37
+
+228 a8b8                
+    Searching move: Ra8-b8
+    Best move (ChessEngine_0.2): Ra8-b8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:06:07, Time for this analysis: 00:00:10, Rated time: 19:37
+
+229 f3f4                
+    Searching move: f3-f4
+    Best move (ChessEngine_0.2): Ke8-d7
+    Not found in: 00:10
+   10/03/2023 11:06:18, Time for this analysis: 00:00:10, Rated time: 19:47
+
+230 e7c8                
+    Searching move: Ne7-c8
+    Best move (ChessEngine_0.2): g5-g4
+    Not found in: 00:10
+   10/03/2023 11:06:29, Time for this analysis: 00:00:10, Rated time: 19:57
+
+231 d5f6                
+    Searching move: Nd5-f6
+    Best move (ChessEngine_0.2): Rf1-d1
+    Not found in: 00:10
+   10/03/2023 11:06:40, Time for this analysis: 00:00:10, Rated time: 20:07
+
+232 f3g5                
+    Searching move: Nf3xg5
+    Best move (ChessEngine_0.2): Qe2-f2
+    Not found in: 00:10
+   10/03/2023 11:06:51, Time for this analysis: 00:00:10, Rated time: 20:17
+
+233 h6h7                
+    Searching move: h6-h7
+    Best move (ChessEngine_0.2): h6-h7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:07:02, Time for this analysis: 00:00:10, Rated time: 20:17
+
+234 f2f7                
+    Searching move: Qf2xf7
+    Best move (ChessEngine_0.2): Qf2xf7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:07:13, Time for this analysis: 00:00:10, Rated time: 20:17
+
+235 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:07:24, Time for this analysis: 00:00:10, Rated time: 20:17
+
+236 d7h3                
+    Searching move: Bd7-h3
+    Best move (ChessEngine_0.2): Bd7-h3
+    Identical moves! Found in: 00:03
+   10/03/2023 11:07:35, Time for this analysis: 00:00:10, Rated time: 20:20
+
+237 a3f8                
+    Searching move: Qa3-f8
+    Best move (ChessEngine_0.2): Qa3-f8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:07:46, Time for this analysis: 00:00:10, Rated time: 20:20
+
+238 e6d4                
+    Searching move: Ne6-d4
+    Best move (ChessEngine_0.2): Ne6-d4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:07:57, Time for this analysis: 00:00:10, Rated time: 20:20
+
+239 c5c6                
+    Searching move: c5-c6
+    Best move (ChessEngine_0.2): c5-c6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:08:08, Time for this analysis: 00:00:10, Rated time: 20:20
+
+240 f5h3                
+    Searching move: Bf5-h3
+    Best move (ChessEngine_0.2): a4-a3
+    Not found in: 00:10
+   10/03/2023 11:08:19, Time for this analysis: 00:00:10, Rated time: 20:30
+
+241 c3c4                
+    Searching move: c3-c4
+    Best move (ChessEngine_0.2): Ra1-a2
+    Not found in: 00:10
+   10/03/2023 11:08:29, Time for this analysis: 00:00:10, Rated time: 20:40
+
+242 c3c4                
+    Searching move: c3-c4
+    Best move (ChessEngine_0.2): Ra1-a2
+    Not found in: 00:10
+   10/03/2023 11:08:40, Time for this analysis: 00:00:10, Rated time: 20:50
+
+243 c1d2                
+    Searching move: Kc1-d2
+    Best move (ChessEngine_0.2): Bc2-d3
+    Not found in: 00:10
+   10/03/2023 11:08:51, Time for this analysis: 00:00:10, Rated time: 21:00
+
+244 f5e6                
+    Searching move: Qf5-e6
+    Best move (ChessEngine_0.2): Rf7xf8
+    Not found in: 00:10
+   10/03/2023 11:09:02, Time for this analysis: 00:00:10, Rated time: 21:10
+
+245 c3d5                
+    Searching move: Nc3-d5
+    Best move (ChessEngine_0.2): Ke4-f4
+    Not found in: 00:10
+   10/03/2023 11:09:13, Time for this analysis: 00:00:10, Rated time: 21:20
+
+246 f7d6                
+    Searching move: Nf7-d6
+    Best move (ChessEngine_0.2): Nf7-h6
+    Not found in: 00:10
+   10/03/2023 11:09:24, Time for this analysis: 00:00:10, Rated time: 21:30
+
+247 f3e5                
+    Searching move: Nf3xe5
+    Best move (ChessEngine_0.2): Nf3xe5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:09:35, Time for this analysis: 00:00:10, Rated time: 21:30
+
+248 f1f6                
+    Searching move: Rf1-f6
+    Best move (ChessEngine_0.2): Ng5-f3
+    Not found in: 00:10
+   10/03/2023 11:09:46, Time for this analysis: 00:00:10, Rated time: 21:40
+
+249 b5a6                
+    Searching move: Kb5-a6
+    Best move (ChessEngine_0.2): Qe6-b3
+    Not found in: 00:10
+   10/03/2023 11:09:57, Time for this analysis: 00:00:10, Rated time: 21:50
+
+250 d2f4                
+    Searching move: Qd2-f4
+    Best move (ChessEngine_0.2): e4xd5
+    Not found in: 00:10
+   10/03/2023 11:10:08, Time for this analysis: 00:00:10, Rated time: 22:00
+
+251 f1f8                
+    Searching move: Qf1xf8
+    Best move (ChessEngine_0.2): Qf1xf8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:10:19, Time for this analysis: 00:00:10, Rated time: 22:00
+
+252 h1h7                
+    Searching move: Rh1xh7
+    Best move (ChessEngine_0.2): Rg1xg5
+    Not found in: 00:10
+   10/03/2023 11:10:29, Time for this analysis: 00:00:10, Rated time: 22:10
+
+253 f4e3                
+    Searching move: Bf4-e3
+    Best move (ChessEngine_0.2): Kh7-h6
+    Not found in: 00:10
+   10/03/2023 11:10:40, Time for this analysis: 00:00:10, Rated time: 22:20
+
+254 f6f7                
+    Searching move: f6-f7
+    Best move (ChessEngine_0.2): Bb3-a4
+    Not found in: 00:10
+   10/03/2023 11:10:51, Time for this analysis: 00:00:10, Rated time: 22:30
+
+255 d8d4                
+    Searching move: Rd8-d4
+    Best move (ChessEngine_0.2): Rd8-f8
+    Not found in: 00:10
+   10/03/2023 11:11:02, Time for this analysis: 00:00:10, Rated time: 22:40
+
+256 d1e2                
+    Searching move: Qd1xe2
+    Best move (ChessEngine_0.2): Re1xe2
+    Not found in: 00:10
+   10/03/2023 11:11:13, Time for this analysis: 00:00:10, Rated time: 22:50
+
+257 d1d5                
+    Searching move: Rd1xd5
+    Best move (ChessEngine_0.2): Rd1xd5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:11:24, Time for this analysis: 00:00:10, Rated time: 22:50
+
+258 f2f4                
+    Searching move: f2-f4
+    Best move (ChessEngine_0.2): f2-f4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:11:35, Time for this analysis: 00:00:10, Rated time: 22:50
+
+259 a2d2                
+    Searching move: Ra2xd2
+    Best move (ChessEngine_0.2): Ra2xd2
+    Identical moves! Found in: 00:05
+   10/03/2023 11:11:46, Time for this analysis: 00:00:10, Rated time: 22:55
+
+260 c4f7                
+    Searching move: Bc4xf7
+    Best move (ChessEngine_0.2): Bc4xf7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:11:57, Time for this analysis: 00:00:10, Rated time: 22:55
+
+261 d7d5                
+    Searching move: d7-d5
+    Best move (ChessEngine_0.2): e5xf4
+    Not found in: 00:10
+   10/03/2023 11:12:08, Time for this analysis: 00:00:10, Rated time: 23:05
+
+262 e5f7                
+    Searching move: Ne5-f7
+    Best move (ChessEngine_0.2): Ne5-f7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:12:19, Time for this analysis: 00:00:10, Rated time: 23:05
+
+263 e5e4                
+    Searching move: e5-e4
+    Best move (ChessEngine_0.2): Rc7xc3
+    Not found in: 00:10
+   10/03/2023 11:12:30, Time for this analysis: 00:00:10, Rated time: 23:15
+
+264 d1h5                
+    Searching move: Qd1-h5
+    Best move (ChessEngine_0.2): Qd1-h5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:12:40, Time for this analysis: 00:00:10, Rated time: 23:15
+
+265 g1g7                
+    Searching move: Rg1xg7
+    Best move (ChessEngine_0.2): Qh4-g5
+    Not found in: 00:10
+   10/03/2023 11:12:51, Time for this analysis: 00:00:10, Rated time: 23:25
+
+266 g2f3                
+    Searching move: Kg2-f3
+    Best move (ChessEngine_0.2): Rc2xd2
+    Not found in: 00:10
+   10/03/2023 11:13:02, Time for this analysis: 00:00:10, Rated time: 23:35
+
+267 h2h3                
+    Searching move: h2-h3
+    Best move (ChessEngine_0.2): h2xg3
+    Not found in: 00:10
+   10/03/2023 11:13:13, Time for this analysis: 00:00:10, Rated time: 23:45
+
+268 c4e2                
+    Searching move: Bc4-e2
+    Best move (ChessEngine_0.2): b4-b5
+    Not found in: 00:10
+   10/03/2023 11:13:24, Time for this analysis: 00:00:10, Rated time: 23:55
+
+269 f1e1                
+    Searching move: Rf1-e1
+    Best move (ChessEngine_0.2): Rd1-e1
+    Not found in: 00:10
+   10/03/2023 11:13:35, Time for this analysis: 00:00:10, Rated time: 24:05
+
+270 h6h2                
+    Searching move: Rh6xh2
+    Best move (ChessEngine_0.2): g3xh2
+    Not found in: 00:10
+   10/03/2023 11:13:46, Time for this analysis: 00:00:10, Rated time: 24:15
+
+271 e7e5                
+    Searching move: Qe7-e5
+    Best move (ChessEngine_0.2): Ra8-b8
+    Not found in: 00:10
+   10/03/2023 11:13:57, Time for this analysis: 00:00:10, Rated time: 24:25
+
+272 f1f5                
+    Searching move: Rf1-f5
+    Best move (ChessEngine_0.2): Bg4xe6
+    Not found in: 00:10
+   10/03/2023 11:14:08, Time for this analysis: 00:00:10, Rated time: 24:35
+
+273 a8h8                
+    Searching move: Ra8-h8
+    Best move (ChessEngine_0.2): Ra8-h8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:14:19, Time for this analysis: 00:00:10, Rated time: 24:35
+
+274 c4c3                
+    Searching move: c4-c3
+    Best move (ChessEngine_0.2): c4-c3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:14:30, Time for this analysis: 00:00:10, Rated time: 24:35
+
+275 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): Nb1-d2
+    Not found in: 00:10
+   10/03/2023 11:14:41, Time for this analysis: 00:00:10, Rated time: 24:45
+
+276 d5c7                
+    Searching move: Nd5-c7
+    Best move (ChessEngine_0.2): Nd5-c7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:14:52, Time for this analysis: 00:00:10, Rated time: 24:45
+
+277 c3b2                
+    Searching move: c3xb2
+    Best move (ChessEngine_0.2): Ra8-a5
+    Not found in: 00:10
+   10/03/2023 11:15:03, Time for this analysis: 00:00:10, Rated time: 24:55
+
+278 f2f4                
+    Searching move: f2-f4
+    Best move (ChessEngine_0.2): Nf1-h2
+    Not found in: 00:10
+   10/03/2023 11:15:14, Time for this analysis: 00:00:10, Rated time: 25:05
+
+279 e4e5                
+    Searching move: e4-e5
+    Best move (ChessEngine_0.2): d4-d5
+    Not found in: 00:10
+   10/03/2023 11:15:24, Time for this analysis: 00:00:10, Rated time: 25:15
+
+280 e4d6                
+    Searching move: Ne4xd6
+    Best move (ChessEngine_0.2): Ne4xd6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:15:35, Time for this analysis: 00:00:10, Rated time: 25:15
+
+281 b6b7                
+    Searching move: Rb6-b7
+    Best move (ChessEngine_0.2): Rb6-b7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:15:46, Time for this analysis: 00:00:10, Rated time: 25:15
+
+282 e5h5                
+    Searching move: Re5-h5
+    Best move (ChessEngine_0.2): Re5-h5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:15:57, Time for this analysis: 00:00:10, Rated time: 25:15
+
+283 c2c4                
+    Searching move: Rc2xc4
+    Best move (ChessEngine_0.2): Rc2xc4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:16:08, Time for this analysis: 00:00:10, Rated time: 25:15
+
+284 f3f6                
+    Searching move: Qf3-f6
+    Best move (ChessEngine_0.2): Ke1-f1
+    Not found in: 00:10
+   10/03/2023 11:16:19, Time for this analysis: 00:00:10, Rated time: 25:25
+
+285 a3b4                
+    Searching move: a3xb4
+    Best move (ChessEngine_0.2): Bf4-d2
+    Not found in: 00:10
+   10/03/2023 11:16:30, Time for this analysis: 00:00:10, Rated time: 25:35
+
+286 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Bf4-e3
+    Not found in: 00:10
+   10/03/2023 11:16:41, Time for this analysis: 00:00:10, Rated time: 25:45
+
+287 d3g6                
+    Searching move: Qd3xg6
+    Best move (ChessEngine_0.2): Qd3xg6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:16:52, Time for this analysis: 00:00:10, Rated time: 25:45
+
+288 h6f8                
+    Searching move: Bh6-f8
+    Best move (ChessEngine_0.2): Bh6-f8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:17:03, Time for this analysis: 00:00:10, Rated time: 25:45
+
+289 h5f3                
+    Searching move: Bh5-f3
+    Best move (ChessEngine_0.2): c5-c6
+    Not found in: 00:10
+   10/03/2023 11:17:14, Time for this analysis: 00:00:10, Rated time: 25:55
+
+290 f6g6                
+    Searching move: Rf6xg6
+    Best move (ChessEngine_0.2): Rf6xg6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:17:25, Time for this analysis: 00:00:10, Rated time: 25:55
+
+291 e2h5                
+    Searching move: Qe2-h5
+    Best move (ChessEngine_0.2): Ng5-f3
+    Not found in: 00:10
+   10/03/2023 11:17:35, Time for this analysis: 00:00:10, Rated time: 26:05
+
+292 g5g3                
+    Searching move: Qg5xg3
+    Best move (ChessEngine_0.2): Qg5-f6
+    Not found in: 00:10
+   10/03/2023 11:17:46, Time for this analysis: 00:00:10, Rated time: 26:15
+
+293 d5d6                
+    Searching move: d5-d6
+    Best move (ChessEngine_0.2): d5-d6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:17:57, Time for this analysis: 00:00:10, Rated time: 26:15
+
+294 f4d3                
+    Searching move: Nf4-d3
+    Best move (ChessEngine_0.2): h4xg5
+    Not found in: 00:10
+   10/03/2023 11:18:08, Time for this analysis: 00:00:10, Rated time: 26:25
+
+295 d6d1                
+    Searching move: Qd6-d1
+    Best move (ChessEngine_0.2): Qd6-d1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:18:19, Time for this analysis: 00:00:10, Rated time: 26:25
+
+296 e8e5                
+    Searching move: Re8xe5
+    Best move (ChessEngine_0.2): Re8-f8
+    Not found in: 00:10
+   10/03/2023 11:18:30, Time for this analysis: 00:00:10, Rated time: 26:35
+
+297 a1c1                
+    Searching move: Ra1-c1
+    Best move (ChessEngine_0.2): Ra1-c1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:18:41, Time for this analysis: 00:00:10, Rated time: 26:35
+
+298 f3f6                
+    Searching move: Qf3-f6
+    Best move (ChessEngine_0.2): Nc3xa4
+    Not found in: 00:10
+   10/03/2023 11:18:52, Time for this analysis: 00:00:10, Rated time: 26:45
+
+299 f5b5                
+    Searching move: Rf5xb5
+    Best move (ChessEngine_0.2): Rf5xf4
+    Not found in: 00:10
+   10/03/2023 11:19:03, Time for this analysis: 00:00:10, Rated time: 26:55
+
+300 g5h7                
+    Searching move: Ng5xh7
+    Best move (ChessEngine_0.2): Qe1-h4
+    Not found in: 00:10
+   10/03/2023 11:19:14, Time for this analysis: 00:00:10, Rated time: 27:05
+
+301 f5c8                
+    Searching move: Bf5-c8
+    Best move (ChessEngine_0.2): Bf5-c8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:19:24, Time for this analysis: 00:00:10, Rated time: 27:05
+
+302 g5f7                
+    Searching move: Ng5xf7
+    Best move (ChessEngine_0.2): Bf5-c2
+    Not found in: 00:10
+   10/03/2023 11:19:35, Time for this analysis: 00:00:10, Rated time: 27:15
+
+303 b6b7                
+    Searching move: b6-b7
+    Best move (ChessEngine_0.2): b6-b7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:19:46, Time for this analysis: 00:00:10, Rated time: 27:15
+
+304 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Rd1-e1
+    Not found in: 00:10
+   10/03/2023 11:19:57, Time for this analysis: 00:00:10, Rated time: 27:25
+
+305 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): c4-c5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:20:08, Time for this analysis: 00:00:10, Rated time: 27:25
+
+306 d2e4                
+    Searching move: Nd2-e4
+    Best move (ChessEngine_0.2): Nd2-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:20:19, Time for this analysis: 00:00:10, Rated time: 27:25
+
+307 d4g4                
+    Searching move: Qd4-g4
+    Best move (ChessEngine_0.2): Qd4-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:20:30, Time for this analysis: 00:00:10, Rated time: 27:25
+
+308 g5h6                
+    Searching move: Qg5-h6
+    Best move (ChessEngine_0.2): O-O-O
+    Not found in: 00:10
+   10/03/2023 11:20:41, Time for this analysis: 00:00:10, Rated time: 27:35
+
+309 e4h7                
+    Searching move: Be4-h7
+    Best move (ChessEngine_0.2): Be4-h7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:20:52, Time for this analysis: 00:00:10, Rated time: 27:35
+
+310 h6g5                
+    Searching move: Kh6-g5
+    Best move (ChessEngine_0.2): Kh6-g7
+    Not found in: 00:10
+   10/03/2023 11:21:03, Time for this analysis: 00:00:10, Rated time: 27:45
+
+311 h1h6                
+    Searching move: Rh1-h6
+    Best move (ChessEngine_0.2): Bf7-e8
+    Not found in: 00:10
+   10/03/2023 11:21:14, Time for this analysis: 00:00:10, Rated time: 27:55
+
+312 e2e8                
+    Searching move: Qe2xe8
+    Best move (ChessEngine_0.2): Bd4xf6
+    Not found in: 00:10
+   10/03/2023 11:21:25, Time for this analysis: 00:00:10, Rated time: 28:05
+
+313 a2b2                
+    Searching move: Ka2-b2
+    Best move (ChessEngine_0.2): Bd6-e5
+    Not found in: 00:10
+   10/03/2023 11:21:35, Time for this analysis: 00:00:10, Rated time: 28:15
+
+314 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Nd5xc3
+    Not found in: 00:10
+   10/03/2023 11:21:46, Time for this analysis: 00:00:10, Rated time: 28:25
+
+315 h5f4                
+    Searching move: Nh5-f4
+    Best move (ChessEngine_0.2): Nh5-f4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:21:57, Time for this analysis: 00:00:10, Rated time: 28:25
+
+316 e1h4                
+    Searching move: Qe1-h4
+    Best move (ChessEngine_0.2): Bg5-d2
+    Not found in: 00:10
+   10/03/2023 11:22:08, Time for this analysis: 00:00:10, Rated time: 28:35
+
+317 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): d3-d4
+    Not found in: 00:10
+   10/03/2023 11:22:19, Time for this analysis: 00:00:10, Rated time: 28:45
+
+318 g3g4                
+    Searching move: g3-g4
+    Best move (ChessEngine_0.2): Kf4-f3
+    Not found in: 00:10
+   10/03/2023 11:22:30, Time for this analysis: 00:00:10, Rated time: 28:55
+
+319 c6d4                
+    Searching move: Nc6xd4
+    Best move (ChessEngine_0.2): Nc6xd4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:22:41, Time for this analysis: 00:00:10, Rated time: 28:55
+
+320 h5g6                
+    Searching move: h5xg6
+    Best move (ChessEngine_0.2): c5xb6
+    Not found in: 00:10
+   10/03/2023 11:22:52, Time for this analysis: 00:00:10, Rated time: 29:05
+
+321 d3e4                
+    Searching move: Bd3xe4
+    Best move (ChessEngine_0.2): Bd3xe4
+    Identical moves! Found in: 00:03
+   10/03/2023 11:23:03, Time for this analysis: 00:00:10, Rated time: 29:08
+
+322 b6c4                
+    Searching move: Nb6-c4
+    Best move (ChessEngine_0.2): Rh8-g8
+    Not found in: 00:10
+   10/03/2023 11:23:14, Time for this analysis: 00:00:10, Rated time: 29:18
+
+323 c4e2                
+    Searching move: Bc4-e2
+    Best move (ChessEngine_0.2): b4-b5
+    Not found in: 00:10
+   10/03/2023 11:23:25, Time for this analysis: 00:00:10, Rated time: 29:28
+
+324 f7d6                
+    Searching move: Nf7-d6
+    Best move (ChessEngine_0.2): Nf7-h6
+    Not found in: 00:10
+   10/03/2023 11:23:36, Time for this analysis: 00:00:10, Rated time: 29:38
+
+325 c7a8                
+    Searching move: Nc7-a8
+    Best move (ChessEngine_0.2): Rc2-f2
+    Not found in: 00:10
+   10/03/2023 11:23:47, Time for this analysis: 00:00:10, Rated time: 29:48
+
+326 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:23:58, Time for this analysis: 00:00:10, Rated time: 29:48
+
+327 a8d8                
+    Searching move: Ra8-d8
+    Best move (ChessEngine_0.2): Ra8-d8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:24:09, Time for this analysis: 00:00:10, Rated time: 29:48
+
+328 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): c4-c5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:24:19, Time for this analysis: 00:00:10, Rated time: 29:48
+
+329 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:04
+   10/03/2023 11:24:30, Time for this analysis: 00:00:10, Rated time: 29:52
+
+330 e6g4                
+    Searching move: Be6xg4
+    Best move (ChessEngine_0.2): Be6xg4
+    Identical moves! Found in: 00:05
+   10/03/2023 11:24:41, Time for this analysis: 00:00:10, Rated time: 29:57
+
+331 b6c4                
+    Searching move: Nb6xc4
+    Best move (ChessEngine_0.2): Nb6-d7
+    Not found in: 00:10
+   10/03/2023 11:24:52, Time for this analysis: 00:00:10, Rated time: 30:07
+
+332 a7d4                
+    Searching move: Qa7-d4
+    Best move (ChessEngine_0.2): Qa7-d4
+    Identical moves! Found in: 00:04
+   10/03/2023 11:25:03, Time for this analysis: 00:00:10, Rated time: 30:11
+
+333 h5h4                
+    Searching move: Rh5xh4
+    Best move (ChessEngine_0.2): b5-b4
+    Not found in: 00:10
+   10/03/2023 11:25:14, Time for this analysis: 00:00:10, Rated time: 30:21
+
+334 d4b3                
+    Searching move: Nd4-b3
+    Best move (ChessEngine_0.2): Nd4-b3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:25:25, Time for this analysis: 00:00:10, Rated time: 30:21
+
+335 e8c7                
+    Searching move: Ne8-c7
+    Best move (ChessEngine_0.2): Ne5-g4
+    Not found in: 00:10
+   10/03/2023 11:25:36, Time for this analysis: 00:00:10, Rated time: 30:31
+
+336 f5g6                
+    Searching move: f5xg6
+    Best move (ChessEngine_0.2): f5xg6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:25:47, Time for this analysis: 00:00:10, Rated time: 30:31
+
+337 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:25:58, Time for this analysis: 00:00:10, Rated time: 30:31
+
+338 d5f7                
+    Searching move: Bd5xf7
+    Best move (ChessEngine_0.2): f2-f4
+    Not found in: 00:10
+   10/03/2023 11:26:09, Time for this analysis: 00:00:10, Rated time: 30:41
+
+339 h4e4                
+    Searching move: Rh4xe4
+    Best move (ChessEngine_0.2): Rh4xe4
+    Identical moves! Found in: 00:06
+   10/03/2023 11:26:20, Time for this analysis: 00:00:10, Rated time: 30:47
+
+340 e2e8                
+    Searching move: Qe2xe8
+    Best move (ChessEngine_0.2): Bd4xf6
+    Not found in: 00:10
+   10/03/2023 11:26:31, Time for this analysis: 00:00:10, Rated time: 30:57
+
+341 e5e6                
+    Searching move: e5-e6
+    Best move (ChessEngine_0.2): Qd3-c3
+    Not found in: 00:10
+   10/03/2023 11:26:42, Time for this analysis: 00:00:10, Rated time: 31:07
+
+342 g3f5                
+    Searching move: Ng3-f5
+    Best move (ChessEngine_0.2): Rf4-h4
+    Not found in: 00:10
+   10/03/2023 11:26:53, Time for this analysis: 00:00:10, Rated time: 31:17
+
+343 e5d5                
+    Searching move: Re5xd5
+    Best move (ChessEngine_0.2): Re5xd5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:27:03, Time for this analysis: 00:00:10, Rated time: 31:17
+
+344 f3f8                
+    Searching move: Rf3-f8
+    Best move (ChessEngine_0.2): Rf3-f8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:27:14, Time for this analysis: 00:00:10, Rated time: 31:17
+
+345 h5h6                
+    Searching move: h5-h6
+    Best move (ChessEngine_0.2): h5xg6
+    Not found in: 00:10
+   10/03/2023 11:27:25, Time for this analysis: 00:00:10, Rated time: 31:27
+
+346 e3e8                
+    Searching move: Re3-e8
+    Best move (ChessEngine_0.2): Nc4-a5
+    Not found in: 00:10
+   10/03/2023 11:27:36, Time for this analysis: 00:00:10, Rated time: 31:37
+
+347 e6e5                
+    Searching move: Qe6-e5
+    Best move (ChessEngine_0.2): Qe6-e5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:27:47, Time for this analysis: 00:00:10, Rated time: 31:37
+
+348 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:27:58, Time for this analysis: 00:00:10, Rated time: 31:37
+
+349 a4b5                
+    Searching move: Ka4-b5
+    Best move (ChessEngine_0.2): Ka4-b4
+    Not found in: 00:10
+   10/03/2023 11:28:09, Time for this analysis: 00:00:10, Rated time: 31:47
+
+350 b6c4                
+    Searching move: Nb6-c4
+    Best move (ChessEngine_0.2): Rh8-g8
+    Not found in: 00:10
+   10/03/2023 11:28:20, Time for this analysis: 00:00:10, Rated time: 31:57
+
+351 d4d7                
+    Searching move: Qd4-d7
+    Best move (ChessEngine_0.2): Qd4-d7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:28:31, Time for this analysis: 00:00:10, Rated time: 31:57
+
+352 g1f2                
+    Searching move: Kg1-f2
+    Best move (ChessEngine_0.2): Qg3-h2
+    Not found in: 00:10
+   10/03/2023 11:28:42, Time for this analysis: 00:00:10, Rated time: 32:07
+
+353 c2d4                
+    Searching move: Nc2-d4
+    Best move (ChessEngine_0.2): Kg2-f3
+    Not found in: 00:10
+   10/03/2023 11:28:53, Time for this analysis: 00:00:10, Rated time: 32:17
+
+354 f3f7                
+    Searching move: Qf3-f7
+    Best move (ChessEngine_0.2): Qf3-f7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:29:04, Time for this analysis: 00:00:10, Rated time: 32:17
+
+355 c1e1                
+    Searching move: Rc1-e1
+    Best move (ChessEngine_0.2): Rc1-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:29:15, Time for this analysis: 00:00:10, Rated time: 32:17
+
+356 a2a3                
+    Searching move: a2-a3
+    Best move (ChessEngine_0.2): Bg2xd5
+    Not found in: 00:10
+   10/03/2023 11:29:26, Time for this analysis: 00:00:10, Rated time: 32:27
+
+357 e3c1                
+    Searching move: Be3-c1
+    Best move (ChessEngine_0.2): Be3-d2
+    Not found in: 00:10
+   10/03/2023 11:29:36, Time for this analysis: 00:00:10, Rated time: 32:37
+
+358 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:29:47, Time for this analysis: 00:00:10, Rated time: 32:37
+
+359 h3h5                
+    Searching move: Qh3xh5
+    Best move (ChessEngine_0.2): Qh3xh5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:29:58, Time for this analysis: 00:00:10, Rated time: 32:37
+
+360 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:30:09, Time for this analysis: 00:00:10, Rated time: 32:37
+
+361 h2g3                
+    Searching move: Kh2-g3
+    Best move (ChessEngine_0.2): Rd7-d8
+    Not found in: 00:10
+   10/03/2023 11:30:20, Time for this analysis: 00:00:10, Rated time: 32:47
+
+362 d2h6                
+    Searching move: Qd2-h6
+    Best move (ChessEngine_0.2): Qd2-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:30:31, Time for this analysis: 00:00:10, Rated time: 32:47
+
+363 h1h6                
+    Searching move: Rh1-h6
+    Best move (ChessEngine_0.2): Bf7-e8
+    Not found in: 00:10
+   10/03/2023 11:30:42, Time for this analysis: 00:00:10, Rated time: 32:57
+
+364 d4d6                
+    Searching move: Rd4-d6
+    Best move (ChessEngine_0.2): Nf5-e7
+    Not found in: 00:10
+   10/03/2023 11:30:53, Time for this analysis: 00:00:10, Rated time: 33:07
+
+365 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): Bf2-e3
+    Not found in: 00:10
+   10/03/2023 11:31:04, Time for this analysis: 00:00:10, Rated time: 33:17
+
+366 b3b2                
+    Searching move: Rb3xb2
+    Best move (ChessEngine_0.2): Rb3-b8
+    Not found in: 00:10
+   10/03/2023 11:31:15, Time for this analysis: 00:00:10, Rated time: 33:27
+
+367 d8d1                
+    Searching move: Rd8-d1
+    Best move (ChessEngine_0.2): Rd8-d1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:31:26, Time for this analysis: 00:00:10, Rated time: 33:27
+
+368 d5f6                
+    Searching move: Nd5-f6
+    Best move (ChessEngine_0.2): Rf1-d1
+    Not found in: 00:10
+   10/03/2023 11:31:37, Time for this analysis: 00:00:10, Rated time: 33:37
+
+369 f3f4                
+    Searching move: f3-f4
+    Best move (ChessEngine_0.2): Ke8-d7
+    Not found in: 00:10
+   10/03/2023 11:31:47, Time for this analysis: 00:00:10, Rated time: 33:47
+
+370 f2g2                
+    Searching move: Rf2xg2
+    Best move (ChessEngine_0.2): Rf2xg2
+    Identical moves! Found in: 00:00
+   10/03/2023 11:31:58, Time for this analysis: 00:00:10, Rated time: 33:47
+
+371 g7g5                
+    Searching move: g7-g5
+    Best move (ChessEngine_0.2): g7-g5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:32:09, Time for this analysis: 00:00:10, Rated time: 33:47
+
+372 e8e2                
+    Searching move: Re8-e2
+    Best move (ChessEngine_0.2): Re8-e2
+    Identical moves! Found in: 00:05
+   10/03/2023 11:32:20, Time for this analysis: 00:00:10, Rated time: 33:52
+
+373 e3e8                
+    Searching move: Qe3-e8
+    Best move (ChessEngine_0.2): Qe3-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:32:31, Time for this analysis: 00:00:10, Rated time: 33:52
+
+374 b4e7                
+    Searching move: Bb4-e7
+    Best move (ChessEngine_0.2): Bb4-e7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:32:42, Time for this analysis: 00:00:10, Rated time: 33:52
+
+375 e1h4                
+    Searching move: Be1xh4
+    Best move (ChessEngine_0.2): Be1-f2
+    Not found in: 00:10
+   10/03/2023 11:32:53, Time for this analysis: 00:00:10, Rated time: 34:02
+
+376 g3h4                
+    Searching move: Bg3-h4
+    Best move (ChessEngine_0.2): Bg3-h4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:33:04, Time for this analysis: 00:00:10, Rated time: 34:02
+
+377 d6f6                
+    Searching move: Rd6xf6
+    Best move (ChessEngine_0.2): Be3xc5
+    Not found in: 00:10
+   10/03/2023 11:33:15, Time for this analysis: 00:00:10, Rated time: 34:12
+
+378 f7g6                
+    Searching move: Qf7-g6
+    Best move (ChessEngine_0.2): Qf7-g6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:33:26, Time for this analysis: 00:00:10, Rated time: 34:12
+
+379 e5f6                
+    Searching move: e5xf6
+    Best move (ChessEngine_0.2): e5xf6
+    Identical moves! Found in: 00:03
+   10/03/2023 11:33:37, Time for this analysis: 00:00:10, Rated time: 34:15
+
+380 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O-O
+    Not found in: 00:10
+   10/03/2023 11:33:48, Time for this analysis: 00:00:10, Rated time: 34:25
+
+381 h4g4                
+    Searching move: Qh4-g4
+    Best move (ChessEngine_0.2): Qh4-h3
+    Not found in: 00:10
+   10/03/2023 11:33:59, Time for this analysis: 00:00:10, Rated time: 34:35
+
+382 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): e5xf6
+    Not found in: 00:10
+   10/03/2023 11:34:10, Time for this analysis: 00:00:10, Rated time: 34:45
+
+383 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qe2-c2
+    Not found in: 00:10
+   10/03/2023 11:34:20, Time for this analysis: 00:00:10, Rated time: 34:55
+
+384 c1g5                
+    Searching move: Bc1-g5
+    Best move (ChessEngine_0.2): d4xe5
+    Not found in: 00:10
+   10/03/2023 11:34:31, Time for this analysis: 00:00:10, Rated time: 35:05
+
+385 c2b2                
+    Searching move: Rc2xb2
+    Best move (ChessEngine_0.2): Rc2xb2
+    Identical moves! Found in: 00:01
+   10/03/2023 11:34:42, Time for this analysis: 00:00:10, Rated time: 35:06
+
+386 d8d4                
+    Searching move: Rd8xd4
+    Best move (ChessEngine_0.2): Nc6-b4
+    Not found in: 00:10
+   10/03/2023 11:34:53, Time for this analysis: 00:00:10, Rated time: 35:16
+
+387 g5f6                
+    Searching move: Bg5-f6
+    Best move (ChessEngine_0.2): Bg5-e3
+    Not found in: 00:10
+   10/03/2023 11:35:04, Time for this analysis: 00:00:10, Rated time: 35:26
+
+388 d3d1                
+    Searching move: Qd3-d1
+    Best move (ChessEngine_0.2): Qd3-d1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:35:15, Time for this analysis: 00:00:10, Rated time: 35:26
+
+389 c6b4                
+    Searching move: Nc6-b4
+    Best move (ChessEngine_0.2): Nc6-b4
+    Identical moves! Found in: 00:03
+   10/03/2023 11:35:26, Time for this analysis: 00:00:10, Rated time: 35:29
+
+390 c4d6                
+    Searching move: Nc4xd6
+    Best move (ChessEngine_0.2): Rh4-h1
+    Not found in: 00:10
+   10/03/2023 11:35:37, Time for this analysis: 00:00:10, Rated time: 35:39
+
+391 e2f4                
+    Searching move: Ne2-f4
+    Best move (ChessEngine_0.2): Nb3-c5
+    Not found in: 00:10
+   10/03/2023 11:35:48, Time for this analysis: 00:00:10, Rated time: 35:49
+
+392 e4g6                
+    Searching move: Be4-g6
+    Best move (ChessEngine_0.2): Be4-d3
+    Not found in: 00:10
+   10/03/2023 11:35:59, Time for this analysis: 00:00:10, Rated time: 35:59
+
+393 d8c7                
+    Searching move: Bd8-c7
+    Best move (ChessEngine_0.2): g6xh7
+    Not found in: 00:10
+   10/03/2023 11:36:10, Time for this analysis: 00:00:10, Rated time: 36:09
+
+394 d3h3                
+    Searching move: Rd3-h3
+    Best move (ChessEngine_0.2): Re1-e2
+    Not found in: 00:10
+   10/03/2023 11:36:21, Time for this analysis: 00:00:10, Rated time: 36:19
+
+395 g3g6                
+    Searching move: Qg3-g6
+    Best move (ChessEngine_0.2): Qg3-g6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:36:32, Time for this analysis: 00:00:10, Rated time: 36:19
+
+396 g1e2                
+    Searching move: Ng1-e2
+    Best move (ChessEngine_0.2): Ng1-e2
+    Identical moves! Found in: 00:00
+   10/03/2023 11:36:43, Time for this analysis: 00:00:10, Rated time: 36:19
+
+397 h4h5                
+    Searching move: h4-h5
+    Best move (ChessEngine_0.2): Na6-c5
+    Not found in: 00:10
+   10/03/2023 11:36:53, Time for this analysis: 00:00:10, Rated time: 36:29
+
+398 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): d7-d6
+    Not found in: 00:10
+   10/03/2023 11:37:04, Time for this analysis: 00:00:10, Rated time: 36:39
+
+399 d4c3                
+    Searching move: Bd4-c3
+    Best move (ChessEngine_0.2): Bd4-c3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:37:15, Time for this analysis: 00:00:10, Rated time: 36:39
+
+400 f7f6                
+    Searching move: f7-f6
+    Best move (ChessEngine_0.2): Bc8-f5
+    Not found in: 00:10
+   10/03/2023 11:37:26, Time for this analysis: 00:00:10, Rated time: 36:49
+
+401 f4h5                
+    Searching move: Nf4-h5
+    Best move (ChessEngine_0.2): Nf4-h5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:37:37, Time for this analysis: 00:00:10, Rated time: 36:49
+
+402 d4d5                
+    Searching move: d4-d5
+    Best move (ChessEngine_0.2): e2-e3
+    Not found in: 00:10
+   10/03/2023 11:37:48, Time for this analysis: 00:00:10, Rated time: 36:59
+
+403 g3g5                
+    Searching move: Rg3-g5
+    Best move (ChessEngine_0.2): Rf3-e3
+    Not found in: 00:10
+   10/03/2023 11:37:59, Time for this analysis: 00:00:10, Rated time: 37:09
+
+404 d2c2                
+    Searching move: Kd2-c2
+    Best move (ChessEngine_0.2): Kd2-c3
+    Not found in: 00:10
+   10/03/2023 11:38:10, Time for this analysis: 00:00:10, Rated time: 37:19
+
+405 d2c3                
+    Searching move: Bd2-c3
+    Best move (ChessEngine_0.2): Rf1-e1
+    Not found in: 00:10
+   10/03/2023 11:38:21, Time for this analysis: 00:00:10, Rated time: 37:29
+
+406 d1g1                
+    Searching move: Rd1-g1
+    Best move (ChessEngine_0.2): Rh6-h7
+    Not found in: 00:10
+   10/03/2023 11:38:32, Time for this analysis: 00:00:10, Rated time: 37:39
+
+407 f5e6                
+    Searching move: Qf5-e6
+    Best move (ChessEngine_0.2): Rf7xf8
+    Not found in: 00:10
+   10/03/2023 11:38:43, Time for this analysis: 00:00:10, Rated time: 37:49
+
+408 e3e1                
+    Searching move: Re3-e1
+    Best move (ChessEngine_0.2): Re3-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:38:54, Time for this analysis: 00:00:10, Rated time: 37:49
+
+409 d1a4                
+    Searching move: Qd1xa4
+    Best move (ChessEngine_0.2): Qd1-b3
+    Not found in: 00:10
+   10/03/2023 11:39:05, Time for this analysis: 00:00:10, Rated time: 37:59
+
+410 g6e8                
+    Searching move: Bg6-e8
+    Best move (ChessEngine_0.2): Bg6-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:39:16, Time for this analysis: 00:00:10, Rated time: 37:59
+
+411 c6g2                
+    Searching move: Bc6xg2
+    Best move (ChessEngine_0.2): Rf8-e8
+    Not found in: 00:10
+   10/03/2023 11:39:26, Time for this analysis: 00:00:10, Rated time: 38:09
+
+412 d6d5                
+    Searching move: d6-d5
+    Best move (ChessEngine_0.2): Nc4-a3
+    Not found in: 00:10
+   10/03/2023 11:39:37, Time for this analysis: 00:00:10, Rated time: 38:19
+
+413 f2f3                
+    Searching move: f2-f3
+    Best move (ChessEngine_0.2): h2-h3
+    Not found in: 00:10
+   10/03/2023 11:39:48, Time for this analysis: 00:00:10, Rated time: 38:29
+
+414 e3h6                
+    Searching move: Qe3-h6
+    Best move (ChessEngine_0.2): Qe3-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:39:59, Time for this analysis: 00:00:10, Rated time: 38:29
+
+415 e7c7                
+    Searching move: Re7-c7
+    Best move (ChessEngine_0.2): Bb7xd5
+    Not found in: 00:10
+   10/03/2023 11:40:10, Time for this analysis: 00:00:10, Rated time: 38:39
+
+416 c3d1                
+    Searching move: Nc3-d1
+    Best move (ChessEngine_0.2): Qg3-e3
+    Not found in: 00:10
+   10/03/2023 11:40:21, Time for this analysis: 00:00:10, Rated time: 38:49
+
+417 h2h3                
+    Searching move: h2-h3
+    Best move (ChessEngine_0.2): h2xg3
+    Not found in: 00:10
+   10/03/2023 11:40:32, Time for this analysis: 00:00:10, Rated time: 38:59
+
+418 e4f6                
+    Searching move: Ne4-f6
+    Best move (ChessEngine_0.2): Bd6xf4
+    Not found in: 00:10
+   10/03/2023 11:40:43, Time for this analysis: 00:00:10, Rated time: 39:09
+
+419 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Ra8-d8
+    Not found in: 00:10
+   10/03/2023 11:40:54, Time for this analysis: 00:00:10, Rated time: 39:19
+
+420 g3h2                
+    Searching move: Kg3-h2
+    Best move (ChessEngine_0.2): Kg3-f3
+    Not found in: 00:10
+   10/03/2023 11:41:05, Time for this analysis: 00:00:10, Rated time: 39:29
+
+421 e7f8                
+    Searching move: Be7-f8
+    Best move (ChessEngine_0.2): Nc6xd4
+    Not found in: 00:10
+   10/03/2023 11:41:16, Time for this analysis: 00:00:10, Rated time: 39:39
+
+422 d7d6                
+    Searching move: Qd7-d6
+    Best move (ChessEngine_0.2): Qd7-d6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:41:27, Time for this analysis: 00:00:10, Rated time: 39:39
+
+423 c4d3                
+    Searching move: Bc4-d3
+    Best move (ChessEngine_0.2): Bc4-d3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:41:38, Time for this analysis: 00:00:10, Rated time: 39:39
+
+424 e1e8                
+    Searching move: Re1-e8
+    Best move (ChessEngine_0.2): Re1-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:41:48, Time for this analysis: 00:00:10, Rated time: 39:39
+
+425 h8h2                
+    Searching move: Rh8xh2
+    Best move (ChessEngine_0.2): Rh8xh2
+    Identical moves! Found in: 00:00
+   10/03/2023 11:41:59, Time for this analysis: 00:00:10, Rated time: 39:39
+
+426 e5g6                
+    Searching move: Ne5-g6
+    Best move (ChessEngine_0.2): Ne5-f3
+    Not found in: 00:10
+   10/03/2023 11:42:10, Time for this analysis: 00:00:10, Rated time: 39:49
+
+427 a6b5                
+    Searching move: Qa6-b5
+    Best move (ChessEngine_0.2): Qa6-b5
+    Identical moves! Found in: 00:01
+   10/03/2023 11:42:21, Time for this analysis: 00:00:10, Rated time: 39:50
+
+428 d1d8                
+    Searching move: Qd1-d8
+    Best move (ChessEngine_0.2): Qd1-d8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:42:32, Time for this analysis: 00:00:10, Rated time: 39:50
+
+429 b5a7                
+    Searching move: Nb5xa7
+    Best move (ChessEngine_0.2): Nb5xa7
+    Identical moves! Found in: 00:07
+   10/03/2023 11:42:43, Time for this analysis: 00:00:10, Rated time: 39:57
+
+430 c8c7                
+    Searching move: Rc8xc7
+    Best move (ChessEngine_0.2): Rc8xc7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:42:54, Time for this analysis: 00:00:10, Rated time: 39:57
+
+431 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:43:05, Time for this analysis: 00:00:10, Rated time: 39:57
+
+432 g4f3                
+    Searching move: Qg4xf3
+    Best move (ChessEngine_0.2): Qg4xf3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:43:16, Time for this analysis: 00:00:10, Rated time: 39:57
+
+433 d1d8                
+    Searching move: Rd1-d8
+    Best move (ChessEngine_0.2): c2-c3
+    Not found in: 00:10
+   10/03/2023 11:43:27, Time for this analysis: 00:00:10, Rated time: 40:07
+
+434 g5f4                
+    Searching move: Bg5-f4
+    Best move (ChessEngine_0.2): Re7xd7
+    Not found in: 00:10
+   10/03/2023 11:43:38, Time for this analysis: 00:00:10, Rated time: 40:17
+
+435 e2e4                
+    Searching move: e2-e4
+    Best move (ChessEngine_0.2): e2-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:43:49, Time for this analysis: 00:00:10, Rated time: 40:17
+
+436 h5h7                
+    Searching move: Qh5xh7
+    Best move (ChessEngine_0.2): Qh5xh7
+    Identical moves! Found in: 00:06
+   10/03/2023 11:44:00, Time for this analysis: 00:00:10, Rated time: 40:23
+
+437 e3e4                
+    Searching move: e3-e4
+    Best move (ChessEngine_0.2): Qd1-c2
+    Not found in: 00:10
+   10/03/2023 11:44:10, Time for this analysis: 00:00:10, Rated time: 40:33
+
+438 h6h2                
+    Searching move: Rh6xh2
+    Best move (ChessEngine_0.2): g3xh2
+    Not found in: 00:10
+   10/03/2023 11:44:21, Time for this analysis: 00:00:10, Rated time: 40:43
+
+439 h3h4                
+    Searching move: h3-h4
+    Best move (ChessEngine_0.2): Bf6-g7
+    Not found in: 00:10
+   10/03/2023 11:44:32, Time for this analysis: 00:00:10, Rated time: 40:53
+
+440 g6h6                
+    Searching move: Rg6xh6
+    Best move (ChessEngine_0.2): Bc4xe6
+    Not found in: 00:10
+   10/03/2023 11:44:43, Time for this analysis: 00:00:10, Rated time: 41:03
+
+441 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:44:54, Time for this analysis: 00:00:10, Rated time: 41:03
+
+442 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Bc1-e3
+    Not found in: 00:10
+   10/03/2023 11:45:05, Time for this analysis: 00:00:10, Rated time: 41:13
+
+443 d5e7                
+    Searching move: Nd5-e7
+    Best move (ChessEngine_0.2): Nd5-e7
+    Identical moves! Found in: 00:03
+   10/03/2023 11:45:16, Time for this analysis: 00:00:10, Rated time: 41:16
+
+444 f3g5                
+    Searching move: Nf3xg5
+    Best move (ChessEngine_0.2): Bc1xg5
+    Not found in: 00:10
+   10/03/2023 11:45:27, Time for this analysis: 00:00:10, Rated time: 41:26
+
+445 b8c7                
+    Searching move: Qb8-c7
+    Best move (ChessEngine_0.2): Ba6-b7
+    Not found in: 00:10
+   10/03/2023 11:45:38, Time for this analysis: 00:00:10, Rated time: 41:36
+
+446 f3g2                
+    Searching move: Qf3-g2
+    Best move (ChessEngine_0.2): c6xd5
+    Not found in: 00:10
+   10/03/2023 11:45:49, Time for this analysis: 00:00:10, Rated time: 41:46
+
+447 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:46:00, Time for this analysis: 00:00:10, Rated time: 41:46
+
+448 g4g7                
+    Searching move: Qg4xg7
+    Best move (ChessEngine_0.2): Qg4xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:46:11, Time for this analysis: 00:00:10, Rated time: 41:46
+
+449 e4f6                
+    Searching move: Ne4xf6
+    Best move (ChessEngine_0.2): Ne4xf6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:46:22, Time for this analysis: 00:00:10, Rated time: 41:46
+
+450 e4e5                
+    Searching move: e4-e5
+    Best move (ChessEngine_0.2): e4-e5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:46:32, Time for this analysis: 00:00:10, Rated time: 41:46
+
+451 e2h5                
+    Searching move: Qe2-h5
+    Best move (ChessEngine_0.2): Nf5xe7
+    Not found in: 00:10
+   10/03/2023 11:46:43, Time for this analysis: 00:00:10, Rated time: 41:56
+
+452 d8c7                
+    Searching move: Bd8-c7
+    Best move (ChessEngine_0.2): g6xh7
+    Not found in: 00:10
+   10/03/2023 11:46:54, Time for this analysis: 00:00:10, Rated time: 42:06
+
+453 d6f6                
+    Searching move: Rd6xf6
+    Best move (ChessEngine_0.2): Be3xc5
+    Not found in: 00:10
+   10/03/2023 11:47:05, Time for this analysis: 00:00:10, Rated time: 42:16
+
+454 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): Bf2-e3
+    Not found in: 00:10
+   10/03/2023 11:47:16, Time for this analysis: 00:00:10, Rated time: 42:26
+
+455 e3f5                
+    Searching move: Ne3-f5
+    Best move (ChessEngine_0.2): Nf3xd4
+    Not found in: 00:10
+   10/03/2023 11:47:27, Time for this analysis: 00:00:10, Rated time: 42:36
+
+456 c8f8                
+    Searching move: Qc8xf8
+    Best move (ChessEngine_0.2): Qc8xf8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:47:38, Time for this analysis: 00:00:10, Rated time: 42:36
+
+457 g1g7                
+    Searching move: Rg1xg7
+    Best move (ChessEngine_0.2): Rg1xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:47:49, Time for this analysis: 00:00:10, Rated time: 42:36
+
+458 b7b4                
+    Searching move: Rb7-b4
+    Best move (ChessEngine_0.2): Rb7-h7
+    Not found in: 00:10
+   10/03/2023 11:48:00, Time for this analysis: 00:00:10, Rated time: 42:46
+
+459 c2f2                
+    Searching move: Rc2xf2
+    Best move (ChessEngine_0.2): Be7-c5
+    Not found in: 00:10
+   10/03/2023 11:48:11, Time for this analysis: 00:00:10, Rated time: 42:56
+
+460 e6e5                
+    Searching move: e6-e5
+    Best move (ChessEngine_0.2): Qe7-f6
+    Not found in: 00:10
+   10/03/2023 11:48:22, Time for this analysis: 00:00:10, Rated time: 43:06
+
+461 f4f5                
+    Searching move: f4-f5
+    Best move (ChessEngine_0.2): f4-f5
+    Identical moves! Found in: 00:07
+   10/03/2023 11:48:33, Time for this analysis: 00:00:10, Rated time: 43:13
+
+462 c6f3                
+    Searching move: Bc6xf3
+    Best move (ChessEngine_0.2): Bc6xf3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:48:44, Time for this analysis: 00:00:10, Rated time: 43:13
+
+463 g6g2                
+    Searching move: Rg6xg2
+    Best move (ChessEngine_0.2): Rg6xg2
+    Identical moves! Found in: 00:00
+   10/03/2023 11:48:54, Time for this analysis: 00:00:10, Rated time: 43:13
+
+464 d3h7                
+    Searching move: Qd3-h7
+    Best move (ChessEngine_0.2): Qd3-h7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:49:05, Time for this analysis: 00:00:10, Rated time: 43:13
+
+465 f4f1                
+    Searching move: Qf4-f1
+    Best move (ChessEngine_0.2): Qf4-f1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:49:16, Time for this analysis: 00:00:10, Rated time: 43:13
+
+466 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): e6-e5
+    Not found in: 00:10
+   10/03/2023 11:49:27, Time for this analysis: 00:00:10, Rated time: 43:23
+
+467 h5f5                
+    Searching move: Qh5-f5
+    Best move (ChessEngine_0.2): g4xh3
+    Not found in: 00:10
+   10/03/2023 11:49:38, Time for this analysis: 00:00:10, Rated time: 43:33
+
+468 e4f6                
+    Searching move: Ne4-f6
+    Best move (ChessEngine_0.2): Ne4-f6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:49:49, Time for this analysis: 00:00:10, Rated time: 43:33
+
+469 b3e6                
+    Searching move: Bb3-e6
+    Best move (ChessEngine_0.2): Bb3-e6
+    Identical moves! Found in: 00:03
+   10/03/2023 11:50:00, Time for this analysis: 00:00:10, Rated time: 43:36
+
+470 h5g5                
+    Searching move: Rh5xg5
+    Best move (ChessEngine_0.2): Kg2-h1
+    Not found in: 00:10
+   10/03/2023 11:50:11, Time for this analysis: 00:00:10, Rated time: 43:46
+
+471 b3e3                
+    Searching move: Qb3xe3
+    Best move (ChessEngine_0.2): Qb3xe3
+    Identical moves! Found in: 00:01
+   10/03/2023 11:50:22, Time for this analysis: 00:00:10, Rated time: 43:47
+
+472 g8g3                
+    Searching move: Rg8-g3
+    Best move (ChessEngine_0.2): Rg8xg2
+    Not found in: 00:10
+   10/03/2023 11:50:33, Time for this analysis: 00:00:10, Rated time: 43:57
+
+473 c7c8n               
+    Searching move: c7-c8
+    Best move (ChessEngine_0.2): Kf3-g2
+    Not found in: 00:10
+   10/03/2023 11:50:44, Time for this analysis: 00:00:10, Rated time: 44:07
+
+474 e2e8                
+    Searching move: Re2-e8
+    Best move (ChessEngine_0.2): Re2-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:50:55, Time for this analysis: 00:00:10, Rated time: 44:07
+
+475 c4e5                
+    Searching move: Nc4-e5
+    Best move (ChessEngine_0.2): Nc4-e5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:51:05, Time for this analysis: 00:00:10, Rated time: 44:07
+
+476 f1a1                
+    Searching move: Qf1xa1
+    Best move (ChessEngine_0.2): Qf1xa1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:51:16, Time for this analysis: 00:00:10, Rated time: 44:07
+
+477 e3e4                
+    Searching move: e3-e4
+    Best move (ChessEngine_0.2): e3-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:51:27, Time for this analysis: 00:00:10, Rated time: 44:07
+
+478 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): Rh1-e1
+    Not found in: 00:10
+   10/03/2023 11:51:38, Time for this analysis: 00:00:10, Rated time: 44:17
+
+479 f6f3                
+    Searching move: Qf6-f3
+    Best move (ChessEngine_0.2): Ne5-f3
+    Not found in: 00:10
+   10/03/2023 11:51:49, Time for this analysis: 00:00:10, Rated time: 44:27
+
+480 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:02
+   10/03/2023 11:52:00, Time for this analysis: 00:00:10, Rated time: 44:29
+
+481 d6d3                
+    Searching move: Rd6-d3
+    Best move (ChessEngine_0.2): Rd6-d3
+    Identical moves! Found in: 00:00
+   10/03/2023 11:52:11, Time for this analysis: 00:00:10, Rated time: 44:29
+
+482 f4f5                
+    Searching move: f4-f5
+    Best move (ChessEngine_0.2): Qg2xg6
+    Not found in: 00:10
+   10/03/2023 11:52:22, Time for this analysis: 00:00:10, Rated time: 44:39
+
+483 a5a6                
+    Searching move: a5-a6
+    Best move (ChessEngine_0.2): a5-a6
+    Identical moves! Found in: 00:02
+   10/03/2023 11:52:33, Time for this analysis: 00:00:10, Rated time: 44:41
+
+484 e4g2                
+    Searching move: Be4xg2
+    Best move (ChessEngine_0.2): Be4xg2
+    Identical moves! Found in: 00:00
+   10/03/2023 11:52:44, Time for this analysis: 00:00:10, Rated time: 44:41
+
+485 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:52:55, Time for this analysis: 00:00:10, Rated time: 44:41
+
+486 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:53:06, Time for this analysis: 00:00:10, Rated time: 44:41
+
+487 h4h5                
+    Searching move: Kh4-h5
+    Best move (ChessEngine_0.2): Qf2xf3
+    Not found in: 00:10
+   10/03/2023 11:53:17, Time for this analysis: 00:00:10, Rated time: 44:51
+
+488 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:53:28, Time for this analysis: 00:00:10, Rated time: 44:51
+
+489 h4h5                
+    Searching move: h4-h5
+    Best move (ChessEngine_0.2): Na6-c5
+    Not found in: 00:10
+   10/03/2023 11:53:38, Time for this analysis: 00:00:10, Rated time: 45:01
+
+490 b8b3                
+    Searching move: Rb8xb3
+    Best move (ChessEngine_0.2): Ke7-f8
+    Not found in: 00:10
+   10/03/2023 11:53:49, Time for this analysis: 00:00:10, Rated time: 45:11
+
+491 g7d4                
+    Searching move: Bg7xd4
+    Best move (ChessEngine_0.2): Bg7xd4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:54:00, Time for this analysis: 00:00:10, Rated time: 45:11
+
+492 g3g4                
+    Searching move: g3-g4
+    Best move (ChessEngine_0.2): Bf2-d4
+    Not found in: 00:10
+   10/03/2023 11:54:11, Time for this analysis: 00:00:10, Rated time: 45:21
+
+493 f5e6                
+    Searching move: Qf5-e6
+    Best move (ChessEngine_0.2): Rf7xf8
+    Not found in: 00:10
+   10/03/2023 11:54:22, Time for this analysis: 00:00:10, Rated time: 45:31
+
+494 c5a6                
+    Searching move: Nc5-a6
+    Best move (ChessEngine_0.2): Nc5-a6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:54:33, Time for this analysis: 00:00:10, Rated time: 45:31
+
+495 h2h3                
+    Searching move: h2-h3
+    Best move (ChessEngine_0.2): h2xg3
+    Not found in: 00:10
+   10/03/2023 11:54:44, Time for this analysis: 00:00:10, Rated time: 45:41
+
+496 c7d6                
+    Searching move: Qc7-d6
+    Best move (ChessEngine_0.2): Qc7-d6
+    Identical moves! Found in: 00:01
+   10/03/2023 11:54:55, Time for this analysis: 00:00:10, Rated time: 45:42
+
+497 h2h4                
+    Searching move: h2-h4
+    Best move (ChessEngine_0.2): Nf4-d3
+    Not found in: 00:10
+   10/03/2023 11:55:06, Time for this analysis: 00:00:10, Rated time: 45:52
+
+498 e5f6                
+    Searching move: Ke5-f6
+    Best move (ChessEngine_0.2): Qf3-f8
+    Not found in: 00:10
+   10/03/2023 11:55:17, Time for this analysis: 00:00:10, Rated time: 46:02
+
+499 d7d4                
+    Searching move: Rd7xd4
+    Best move (ChessEngine_0.2): Rd7xg7
+    Not found in: 00:10
+   10/03/2023 11:55:28, Time for this analysis: 00:00:10, Rated time: 46:12
+
+500 g1f1                
+    Searching move: Qg1-f1
+    Best move (ChessEngine_0.2): Qg1-f1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:55:39, Time for this analysis: 00:00:10, Rated time: 46:12
+
+501 e2g4                
+    Searching move: Qe2-g4
+    Best move (ChessEngine_0.2): Qe2-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:55:49, Time for this analysis: 00:00:10, Rated time: 46:12
+
+502 f6g4                
+    Searching move: Nf6-g4
+    Best move (ChessEngine_0.2): Nf6-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:56:00, Time for this analysis: 00:00:10, Rated time: 46:12
+
+503 e5f7                
+    Searching move: Ne5xf7
+    Best move (ChessEngine_0.2): Ne5xf7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:56:11, Time for this analysis: 00:00:10, Rated time: 46:12
+
+504 f8b8                
+    Searching move: Rf8-b8
+    Best move (ChessEngine_0.2): e7-e6
+    Not found in: 00:10
+   10/03/2023 11:56:22, Time for this analysis: 00:00:10, Rated time: 46:22
+
+505 d4c6                
+    Searching move: Nd4-c6
+    Best move (ChessEngine_0.2): g7-g8B
+    Not found in: 00:10
+   10/03/2023 11:56:33, Time for this analysis: 00:00:10, Rated time: 46:32
+
+506 f2g1                
+    Searching move: Qf2-g1
+    Best move (ChessEngine_0.2): Qf2-g1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:56:44, Time for this analysis: 00:00:10, Rated time: 46:32
+
+507 b2b7                
+    Searching move: Rb2xb7
+    Best move (ChessEngine_0.2): Rb2xb7
+    Identical moves! Found in: 00:00
+   10/03/2023 11:56:55, Time for this analysis: 00:00:10, Rated time: 46:32
+
+508 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:57:06, Time for this analysis: 00:00:10, Rated time: 46:32
+
+509 c1h6                
+    Searching move: Bc1-h6
+    Best move (ChessEngine_0.2): Bc1-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 11:57:17, Time for this analysis: 00:00:10, Rated time: 46:32
+
+510 e7c5                
+    Searching move: Be7-c5
+    Best move (ChessEngine_0.2): Be7-c5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:57:28, Time for this analysis: 00:00:10, Rated time: 46:32
+
+511 h4h3                
+    Searching move: h4-h3
+    Best move (ChessEngine_0.2): h6-h5
+    Not found in: 00:10
+   10/03/2023 11:57:39, Time for this analysis: 00:00:10, Rated time: 46:42
+
+512 f7f1                
+    Searching move: Qf7-f1
+    Best move (ChessEngine_0.2): Qf7-f1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:57:50, Time for this analysis: 00:00:10, Rated time: 46:42
+
+513 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 11:58:01, Time for this analysis: 00:00:10, Rated time: 46:42
+
+514 h5h1                
+    Searching move: Qh5-h1
+    Best move (ChessEngine_0.2): Qh5-h1
+    Identical moves! Found in: 00:00
+   10/03/2023 11:58:11, Time for this analysis: 00:00:10, Rated time: 46:42
+
+515 h5f3                
+    Searching move: Bh5-f3
+    Best move (ChessEngine_0.2): c5-c6
+    Not found in: 00:10
+   10/03/2023 11:58:22, Time for this analysis: 00:00:10, Rated time: 46:52
+
+516 g2f3                
+    Searching move: Kg2-f3
+    Best move (ChessEngine_0.2): Rc2xd2
+    Not found in: 00:10
+   10/03/2023 11:58:33, Time for this analysis: 00:00:10, Rated time: 47:02
+
+517 e5e4                
+    Searching move: e5-e4
+    Best move (ChessEngine_0.2): e5-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 11:58:44, Time for this analysis: 00:00:10, Rated time: 47:02
+
+518 a2a4                
+    Searching move: a2-a4
+    Best move (ChessEngine_0.2): Nb1-d2
+    Not found in: 00:10
+   10/03/2023 11:58:55, Time for this analysis: 00:00:10, Rated time: 47:12
+
+519 a3c3                
+    Searching move: Ra3-c3
+    Best move (ChessEngine_0.2): Ra3xa7
+    Not found in: 00:10
+   10/03/2023 11:59:06, Time for this analysis: 00:00:10, Rated time: 47:22
+
+520 h3h8                
+    Searching move: Qh3-h8
+    Best move (ChessEngine_0.2): Qh3-h8
+    Identical moves! Found in: 00:00
+   10/03/2023 11:59:17, Time for this analysis: 00:00:10, Rated time: 47:22
+
+521 a5b3                
+    Searching move: Na5-b3
+    Best move (ChessEngine_0.2): Nd4xc2
+    Not found in: 00:10
+   10/03/2023 11:59:28, Time for this analysis: 00:00:10, Rated time: 47:32
+
+522 d3d2                
+    Searching move: d3-d2
+    Best move (ChessEngine_0.2): Qd4xb4
+    Not found in: 00:10
+   10/03/2023 11:59:39, Time for this analysis: 00:00:10, Rated time: 47:42
+
+523 h4h5                
+    Searching move: h4-h5
+    Best move (ChessEngine_0.2): h4-h5
+    Identical moves! Found in: 00:00
+   10/03/2023 11:59:50, Time for this analysis: 00:00:10, Rated time: 47:42
+
+524 f6g4                
+    Searching move: Nf6-g4
+    Best move (ChessEngine_0.2): Nf6-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:00:01, Time for this analysis: 00:00:10, Rated time: 47:42
+
+525 e4e3                
+    Searching move: e4-e3
+    Best move (ChessEngine_0.2): Ra8-e8
+    Not found in: 00:10
+   10/03/2023 12:00:12, Time for this analysis: 00:00:10, Rated time: 47:52
+
+526 f5e6                
+    Searching move: f5xe6
+    Best move (ChessEngine_0.2): Qf3-a8
+    Not found in: 00:10
+   10/03/2023 12:00:23, Time for this analysis: 00:00:10, Rated time: 48:02
+
+527 f5c8                
+    Searching move: Bf5-c8
+    Best move (ChessEngine_0.2): Bf5-c8
+    Identical moves! Found in: 00:03
+   10/03/2023 12:00:33, Time for this analysis: 00:00:10, Rated time: 48:05
+
+528 h3f5                
+    Searching move: Bh3-f5
+    Best move (ChessEngine_0.2): Rc3-f3
+    Not found in: 00:10
+   10/03/2023 12:00:44, Time for this analysis: 00:00:10, Rated time: 48:15
+
+529 d4b5                
+    Searching move: Nd4-b5
+    Best move (ChessEngine_0.2): Nd4-b5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:00:55, Time for this analysis: 00:00:10, Rated time: 48:15
+
+530 g5f6                
+    Searching move: Bg5xf6
+    Best move (ChessEngine_0.2): Nd4xc6
+    Not found in: 00:10
+   10/03/2023 12:01:06, Time for this analysis: 00:00:10, Rated time: 48:25
+
+531 d2b4                
+    Searching move: Bd2-b4
+    Best move (ChessEngine_0.2): a5-a6
+    Not found in: 00:10
+   10/03/2023 12:01:17, Time for this analysis: 00:00:10, Rated time: 48:35
+
+532 b8b3                
+    Searching move: Rb8xb3
+    Best move (ChessEngine_0.2): Ke7-f8
+    Not found in: 00:10
+   10/03/2023 12:01:28, Time for this analysis: 00:00:10, Rated time: 48:45
+
+533 e4c3                
+    Searching move: Ne4-c3
+    Best move (ChessEngine_0.2): Kh2-g1
+    Not found in: 00:10
+   10/03/2023 12:01:39, Time for this analysis: 00:00:10, Rated time: 48:55
+
+534 c2a4                
+    Searching move: Bc2-a4
+    Best move (ChessEngine_0.2): c3-c4
+    Not found in: 00:10
+   10/03/2023 12:01:50, Time for this analysis: 00:00:10, Rated time: 49:05
+
+535 f2c5                
+    Searching move: Qf2-c5
+    Best move (ChessEngine_0.2): Re1-e2
+    Not found in: 00:10
+   10/03/2023 12:02:01, Time for this analysis: 00:00:10, Rated time: 49:15
+
+536 f3f6                
+    Searching move: Rf3-f6
+    Best move (ChessEngine_0.2): Rf3-f1
+    Not found in: 00:10
+   10/03/2023 12:02:12, Time for this analysis: 00:00:10, Rated time: 49:25
+
+537 d4f5                
+    Searching move: Nd4-f5
+    Best move (ChessEngine_0.2): Qe3-g3
+    Not found in: 00:10
+   10/03/2023 12:02:23, Time for this analysis: 00:00:10, Rated time: 49:35
+
+538 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:02:34, Time for this analysis: 00:00:10, Rated time: 49:35
+
+539 g7h6                
+    Searching move: Qg7-h6
+    Best move (ChessEngine_0.2): Qg7-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:02:44, Time for this analysis: 00:00:10, Rated time: 49:35
+
+540 e3e8                
+    Searching move: Re3-e8
+    Best move (ChessEngine_0.2): Re3-e8
+    Identical moves! Found in: 00:06
+   10/03/2023 12:02:55, Time for this analysis: 00:00:10, Rated time: 49:41
+
+541 f5h6                
+    Searching move: Nf5-h6
+    Best move (ChessEngine_0.2): Nf5-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:03:06, Time for this analysis: 00:00:10, Rated time: 49:41
+
+542 e5e6                
+    Searching move: e5-e6
+    Best move (ChessEngine_0.2): e5-e6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:03:17, Time for this analysis: 00:00:10, Rated time: 49:41
+
+543 f5f6                
+    Searching move: f5-f6
+    Best move (ChessEngine_0.2): f5xg6
+    Not found in: 00:10
+   10/03/2023 12:03:28, Time for this analysis: 00:00:10, Rated time: 49:51
+
+544 d3d4                
+    Searching move: Qd3-d4
+    Best move (ChessEngine_0.2): e3-e4
+    Not found in: 00:10
+   10/03/2023 12:03:39, Time for this analysis: 00:00:10, Rated time: 50:01
+
+545 c3a2                
+    Searching move: Nc3xa2
+    Best move (ChessEngine_0.2): Rb8-d8
+    Not found in: 00:10
+   10/03/2023 12:03:50, Time for this analysis: 00:00:10, Rated time: 50:11
+
+546 e3c5                
+    Searching move: Be3xc5
+    Best move (ChessEngine_0.2): Re5-e8
+    Not found in: 00:10
+   10/03/2023 12:04:01, Time for this analysis: 00:00:10, Rated time: 50:21
+
+547 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): e2-e4
+    Not found in: 00:10
+   10/03/2023 12:04:12, Time for this analysis: 00:00:10, Rated time: 50:31
+
+548 f4d3                
+    Searching move: Nf4-d3
+    Best move (ChessEngine_0.2): h4xg5
+    Not found in: 00:10
+   10/03/2023 12:04:23, Time for this analysis: 00:00:10, Rated time: 50:41
+
+549 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): a2-a3
+    Not found in: 00:10
+   10/03/2023 12:04:34, Time for this analysis: 00:00:10, Rated time: 50:51
+
+550 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:02
+   10/03/2023 12:04:45, Time for this analysis: 00:00:10, Rated time: 50:53
+
+551 e3c5                
+    Searching move: Be3xc5
+    Best move (ChessEngine_0.2): Re5-e8
+    Not found in: 00:10
+   10/03/2023 12:04:56, Time for this analysis: 00:00:10, Rated time: 51:03
+
+552 d6h2                
+    Searching move: Bd6-h2
+    Best move (ChessEngine_0.2): Bd6-h2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:05:06, Time for this analysis: 00:00:10, Rated time: 51:03
+
+553 f5h3                
+    Searching move: Bf5-h3
+    Best move (ChessEngine_0.2): a4-a3
+    Not found in: 00:10
+   10/03/2023 12:05:17, Time for this analysis: 00:00:10, Rated time: 51:13
+
+554 g5g6                
+    Searching move: g5-g6
+    Best move (ChessEngine_0.2): g5-g6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:05:28, Time for this analysis: 00:00:10, Rated time: 51:13
+
+555 d5g8                
+    Searching move: Qd5-g8
+    Best move (ChessEngine_0.2): Qd5-g8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:05:39, Time for this analysis: 00:00:10, Rated time: 51:13
+
+556 g2e4                
+    Searching move: Bg2-e4
+    Best move (ChessEngine_0.2): b2-b3
+    Not found in: 00:10
+   10/03/2023 12:05:50, Time for this analysis: 00:00:10, Rated time: 51:23
+
+557 d4c3                
+    Searching move: Bd4-c3
+    Best move (ChessEngine_0.2): Bd4-c3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:06:01, Time for this analysis: 00:00:10, Rated time: 51:23
+
+558 c1g5                
+    Searching move: Bc1-g5
+    Best move (ChessEngine_0.2): Bc1-g5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:06:12, Time for this analysis: 00:00:10, Rated time: 51:23
+
+559 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:06:23, Time for this analysis: 00:00:10, Rated time: 51:23
+
+560 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Bf4-e3
+    Not found in: 00:10
+   10/03/2023 12:06:34, Time for this analysis: 00:00:10, Rated time: 51:33
+
+561 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qd1-h5
+    Not found in: 00:10
+   10/03/2023 12:06:45, Time for this analysis: 00:00:10, Rated time: 51:43
+
+562 e7c6                
+    Searching move: Ne7-c6
+    Best move (ChessEngine_0.2): Ne7xg6
+    Not found in: 00:10
+   10/03/2023 12:06:56, Time for this analysis: 00:00:10, Rated time: 51:53
+
+563 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:07:07, Time for this analysis: 00:00:10, Rated time: 51:53
+
+564 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): d2-d4
+    Not found in: 00:10
+   10/03/2023 12:07:17, Time for this analysis: 00:00:10, Rated time: 52:03
+
+565 f4f5                
+    Searching move: f4-f5
+    Best move (ChessEngine_0.2): f4-f5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:07:28, Time for this analysis: 00:00:10, Rated time: 52:03
+
+566 f6e7                
+    Searching move: Qf6-e7
+    Best move (ChessEngine_0.2): Qf6-e7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:07:39, Time for this analysis: 00:00:10, Rated time: 52:03
+
+567 d6f6                
+    Searching move: Rd6xf6
+    Best move (ChessEngine_0.2): Rd6-d4
+    Not found in: 00:10
+   10/03/2023 12:07:50, Time for this analysis: 00:00:10, Rated time: 52:13
+
+568 e4g5                
+    Searching move: Ne4-g5
+    Best move (ChessEngine_0.2): a2-a3
+    Not found in: 00:10
+   10/03/2023 12:08:01, Time for this analysis: 00:00:10, Rated time: 52:23
+
+569 d8d3                
+    Searching move: Rd8-d3
+    Best move (ChessEngine_0.2): Rd8-d3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:08:12, Time for this analysis: 00:00:10, Rated time: 52:23
+
+570 c2d4                
+    Searching move: Nc2-d4
+    Best move (ChessEngine_0.2): Kg2-f3
+    Not found in: 00:10
+   10/03/2023 12:08:23, Time for this analysis: 00:00:10, Rated time: 52:33
+
+571 e1e7                
+    Searching move: Re1-e7
+    Best move (ChessEngine_0.2): Re1-e7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:08:34, Time for this analysis: 00:00:10, Rated time: 52:33
+
+572 e5e4                
+    Searching move: e5-e4
+    Best move (ChessEngine_0.2): h7-h5
+    Not found in: 00:10
+   10/03/2023 12:08:45, Time for this analysis: 00:00:10, Rated time: 52:43
+
+573 h3g2                
+    Searching move: Kh3-g2
+    Best move (ChessEngine_0.2): Nf5-e7
+    Not found in: 00:10
+   10/03/2023 12:08:56, Time for this analysis: 00:00:10, Rated time: 52:53
+
+574 d5c7                
+    Searching move: Nd5-c7
+    Best move (ChessEngine_0.2): Nd5-c7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:09:07, Time for this analysis: 00:00:10, Rated time: 52:53
+
+575 e2f4                
+    Searching move: Ne2-f4
+    Best move (ChessEngine_0.2): Nb3-c5
+    Not found in: 00:10
+   10/03/2023 12:09:18, Time for this analysis: 00:00:10, Rated time: 53:03
+
+576 e2h5                
+    Searching move: Qe2-h5
+    Best move (ChessEngine_0.2): Ng5-f3
+    Not found in: 00:10
+   10/03/2023 12:09:29, Time for this analysis: 00:00:10, Rated time: 53:13
+
+577 b2c2                
+    Searching move: Qb2-c2
+    Best move (ChessEngine_0.2): Bd6-f4
+    Not found in: 00:10
+   10/03/2023 12:09:40, Time for this analysis: 00:00:10, Rated time: 53:23
+
+578 h3b3                
+    Searching move: Rh3-b3
+    Best move (ChessEngine_0.2): Rh3-b3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:09:51, Time for this analysis: 00:00:10, Rated time: 53:23
+
+579 b6d4                
+    Searching move: Bb6xd4
+    Best move (ChessEngine_0.2): Bb6xd4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:10:01, Time for this analysis: 00:00:10, Rated time: 53:23
+
+580 g8g7                
+    Searching move: Kg8-g7
+    Best move (ChessEngine_0.2): e4xd3
+    Not found in: 00:10
+   10/03/2023 12:10:12, Time for this analysis: 00:00:10, Rated time: 53:33
+
+581 d4f5                
+    Searching move: Nd4-f5
+    Best move (ChessEngine_0.2): Nd4-f5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:10:23, Time for this analysis: 00:00:10, Rated time: 53:33
+
+582 d3b3                
+    Searching move: Rd3xb3
+    Best move (ChessEngine_0.2): Rd3-e3
+    Not found in: 00:10
+   10/03/2023 12:10:34, Time for this analysis: 00:00:10, Rated time: 53:43
+
+583 h5h4                
+    Searching move: h5-h4
+    Best move (ChessEngine_0.2): h5-h4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:10:45, Time for this analysis: 00:00:10, Rated time: 53:43
+
+584 e8c7                
+    Searching move: Ne8-c7
+    Best move (ChessEngine_0.2): Ne5-g4
+    Not found in: 00:10
+   10/03/2023 12:10:56, Time for this analysis: 00:00:10, Rated time: 53:53
+
+585 e3e2                
+    Searching move: Re3-e2
+    Best move (ChessEngine_0.2): Re3-e2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:11:07, Time for this analysis: 00:00:10, Rated time: 53:53
+
+586 d2g5                
+    Searching move: Qd2xg5
+    Best move (ChessEngine_0.2): Qd2xg5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:11:18, Time for this analysis: 00:00:10, Rated time: 53:53
+
+587 e5f6                
+    Searching move: e5xf6
+    Best move (ChessEngine_0.2): e5xf6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:11:29, Time for this analysis: 00:00:10, Rated time: 53:53
+
+588 h1h8                
+    Searching move: Rh1-h8
+    Best move (ChessEngine_0.2): Rh1-h8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:11:40, Time for this analysis: 00:00:10, Rated time: 53:53
+
+589 g3g4                
+    Searching move: g3-g4
+    Best move (ChessEngine_0.2): Re1-e3
+    Not found in: 00:10
+   10/03/2023 12:11:51, Time for this analysis: 00:00:10, Rated time: 54:03
+
+590 g5f6                
+    Searching move: Bg5-f6
+    Best move (ChessEngine_0.2): Bg5-f6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:12:02, Time for this analysis: 00:00:10, Rated time: 54:03
+
+591 d5f6                
+    Searching move: Nd5-f6
+    Best move (ChessEngine_0.2): Nd5-f6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:12:13, Time for this analysis: 00:00:10, Rated time: 54:03
+
+592 g4h6                
+    Searching move: Ng4xh6
+    Best move (ChessEngine_0.2): Qd1-d4
+    Not found in: 00:10
+   10/03/2023 12:12:24, Time for this analysis: 00:00:10, Rated time: 54:13
+
+593 c1c5                
+    Searching move: Qc1-c5
+    Best move (ChessEngine_0.2): Qc1-c3
+    Not found in: 00:10
+   10/03/2023 12:12:35, Time for this analysis: 00:00:10, Rated time: 54:23
+
+594 a1c1                
+    Searching move: Ra1-c1
+    Best move (ChessEngine_0.2): Ra1-c1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:12:45, Time for this analysis: 00:00:10, Rated time: 54:23
+
+595 h3h4                
+    Searching move: h3-h4
+    Best move (ChessEngine_0.2): Kg2-g1
+    Not found in: 00:10
+   10/03/2023 12:12:56, Time for this analysis: 00:00:10, Rated time: 54:33
+
+596 e3f3                
+    Searching move: Re3xf3
+    Best move (ChessEngine_0.2): Qd7-f5
+    Not found in: 00:10
+   10/03/2023 12:13:07, Time for this analysis: 00:00:10, Rated time: 54:43
+
+597 c3d5                
+    Searching move: Nc3-d5
+    Best move (ChessEngine_0.2): Bf1-e2
+    Not found in: 00:10
+   10/03/2023 12:13:18, Time for this analysis: 00:00:10, Rated time: 54:53
+
+598 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): g2-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:13:29, Time for this analysis: 00:00:10, Rated time: 54:53
+
+599 e4f2                
+    Searching move: Ne4-f2
+    Best move (ChessEngine_0.2): Ne4-f2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:13:40, Time for this analysis: 00:00:10, Rated time: 54:53
+
+600 e8d6                
+    Searching move: Ne8-d6
+    Best move (ChessEngine_0.2): Ne8-d6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:13:51, Time for this analysis: 00:00:10, Rated time: 54:53
+
+601 c2a2                
+    Searching move: Rc2xa2
+    Best move (ChessEngine_0.2): Rc2xa2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:14:02, Time for this analysis: 00:00:10, Rated time: 54:53
+
+602 e3d3                
+    Searching move: Qe3-d3
+    Best move (ChessEngine_0.2): h4xg5
+    Not found in: 00:10
+   10/03/2023 12:14:13, Time for this analysis: 00:00:10, Rated time: 55:03
+
+603 d6b4                
+    Searching move: Bd6-b4
+    Best move (ChessEngine_0.2): Bd6-b4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:14:24, Time for this analysis: 00:00:10, Rated time: 55:03
+
+604 d1b3                
+    Searching move: Bd1-b3
+    Best move (ChessEngine_0.2): Qd2-e3
+    Not found in: 00:10
+   10/03/2023 12:14:35, Time for this analysis: 00:00:10, Rated time: 55:13
+
+605 e2e8                
+    Searching move: Qe2xe8
+    Best move (ChessEngine_0.2): Bd4xf6
+    Not found in: 00:10
+   10/03/2023 12:14:46, Time for this analysis: 00:00:10, Rated time: 55:23
+
+606 c7c8n               
+    Searching move: c7-c8
+    Best move (ChessEngine_0.2): Kf3-g2
+    Not found in: 00:10
+   10/03/2023 12:14:56, Time for this analysis: 00:00:10, Rated time: 55:33
+
+607 c1c5                
+    Searching move: Rc1xc5
+    Best move (ChessEngine_0.2): Bg5-h6
+    Not found in: 00:10
+   10/03/2023 12:15:07, Time for this analysis: 00:00:10, Rated time: 55:43
+
+608 g5h6                
+    Searching move: Bg5-h6
+    Best move (ChessEngine_0.2): Bg5-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:15:18, Time for this analysis: 00:00:10, Rated time: 55:43
+
+609 c3e4                
+    Searching move: Nc3-e4
+    Best move (ChessEngine_0.2): Nc3-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:15:29, Time for this analysis: 00:00:10, Rated time: 55:43
+
+610 c5e5                
+    Searching move: Qc5-e5
+    Best move (ChessEngine_0.2): Qc5-e5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:15:40, Time for this analysis: 00:00:10, Rated time: 55:43
+
+611 e4g5                
+    Searching move: Ne4-g5
+    Best move (ChessEngine_0.2): a2-a3
+    Not found in: 00:10
+   10/03/2023 12:15:51, Time for this analysis: 00:00:10, Rated time: 55:53
+
+612 h7h5                
+    Searching move: h7-h5
+    Best move (ChessEngine_0.2): Nd7-c5
+    Not found in: 00:10
+   10/03/2023 12:16:02, Time for this analysis: 00:00:10, Rated time: 56:03
+
+613 b2b3                
+    Searching move: b2-b3
+    Best move (ChessEngine_0.2): b2-b3
+    Identical moves! Found in: 00:02
+   10/03/2023 12:16:13, Time for this analysis: 00:00:10, Rated time: 56:05
+
+614 g7f5                
+    Searching move: Ng7-f5
+    Best move (ChessEngine_0.2): Nf8-e6
+    Not found in: 00:10
+   10/03/2023 12:16:24, Time for this analysis: 00:00:10, Rated time: 56:15
+
+615 e7a3                
+    Searching move: Qe7-a3
+    Best move (ChessEngine_0.2): Qe7-a3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:16:35, Time for this analysis: 00:00:10, Rated time: 56:15
+
+616 h4h5                
+    Searching move: h4-h5
+    Best move (ChessEngine_0.2): Rd6xd8
+    Not found in: 00:10
+   10/03/2023 12:16:46, Time for this analysis: 00:00:10, Rated time: 56:25
+
+617 d1g1                
+    Searching move: Rd1-g1
+    Best move (ChessEngine_0.2): Rh6-h7
+    Not found in: 00:10
+   10/03/2023 12:16:57, Time for this analysis: 00:00:10, Rated time: 56:35
+
+618 c3b2                
+    Searching move: c3xb2
+    Best move (ChessEngine_0.2): Ra8-a5
+    Not found in: 00:10
+   10/03/2023 12:17:08, Time for this analysis: 00:00:10, Rated time: 56:45
+
+619 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): c3-c4
+    Not found in: 00:10
+   10/03/2023 12:17:18, Time for this analysis: 00:00:10, Rated time: 56:55
+
+620 e4e5                
+    Searching move: e4-e5
+    Best move (ChessEngine_0.2): Bb3-c4
+    Not found in: 00:10
+   10/03/2023 12:17:29, Time for this analysis: 00:00:10, Rated time: 57:05
+
+621 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): c3-c4
+    Not found in: 00:10
+   10/03/2023 12:17:40, Time for this analysis: 00:00:10, Rated time: 57:15
+
+622 e4e3                
+    Searching move: e4-e3
+    Best move (ChessEngine_0.2): Bd6-a3
+    Not found in: 00:10
+   10/03/2023 12:17:51, Time for this analysis: 00:00:10, Rated time: 57:25
+
+623 g4g7                
+    Searching move: Qg4xg7
+    Best move (ChessEngine_0.2): Qg4xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:18:02, Time for this analysis: 00:00:10, Rated time: 57:25
+
+624 g2e4                
+    Searching move: Bg2xe4
+    Best move (ChessEngine_0.2): Bg2xe4
+    Identical moves! Found in: 00:01
+   10/03/2023 12:18:13, Time for this analysis: 00:00:10, Rated time: 57:26
+
+625 d1b3                
+    Searching move: Qd1-b3
+    Best move (ChessEngine_0.2): Ng1-f3
+    Not found in: 00:10
+   10/03/2023 12:18:24, Time for this analysis: 00:00:10, Rated time: 57:36
+
+626 e4f6                
+    Searching move: Ne4xf6
+    Best move (ChessEngine_0.2): Ne4xf6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:18:35, Time for this analysis: 00:00:10, Rated time: 57:36
+
+627 d4c6                
+    Searching move: Nd4-c6
+    Best move (ChessEngine_0.2): Nc3-d1
+    Not found in: 00:10
+   10/03/2023 12:18:46, Time for this analysis: 00:00:10, Rated time: 57:46
+
+628 f1f5                
+    Searching move: Rf1xf5
+    Best move (ChessEngine_0.2): Qg2xg6
+    Not found in: 00:10
+   10/03/2023 12:18:57, Time for this analysis: 00:00:10, Rated time: 57:56
+
+629 g4f3                
+    Searching move: Kg4-f3
+    Best move (ChessEngine_0.2): Kg4xh4
+    Not found in: 00:10
+   10/03/2023 12:19:08, Time for this analysis: 00:00:10, Rated time: 58:06
+
+630 h6g7                
+    Searching move: Bh6-g7
+    Best move (ChessEngine_0.2): Bh6-g5
+    Not found in: 00:10
+   10/03/2023 12:19:19, Time for this analysis: 00:00:10, Rated time: 58:16
+
+631 e7e4                
+    Searching move: Re7-e4
+    Best move (ChessEngine_0.2): Re7-f7
+    Not found in: 00:10
+   10/03/2023 12:19:30, Time for this analysis: 00:00:10, Rated time: 58:26
+
+632 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:19:40, Time for this analysis: 00:00:10, Rated time: 58:26
+
+633 b1h7                
+    Searching move: Bb1xh7
+    Best move (ChessEngine_0.2): Ne3-g4
+    Not found in: 00:10
+   10/03/2023 12:19:51, Time for this analysis: 00:00:10, Rated time: 58:36
+
+634 h4d4                
+    Searching move: Qh4-d4
+    Best move (ChessEngine_0.2): Qh4xe7
+    Not found in: 00:10
+   10/03/2023 12:20:02, Time for this analysis: 00:00:10, Rated time: 58:46
+
+635 g5g4                
+    Searching move: g5-g4
+    Best move (ChessEngine_0.2): Qc2-f5
+    Not found in: 00:10
+   10/03/2023 12:20:13, Time for this analysis: 00:00:10, Rated time: 58:56
+
+636 a1d1                
+    Searching move: Ra1-d1
+    Best move (ChessEngine_0.2): Ra1-d1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:20:24, Time for this analysis: 00:00:10, Rated time: 58:56
+
+637 d3d4                
+    Searching move: d3-d4
+    Best move (ChessEngine_0.2): d3-d4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:20:35, Time for this analysis: 00:00:10, Rated time: 58:56
+
+638 c6e4                
+    Searching move: Bc6xe4
+    Best move (ChessEngine_0.2): Bc6-a8
+    Not found in: 00:10
+   10/03/2023 12:20:46, Time for this analysis: 00:00:10, Rated time: 59:06
+
+639 f6c6                
+    Searching move: Rf6xc6
+    Best move (ChessEngine_0.2): Rf6xc6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:20:57, Time for this analysis: 00:00:10, Rated time: 59:06
+
+640 h8g7                
+    Searching move: Qh8xg7
+    Best move (ChessEngine_0.2): Qh8xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:21:08, Time for this analysis: 00:00:10, Rated time: 59:06
+
+641 e7e5                
+    Searching move: e7-e5
+    Best move (ChessEngine_0.2): e7-e6
+    Not found in: 00:10
+   10/03/2023 12:21:19, Time for this analysis: 00:00:10, Rated time: 59:16
+
+642 c3c1                
+    Searching move: Rc3-c1
+    Best move (ChessEngine_0.2): Rc3-c1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:21:30, Time for this analysis: 00:00:10, Rated time: 59:16
+
+643 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Bc1-g5
+    Not found in: 00:10
+   10/03/2023 12:21:41, Time for this analysis: 00:00:10, Rated time: 59:26
+
+644 h2g3                
+    Searching move: Kh2-g3
+    Best move (ChessEngine_0.2): Rd7-d8
+    Not found in: 00:10
+   10/03/2023 12:21:52, Time for this analysis: 00:00:10, Rated time: 59:36
+
+645 f4g2                
+    Searching move: Nf4xg2
+    Best move (ChessEngine_0.2): Nf4xg2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:22:03, Time for this analysis: 00:00:10, Rated time: 59:36
+
+646 d3g6                
+    Searching move: Bd3-g6
+    Best move (ChessEngine_0.2): h5-h6
+    Not found in: 00:10
+   10/03/2023 12:22:14, Time for this analysis: 00:00:10, Rated time: 59:46
+
+647 d6f8                
+    Searching move: Bd6-f8
+    Best move (ChessEngine_0.2): Bd6-f8
+    Identical moves! Found in: 00:01
+   10/03/2023 12:22:24, Time for this analysis: 00:00:10, Rated time: 59:47
+
+648 c4c5                
+    Searching move: c4-c5
+    Best move (ChessEngine_0.2): Bf2-e3
+    Not found in: 00:10
+   10/03/2023 12:22:35, Time for this analysis: 00:00:10, Rated time: 59:57
+
+649 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:22:46, Time for this analysis: 00:00:10, Rated time: 59:57
+
+650 e2d2                
+    Searching move: Re2xd2
+    Best move (ChessEngine_0.2): Re2xg2
+    Not found in: 00:10
+   10/03/2023 12:22:57, Time for this analysis: 00:00:10, Rated time: 1:00:07
+
+651 h4h1                
+    Searching move: Rh4xh1
+    Best move (ChessEngine_0.2): Rh4xb4
+    Not found in: 00:10
+   10/03/2023 12:23:08, Time for this analysis: 00:00:10, Rated time: 1:00:17
+
+652 e2h5                
+    Searching move: Qe2-h5
+    Best move (ChessEngine_0.2): Ng5-f3
+    Not found in: 00:10
+   10/03/2023 12:23:19, Time for this analysis: 00:00:10, Rated time: 1:00:27
+
+653 d1g4                
+    Searching move: Qd1-g4
+    Best move (ChessEngine_0.2): Qd1-h5
+    Not found in: 00:10
+   10/03/2023 12:23:30, Time for this analysis: 00:00:10, Rated time: 1:00:37
+
+654 d6f6                
+    Searching move: Rd6-f6
+    Best move (ChessEngine_0.2): Bg5-e3
+    Not found in: 00:10
+   10/03/2023 12:23:41, Time for this analysis: 00:00:10, Rated time: 1:00:47
+
+655 b2b4                
+    Searching move: b2-b4
+    Best move (ChessEngine_0.2): b2-b4
+    Identical moves! Found in: 00:03
+   10/03/2023 12:23:52, Time for this analysis: 00:00:10, Rated time: 1:00:50
+
+656 f3g5                
+    Searching move: Nf3-g5
+    Best move (ChessEngine_0.2): Rc1xc5
+    Not found in: 00:10
+   10/03/2023 12:24:03, Time for this analysis: 00:00:10, Rated time: 1:01:00
+
+657 e1e5                
+    Searching move: Re1-e5
+    Best move (ChessEngine_0.2): Qf3-e2
+    Not found in: 00:10
+   10/03/2023 12:24:14, Time for this analysis: 00:00:10, Rated time: 1:01:10
+
+658 f5g6                
+    Searching move: f5xg6
+    Best move (ChessEngine_0.2): f5xg6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:24:25, Time for this analysis: 00:00:10, Rated time: 1:01:10
+
+659 d4c6                
+    Searching move: Nd4-c6
+    Best move (ChessEngine_0.2): Nc3-d1
+    Not found in: 00:10
+   10/03/2023 12:24:36, Time for this analysis: 00:00:10, Rated time: 1:01:20
+
+660 f8g6                
+    Searching move: Nf8-g6
+    Best move (ChessEngine_0.2): Nf8xe6
+    Not found in: 00:10
+   10/03/2023 12:24:47, Time for this analysis: 00:00:10, Rated time: 1:01:30
+
+661 h3h6                
+    Searching move: Qh3xh6
+    Best move (ChessEngine_0.2): Qh3xh6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:24:57, Time for this analysis: 00:00:10, Rated time: 1:01:30
+
+662 b2b4                
+    Searching move: b2-b4
+    Best move (ChessEngine_0.2): Bb6xd8
+    Not found in: 00:10
+   10/03/2023 12:25:08, Time for this analysis: 00:00:10, Rated time: 1:01:40
+
+663 e2e3                
+    Searching move: Qe2xe3
+    Best move (ChessEngine_0.2): Qe2xe3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:25:19, Time for this analysis: 00:00:10, Rated time: 1:01:40
+
+664 d4d5                
+    Searching move: d4-d5
+    Best move (ChessEngine_0.2): Kf1-e2
+    Not found in: 00:10
+   10/03/2023 12:25:30, Time for this analysis: 00:00:10, Rated time: 1:01:50
+
+665 e7e8                
+    Searching move: Re7-e8
+    Best move (ChessEngine_0.2): Re7-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:25:41, Time for this analysis: 00:00:10, Rated time: 1:01:50
+
+666 c5f2                
+    Searching move: Bc5xf2
+    Best move (ChessEngine_0.2): Bc5xf2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:25:52, Time for this analysis: 00:00:10, Rated time: 1:01:50
+
+667 d6f6                
+    Searching move: Rd6-f6
+    Best move (ChessEngine_0.2): Bg5-e3
+    Not found in: 00:10
+   10/03/2023 12:26:03, Time for this analysis: 00:00:10, Rated time: 1:02:00
+
+668 f3f4                
+    Searching move: f3-f4
+    Best move (ChessEngine_0.2): Ke8-d7
+    Not found in: 00:10
+   10/03/2023 12:26:14, Time for this analysis: 00:00:10, Rated time: 1:02:10
+
+669 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): f6xe7
+    Not found in: 00:10
+   10/03/2023 12:26:25, Time for this analysis: 00:00:10, Rated time: 1:02:20
+
+670 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Bd3-e2
+    Not found in: 00:10
+   10/03/2023 12:26:36, Time for this analysis: 00:00:10, Rated time: 1:02:30
+
+671 f4d3                
+    Searching move: Nf4-d3
+    Best move (ChessEngine_0.2): h4xg5
+    Not found in: 00:10
+   10/03/2023 12:26:47, Time for this analysis: 00:00:10, Rated time: 1:02:40
+
+672 c7d8                
+    Searching move: Qc7-d8
+    Best move (ChessEngine_0.2): Qc7-c8
+    Not found in: 00:10
+   10/03/2023 12:26:58, Time for this analysis: 00:00:10, Rated time: 1:02:50
+
+673 e8e4                
+    Searching move: Re8xe4
+    Best move (ChessEngine_0.2): Re8xe4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:27:09, Time for this analysis: 00:00:10, Rated time: 1:02:50
+
+674 h3g5                
+    Searching move: Nh3-g5
+    Best move (ChessEngine_0.2): Nh3-g5
+    Identical moves! Found in: 00:08
+   10/03/2023 12:27:20, Time for this analysis: 00:00:10, Rated time: 1:02:58
+
+675 e2f1                
+    Searching move: Qe2xf1
+    Best move (ChessEngine_0.2): Qe2xf1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:27:30, Time for this analysis: 00:00:10, Rated time: 1:02:58
+
+676 g5h6                
+    Searching move: Qg5-h6
+    Best move (ChessEngine_0.2): O-O-O
+    Not found in: 00:10
+   10/03/2023 12:27:41, Time for this analysis: 00:00:10, Rated time: 1:03:08
+
+677 a4c3                
+    Searching move: Na4-c3
+    Best move (ChessEngine_0.2): Na4-c3
+    Identical moves! Found in: 00:01
+   10/03/2023 12:27:52, Time for this analysis: 00:00:10, Rated time: 1:03:09
+
+678 d5e6                
+    Searching move: d5xe6
+    Best move (ChessEngine_0.2): d5xe6
+    Identical moves! Found in: 00:01
+   10/03/2023 12:28:03, Time for this analysis: 00:00:10, Rated time: 1:03:10
+
+679 g4f6                
+    Searching move: Ng4-f6
+    Best move (ChessEngine_0.2): Ng4xe3
+    Not found in: 00:10
+   10/03/2023 12:28:14, Time for this analysis: 00:00:10, Rated time: 1:03:20
+
+680 e3e8                
+    Searching move: Re3-e8
+    Best move (ChessEngine_0.2): Nc4-a5
+    Not found in: 00:10
+   10/03/2023 12:28:25, Time for this analysis: 00:00:10, Rated time: 1:03:30
+
+681 d5f6                
+    Searching move: Nd5-f6
+    Best move (ChessEngine_0.2): Rd1-a1
+    Not found in: 00:10
+   10/03/2023 12:28:36, Time for this analysis: 00:00:10, Rated time: 1:03:40
+
+682 d8d5                
+    Searching move: Rd8xd5
+    Best move (ChessEngine_0.2): Rd8xd5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:28:47, Time for this analysis: 00:00:10, Rated time: 1:03:40
+
+683 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Bg4xf3
+    Not found in: 00:10
+   10/03/2023 12:28:58, Time for this analysis: 00:00:10, Rated time: 1:03:50
+
+684 g8g7                
+    Searching move: Kg8-g7
+    Best move (ChessEngine_0.2): e4xd3
+    Not found in: 00:10
+   10/03/2023 12:29:09, Time for this analysis: 00:00:10, Rated time: 1:04:00
+
+685 e2h5                
+    Searching move: Qe2xh5
+    Best move (ChessEngine_0.2): Qe2xh5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:29:20, Time for this analysis: 00:00:10, Rated time: 1:04:00
+
+686 d5d6                
+    Searching move: d5-d6
+    Best move (ChessEngine_0.2): Qb7xa8
+    Not found in: 00:10
+   10/03/2023 12:29:31, Time for this analysis: 00:00:10, Rated time: 1:04:10
+
+687 g7h6                
+    Searching move: Bg7xh6
+    Best move (ChessEngine_0.2): e5xd6
+    Not found in: 00:10
+   10/03/2023 12:29:42, Time for this analysis: 00:00:10, Rated time: 1:04:20
+
+688 h3h7                
+    Searching move: Qh3xh7
+    Best move (ChessEngine_0.2): Qh3xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:29:53, Time for this analysis: 00:00:10, Rated time: 1:04:20
+
+689 b5a5                
+    Searching move: Kb5-a5
+    Best move (ChessEngine_0.2): Kb5-a5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:30:03, Time for this analysis: 00:00:10, Rated time: 1:04:20
+
+690 h5g6                
+    Searching move: h5xg6
+    Best move (ChessEngine_0.2): c5xb6
+    Not found in: 00:10
+   10/03/2023 12:30:14, Time for this analysis: 00:00:10, Rated time: 1:04:30
+
+691 e3h6                
+    Searching move: Be3-h6
+    Best move (ChessEngine_0.2): Be3-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:30:25, Time for this analysis: 00:00:10, Rated time: 1:04:30
+
+692 g4g5                
+    Searching move: g4-g5
+    Best move (ChessEngine_0.2): Ke2-f3
+    Not found in: 00:10
+   10/03/2023 12:30:36, Time for this analysis: 00:00:10, Rated time: 1:04:40
+
+693 a3e7                
+    Searching move: Ba3-e7
+    Best move (ChessEngine_0.2): Ba3-e7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:30:47, Time for this analysis: 00:00:10, Rated time: 1:04:40
+
+694 h3g2                
+    Searching move: Kh3-g2
+    Best move (ChessEngine_0.2): Nf5-e7
+    Not found in: 00:10
+   10/03/2023 12:30:58, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+695 e5f6                
+    Searching move: e5xf6
+    Best move (ChessEngine_0.2): e5xf6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:31:09, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+696 d1c1                
+    Searching move: Rd1-c1
+    Best move (ChessEngine_0.2): Rd1-c1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:31:20, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+697 b3b4                
+    Searching move: b3-b4
+    Best move (ChessEngine_0.2): b3-b4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:31:31, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+698 e6e4                
+    Searching move: Qe6-e4
+    Best move (ChessEngine_0.2): Qe6-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:31:42, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+699 b7b6                
+    Searching move: Rb7xb6
+    Best move (ChessEngine_0.2): Rb7xb6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:31:53, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+700 f2f1                
+    Searching move: Qf2-f1
+    Best move (ChessEngine_0.2): Qf2-f1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:32:04, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+701 f3e2                
+    Searching move: Qf3-e2
+    Best move (ChessEngine_0.2): Qf3-e2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:32:15, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+702 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:32:26, Time for this analysis: 00:00:10, Rated time: 1:04:50
+
+703 f3f6                
+    Searching move: Qf3-f6
+    Best move (ChessEngine_0.2): Ke1-f1
+    Not found in: 00:10
+   10/03/2023 12:32:36, Time for this analysis: 00:00:10, Rated time: 1:05:00
+
+704 e7e8n               
+    Searching move: e7-e8
+    Best move (ChessEngine_0.2): Rd5-d1
+    Not found in: 00:10
+   10/03/2023 12:32:47, Time for this analysis: 00:00:10, Rated time: 1:05:10
+
+705 c8c7                
+    Searching move: Rc8xc7
+    Best move (ChessEngine_0.2): Rc8xc7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:32:58, Time for this analysis: 00:00:10, Rated time: 1:05:10
+
+706 e5e6                
+    Searching move: e5-e6
+    Best move (ChessEngine_0.2): Qh6-h5
+    Not found in: 00:10
+   10/03/2023 12:33:09, Time for this analysis: 00:00:10, Rated time: 1:05:20
+
+707 f8e8                
+    Searching move: Rf8-e8
+    Best move (ChessEngine_0.2): Rf8-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:33:20, Time for this analysis: 00:00:10, Rated time: 1:05:20
+
+708 b7d5                
+    Searching move: Bb7-d5
+    Best move (ChessEngine_0.2): Qc7-a5
+    Not found in: 00:10
+   10/03/2023 12:33:31, Time for this analysis: 00:00:10, Rated time: 1:05:30
+
+709 d7f8                
+    Searching move: Nd7-f8
+    Best move (ChessEngine_0.2): Bb7xg2
+    Not found in: 00:10
+   10/03/2023 12:33:42, Time for this analysis: 00:00:10, Rated time: 1:05:40
+
+710 e7a7                
+    Searching move: Re7-a7
+    Best move (ChessEngine_0.2): Bf4-e3
+    Not found in: 00:10
+   10/03/2023 12:33:53, Time for this analysis: 00:00:10, Rated time: 1:05:50
+
+711 b7c8                
+    Searching move: Kb7-c8
+    Best move (ChessEngine_0.2): Bf3xg4
+    Not found in: 00:10
+   10/03/2023 12:34:04, Time for this analysis: 00:00:10, Rated time: 1:06:00
+
+712 c5b3                
+    Searching move: Nc5-b3
+    Best move (ChessEngine_0.2): Nc5-d7
+    Not found in: 00:10
+   10/03/2023 12:34:15, Time for this analysis: 00:00:10, Rated time: 1:06:10
+
+713 c1c8                
+    Searching move: Rc1-c8
+    Best move (ChessEngine_0.2): Rc1-c8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:34:26, Time for this analysis: 00:00:10, Rated time: 1:06:10
+
+714 e4d5                
+    Searching move: e4xd5
+    Best move (ChessEngine_0.2): Ng7-e8
+    Not found in: 00:10
+   10/03/2023 12:34:37, Time for this analysis: 00:00:10, Rated time: 1:06:20
+
+715 d5f6                
+    Searching move: Nd5-f6
+    Best move (ChessEngine_0.2): e5-e6
+    Not found in: 00:10
+   10/03/2023 12:34:48, Time for this analysis: 00:00:10, Rated time: 1:06:30
+
+716 f2f6                
+    Searching move: Rf2-f6
+    Best move (ChessEngine_0.2): Ne2-f4
+    Not found in: 00:10
+   10/03/2023 12:34:59, Time for this analysis: 00:00:10, Rated time: 1:06:40
+
+717 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): c2-c3
+    Not found in: 00:10
+   10/03/2023 12:35:09, Time for this analysis: 00:00:10, Rated time: 1:06:50
+
+718 g3h2                
+    Searching move: Kg3-h2
+    Best move (ChessEngine_0.2): Kg3-f3
+    Not found in: 00:10
+   10/03/2023 12:35:20, Time for this analysis: 00:00:10, Rated time: 1:07:00
+
+719 g3g4                
+    Searching move: g3-g4
+    Best move (ChessEngine_0.2): Bf2-d4
+    Not found in: 00:10
+   10/03/2023 12:35:31, Time for this analysis: 00:00:10, Rated time: 1:07:10
+
+720 d8d3                
+    Searching move: Qd8xd3
+    Best move (ChessEngine_0.2): Qd8xd3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:35:42, Time for this analysis: 00:00:10, Rated time: 1:07:10
+
+721 e4g5                
+    Searching move: Ne4-g5
+    Best move (ChessEngine_0.2): Ne4-g5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:35:53, Time for this analysis: 00:00:10, Rated time: 1:07:10
+
+722 h4h5                
+    Searching move: Kh4-h5
+    Best move (ChessEngine_0.2): Qf2xf3
+    Not found in: 00:10
+   10/03/2023 12:36:04, Time for this analysis: 00:00:10, Rated time: 1:07:20
+
+723 d1c1                
+    Searching move: Rd1-c1
+    Best move (ChessEngine_0.2): Rd1-c1
+    Identical moves! Found in: 00:01
+   10/03/2023 12:36:15, Time for this analysis: 00:00:10, Rated time: 1:07:21
+
+724 a5a6                
+    Searching move: a5-a6
+    Best move (ChessEngine_0.2): Qe3-f2
+    Not found in: 00:10
+   10/03/2023 12:36:26, Time for this analysis: 00:00:10, Rated time: 1:07:31
+
+725 g5e6                
+    Searching move: Ng5-e6
+    Best move (ChessEngine_0.2): Ng5-e6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:36:37, Time for this analysis: 00:00:10, Rated time: 1:07:31
+
+726 h5f7                
+    Searching move: Bh5-f7
+    Best move (ChessEngine_0.2): Bh5-f7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:36:48, Time for this analysis: 00:00:10, Rated time: 1:07:31
+
+727 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:36:59, Time for this analysis: 00:00:10, Rated time: 1:07:31
+
+728 d2c1                
+    Searching move: Kd2-c1
+    Best move (ChessEngine_0.2): Rc2-c6
+    Not found in: 00:10
+   10/03/2023 12:37:10, Time for this analysis: 00:00:10, Rated time: 1:07:41
+
+729 d1d5                
+    Searching move: Qd1-d5
+    Best move (ChessEngine_0.2): Qd1-d5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:37:21, Time for this analysis: 00:00:10, Rated time: 1:07:41
+
+730 d8d2                
+    Searching move: Rd8-d2
+    Best move (ChessEngine_0.2): Rd8-d2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:37:32, Time for this analysis: 00:00:10, Rated time: 1:07:41
+
+731 c6c7                
+    Searching move: c6-c7
+    Best move (ChessEngine_0.2): c6-c7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:37:42, Time for this analysis: 00:00:10, Rated time: 1:07:41
+
+732 f8a3                
+    Searching move: Bf8xa3
+    Best move (ChessEngine_0.2): Bf8xa3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:37:53, Time for this analysis: 00:00:10, Rated time: 1:07:41
+
+733 e3f5                
+    Searching move: Ne3xf5
+    Best move (ChessEngine_0.2): Ne3xf5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:38:04, Time for this analysis: 00:00:10, Rated time: 1:07:41
+
+734 f3h2                
+    Searching move: Nf3-h2
+    Best move (ChessEngine_0.2): Qf2-g3
+    Not found in: 00:10
+   10/03/2023 12:38:15, Time for this analysis: 00:00:10, Rated time: 1:07:51
+
+735 f7e7                
+    Searching move: Kf7-e7
+    Best move (ChessEngine_0.2): Kf7-g8
+    Not found in: 00:10
+   10/03/2023 12:38:26, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+736 d4d3                
+    Searching move: d4-d3
+    Best move (ChessEngine_0.2): d4-d3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:38:37, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+737 d5e7                
+    Searching move: Nd5-e7
+    Best move (ChessEngine_0.2): Nd5-e7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:38:48, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+738 g4e3                
+    Searching move: Ng4-e3
+    Best move (ChessEngine_0.2): Ng4-e3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:38:59, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+739 g4h4                
+    Searching move: Qg4-h4
+    Best move (ChessEngine_0.2): Qg4-h4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:39:10, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+740 f4e2                
+    Searching move: Nf4-e2
+    Best move (ChessEngine_0.2): Nf4-e2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:39:21, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+741 h6h7                
+    Searching move: Qh6xh7
+    Best move (ChessEngine_0.2): Qh6xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:39:32, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+742 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:39:43, Time for this analysis: 00:00:10, Rated time: 1:08:01
+
+743 h3g5                
+    Searching move: Nh3-g5
+    Best move (ChessEngine_0.2): Ng8-f6
+    Not found in: 00:10
+   10/03/2023 12:39:54, Time for this analysis: 00:00:10, Rated time: 1:08:11
+
+744 b2b3                
+    Searching move: b2-b3
+    Best move (ChessEngine_0.2): Qh4-d8
+    Not found in: 00:10
+   10/03/2023 12:40:04, Time for this analysis: 00:00:10, Rated time: 1:08:21
+
+745 b4e1                
+    Searching move: Qb4-e1
+    Best move (ChessEngine_0.2): Qb4-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:40:15, Time for this analysis: 00:00:10, Rated time: 1:08:21
+
+746 h2h4                
+    Searching move: h2-h4
+    Best move (ChessEngine_0.2): Kf2-g1
+    Not found in: 00:10
+   10/03/2023 12:40:26, Time for this analysis: 00:00:10, Rated time: 1:08:31
+
+747 d7f5                
+    Searching move: Bd7-f5
+    Best move (ChessEngine_0.2): Bd7-f5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:40:37, Time for this analysis: 00:00:10, Rated time: 1:08:31
+
+748 c6d4                
+    Searching move: Nc6-d4
+    Best move (ChessEngine_0.2): Nc6-d4
+    Identical moves! Found in: 00:03
+   10/03/2023 12:40:48, Time for this analysis: 00:00:10, Rated time: 1:08:34
+
+749 e2h5                
+    Searching move: Be2-h5
+    Best move (ChessEngine_0.2): Nh3xf2
+    Not found in: 00:10
+   10/03/2023 12:40:59, Time for this analysis: 00:00:10, Rated time: 1:08:44
+
+750 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): a6xb5
+    Not found in: 00:10
+   10/03/2023 12:41:10, Time for this analysis: 00:00:10, Rated time: 1:08:54
+
+751 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qd4xc5
+    Not found in: 00:10
+   10/03/2023 12:41:21, Time for this analysis: 00:00:10, Rated time: 1:09:04
+
+752 e1e6                
+    Searching move: Re1-e6
+    Best move (ChessEngine_0.2): Nb5-c3
+    Not found in: 00:10
+   10/03/2023 12:41:32, Time for this analysis: 00:00:10, Rated time: 1:09:14
+
+753 b8b5                
+    Searching move: Rb8-b5
+    Best move (ChessEngine_0.2): Nd4-c2
+    Not found in: 00:10
+   10/03/2023 12:41:43, Time for this analysis: 00:00:10, Rated time: 1:09:24
+
+754 f1e1                
+    Searching move: Rf1-e1
+    Best move (ChessEngine_0.2): Rf1-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:41:54, Time for this analysis: 00:00:10, Rated time: 1:09:24
+
+755 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:42:05, Time for this analysis: 00:00:10, Rated time: 1:09:24
+
+756 e1e8                
+    Searching move: Re1-e8
+    Best move (ChessEngine_0.2): Re1-e8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:42:16, Time for this analysis: 00:00:10, Rated time: 1:09:24
+
+757 e3g3                
+    Searching move: Re3-g3
+    Best move (ChessEngine_0.2): Re3-g3
+    Identical moves! Found in: 00:00
+   10/03/2023 12:42:26, Time for this analysis: 00:00:10, Rated time: 1:09:24
+
+758 d6f6                
+    Searching move: Rd6-f6
+    Best move (ChessEngine_0.2): Bg5-e3
+    Not found in: 00:10
+   10/03/2023 12:42:37, Time for this analysis: 00:00:10, Rated time: 1:09:34
+
+759 b6c4                
+    Searching move: Nb6-c4
+    Best move (ChessEngine_0.2): Rf8-e8
+    Not found in: 00:10
+   10/03/2023 12:42:48, Time for this analysis: 00:00:10, Rated time: 1:09:44
+
+760 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): e5xf6
+    Not found in: 00:10
+   10/03/2023 12:42:59, Time for this analysis: 00:00:10, Rated time: 1:09:54
+
+761 g8g7                
+    Searching move: Kg8-g7
+    Best move (ChessEngine_0.2): Kg8-g7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:43:10, Time for this analysis: 00:00:10, Rated time: 1:09:54
+
+762 h5f3                
+    Searching move: Bh5-f3
+    Best move (ChessEngine_0.2): c5-c6
+    Not found in: 00:10
+   10/03/2023 12:43:21, Time for this analysis: 00:00:10, Rated time: 1:10:04
+
+763 a2a3                
+    Searching move: a2-a3
+    Best move (ChessEngine_0.2): f2-f3
+    Not found in: 00:10
+   10/03/2023 12:43:32, Time for this analysis: 00:00:10, Rated time: 1:10:14
+
+764 h5h8                
+    Searching move: Rh5-h8
+    Best move (ChessEngine_0.2): Rh5-h4
+    Not found in: 00:10
+   10/03/2023 12:43:43, Time for this analysis: 00:00:10, Rated time: 1:10:24
+
+765 d5f7                
+    Searching move: Bd5xf7
+    Best move (ChessEngine_0.2): f2-f4
+    Not found in: 00:10
+   10/03/2023 12:43:54, Time for this analysis: 00:00:10, Rated time: 1:10:34
+
+766 b7c8                
+    Searching move: Kb7-c8
+    Best move (ChessEngine_0.2): Bf3xg4
+    Not found in: 00:10
+   10/03/2023 12:44:05, Time for this analysis: 00:00:10, Rated time: 1:10:44
+
+767 f3d4                
+    Searching move: Nf3-d4
+    Best move (ChessEngine_0.2): Nf3-d4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:44:16, Time for this analysis: 00:00:10, Rated time: 1:10:44
+
+768 d5c4                
+    Searching move: d5xc4
+    Best move (ChessEngine_0.2): d5xc4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:44:27, Time for this analysis: 00:00:10, Rated time: 1:10:44
+
+769 f5h6                
+    Searching move: Nf5-h6
+    Best move (ChessEngine_0.2): Nf5-h6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:44:38, Time for this analysis: 00:00:10, Rated time: 1:10:44
+
+770 f3h4                
+    Searching move: Nf3-h4
+    Best move (ChessEngine_0.2): Nf3xe1
+    Not found in: 00:10
+   10/03/2023 12:44:48, Time for this analysis: 00:00:10, Rated time: 1:10:54
+
+771 f7g8                
+    Searching move: Qf7-g8
+    Best move (ChessEngine_0.2): Qf7-g8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:44:59, Time for this analysis: 00:00:10, Rated time: 1:10:54
+
+772 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:01
+   10/03/2023 12:45:10, Time for this analysis: 00:00:10, Rated time: 1:10:55
+
+773 g2f3                
+    Searching move: Kg2-f3
+    Best move (ChessEngine_0.2): Rc2xd2
+    Not found in: 00:10
+   10/03/2023 12:45:21, Time for this analysis: 00:00:10, Rated time: 1:11:05
+
+774 h4h7                
+    Searching move: Rh4xh7
+    Best move (ChessEngine_0.2): Rh4xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:45:32, Time for this analysis: 00:00:10, Rated time: 1:11:05
+
+775 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): Rh1-e1
+    Not found in: 00:10
+   10/03/2023 12:45:43, Time for this analysis: 00:00:10, Rated time: 1:11:15
+
+776 g4h6                
+    Searching move: Ng4-h6
+    Best move (ChessEngine_0.2): Ng4xe5
+    Not found in: 00:10
+   10/03/2023 12:45:54, Time for this analysis: 00:00:10, Rated time: 1:11:25
+
+777 f4f5                
+    Searching move: f4-f5
+    Best move (ChessEngine_0.2): Rd1-e1
+    Not found in: 00:10
+   10/03/2023 12:46:05, Time for this analysis: 00:00:10, Rated time: 1:11:35
+
+778 b5d4                
+    Searching move: Nb5xd4
+    Best move (ChessEngine_0.2): Nb5xd4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:46:16, Time for this analysis: 00:00:10, Rated time: 1:11:35
+
+779 e5e1                
+    Searching move: Re5-e1
+    Best move (ChessEngine_0.2): Re5-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:46:27, Time for this analysis: 00:00:10, Rated time: 1:11:35
+
+780 e3d4                
+    Searching move: Be3-d4
+    Best move (ChessEngine_0.2): Qh3-h6
+    Not found in: 00:10
+   10/03/2023 12:46:38, Time for this analysis: 00:00:10, Rated time: 1:11:45
+
+781 d5d4                
+    Searching move: d5-d4
+    Best move (ChessEngine_0.2): d5-d4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:46:49, Time for this analysis: 00:00:10, Rated time: 1:11:45
+
+782 d6e5                
+    Searching move: Qd6xe5
+    Best move (ChessEngine_0.2): Qd6-d5
+    Not found in: 00:10
+   10/03/2023 12:47:00, Time for this analysis: 00:00:10, Rated time: 1:11:55
+
+783 b2b4                
+    Searching move: b2-b4
+    Best move (ChessEngine_0.2): Nf3-e5
+    Not found in: 00:10
+   10/03/2023 12:47:10, Time for this analysis: 00:00:10, Rated time: 1:12:05
+
+784 d3g6                
+    Searching move: Qd3xg6
+    Best move (ChessEngine_0.2): h4-h5
+    Not found in: 00:10
+   10/03/2023 12:47:21, Time for this analysis: 00:00:10, Rated time: 1:12:15
+
+785 c6d5                
+    Searching move: Kc6-d5
+    Best move (ChessEngine_0.2): Bc4-d5
+    Not found in: 00:10
+   10/03/2023 12:47:32, Time for this analysis: 00:00:10, Rated time: 1:12:25
+
+786 g5f6                
+    Searching move: g5xf6
+    Best move (ChessEngine_0.2): Bb2xc3
+    Not found in: 00:10
+   10/03/2023 12:47:43, Time for this analysis: 00:00:10, Rated time: 1:12:35
+
+787 c1h6                
+    Searching move: Bc1xh6
+    Best move (ChessEngine_0.2): Ra1-b1
+    Not found in: 00:10
+   10/03/2023 12:47:54, Time for this analysis: 00:00:10, Rated time: 1:12:45
+
+788 e2d2                
+    Searching move: Qe2-d2
+    Best move (ChessEngine_0.2): Qe2-d2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:48:05, Time for this analysis: 00:00:10, Rated time: 1:12:45
+
+789 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): Bg6-b1
+    Not found in: 00:10
+   10/03/2023 12:48:16, Time for this analysis: 00:00:10, Rated time: 1:12:55
+
+790 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:48:27, Time for this analysis: 00:00:10, Rated time: 1:12:55
+
+791 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): c4-c5
+    Not found in: 00:10
+   10/03/2023 12:48:38, Time for this analysis: 00:00:10, Rated time: 1:13:05
+
+792 d4f5                
+    Searching move: Nd4-f5
+    Best move (ChessEngine_0.2): Nd4-f5
+    Identical moves! Found in: 00:02
+   10/03/2023 12:48:49, Time for this analysis: 00:00:10, Rated time: 1:13:07
+
+793 a2a3                
+    Searching move: a2-a3
+    Best move (ChessEngine_0.2): a2-a3
+    Identical moves! Found in: 00:02
+   10/03/2023 12:49:00, Time for this analysis: 00:00:10, Rated time: 1:13:09
+
+794 e1e7                
+    Searching move: Re1xe7
+    Best move (ChessEngine_0.2): Qf3-e2
+    Not found in: 00:10
+   10/03/2023 12:49:11, Time for this analysis: 00:00:10, Rated time: 1:13:19
+
+795 e1a5                
+    Searching move: Qe1-a5
+    Best move (ChessEngine_0.2): c4xb5
+    Not found in: 00:10
+   10/03/2023 12:49:21, Time for this analysis: 00:00:10, Rated time: 1:13:29
+
+796 g2g4                
+    Searching move: g2-g4
+    Best move (ChessEngine_0.2): g2-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:49:32, Time for this analysis: 00:00:10, Rated time: 1:13:29
+
+797 e5e1                
+    Searching move: Qe5-e1
+    Best move (ChessEngine_0.2): Qe5-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:49:43, Time for this analysis: 00:00:10, Rated time: 1:13:29
+
+798 d1f3                
+    Searching move: Qd1-f3
+    Best move (ChessEngine_0.2): Qd1-c2
+    Not found in: 00:10
+   10/03/2023 12:49:54, Time for this analysis: 00:00:10, Rated time: 1:13:39
+
+799 d6f8                
+    Searching move: Bd6-f8
+    Best move (ChessEngine_0.2): Rg8-f8
+    Not found in: 00:10
+   10/03/2023 12:50:05, Time for this analysis: 00:00:10, Rated time: 1:13:49
+
+800 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Rd1-e1
+    Not found in: 00:10
+   10/03/2023 12:50:16, Time for this analysis: 00:00:10, Rated time: 1:13:59
+
+801 c3d5                
+    Searching move: Nc3-d5
+    Best move (ChessEngine_0.2): Ke4-f4
+    Not found in: 00:10
+   10/03/2023 12:50:27, Time for this analysis: 00:00:10, Rated time: 1:14:09
+
+802 g2b7                
+    Searching move: Bg2xb7
+    Best move (ChessEngine_0.2): Bg2xb7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:50:38, Time for this analysis: 00:00:10, Rated time: 1:14:09
+
+803 h3h2                
+    Searching move: Qh3xh2
+    Best move (ChessEngine_0.2): Qh3xh2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:50:49, Time for this analysis: 00:00:10, Rated time: 1:14:09
+
+804 d7h3                
+    Searching move: Qd7-h3
+    Best move (ChessEngine_0.2): f4xg3
+    Not found in: 00:10
+   10/03/2023 12:51:00, Time for this analysis: 00:00:10, Rated time: 1:14:19
+
+805 c3e4                
+    Searching move: Nc3-e4
+    Best move (ChessEngine_0.2): Nc3-e4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:51:11, Time for this analysis: 00:00:10, Rated time: 1:14:19
+
+806 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): h4-h5
+    Not found in: 00:10
+   10/03/2023 12:51:22, Time for this analysis: 00:00:10, Rated time: 1:14:29
+
+807 d7b5                
+    Searching move: Bd7-b5
+    Best move (ChessEngine_0.2): Rc8-c7
+    Not found in: 00:10
+   10/03/2023 12:51:33, Time for this analysis: 00:00:10, Rated time: 1:14:39
+
+808 g1e2                
+    Searching move: Ng1-e2
+    Best move (ChessEngine_0.2): Bc1-e3
+    Not found in: 00:10
+   10/03/2023 12:51:44, Time for this analysis: 00:00:10, Rated time: 1:14:49
+
+809 c5b3                
+    Searching move: Nc5xb3
+    Best move (ChessEngine_0.2): Nc5xb3
+    Identical moves! Found in: 00:05
+   10/03/2023 12:51:55, Time for this analysis: 00:00:10, Rated time: 1:14:54
+
+810 b5d4                
+    Searching move: Nb5-d4
+    Best move (ChessEngine_0.2): Nb5-d4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:52:06, Time for this analysis: 00:00:10, Rated time: 1:14:54
+
+811 c2a4                
+    Searching move: Bc2-a4
+    Best move (ChessEngine_0.2): c3-c4
+    Not found in: 00:10
+   10/03/2023 12:52:16, Time for this analysis: 00:00:10, Rated time: 1:15:04
+
+812 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 12:52:27, Time for this analysis: 00:00:10, Rated time: 1:15:04
+
+813 g5g6                
+    Searching move: g5-g6
+    Best move (ChessEngine_0.2): g5-g6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:52:38, Time for this analysis: 00:00:10, Rated time: 1:15:04
+
+814 h4h7                
+    Searching move: Rh4xh7
+    Best move (ChessEngine_0.2): Rh4xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:52:49, Time for this analysis: 00:00:10, Rated time: 1:15:04
+
+815 d3h3                
+    Searching move: Rd3-h3
+    Best move (ChessEngine_0.2): Re1-e2
+    Not found in: 00:10
+   10/03/2023 12:53:00, Time for this analysis: 00:00:10, Rated time: 1:15:14
+
+816 c7c5                
+    Searching move: c7-c5
+    Best move (ChessEngine_0.2): Bd5xf3
+    Not found in: 00:10
+   10/03/2023 12:53:11, Time for this analysis: 00:00:10, Rated time: 1:15:24
+
+817 c1g5                
+    Searching move: Bc1-g5
+    Best move (ChessEngine_0.2): Ne4-c3
+    Not found in: 00:10
+   10/03/2023 12:53:22, Time for this analysis: 00:00:10, Rated time: 1:15:34
+
+818 c7b6                
+    Searching move: Qc7-b6
+    Best move (ChessEngine_0.2): Qc7-b6
+    Identical moves! Found in: 00:08
+   10/03/2023 12:53:33, Time for this analysis: 00:00:10, Rated time: 1:15:42
+
+819 e5f6                
+    Searching move: e5xf6
+    Best move (ChessEngine_0.2): e5xf6
+    Identical moves! Found in: 00:03
+   10/03/2023 12:53:44, Time for this analysis: 00:00:10, Rated time: 1:15:45
+
+820 f4f5                
+    Searching move: Rf4xf5
+    Best move (ChessEngine_0.2): Kf3-g2
+    Not found in: 00:10
+   10/03/2023 12:53:55, Time for this analysis: 00:00:10, Rated time: 1:15:55
+
+821 e6d6                
+    Searching move: Re6-d6
+    Best move (ChessEngine_0.2): Re6-d6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:54:06, Time for this analysis: 00:00:10, Rated time: 1:15:55
+
+822 d8a8                
+    Searching move: Qd8-a8
+    Best move (ChessEngine_0.2): Qd8-f8
+    Not found in: 00:10
+   10/03/2023 12:54:17, Time for this analysis: 00:00:10, Rated time: 1:16:05
+
+823 c2c6                
+    Searching move: Qc2xc6
+    Best move (ChessEngine_0.2): Qc2xc6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:54:28, Time for this analysis: 00:00:10, Rated time: 1:16:05
+
+824 g4d7                
+    Searching move: Qg4xd7
+    Best move (ChessEngine_0.2): Qg4xd7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:54:39, Time for this analysis: 00:00:10, Rated time: 1:16:05
+
+825 b2c2                
+    Searching move: Qb2-c2
+    Best move (ChessEngine_0.2): Bd6-f4
+    Not found in: 00:10
+   10/03/2023 12:54:50, Time for this analysis: 00:00:10, Rated time: 1:16:15
+
+826 f6g7                
+    Searching move: Qf6-g7
+    Best move (ChessEngine_0.2): Qf6-g7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:55:01, Time for this analysis: 00:00:10, Rated time: 1:16:15
+
+827 e1e5                
+    Searching move: Re1xe5
+    Best move (ChessEngine_0.2): Re1xe5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:55:11, Time for this analysis: 00:00:10, Rated time: 1:16:15
+
+828 b2b4                
+    Searching move: b2-b4
+    Best move (ChessEngine_0.2): Bd4xb6
+    Not found in: 00:10
+   10/03/2023 12:55:22, Time for this analysis: 00:00:10, Rated time: 1:16:25
+
+829 d1h1                
+    Searching move: Rd1-h1
+    Best move (ChessEngine_0.2): Rd1-h1
+    Identical moves! Found in: 00:00
+   10/03/2023 12:55:33, Time for this analysis: 00:00:10, Rated time: 1:16:25
+
+830 b3b4                
+    Searching move: b3-b4
+    Best move (ChessEngine_0.2): a2-a3
+    Not found in: 00:10
+   10/03/2023 12:55:44, Time for this analysis: 00:00:10, Rated time: 1:16:35
+
+831 d7d2                
+    Searching move: Qd7-d2
+    Best move (ChessEngine_0.2): Qd7-d2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:55:55, Time for this analysis: 00:00:10, Rated time: 1:16:35
+
+832 d4f5                
+    Searching move: Nd4-f5
+    Best move (ChessEngine_0.2): g2-g3
+    Not found in: 00:10
+   10/03/2023 12:56:06, Time for this analysis: 00:00:10, Rated time: 1:16:45
+
+833 g7h6                
+    Searching move: Bg7-h6
+    Best move (ChessEngine_0.2): h5-h4
+    Not found in: 00:10
+   10/03/2023 12:56:17, Time for this analysis: 00:00:10, Rated time: 1:16:55
+
+834 c3c4                
+    Searching move: c3-c4
+    Best move (ChessEngine_0.2): Rd1-c1
+    Not found in: 00:10
+   10/03/2023 12:56:28, Time for this analysis: 00:00:10, Rated time: 1:17:05
+
+835 h5f5                
+    Searching move: Qh5-f5
+    Best move (ChessEngine_0.2): g4xh3
+    Not found in: 00:10
+   10/03/2023 12:56:39, Time for this analysis: 00:00:10, Rated time: 1:17:15
+
+836 e1e6                
+    Searching move: Re1xe6
+    Best move (ChessEngine_0.2): Re1xe6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:56:50, Time for this analysis: 00:00:10, Rated time: 1:17:15
+
+837 d4g7                
+    Searching move: Qd4xg7
+    Best move (ChessEngine_0.2): Qd4xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:57:01, Time for this analysis: 00:00:10, Rated time: 1:17:15
+
+838 d5c5                
+    Searching move: Rd5xc5
+    Best move (ChessEngine_0.2): Rd5-d1
+    Not found in: 00:10
+   10/03/2023 12:57:12, Time for this analysis: 00:00:10, Rated time: 1:17:25
+
+839 d6c6                
+    Searching move: Rd6-c6
+    Best move (ChessEngine_0.2): Rd6-c6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:57:23, Time for this analysis: 00:00:10, Rated time: 1:17:25
+
+840 f5f6                
+    Searching move: f5-f6
+    Best move (ChessEngine_0.2): c6-c7
+    Not found in: 00:10
+   10/03/2023 12:57:34, Time for this analysis: 00:00:10, Rated time: 1:17:35
+
+841 f4e6                
+    Searching move: Nf4xe6
+    Best move (ChessEngine_0.2): Nf4xe6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:57:45, Time for this analysis: 00:00:10, Rated time: 1:17:35
+
+842 g4f6                
+    Searching move: Ng4-f6
+    Best move (ChessEngine_0.2): Ng4xe3
+    Not found in: 00:10
+   10/03/2023 12:57:56, Time for this analysis: 00:00:10, Rated time: 1:17:45
+
+843 e1e6                
+    Searching move: Re1-e6
+    Best move (ChessEngine_0.2): Nb5-c3
+    Not found in: 00:10
+   10/03/2023 12:58:06, Time for this analysis: 00:00:10, Rated time: 1:17:55
+
+844 c5a4                
+    Searching move: Nc5-a4
+    Best move (ChessEngine_0.2): Nc5-a4
+    Identical moves! Found in: 00:00
+   10/03/2023 12:58:17, Time for this analysis: 00:00:10, Rated time: 1:17:55
+
+845 g3g4                
+    Searching move: g3-g4
+    Best move (ChessEngine_0.2): Rc1-c2
+    Not found in: 00:10
+   10/03/2023 12:58:28, Time for this analysis: 00:00:10, Rated time: 1:18:05
+
+846 d1d7                
+    Searching move: Rd1xd7
+    Best move (ChessEngine_0.2): Rd1xd7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:58:39, Time for this analysis: 00:00:10, Rated time: 1:18:05
+
+847 c5a6                
+    Searching move: Nc5-a6
+    Best move (ChessEngine_0.2): Nc5-a6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:58:50, Time for this analysis: 00:00:10, Rated time: 1:18:05
+
+848 d6d8                
+    Searching move: Rd6-d8
+    Best move (ChessEngine_0.2): Rd6-d8
+    Identical moves! Found in: 00:00
+   10/03/2023 12:59:01, Time for this analysis: 00:00:10, Rated time: 1:18:05
+
+849 d7f5                
+    Searching move: Bd7-f5
+    Best move (ChessEngine_0.2): Bd7-f5
+    Identical moves! Found in: 00:00
+   10/03/2023 12:59:12, Time for this analysis: 00:00:10, Rated time: 1:18:05
+
+850 e7d6                
+    Searching move: Be7-d6
+    Best move (ChessEngine_0.2): Be7-d6
+    Identical moves! Found in: 00:00
+   10/03/2023 12:59:23, Time for this analysis: 00:00:10, Rated time: 1:18:05
+
+851 c4f7                
+    Searching move: Bc4-f7
+    Best move (ChessEngine_0.2): Bc4-f7
+    Identical moves! Found in: 00:00
+   10/03/2023 12:59:34, Time for this analysis: 00:00:10, Rated time: 1:18:05
+
+852 d5d6                
+    Searching move: d5-d6
+    Best move (ChessEngine_0.2): d5-d6
+    Identical moves! Found in: 00:06
+   10/03/2023 12:59:45, Time for this analysis: 00:00:10, Rated time: 1:18:11
+
+853 b4a2                
+    Searching move: Nb4-a2
+    Best move (ChessEngine_0.2): Nb4-a2
+    Identical moves! Found in: 00:00
+   10/03/2023 12:59:56, Time for this analysis: 00:00:10, Rated time: 1:18:11
+
+854 e4e5                
+    Searching move: Qe4-e5
+    Best move (ChessEngine_0.2): Qe4-e5
+    Identical moves! Found in: 00:00
+   10/03/2023 13:00:07, Time for this analysis: 00:00:10, Rated time: 1:18:11
+
+855 b3b4                
+    Searching move: b3-b4
+    Best move (ChessEngine_0.2): Rf1-e1
+    Not found in: 00:10
+   10/03/2023 13:00:18, Time for this analysis: 00:00:10, Rated time: 1:18:21
+
+856 g5h6                
+    Searching move: Qg5-h6
+    Best move (ChessEngine_0.2): O-O-O
+    Not found in: 00:10
+   10/03/2023 13:00:29, Time for this analysis: 00:00:10, Rated time: 1:18:31
+
+857 g5e6                
+    Searching move: Ng5-e6
+    Best move (ChessEngine_0.2): Ng5-e6
+    Identical moves! Found in: 00:00
+   10/03/2023 13:00:40, Time for this analysis: 00:00:10, Rated time: 1:18:31
+
+858 e7g7                
+    Searching move: Re7xg7
+    Best move (ChessEngine_0.2): Re7xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 13:00:51, Time for this analysis: 00:00:10, Rated time: 1:18:31
+
+859 b1b5                
+    Searching move: Rb1xb5
+    Best move (ChessEngine_0.2): Rb1xb5
+    Identical moves! Found in: 00:02
+   10/03/2023 13:01:01, Time for this analysis: 00:00:10, Rated time: 1:18:33
+
+860 d8f6                
+    Searching move: Qd8xf6
+    Best move (ChessEngine_0.2): Qd8xf6
+    Identical moves! Found in: 00:00
+   10/03/2023 13:01:12, Time for this analysis: 00:00:10, Rated time: 1:18:33
+
+861 g2g3                
+    Searching move: g2-g3
+    Best move (ChessEngine_0.2): g2-g3
+    Identical moves! Found in: 00:00
+   10/03/2023 13:01:23, Time for this analysis: 00:00:10, Rated time: 1:18:33
+
+862 c6f3                
+    Searching move: Qc6-f3
+    Best move (ChessEngine_0.2): Be2xa6
+    Not found in: 00:10
+   10/03/2023 13:01:34, Time for this analysis: 00:00:10, Rated time: 1:18:43
+
+863 f2e2                
+    Searching move: Qf2-e2
+    Best move (ChessEngine_0.2): Qf2-e2
+    Identical moves! Found in: 00:02
+   10/03/2023 13:01:45, Time for this analysis: 00:00:10, Rated time: 1:18:45
+
+864 e2c3                
+    Searching move: Ne2-c3
+    Best move (ChessEngine_0.2): Ne2-c3
+    Identical moves! Found in: 00:00
+   10/03/2023 13:01:56, Time for this analysis: 00:00:10, Rated time: 1:18:45
+
+865 a2c4                
+    Searching move: Ba2-c4
+    Best move (ChessEngine_0.2): Ba2-c4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:02:07, Time for this analysis: 00:00:10, Rated time: 1:18:45
+
+866 b2f6                
+    Searching move: Bb2xf6
+    Best move (ChessEngine_0.2): Bb2xf6
+    Identical moves! Found in: 00:00
+   10/03/2023 13:02:18, Time for this analysis: 00:00:10, Rated time: 1:18:45
+
+867 c3d5                
+    Searching move: Nc3-d5
+    Best move (ChessEngine_0.2): Nc3-d5
+    Identical moves! Found in: 00:00
+   10/03/2023 13:02:29, Time for this analysis: 00:00:10, Rated time: 1:18:45
+
+868 g5f6                
+    Searching move: Bg5xf6
+    Best move (ChessEngine_0.2): Bg5xf6
+    Identical moves! Found in: 00:00
+   10/03/2023 13:02:40, Time for this analysis: 00:00:10, Rated time: 1:18:45
+
+869 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qe2-c2
+    Not found in: 00:10
+   10/03/2023 13:02:51, Time for this analysis: 00:00:10, Rated time: 1:18:55
+
+870 f3f6                
+    Searching move: Qf3xf6
+    Best move (ChessEngine_0.2): Bb8xa7
+    Not found in: 00:10
+   10/03/2023 13:03:02, Time for this analysis: 00:00:10, Rated time: 1:19:05
+
+871 h8h2                
+    Searching move: Rh8xh2
+    Best move (ChessEngine_0.2): Rh8xh2
+    Identical moves! Found in: 00:00
+   10/03/2023 13:03:13, Time for this analysis: 00:00:10, Rated time: 1:19:05
+
+872 h4d4                
+    Searching move: Qh4-d4
+    Best move (ChessEngine_0.2): Qh4xe7
+    Not found in: 00:10
+   10/03/2023 13:03:24, Time for this analysis: 00:00:10, Rated time: 1:19:15
+
+873 e5f5                
+    Searching move: Re5xf5
+    Best move (ChessEngine_0.2): Re2-d2
+    Not found in: 00:10
+   10/03/2023 13:03:35, Time for this analysis: 00:00:10, Rated time: 1:19:25
+
+874 e8g8                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 13:03:45, Time for this analysis: 00:00:10, Rated time: 1:19:25
+
+875 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qe2-c2
+    Not found in: 00:10
+   10/03/2023 13:03:56, Time for this analysis: 00:00:10, Rated time: 1:19:35
+
+876 a2c4                
+    Searching move: Qa2xc4
+    Best move (ChessEngine_0.2): Qa2xc4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:04:07, Time for this analysis: 00:00:10, Rated time: 1:19:35
+
+877 a6a5                
+    Searching move: a6-a5
+    Best move (ChessEngine_0.2): a6-a5
+    Identical moves! Found in: 00:02
+   10/03/2023 13:04:18, Time for this analysis: 00:00:10, Rated time: 1:19:37
+
+878 d4d5                
+    Searching move: d4-d5
+    Best move (ChessEngine_0.2): a2-a4
+    Not found in: 00:10
+   10/03/2023 13:04:29, Time for this analysis: 00:00:10, Rated time: 1:19:47
+
+879 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Bd3xh7
+    Identical moves! Found in: 00:00
+   10/03/2023 13:04:40, Time for this analysis: 00:00:10, Rated time: 1:19:47
+
+880 f6g4                
+    Searching move: Nf6-g4
+    Best move (ChessEngine_0.2): Nf6-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:04:51, Time for this analysis: 00:00:10, Rated time: 1:19:47
+
+881 e3h6                
+    Searching move: Be3xh6
+    Best move (ChessEngine_0.2): Rc1-d1
+    Not found in: 00:10
+   10/03/2023 13:05:02, Time for this analysis: 00:00:10, Rated time: 1:19:57
+
+882 f3h4                
+    Searching move: Nf3-h4
+    Best move (ChessEngine_0.2): Nf3xe1
+    Not found in: 00:10
+   10/03/2023 13:05:13, Time for this analysis: 00:00:10, Rated time: 1:20:07
+
+883 d5e6                
+    Searching move: Qd5-e6
+    Best move (ChessEngine_0.2): Qd5-e6
+    Identical moves! Found in: 00:00
+   10/03/2023 13:05:24, Time for this analysis: 00:00:10, Rated time: 1:20:07
+
+884 e4e5                
+    Searching move: e4-e5
+    Best move (ChessEngine_0.2): Rf1-d1
+    Not found in: 00:10
+   10/03/2023 13:05:35, Time for this analysis: 00:00:10, Rated time: 1:20:17
+
+885 f5f6                
+    Searching move: f5-f6
+    Best move (ChessEngine_0.2): f5-f6
+    Identical moves! Found in: 00:00
+   10/03/2023 13:05:46, Time for this analysis: 00:00:10, Rated time: 1:20:17
+
+886 d4f5                
+    Searching move: Nd4-f5
+    Best move (ChessEngine_0.2): Qe3-g3
+    Not found in: 00:10
+   10/03/2023 13:05:57, Time for this analysis: 00:00:10, Rated time: 1:20:27
+
+887 a6b5                
+    Searching move: a6xb5
+    Best move (ChessEngine_0.2): Nb8-d7
+    Not found in: 00:10
+   10/03/2023 13:06:08, Time for this analysis: 00:00:10, Rated time: 1:20:37
+
+888 e6e5                
+    Searching move: Re6xe5
+    Best move (ChessEngine_0.2): Re6xe5
+    Identical moves! Found in: 00:00
+   10/03/2023 13:06:19, Time for this analysis: 00:00:10, Rated time: 1:20:37
+
+889 d6d5                
+    Searching move: d6-d5
+    Best move (ChessEngine_0.2): d6-d5
+    Identical moves! Found in: 00:00
+   10/03/2023 13:06:30, Time for this analysis: 00:00:10, Rated time: 1:20:37
+
+890 e6e5                
+    Searching move: e6-e5
+    Best move (ChessEngine_0.2): Rd8-d7
+    Not found in: 00:10
+   10/03/2023 13:06:41, Time for this analysis: 00:00:10, Rated time: 1:20:47
+
+891 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): Bg5-e3
+    Not found in: 00:10
+   10/03/2023 13:06:52, Time for this analysis: 00:00:10, Rated time: 1:20:57
+
+892 f4g4                
+    Searching move: Rf4-g4
+    Best move (ChessEngine_0.2): Rf4-g4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:07:02, Time for this analysis: 00:00:10, Rated time: 1:20:57
+
+893 g6b6                
+    Searching move: Rg6-b6
+    Best move (ChessEngine_0.2): Rg6-b6
+    Identical moves! Found in: 00:00
+   10/03/2023 13:07:13, Time for this analysis: 00:00:10, Rated time: 1:20:57
+
+894 e1e5                
+    Searching move: Re1xe5
+    Best move (ChessEngine_0.2): Re1xe5
+    Identical moves! Found in: 00:00
+   10/03/2023 13:07:24, Time for this analysis: 00:00:10, Rated time: 1:20:57
+
+895 h6f4                
+    Searching move: Qh6-f4
+    Best move (ChessEngine_0.2): Qh6-f4
+    Identical moves! Found in: 00:01
+   10/03/2023 13:07:35, Time for this analysis: 00:00:10, Rated time: 1:20:58
+
+896 c2c4                
+    Searching move: c2-c4
+    Best move (ChessEngine_0.2): a2-a3
+    Not found in: 00:10
+   10/03/2023 13:07:46, Time for this analysis: 00:00:10, Rated time: 1:21:08
+
+897 f1b1                
+    Searching move: Rf1-b1
+    Best move (ChessEngine_0.2): Rf1-b1
+    Identical moves! Found in: 00:00
+   10/03/2023 13:07:57, Time for this analysis: 00:00:10, Rated time: 1:21:08
+
+898 f1d1                
+    Searching move: Rf1-d1
+    Best move (ChessEngine_0.2): Rf1-d1
+    Identical moves! Found in: 00:00
+   10/03/2023 13:08:08, Time for this analysis: 00:00:10, Rated time: 1:21:08
+
+899 f2f4                
+    Searching move: f2-f4
+    Best move (ChessEngine_0.2): b4xc5
+    Not found in: 00:10
+   10/03/2023 13:08:19, Time for this analysis: 00:00:10, Rated time: 1:21:18
+
+900 d8a8                
+    Searching move: Qd8-a8
+    Best move (ChessEngine_0.2): Qd8-f8
+    Not found in: 00:10
+   10/03/2023 13:08:30, Time for this analysis: 00:00:10, Rated time: 1:21:28
+
+901 d4e6                
+    Searching move: Nd4xe6
+    Best move (ChessEngine_0.2): Bh5-e2
+    Not found in: 00:10
+   10/03/2023 13:08:41, Time for this analysis: 00:00:10, Rated time: 1:21:38
+
+902 a2a4                
+    Searching move: a2-a4
+    Best move (ChessEngine_0.2): Be2-d3
+    Not found in: 00:10
+   10/03/2023 13:08:52, Time for this analysis: 00:00:10, Rated time: 1:21:48
+
+903 f3g5                
+    Searching move: Nf3xg5
+    Best move (ChessEngine_0.2): Bc1xg5
+    Not found in: 00:10
+   10/03/2023 13:09:03, Time for this analysis: 00:00:10, Rated time: 1:21:58
+
+904 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qd4xc5
+    Not found in: 00:10
+   10/03/2023 13:09:14, Time for this analysis: 00:00:10, Rated time: 1:22:08
+
+905 d2f1                
+    Searching move: Nd2-f1
+    Best move (ChessEngine_0.2): Qg3xd6
+    Not found in: 00:10
+   10/03/2023 13:09:25, Time for this analysis: 00:00:10, Rated time: 1:22:18
+
+906 c8a7                
+    Searching move: Nc8xa7
+    Best move (ChessEngine_0.2): Nc8xa7
+    Identical moves! Found in: 00:00
+   10/03/2023 13:09:36, Time for this analysis: 00:00:10, Rated time: 1:22:18
+
+907 g5f4                
+    Searching move: Bg5-f4
+    Best move (ChessEngine_0.2): Re7xd7
+    Not found in: 00:10
+   10/03/2023 13:09:47, Time for this analysis: 00:00:10, Rated time: 1:22:28
+
+908 g3g4                
+    Searching move: g3-g4
+    Best move (ChessEngine_0.2): Nc3-b5
+    Not found in: 00:10
+   10/03/2023 13:09:57, Time for this analysis: 00:00:10, Rated time: 1:22:38
+
+909 g5f7                
+    Searching move: Ng5xf7
+    Best move (ChessEngine_0.2): Bf5-c2
+    Not found in: 00:10
+   10/03/2023 13:10:08, Time for this analysis: 00:00:10, Rated time: 1:22:48
+
+910 h5h4                
+    Searching move: Qh5xh4
+    Best move (ChessEngine_0.2): Qh5xh4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:10:19, Time for this analysis: 00:00:10, Rated time: 1:22:48
+
+911 f3d4                
+    Searching move: Nf3-d4
+    Best move (ChessEngine_0.2): Kg1-h1
+    Not found in: 00:10
+   10/03/2023 13:10:30, Time for this analysis: 00:00:10, Rated time: 1:22:58
+
+912 e2c4                
+    Searching move: Qe2-c4
+    Best move (ChessEngine_0.2): Qe2-c4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:10:41, Time for this analysis: 00:00:10, Rated time: 1:22:58
+
+913 e3c5                
+    Searching move: Be3xc5
+    Best move (ChessEngine_0.2): Be2xa6
+    Not found in: 00:10
+   10/03/2023 13:10:52, Time for this analysis: 00:00:10, Rated time: 1:23:08
+
+914 g1g7                
+    Searching move: Rg1xg7
+    Best move (ChessEngine_0.2): Qh4-g5
+    Not found in: 00:10
+   10/03/2023 13:11:03, Time for this analysis: 00:00:10, Rated time: 1:23:18
+
+915 g3f5                
+    Searching move: Ng3-f5
+    Best move (ChessEngine_0.2): Rf4-h4
+    Not found in: 00:10
+   10/03/2023 13:11:14, Time for this analysis: 00:00:10, Rated time: 1:23:28
+
+916 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 13:11:25, Time for this analysis: 00:00:10, Rated time: 1:23:28
+
+917 f5f6                
+    Searching move: f5-f6
+    Best move (ChessEngine_0.2): f5xg6
+    Not found in: 00:10
+   10/03/2023 13:11:36, Time for this analysis: 00:00:10, Rated time: 1:23:38
+
+918 e1g1                
+    Searching move: O-O
+    Best move (ChessEngine_0.2): O-O
+    Identical moves! Found in: 00:00
+   10/03/2023 13:11:47, Time for this analysis: 00:00:10, Rated time: 1:23:38
+
+919 f4f6                
+    Searching move: Qf4-f6
+    Best move (ChessEngine_0.2): Be1-g3
+    Not found in: 00:10
+   10/03/2023 13:11:58, Time for this analysis: 00:00:10, Rated time: 1:23:48
+
+920 d1f1                
+    Searching move: Rd1xf1
+    Best move (ChessEngine_0.2): Rd1xf1
+    Identical moves! Found in: 00:00
+   10/03/2023 13:12:09, Time for this analysis: 00:00:10, Rated time: 1:23:48
+
+921 h7h6                
+    Searching move: Kh7-h6
+    Best move (ChessEngine_0.2): Qf6-f1
+    Not found in: 00:10
+   10/03/2023 13:12:20, Time for this analysis: 00:00:10, Rated time: 1:23:58
+
+922 b7e4                
+    Searching move: Bb7xe4
+    Best move (ChessEngine_0.2): Bb7xe4
+    Identical moves! Found in: 00:01
+   10/03/2023 13:12:30, Time for this analysis: 00:00:10, Rated time: 1:23:59
+
+923 c1c3                
+    Searching move: Rc1xc3
+    Best move (ChessEngine_0.2): Rc1xc3
+    Identical moves! Found in: 00:00
+   10/03/2023 13:12:41, Time for this analysis: 00:00:10, Rated time: 1:23:59
+
+924 b6c7                
+    Searching move: Bb6-c7
+    Best move (ChessEngine_0.2): Bb6xd8
+    Not found in: 00:10
+   10/03/2023 13:12:52, Time for this analysis: 00:00:10, Rated time: 1:24:09
+
+925 d4e5                
+    Searching move: Qd4-e5
+    Best move (ChessEngine_0.2): Qd4-f4
+    Not found in: 00:10
+   10/03/2023 13:13:03, Time for this analysis: 00:00:10, Rated time: 1:24:19
+
+926 e2d2                
+    Searching move: Re2xd2
+    Best move (ChessEngine_0.2): Re2xg2
+    Not found in: 00:10
+   10/03/2023 13:13:14, Time for this analysis: 00:00:10, Rated time: 1:24:29
+
+927 d8h8                
+    Searching move: Qd8-h8
+    Best move (ChessEngine_0.2): Qd8-h8
+    Identical moves! Found in: 00:00
+   10/03/2023 13:13:25, Time for this analysis: 00:00:10, Rated time: 1:24:29
+
+928 d2e3                
+    Searching move: Bd2-e3
+    Best move (ChessEngine_0.2): b5-b6
+    Not found in: 00:10
+   10/03/2023 13:13:36, Time for this analysis: 00:00:10, Rated time: 1:24:39
+
+929 a8e8                
+    Searching move: Ra8-e8
+    Best move (ChessEngine_0.2): Bg4-h3
+    Not found in: 00:10
+   10/03/2023 13:13:47, Time for this analysis: 00:00:10, Rated time: 1:24:49
+
+930 d7h3                
+    Searching move: Bd7-h3
+    Best move (ChessEngine_0.2): Bd7-h3
+    Identical moves! Found in: 00:08
+   10/03/2023 13:13:58, Time for this analysis: 00:00:10, Rated time: 1:24:57
+
+931 e7a7                
+    Searching move: Re7-a7
+    Best move (ChessEngine_0.2): Bf4-e3
+    Not found in: 00:10
+   10/03/2023 13:14:09, Time for this analysis: 00:00:10, Rated time: 1:25:07
+
+932 d1g4                
+    Searching move: Qd1-g4
+    Best move (ChessEngine_0.2): Ne4-d6
+    Not found in: 00:10
+   10/03/2023 13:14:20, Time for this analysis: 00:00:10, Rated time: 1:25:17
+
+933 h3h7                
+    Searching move: Qh3xh7
+    Best move (ChessEngine_0.2): Rf5xf6
+    Not found in: 00:10
+   10/03/2023 13:14:31, Time for this analysis: 00:00:10, Rated time: 1:25:27
+
+934 d4g7                
+    Searching move: Qd4xg7
+    Best move (ChessEngine_0.2): Qd4xg7
+    Identical moves! Found in: 00:00
+   10/03/2023 13:14:42, Time for this analysis: 00:00:10, Rated time: 1:25:27
+
+935 f6g4                
+    Searching move: Nf6xg4
+    Best move (ChessEngine_0.2): Nf6xg4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:14:53, Time for this analysis: 00:00:10, Rated time: 1:25:27
+
+936 c6d4                
+    Searching move: Nc6xd4
+    Best move (ChessEngine_0.2): Nc6xd4
+    Identical moves! Found in: 00:00
+   10/03/2023 13:15:04, Time for this analysis: 00:00:10, Rated time: 1:25:27
+
+937 g1f2                
+    Searching move: Kg1-f2
+    Best move (ChessEngine_0.2): Qg3-h2
+    Not found in: 00:10
+   10/03/2023 13:15:15, Time for this analysis: 00:00:10, Rated time: 1:25:37
+
+938 d6c5                
+    Searching move: Qd6-c5
+    Best move (ChessEngine_0.2): Qd6-c5
+    Identical moves! Found in: 00:00
+   10/03/2023 13:15:26, Time for this analysis: 00:00:10, Rated time: 1:25:37
+
+939 d5c5                
+    Searching move: Rd5xc5
+    Best move (ChessEngine_0.2): Rd5-d1
+    Not found in: 00:10
+   10/03/2023 13:15:36, Time for this analysis: 00:00:10, Rated time: 1:25:47
+
+940 h4h5                
+    Searching move: h4-h5
+    Best move (ChessEngine_0.2): Rd6xd8
+    Not found in: 00:10
+   10/03/2023 13:15:47, Time for this analysis: 00:00:10, Rated time: 1:25:57
+
+941 h4f6                
+    Searching move: Bh4-f6
+    Best move (ChessEngine_0.2): Bh4-f6
+    Identical moves! Found in: 00:05
+   10/03/2023 13:15:58, Time for this analysis: 00:00:10, Rated time: 1:26:02
+
+942 d3h7                
+    Searching move: Bd3xh7
+    Best move (ChessEngine_0.2): Qe2-c2
+    Not found in: 00:10
+   10/03/2023 13:16:09, Time for this analysis: 00:00:10, Rated time: 1:26:12
+
+943 f1b1                
+    Searching move: Rf1-b1
+    Best move (ChessEngine_0.2): Rf1-b1
+    Identical moves! Found in: 00:00
+   10/03/2023 13:16:20, Time for this analysis: 00:00:10, Rated time: 1:26:12
+
+944 g3h2                
+    Searching move: Kg3-h2
+    Best move (ChessEngine_0.2): Kg3-f3
+    Not found in: 00:10
+   10/03/2023 13:16:31, Time for this analysis: 00:00:10, Rated time: 1:26:22
+
+945 f1e1                
+    Searching move: Rf1-e1
+    Best move (ChessEngine_0.2): Rf1-e1
+    Identical moves! Found in: 00:00
+   10/03/2023 13:16:42, Time for this analysis: 00:00:10, Rated time: 1:26:22
+
+946 g5f7                
+    Searching move: Ng5xf7
+    Best move (ChessEngine_0.2): Ng5xf7
+    Identical moves! Found in: 00:00
+   10/03/2023 13:16:53, Time for this analysis: 00:00:10, Rated time: 1:26:22
+
+947 e4g5                
+    Searching move: Ne4-g5
+    Best move (ChessEngine_0.2): Ne4-g5
+    Identical moves! Found in: 00:00
+   10/03/2023 13:17:04, Time for this analysis: 00:00:10, Rated time: 1:26:22
+
+948 a4c3                
+    Searching move: Na4-c3
+    Best move (ChessEngine_0.2): Na4-c3
+    Identical moves! Found in: 00:00
+   10/03/2023 13:17:15, Time for this analysis: 00:00:10, Rated time: 1:26:22
+
+451 of 948 matching moves
+10/03/2023 13:17:16, Total time: 02:52:40
+Rated time: 1:26:22 = 5182 Seconds
