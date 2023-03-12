@@ -1,4 +1,4 @@
-package perft
+package perft2
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestMoveGenPerft(t *testing.T) {
+func TestMoveGenPerft2(t *testing.T) {
 	// Open the file
 	startTime := time.Now()
 
@@ -29,7 +29,7 @@ func TestMoveGenPerft(t *testing.T) {
 		fen := parts[0]
 		counter++
 		for i := 1; i < len(parts) && i <= 5; i++ {
-			ans := PerftTest(i, fen)
+			ans := PerftTest2(i, fen)
 			t.Logf("depth: %v   %v got wanted  %v\n", i, ans, parts[i])
 
 			expected, _ := strconv.Atoi(parts[i])
@@ -42,7 +42,7 @@ func TestMoveGenPerft(t *testing.T) {
 			fmt.Printf("Perft pos:%d", counter)
 		}
 
-		if counter == 5 {
+		if counter == 20 {
 			duration := time.Since(startTime)
 			fmt.Println("\n\nTime elapsed:", duration)
 			break

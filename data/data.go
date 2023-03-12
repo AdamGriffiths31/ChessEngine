@@ -24,9 +24,9 @@ const MaxPositionMoves = 256
 const MaxDepth = 64
 const MaxWorkers = 32
 
-//const StartFEN = "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - -"
+const StartFEN = "r1bqkb1r/p1pp1ppp/1pn1pn2/8/7P/3BPN2/PPPP1PP1/RNBQK2R w KQkq - 0 5"
 
-const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+//const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 //const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
 
@@ -328,6 +328,7 @@ var ClearMask [64]uint64
 var FileBBMask [64]uint64
 var RankBBMask [64]uint64
 var SquareBB [64]uint64
+var SquareMask = initSquareMask()
 
 var BlackPassedMask [64]uint64
 var WhitePassedMask [64]uint64
@@ -409,6 +410,16 @@ var Mirror64 = [64]int{
 // FileRankToSquare converts file & rank to the 120 square
 func FileRankToSquare(file, rank int) int {
 	return (21 + file) + (rank * 10)
+}
+
+// initSquareMask sets SquareMask
+func initSquareMask() [64]uint64 {
+	var sqm [64]uint64
+	for sq := 0; sq < 64; sq++ {
+		var b = uint64(1 << sq)
+		sqm[sq] = b
+	}
+	return sqm
 }
 
 // GenerateRandomUint64 returns a random uint64

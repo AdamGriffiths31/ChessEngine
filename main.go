@@ -9,6 +9,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/2.0/engine"
 	consolemode "github.com/AdamGriffiths31/ChessEngine/consoleMode"
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	"github.com/AdamGriffiths31/ChessEngine/io"
 	polyglot "github.com/AdamGriffiths31/ChessEngine/polyGlot"
 	"github.com/AdamGriffiths31/ChessEngine/search"
 	"github.com/AdamGriffiths31/ChessEngine/uci"
@@ -19,7 +20,18 @@ func main() {
 
 	p := engine.Position{}
 	p.ParseFen(data.StartFEN)
-	p.Board.PrintBitboard(p.Board.WhiteRook)
+	fmt.Printf("en pas %v\n", io.SquareString(p.EnPassant))
+
+	//p.MakeMove(4892)
+	//p.MakeMove(6985)
+
+	p.Board.PrintBitboard(p.Board.WhitePieces)
+
+	p.PrintMoveList()
+
+	//p.Board.PrintBitboard(p.Board.WhitePieces)
+	// p.TakeMoveBack(531363, data.Empty)
+
 }
 
 func old() {

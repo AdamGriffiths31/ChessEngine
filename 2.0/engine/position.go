@@ -1,0 +1,178 @@
+package engine
+
+import (
+	"fmt"
+
+	"github.com/AdamGriffiths31/ChessEngine/data"
+)
+
+func (p *Position) MakeMove(move int) (bool, int, int) {
+	from := data.FromSquare(move)
+	to := data.ToSquare(move)
+	//fmt.Printf("%v%v\n", io.SquareString(from), io.SquareString(to))
+	side := p.Side
+	castlePerm := p.CastlePermission
+	if (move & data.MFLAGEP) != 0 {
+		if side == data.White {
+			p.ClearPiece(data.Square120ToSquare64[to-10])
+		} else {
+			p.ClearPiece(data.Square120ToSquare64[to+10])
+		}
+	} else if (move & data.MFLAGGCA) != 0 {
+		switch to {
+		case data.C1:
+			p.MovePiece(data.A1, data.D1)
+		case data.C8:
+			p.MovePiece(data.A8, data.D8)
+		case data.G1:
+			p.MovePiece(data.H1, data.F1)
+		case data.G8:
+			p.MovePiece(data.H8, data.F8)
+		default:
+			panic(fmt.Errorf("TakeMoveBack: castle error %v %v", from, to))
+		}
+	}
+
+	if p.EnPassant != data.NoSquare {
+		p.hashEnPas()
+	}
+
+	p.hashCastle()
+	p.CastlePermission &= data.CastlePerm[from]
+	p.CastlePermission &= data.CastlePerm[to]
+	p.EnPassant = data.NoSquare
+	p.hashCastle()
+
+	captured := data.Captured(move)
+	if captured != data.Empty {
+		p.ClearPiece(data.Square120ToSquare64[to])
+	}
+
+	p.Play++
+
+	piece := p.Board.PieceAt(data.Square120ToSquare64[from])
+	if piece == WP || piece == BP {
+		if (move & data.MFLAGPS) != 0 {
+			if side == data.White {
+				p.EnPassant = from + 10
+			} else {
+				p.EnPassant = from - 10
+			}
+			p.hashEnPas()
+		}
+	}
+
+	p.MovePiece(from, to)
+
+	promotedPiece := data.Promoted(move)
+	if promotedPiece != 0 {
+		p.ClearPiece(data.Square120ToSquare64[to])
+		p.AddPiece(data.Square120ToSquare64[to], promotedPiece)
+	}
+
+	p.Side ^= 1
+
+	p.hashSide()
+
+	if p.IsKingAttacked() {
+		p.TakeMoveBack(move, p.EnPassant, castlePerm)
+		return false, p.EnPassant, castlePerm
+	}
+
+	return true, p.EnPassant, castlePerm
+}
+
+func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int) {
+	p.Play--
+	from := data.FromSquare(move)
+	to := data.ToSquare(move)
+
+	if p.EnPassant != data.NoSquare {
+		p.hashEnPas()
+	}
+
+	p.hashCastle()
+
+	p.CastlePermission = castlePerm
+
+	p.hashCastle()
+
+	p.Side ^= 1
+	p.hashSide()
+
+	if (move & data.MFLAGEP) != 0 {
+		if p.Side == data.White {
+			p.AddPiece(data.Square120ToSquare64[to-10], data.BP)
+		} else {
+			p.AddPiece(data.Square120ToSquare64[to+10], data.WP)
+		}
+	}
+	if (move & data.MFLAGGCA) != 0 {
+		switch to {
+		case data.C1:
+			p.MovePiece(data.D1, data.A1)
+		case data.C8:
+			p.MovePiece(data.D8, data.A8)
+		case data.G1:
+			p.MovePiece(data.F1, data.H1)
+		case data.G8:
+			p.MovePiece(data.F8, data.H8)
+		default:
+			panic(fmt.Errorf("TakeMoveBack: castle error %v %v", from, to))
+		}
+	}
+	p.EnPassant = enPas
+	if p.EnPassant != data.NoSquare {
+		p.hashEnPas()
+	}
+
+	p.MovePiece(to, from)
+
+	captured := data.Captured(move)
+	if captured != data.Empty {
+		p.AddPiece(data.Square120ToSquare64[to], captured)
+	}
+
+	if data.Promoted(move) != data.Empty {
+		p.ClearPiece(data.Square120ToSquare64[from])
+		if p.Side == data.White {
+			p.AddPiece(data.Square120ToSquare64[from], data.WP)
+		} else {
+			p.AddPiece(data.Square120ToSquare64[from], data.BP)
+		}
+	}
+}
+
+func (p *Position) MovePiece(from, to int) {
+	piece := p.Board.PieceAt(data.Square120ToSquare64[from])
+	p.hashPiece(piece, from)
+	p.Board.RemovePieceAtSquare(data.Square120ToSquare64[from], piece)
+	p.hashPiece(piece, to)
+	p.Board.SetPieceAtSquare(data.Square120ToSquare64[to], piece)
+}
+
+func (p *Position) ClearPiece(sq64 int) {
+	p.hashPiece(p.Board.PieceAt(sq64), sq64)
+	p.Board.RemovePieceAtSquare(sq64, p.Board.PieceAt(sq64))
+}
+
+func (p *Position) AddPiece(sq, piece int) {
+	p.hashPiece(piece, sq)
+	p.Board.SetPieceAtSquare(sq, piece)
+}
+
+func (p *Position) hashPiece(piece, square int) {
+	p.PositionKey ^= data.PieceKeys[piece][square]
+}
+
+func (p *Position) hashCastle() {
+	p.PositionKey ^= data.CastleKeys[p.CastlePermission]
+}
+
+func (p *Position) hashSide() {
+	p.PositionKey ^= data.SideKey
+}
+
+func (p *Position) hashEnPas() {
+	p.PositionKey ^= data.PieceKeys[data.Empty][p.EnPassant]
+}

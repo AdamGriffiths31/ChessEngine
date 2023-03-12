@@ -14,6 +14,7 @@ type Position struct {
 }
 
 type Bitboard struct {
+	Pieces uint64
 	//Black
 	BlackPieces uint64
 	BlackPawn   uint64
