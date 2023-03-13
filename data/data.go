@@ -24,7 +24,7 @@ const MaxPositionMoves = 256
 const MaxDepth = 64
 const MaxWorkers = 32
 
-const StartFEN = "r1bqkb1r/p1pp1ppp/1pn1pn2/8/7P/3BPN2/PPPP1PP1/RNBQK2R w KQkq - 0 5"
+const StartFEN = "rnbqkbnr/pp3ppp/2p5/3pp3/4P3/3B1N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
 
 //const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 

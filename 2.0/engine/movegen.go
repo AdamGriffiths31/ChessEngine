@@ -9,6 +9,9 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/validate"
 )
 
+var preCalculatedKnightMoves [64]uint64
+var preCalculatedKingMoves [64]uint64
+
 type MoveList struct {
 	Moves [300]Move
 	Count int
@@ -26,16 +29,16 @@ func (p *Position) GenerateAllMoves(ml *MoveList) {
 		p.generateSliderMoves(ml, WR, true)
 		p.generateSliderMoves(ml, WB, true)
 		p.generateSliderMoves(ml, WQ, true)
-		p.generateNonSliderMoves(ml, WK, true)
-		p.generateNonSliderMoves(ml, WN, true)
+		p.generateSliderMoves(ml, WK, true)
+		p.generateSliderMoves(ml, WN, true)
 		p.generateWhiteCastleMoves(ml)
 	} else {
 		p.generateBlackPawnMoves(ml)
 		p.generateSliderMoves(ml, BR, true)
 		p.generateSliderMoves(ml, BB, true)
 		p.generateSliderMoves(ml, BQ, true)
-		p.generateNonSliderMoves(ml, BK, true)
-		p.generateNonSliderMoves(ml, BN, true)
+		p.generateSliderMoves(ml, BK, true)
+		p.generateSliderMoves(ml, BN, true)
 		p.generateBlackCastleMoves(ml)
 	}
 }
@@ -89,10 +92,9 @@ func (p *Position) generateBlackPawnQuietMoves(ml *MoveList) {
 }
 
 func (p *Position) generateWhitePawnEnPassantMoves(ml *MoveList) {
-	whitePawns := p.Board.WhitePawn
 
 	if p.EnPassant != data.NoSquare && p.EnPassant != data.Empty {
-		pawns := whitePawns &^ (data.RankBBMask[data.Rank8] | data.RankBBMask[data.Rank7])
+		pawns := p.Board.WhitePawn &^ (data.RankBBMask[data.Rank8] | data.RankBBMask[data.Rank7])
 		leftAttacks := (pawns << 7) &^ data.FileBBMask[data.FileH] & data.SquareBB[data.Square120ToSquare64[p.EnPassant]]
 		rightAttacks := (pawns << 9) &^ data.FileBBMask[data.FileA] & data.SquareBB[data.Square120ToSquare64[p.EnPassant]]
 		if leftAttacks != 0 {
@@ -267,6 +269,22 @@ func (p *Position) generateSliderMoves(moveList *MoveList, piece int, includeQui
 			attack := data.GetBishopAttacks(p.Board.Pieces, sq)
 			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.WhitePieces)
 		}
+		if piece == WK {
+			attack := preCalculatedKingMoves[sq]
+			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.BlackPieces)
+		}
+		if piece == BK {
+			attack := preCalculatedKingMoves[sq]
+			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.WhitePieces)
+		}
+		if piece == WN {
+			attack := preCalculatedKnightMoves[sq]
+			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.BlackPieces)
+		}
+		if piece == BN {
+			attack := preCalculatedKnightMoves[sq]
+			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.WhitePieces)
+		}
 		bitboard &= bitboard - 1
 	}
 }
@@ -290,78 +308,46 @@ func (p *Position) generateMovesForSlider(moveList *MoveList, includeQuite bool,
 		}
 	}
 }
-func (p *Position) generateNonSliderMoves(moveList *MoveList, piece int, includeQuite bool) {
-	bitboard := p.Board.GetBitboardForPiece(piece)
-	for bitboard != 0 {
-		sq64 := bits.TrailingZeros64(bitboard)
-		sq120 := data.Square64ToSquare120[sq64]
-
-		for i := 0; i < data.NumDir[piece]; i++ {
-			dir := data.PieceDir[piece][i]
-			tempSq := sq120 + dir
-			if !validate.SquareOnBoard(tempSq) {
-				continue
-			}
-
-			attackedSq := p.Board.PieceAt(data.Square120ToSquare64[tempSq])
-			if attackedSq != data.Empty {
-				if data.PieceCol[attackedSq] == p.Side^1 {
-					p.addCaptureMove(MakeMoveInt(sq120, tempSq, attackedSq, data.Empty, 0), moveList)
-				}
-				continue
-			}
-			if includeQuite {
-				p.addQuiteMove(MakeMoveInt(sq120, tempSq, data.Empty, data.Empty, 0), moveList)
-			}
-		}
-		bitboard &= bitboard - 1
-	}
-}
 
 func (p *Position) generateWhiteCastleMoves(moveList *MoveList) {
-	if (p.CastlePermission&data.WhiteKingCastle) != 0 || (p.CastlePermission&data.WhiteQueenCastle) != 0 {
-		attacked := p.SquaresUnderAttack(data.Black)
-		if (p.CastlePermission & data.WhiteKingCastle) != 0 {
-			if p.Board.PieceAt(data.Square120ToSquare64[data.F1]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.G1]) == data.Empty {
-				if (attacked&data.SquareMask[data.Square120ToSquare64[data.E1]]) == 0 && (attacked&data.SquareMask[data.Square120ToSquare64[data.F1]]) == 0 {
-					p.addQuiteMove(MakeMoveInt(data.E1, data.G1, data.Empty, data.Empty, data.MFLAGGCA), moveList)
-				}
+	if (p.CastlePermission & data.WhiteKingCastle) != 0 {
+		if p.Board.PieceAt(data.Square120ToSquare64[data.F1]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.G1]) == data.Empty {
+			if !p.SquaresUnderAttack(data.Black, data.Square120ToSquare64[data.E1]) && !p.SquaresUnderAttack(data.Black, data.Square120ToSquare64[data.F1]) {
+				p.addQuiteMove(MakeMoveInt(data.E1, data.G1, data.Empty, data.Empty, data.MFLAGGCA), moveList)
 			}
 		}
-		if (p.CastlePermission & data.WhiteQueenCastle) != 0 {
-			if p.Board.PieceAt(data.Square120ToSquare64[data.D1]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.C1]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.B1]) == data.Empty {
-				if (attacked&data.SquareMask[data.Square120ToSquare64[data.E1]]) == 0 && (attacked&data.SquareMask[data.Square120ToSquare64[data.D1]]) == 0 {
-					p.addQuiteMove(MakeMoveInt(data.E1, data.C1, data.Empty, data.Empty, data.MFLAGGCA), moveList)
-				}
+	}
+	if (p.CastlePermission & data.WhiteQueenCastle) != 0 {
+		if p.Board.PieceAt(data.Square120ToSquare64[data.D1]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.C1]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.B1]) == data.Empty {
+			if !p.SquaresUnderAttack(data.Black, data.Square120ToSquare64[data.E1]) && !p.SquaresUnderAttack(data.Black, data.Square120ToSquare64[data.D1]) {
+				p.addQuiteMove(MakeMoveInt(data.E1, data.C1, data.Empty, data.Empty, data.MFLAGGCA), moveList)
 			}
 		}
 	}
 }
 
 func (p *Position) generateBlackCastleMoves(moveList *MoveList) {
-	if (p.CastlePermission&data.BlackKingCastle) != 0 || (p.CastlePermission&data.BlackQueenCastle) != 0 {
-		attacked := p.SquaresUnderAttack(data.White)
-		if (p.CastlePermission & data.BlackKingCastle) != 0 {
-			if p.Board.PieceAt(data.Square120ToSquare64[data.F8]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.G8]) == data.Empty {
-				if (attacked&data.SquareMask[data.Square120ToSquare64[data.E8]]) == 0 && (attacked&data.SquareMask[data.Square120ToSquare64[data.F8]]) == 0 {
-					p.addQuiteMove(MakeMoveInt(data.E8, data.G8, data.Empty, data.Empty, data.MFLAGGCA), moveList)
-				}
+	if (p.CastlePermission & data.BlackKingCastle) != 0 {
+		if p.Board.PieceAt(data.Square120ToSquare64[data.F8]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.G8]) == data.Empty {
+			if !p.SquaresUnderAttack(data.White, data.Square120ToSquare64[data.E8]) && !p.SquaresUnderAttack(data.White, data.Square120ToSquare64[data.F8]) {
+				p.addQuiteMove(MakeMoveInt(data.E8, data.G8, data.Empty, data.Empty, data.MFLAGGCA), moveList)
 			}
 		}
-		if (p.CastlePermission & data.BlackQueenCastle) != 0 {
-			if p.Board.PieceAt(data.Square120ToSquare64[data.D8]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.C8]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.B8]) == data.Empty {
-				if (attacked&data.SquareMask[data.Square120ToSquare64[data.E8]]) == 0 && (attacked&data.SquareMask[data.Square120ToSquare64[data.D8]]) == 0 {
-					p.addQuiteMove(MakeMoveInt(data.E8, data.C8, data.Empty, data.Empty, data.MFLAGGCA), moveList)
-				}
+	}
+	if (p.CastlePermission & data.BlackQueenCastle) != 0 {
+		if p.Board.PieceAt(data.Square120ToSquare64[data.D8]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.C8]) == data.Empty && p.Board.PieceAt(data.Square120ToSquare64[data.B8]) == data.Empty {
+			if !p.SquaresUnderAttack(data.White, data.Square120ToSquare64[data.E8]) && !p.SquaresUnderAttack(data.White, data.Square120ToSquare64[data.D8]) {
+				p.addQuiteMove(MakeMoveInt(data.E8, data.C8, data.Empty, data.Empty, data.MFLAGGCA), moveList)
 			}
 		}
 	}
 }
 
-func (p *Position) SquaresUnderAttack(side int) uint64 {
+func (p *Position) SquaresUnderAttack(side int, sq64 int) bool {
+	mask := uint64(1) << sq64
 	var attacked uint64
 	var enemyBishop, enemyQueen, enemyRook, enemyKnight, enemyKing, enemyPawn uint64
-	var knight, king int
+	var king int
 	if side == data.Black {
 		enemyBishop = p.Board.BlackBishop
 		enemyQueen = p.Board.BlackQueen
@@ -369,7 +355,6 @@ func (p *Position) SquaresUnderAttack(side int) uint64 {
 		enemyKnight = p.Board.BlackKnight
 		enemyKing = p.Board.BlackKing
 		enemyPawn = p.Board.BlackPawn
-		knight = BN
 		king = BK
 	} else {
 		enemyBishop = p.Board.WhiteBishop
@@ -378,121 +363,41 @@ func (p *Position) SquaresUnderAttack(side int) uint64 {
 		enemyKnight = p.Board.WhiteKnight
 		enemyKing = p.Board.WhiteKing
 		enemyPawn = p.Board.WhitePawn
-		knight = WN
 		king = WK
 	}
 
-	for enemyBishop != 0 {
-		sq := bits.TrailingZeros64(enemyBishop)
-		attack := data.GetBishopAttacks(p.Board.Pieces, sq)
-		for attack != 0 {
-			sq := bits.TrailingZeros64(attack)
-			attack &= attack - 1
-			SetBit(&attacked, sq)
-		}
-		enemyBishop &= enemyBishop - 1
+	attacked |= p.getBishopAttackedSquares(enemyBishop)
+	if (attacked & mask) != 0 {
+		return true
 	}
 
-	for enemyRook != 0 {
-		sq := bits.TrailingZeros64(enemyRook)
-		attack := data.GetRookAttacks(p.Board.Pieces, sq)
-		for attack != 0 {
-			sq := bits.TrailingZeros64(attack)
-			attack &= attack - 1
-			SetBit(&attacked, sq)
-		}
-		enemyRook &= enemyRook - 1
+	attacked |= p.getRookAttackedSquares(enemyRook)
+	if (attacked & mask) != 0 {
+		return true
 	}
 
-	for enemyQueen != 0 {
-		sq := bits.TrailingZeros64(enemyQueen)
-		attack := data.GetBishopAttacks(p.Board.Pieces, sq)
-		for attack != 0 {
-			sq := bits.TrailingZeros64(attack)
-			attack &= attack - 1
-			SetBit(&attacked, sq)
-		}
-		sq = bits.TrailingZeros64(enemyQueen)
-		attack = data.GetRookAttacks(p.Board.Pieces, sq)
-		for attack != 0 {
-			sq := bits.TrailingZeros64(attack)
-			attack &= attack - 1
-			SetBit(&attacked, sq)
-		}
-		enemyQueen &= enemyQueen - 1
+	attacked |= p.getQueenAttackedSquares(enemyQueen)
+	if (attacked & mask) != 0 {
+		return true
 	}
 
-	for enemyKnight != 0 {
-		sq64 := bits.TrailingZeros64(enemyKnight)
-		sq120 := data.Square64ToSquare120[sq64]
-
-		for i := 0; i < data.NumDir[knight]; i++ {
-			dir := data.PieceDir[knight][i]
-			tempSq := sq120 + dir
-			if !validate.SquareOnBoard(tempSq) {
-				continue
-			}
-
-			SetBit(&attacked, data.Square120ToSquare64[tempSq])
-
-		}
-		enemyKnight &= enemyKnight - 1
+	attacked |= p.getKnightAttackedSquares(enemyKnight)
+	if (attacked & mask) != 0 {
+		return true
 	}
 
 	if king == BK {
-		for enemyPawn != 0 {
-			leftAttacks := (enemyPawn >> 9) &^ data.FileBBMask[data.FileH]
-			for leftAttacks != 0 {
-				sq := bits.TrailingZeros64(leftAttacks)
-				leftAttacks &= leftAttacks - 1
-				SetBit(&attacked, sq)
-			}
+		attacked |= p.getBlackPawnAttackedSquares(enemyPawn)
 
-			rightAttacks := (enemyPawn >> 7) &^ data.FileBBMask[data.FileA]
-			for rightAttacks != 0 {
-				sq := bits.TrailingZeros64(rightAttacks)
-				rightAttacks &= rightAttacks - 1
-				SetBit(&attacked, sq)
-			}
-			enemyPawn &= enemyPawn - 1
-		}
 	} else {
-		for enemyPawn != 0 {
-			leftAttacks := (enemyPawn << 7) &^ data.FileBBMask[data.FileH]
-			for leftAttacks != 0 {
-				sq := bits.TrailingZeros64(leftAttacks)
-				leftAttacks &= leftAttacks - 1
-				SetBit(&attacked, sq)
-			}
-
-			// Generate attacks to the right
-			rightAttacks := (enemyPawn << 9) &^ data.FileBBMask[data.FileA]
-			for rightAttacks != 0 {
-				sq := bits.TrailingZeros64(rightAttacks)
-				rightAttacks &= rightAttacks - 1
-				SetBit(&attacked, sq)
-			}
-			enemyPawn &= enemyPawn - 1
-		}
+		attacked |= p.getWhitePawnAttackedSquares(enemyPawn)
 	}
-	for enemyKing != 0 {
-		sq64 := bits.TrailingZeros64(enemyKing)
-		sq120 := data.Square64ToSquare120[sq64]
-
-		for i := 0; i < data.NumDir[king]; i++ {
-			dir := data.PieceDir[king][i]
-			tempSq := sq120 + dir
-			if !validate.SquareOnBoard(tempSq) {
-				continue
-			}
-
-			SetBit(&attacked, data.Square120ToSquare64[tempSq])
-
-		}
-		enemyKing &= enemyKing - 1
+	if (attacked & mask) != 0 {
+		return true
 	}
 
-	return attacked
+	attacked |= p.getKingAttackedSquares(enemyKing)
+	return (attacked & mask) != 0
 }
 
 func (p *Position) IsKingAttacked() bool {
@@ -502,10 +407,8 @@ func (p *Position) IsKingAttacked() bool {
 	} else {
 		king = p.Board.WhiteKing
 	}
-	attacked := p.SquaresUnderAttack(p.Side)
-	sq64 := uint64(bits.TrailingZeros64(king))
-	mask := uint64(1) << sq64
-	return (attacked & mask) != 0
+	sq64 := bits.TrailingZeros64(king)
+	return p.SquaresUnderAttack(p.Side, sq64)
 }
 
 func (p *Position) PrintMoveList() {
@@ -516,4 +419,129 @@ func (p *Position) PrintMoveList() {
 		fmt.Printf("Move %v: %v (score: %v) %v\n", i+1, io.PrintMove(moveList.Moves[i].Move), moveList.Moves[i].Score, moveList.Moves[i].Move)
 	}
 	fmt.Printf("Printed %v total moves.\n", moveList.Count)
+}
+
+func init() {
+	preCalculatedMoves()
+}
+
+func preCalculatedMoves() {
+	for i := 0; i < 64; i++ {
+		preCalculatedKnightMoves[i] = calculateKnightMoves(i)
+		preCalculatedKingMoves[i] = calculateKingMoves(i)
+	}
+}
+
+func calculateKingMoves(sq64 int) uint64 {
+	var attacks uint64
+	sq120 := data.Square64ToSquare120[sq64]
+
+	for i := 0; i < data.NumDir[WK]; i++ {
+		dir := data.PieceDir[WK][i]
+		tempSq := sq120 + dir
+		if !validate.SquareOnBoard(tempSq) {
+			continue
+		}
+		SetBit(&attacks, data.Square120ToSquare64[tempSq])
+	}
+	return attacks
+}
+
+func calculateKnightMoves(sq64 int) uint64 {
+	var attacks uint64
+	sq120 := data.Square64ToSquare120[sq64]
+
+	for i := 0; i < data.NumDir[WN]; i++ {
+		dir := data.PieceDir[WN][i]
+		tempSq := sq120 + dir
+		if !validate.SquareOnBoard(tempSq) {
+			continue
+		}
+		SetBit(&attacks, data.Square120ToSquare64[tempSq])
+	}
+	return attacks
+}
+
+func (p *Position) getBishopAttackedSquares(enemyBishop uint64) uint64 {
+	var attacked uint64
+	for enemyBishop != 0 {
+		sq := bits.TrailingZeros64(enemyBishop)
+		bishopAttacks := data.GetBishopAttacks(p.Board.Pieces, sq)
+		attacked |= bishopAttacks
+		enemyBishop &= enemyBishop - 1
+	}
+	return attacked
+}
+
+func (p *Position) getRookAttackedSquares(enemyRook uint64) uint64 {
+	var attacked uint64
+	for enemyRook != 0 {
+		sq := bits.TrailingZeros64(enemyRook)
+		rookAttacks := data.GetRookAttacks(p.Board.Pieces, sq)
+		attacked |= rookAttacks
+		enemyRook &= enemyRook - 1
+	}
+	return attacked
+}
+
+func (p *Position) getQueenAttackedSquares(enemyQueen uint64) uint64 {
+	var attacked uint64
+	for enemyQueen != 0 {
+		sq := bits.TrailingZeros64(enemyQueen)
+		bishopAttacks := data.GetBishopAttacks(p.Board.Pieces, sq)
+		rookAttacks := data.GetRookAttacks(p.Board.Pieces, sq)
+		attacked |= bishopAttacks
+		attacked |= rookAttacks
+		enemyQueen &= enemyQueen - 1
+	}
+	return attacked
+}
+
+func (p *Position) getKnightAttackedSquares(enemyKnight uint64) uint64 {
+	attacked := uint64(0)
+	for enemyKnight != 0 {
+		sq := bits.TrailingZeros64(enemyKnight)
+		attacked |= preCalculatedKnightMoves[sq]
+		enemyKnight &= enemyKnight - 1
+	}
+	return attacked
+}
+
+func (p *Position) getKingAttackedSquares(enemyKing uint64) uint64 {
+	attacked := uint64(0)
+	for enemyKing != 0 {
+		sq := bits.TrailingZeros64(enemyKing)
+		attacked |= preCalculatedKingMoves[sq]
+		enemyKing &= enemyKing - 1
+	}
+	return attacked
+}
+
+func (p *Position) getWhitePawnAttackedSquares(enemyPawn uint64) uint64 {
+	var attacked uint64
+	for enemyPawn != 0 {
+		leftAttacks := (enemyPawn << 7) &^ data.FileBBMask[data.FileH]
+		attacked |= leftAttacks
+
+		// Generate attacks to the right
+		rightAttacks := (enemyPawn << 9) &^ data.FileBBMask[data.FileA]
+		attacked |= rightAttacks
+
+		enemyPawn &= enemyPawn - 1
+	}
+	return attacked
+}
+
+func (p *Position) getBlackPawnAttackedSquares(enemyPawn uint64) uint64 {
+	var attacked uint64
+	for enemyPawn != 0 {
+		leftAttacks := (enemyPawn >> 9) &^ data.FileBBMask[data.FileH]
+		attacked |= leftAttacks
+
+		rightAttacks := (enemyPawn >> 7) &^ data.FileBBMask[data.FileA]
+		attacked |= rightAttacks
+
+		enemyPawn &= enemyPawn - 1
+	}
+	return attacked
 }

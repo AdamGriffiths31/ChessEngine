@@ -93,32 +93,32 @@ func (b *Bitboard) PieceAt(sq64 int) int {
 	}
 	mask := data.SquareMask[sq64]
 	if b.WhitePieces&mask != 0 {
-		if b.WhitePawn&mask != 0 {
+		if b.WhitePieces&b.WhitePawn&mask != 0 {
 			return WP
-		} else if b.WhiteKnight&mask != 0 {
+		} else if b.WhitePieces&b.WhiteKnight&mask != 0 {
 			return WN
-		} else if b.WhiteBishop&mask != 0 {
+		} else if b.WhitePieces&b.WhiteBishop&mask != 0 {
 			return WB
-		} else if b.WhiteRook&mask != 0 {
+		} else if b.WhitePieces&b.WhiteRook&mask != 0 {
 			return WR
-		} else if b.WhiteQueen&mask != 0 {
+		} else if b.WhitePieces&b.WhiteQueen&mask != 0 {
 			return WQ
-		} else if b.WhiteKing&mask != 0 {
+		} else if b.WhitePieces&b.WhiteKing&mask != 0 {
 			return WK
 		}
 	}
 	if b.BlackPieces&mask != 0 {
-		if b.BlackPawn&mask != 0 {
+		if b.BlackPieces&b.BlackPawn&mask != 0 {
 			return BP
-		} else if b.BlackKnight&mask != 0 {
+		} else if b.BlackPieces&b.BlackKnight&mask != 0 {
 			return BN
-		} else if b.BlackBishop&mask != 0 {
+		} else if b.BlackPieces&b.BlackBishop&mask != 0 {
 			return BB
-		} else if b.BlackRook&mask != 0 {
+		} else if b.BlackPieces&b.BlackRook&mask != 0 {
 			return BR
-		} else if b.BlackQueen&mask != 0 {
+		} else if b.BlackPieces&b.BlackQueen&mask != 0 {
 			return BQ
-		} else if b.BlackKing&mask != 0 {
+		} else if b.BlackPieces&b.BlackKing&mask != 0 {
 			return BK
 		}
 	}

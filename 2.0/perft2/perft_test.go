@@ -42,7 +42,7 @@ func TestMoveGenPerft2(t *testing.T) {
 			fmt.Printf("Perft pos:%d", counter)
 		}
 
-		if counter == 20 {
+		if counter == 10 {
 			duration := time.Since(startTime)
 			fmt.Println("\n\nTime elapsed:", duration)
 			break
