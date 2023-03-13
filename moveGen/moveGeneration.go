@@ -9,11 +9,15 @@ import (
 )
 
 func PrintMoveList(moveList *data.MoveList) {
-	fmt.Println("\nPrinting move list:")
-	for i := 0; i < moveList.Count; i++ {
-		fmt.Printf("Move %v: %v (score: %v)\n", i+1, io.PrintMove(moveList.Moves[i].Move), moveList.Moves[i].Score)
+	if moveList.Count > 0 {
+		fmt.Println("\nPrinting move list:")
+		for i := 0; i < moveList.Count; i++ {
+			fmt.Printf("Move %v: %v (score: %v) %v\n", i+1, io.PrintMove(moveList.Moves[i].Move), moveList.Moves[i].Score, moveList.Moves[i].Move)
+		}
+		fmt.Printf("Printed %v total moves.\n", moveList.Count)
+	} else {
+		fmt.Println("Empty")
 	}
-	fmt.Printf("Printed %v total moves.\n", moveList.Count)
 }
 
 // MakeMoveInt Builds the move int
@@ -70,17 +74,19 @@ func MoveExists(pos *data.Board, move int) bool {
 }
 
 func addQuiteMove(pos *data.Board, move int, moveList *data.MoveList) {
+	// moveList.Moves[moveList.Count].Move = move
+
+	// switch move {
+	// case pos.SearchKillers[0][pos.Play]:
+	// 	moveList.Moves[moveList.Count].Score = 900000
+	// case pos.SearchKillers[1][pos.Play]:
+	// 	moveList.Moves[moveList.Count].Score = 800000
+	// default:
+	// 	moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[data.FromSquare(move)]][data.ToSquare(move)]
+	// }
+
 	moveList.Moves[moveList.Count].Move = move
-
-	switch move {
-	case pos.SearchKillers[0][pos.Play]:
-		moveList.Moves[moveList.Count].Score = 900000
-	case pos.SearchKillers[1][pos.Play]:
-		moveList.Moves[moveList.Count].Score = 800000
-	default:
-		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[data.FromSquare(move)]][data.ToSquare(move)]
-	}
-
+	moveList.Moves[moveList.Count].Score = 0
 	moveList.Count++
 }
 

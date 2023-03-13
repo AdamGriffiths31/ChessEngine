@@ -15,6 +15,8 @@ func (p *Position) ParseFen(fen string) {
 	p.Side = determineSideToPlay(parts[1])
 	p.CastlePermission = parseCastlingAvailability(parts[2])
 	p.EnPassant = parseEnPassantTarget(parts[3])
+
+	p.PositionKey = p.GeneratePositionKey()
 }
 
 // resetPosition clears the Position down to default

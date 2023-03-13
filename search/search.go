@@ -2,7 +2,6 @@ package search
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/AdamGriffiths31/ChessEngine/attack"
 	"github.com/AdamGriffiths31/ChessEngine/board"
@@ -44,6 +43,7 @@ func iterativeDeepenNoWorkers(pos *data.Board, info *data.SearchInfo, table *dat
 	if bestMove == data.NoMove {
 		for currentDepth := 1; currentDepth < info.Depth+1; currentDepth++ {
 			bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info, true, table)
+			fmt.Printf("Score:%v Depth %v Nodes:%v cut:%v\n", bestScore, currentDepth, info.Node, table.HashTable.Cut)
 			if info.Stopped {
 				break
 			}
@@ -88,8 +88,8 @@ func printSearchResult(pos *data.Board, info *data.SearchInfo, bestMove int) {
 		moveGen.MakeMove(bestMove, pos)
 	} else {
 		fmt.Printf("Engine plays %s\n", io.PrintMove(bestMove))
-		moveGen.MakeMove(bestMove, pos)
-		io.PrintBoard(pos)
+		//moveGen.MakeMove(bestMove, pos)
+		//io.PrintBoard(pos)
 	}
 }
 
@@ -113,11 +113,12 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 
 	info.Node++
 
-	if isRepetitionOrFiftyMove(pos) {
-		return 0
-	}
+	// if isRepetitionOrFiftyMove(pos) {
+	// 	return 0
+	// }
 
 	if pos.Play > data.MaxDepth-1 {
+		panic("err")
 		return evaluate.EvalPosition(pos)
 	}
 
@@ -138,18 +139,18 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 	// null move check reduces the search by trying a 'null' move, then seeing if the score
 	// of the subtree search is still high enough to cause a beta cutoff. Nodes are saved by
 	//reducing the depth of the subtree under the null move.
-	if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
-		moveGen.MakeNullMove(pos)
-		score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false, table)
-		moveGen.TakeBackNullMove(pos)
-		if info.Stopped {
-			return 0
-		}
-		if score >= beta && math.Abs(float64(score)) < data.Mate {
-			info.NullCut++
-			return beta
-		}
-	}
+	// if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
+	// 	moveGen.MakeNullMove(pos)
+	// 	score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false, table)
+	// 	moveGen.TakeBackNullMove(pos)
+	// 	if info.Stopped {
+	// 		return 0
+	// 	}
+	// 	if score >= beta && math.Abs(float64(score)) < data.Mate {
+	// 		info.NullCut++
+	// 		return beta
+	// 	}
+	// }
 
 	ml := &data.MoveList{}
 	moveGen.GenerateAllMoves(pos, ml)
@@ -188,8 +189,8 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 						}
 
 						if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-							pos.SearchKillers[1][pos.Play] = pos.SearchKillers[0][pos.Play]
-							pos.SearchKillers[0][pos.Play] = ml.Moves[i].Move
+							//pos.SearchKillers[1][pos.Play] = pos.SearchKillers[0][pos.Play]
+							//pos.SearchKillers[0][pos.Play] = ml.Moves[i].Move
 						}
 
 						info.FailHigh++
@@ -200,7 +201,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 					alpha = score
 
 					if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-						pos.SearchHistory[pos.Pieces[data.FromSquare(bestMove)]][data.ToSquare(bestMove)] += depth
+						//pos.SearchHistory[pos.Pieces[data.FromSquare(bestMove)]][data.ToSquare(bestMove)] += depth
 					}
 				}
 			}
@@ -237,11 +238,12 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 
 	info.Node++
 
-	if isRepetitionOrFiftyMove(pos) {
-		return 0
-	}
+	// if isRepetitionOrFiftyMove(pos) {
+	// 	return 0
+	// }
 
 	if pos.Play > data.MaxDepth-1 {
+		panic("err")
 		return evaluate.EvalPosition(pos)
 	}
 

@@ -81,10 +81,9 @@ var queenSemiOpenFile = 3
 var bishopPair = 30
 
 func EvalPosition(pos *data.Board) int {
-
-	if pos.PieceNumber[data.WP] == 0 && pos.PieceNumber[data.BP] == 0 && materialDraw(pos) {
-		return 0
-	}
+	// if pos.PieceNumber[data.WP] == 0 && pos.PieceNumber[data.BP] == 0 && materialDraw(pos) {
+	// 	return 0
+	// }
 
 	score := pos.Material[data.White] - pos.Material[data.Black]
 

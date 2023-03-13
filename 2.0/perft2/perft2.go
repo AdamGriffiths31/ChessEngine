@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/2.0/engine"
+	"github.com/AdamGriffiths31/ChessEngine/2.0/search"
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
 var leafNodes int64 = 0
 
-func Perft2(depth int, e engine.Engine) {
+func Perft2(depth int, e search.Engine) {
 	if depth == 0 {
 		leafNodes++
 		return
@@ -65,7 +66,7 @@ func PerftTest2(depth int, fen string) int64 {
 
 	board := engine.Bitboard{}
 	pos := &engine.Position{Board: board}
-	b := engine.Engine{Position: pos}
+	b := search.Engine{Position: pos}
 	b.Position.ParseFen(fen)
 	fmt.Printf("\nStarting test to depth %d\n", depth)
 

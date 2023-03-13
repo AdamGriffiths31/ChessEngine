@@ -6,12 +6,36 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
+func (p *Position) CheckBitboard() {
+	return
+	newBB := Bitboard{}
+	for sq := 0; sq < 64; sq++ {
+		piece := p.Board.PieceAt(sq)
+		if sq != data.NoSquare && piece != data.Empty && piece != data.OffBoard {
+			newBB.SetPieceAtSquare(sq, piece)
+		}
+	}
+	for piece := data.WP; piece <= data.BK; piece++ {
+		original := p.Board.CountBits(p.Board.GetBitboardForPiece(piece))
+		copy := newBB.CountBits(p.Board.GetBitboardForPiece(piece))
+		if original != copy {
+			panic("err")
+		}
+	}
+
+	if p.PositionKey != p.GeneratePositionKey() {
+		fmt.Printf("%v - %v\n", p.PositionKey, p.GeneratePositionKey())
+		panic("err")
+	}
+}
+
 func (p *Position) MakeMove(move int) (bool, int, int) {
+	p.CheckBitboard()
 	from := data.FromSquare(move)
 	to := data.ToSquare(move)
-	//fmt.Printf("%v%v\n", io.SquareString(from), io.SquareString(to))
 	side := p.Side
 	castlePerm := p.CastlePermission
+
 	if (move & data.MFLAGEP) != 0 {
 		if side == data.White {
 			p.ClearPiece(data.Square120ToSquare64[to-10])
@@ -32,8 +56,7 @@ func (p *Position) MakeMove(move int) (bool, int, int) {
 			panic(fmt.Errorf("TakeMoveBack: castle error %v %v", from, to))
 		}
 	}
-
-	if p.EnPassant != data.NoSquare {
+	if p.EnPassant != data.NoSquare && p.EnPassant != Empty {
 		p.hashEnPas()
 	}
 
@@ -61,7 +84,6 @@ func (p *Position) MakeMove(move int) (bool, int, int) {
 			p.hashEnPas()
 		}
 	}
-
 	p.MovePiece(from, to)
 
 	promotedPiece := data.Promoted(move)
@@ -83,6 +105,7 @@ func (p *Position) MakeMove(move int) (bool, int, int) {
 }
 
 func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int) {
+	p.CheckBitboard()
 	p.Play--
 	from := data.FromSquare(move)
 	to := data.ToSquare(move)
@@ -152,12 +175,12 @@ func (p *Position) MovePiece(from, to int) {
 }
 
 func (p *Position) ClearPiece(sq64 int) {
-	p.hashPiece(p.Board.PieceAt(sq64), sq64)
+	p.hashPiece(p.Board.PieceAt(sq64), data.Square64ToSquare120[sq64])
 	p.Board.RemovePieceAtSquare(sq64, p.Board.PieceAt(sq64))
 }
 
 func (p *Position) AddPiece(sq, piece int) {
-	p.hashPiece(piece, sq)
+	p.hashPiece(piece, data.Square64ToSquare120[sq])
 	p.Board.SetPieceAtSquare(sq, piece)
 }
 
@@ -175,4 +198,27 @@ func (p *Position) hashSide() {
 
 func (p *Position) hashEnPas() {
 	p.PositionKey ^= data.PieceKeys[data.Empty][p.EnPassant]
+}
+
+func (p *Position) GeneratePositionKey() uint64 {
+	var finalKey uint64 = 0
+	piece := data.Empty
+
+	for sq := 0; sq < 64; sq++ {
+		piece = p.Board.PieceAt(sq)
+		if sq != data.NoSquare && piece != data.Empty && piece != data.OffBoard {
+			finalKey ^= data.PieceKeys[piece][data.Square64ToSquare120[sq]]
+		}
+	}
+
+	if p.Side == data.White {
+		finalKey ^= data.SideKey
+	}
+
+	if p.EnPassant != data.NoSquare && p.EnPassant != Empty {
+		finalKey ^= data.PieceKeys[data.Empty][p.EnPassant]
+	}
+
+	finalKey ^= data.CastleKeys[p.CastlePermission]
+	return finalKey
 }

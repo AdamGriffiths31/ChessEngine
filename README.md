@@ -4,23 +4,27 @@ Go implementation of a UCI compatible chess engine.
 
 ## Rating
 
-| Version | Time Control | Est Rating |
-| ------- | ------------ | ---------- |
-| 0.4     | 5 +6         | 1900       |
-| 0.2     | 5 +6         | 1800       |
+| Version | File          | Time | Score      |
+| ------- | ------------- | ---- | ---------- |
+| 0.6     | benchmark.epd | 10s  | 452 of 948 |
 
 ## Perft
 
 ### Perft testing depth 1-6
 
-| Version | Count | Time    |
-| ------- | ----- | ------- |
-| 0.4     | 5     | 262.05s |
-| 0.3     | 5     | 275.03s |
+| Version | Count | Time     |
+| ------- | ----- | -------- |
+| 0.7     | 5     | 211.615s |
+| 0.4     | 5     | 262.05s  |
+| 0.3     | 5     | 275.03s  |
 
 ## Versions
 
-### v0.6
+### v0.7
+
+- Code refactor
+
+### v0.6 (done)
 
 - Age Hashing
 - Search optimisation

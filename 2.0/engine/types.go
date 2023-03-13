@@ -1,9 +1,5 @@
 package engine
 
-type Engine struct {
-	Position *Position
-}
-
 type Position struct {
 	Board            Bitboard
 	Play             int

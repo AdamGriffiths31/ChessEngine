@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 	"unsafe"
@@ -24,7 +23,7 @@ const MaxPositionMoves = 256
 const MaxDepth = 64
 const MaxWorkers = 32
 
-const StartFEN = "rnbqkbnr/pp3ppp/2p5/3pp3/4P3/3B1N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
+//const StartFEN = "rnbqkbnr/pp3ppp/2p5/3pp3/4P3/3B1N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
 
 //const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -37,7 +36,8 @@ const StartFEN = "rnbqkbnr/pp3ppp/2p5/3pp3/4P3/3B1N2/PPPP1PPP/RNBQK2R w KQkq - 0
 // const StartFEN = "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w WKkq e6 0 1"
 // const StartFEN = "rnbqkbnr/p1p1p3/3p3p/1p1p4/2P1Pp2/8/PP1P1PpP/RNBQKB1R b KQkq e3 0 1"
 // const StartFEN = "5k2/1n6/4n3/6N1/8/3N4/8/5K2 w - - 0 1"
-// const StartFEN = "6k1/8/5r2/8/1nR5/5N2/86K1 b - - 0 1"
+const StartFEN = "r3kb1r/3n1pp1/p6p/2pPp2q/Pp2N3/3B2PP/1PQ2P2/R3K2R w KQkq -"
+
 // const StartFEN = "r3k23/8/8/8/8/8/8/R3K2R b KQkq - 0 1"
 // const StartFEN = "3rk2r/8/8/8/8/8/6p1/R3K2R b KQk - 0 1"
 // const StartFEN = "r3k2r/p1ppqb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
@@ -623,7 +623,6 @@ func InitPvTable(table *PVTable) {
 	var pvSize = 0x100000 * 64
 	table.NumberEntries = pvSize / int(unsafe.Sizeof(PVEntry{}))
 	table.NumberEntries -= 2
-	fmt.Printf("PVTable: %v entries (%v)\n", table.NumberEntries, table.CurrentAge)
 	table.PTable = make([]PVEntry, table.NumberEntries)
 }
 

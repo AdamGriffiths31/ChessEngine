@@ -138,6 +138,14 @@ func ClearBit(bb *uint64, square int) {
 	*bb &= data.ClearMask[square]
 }
 
+func (b *Bitboard) CountBits(bb uint64) int {
+	r := 0
+	for ; bb > 0; r++ {
+		bb &= bb - 1
+	}
+	return r
+}
+
 func (b *Bitboard) GetBitboardForPiece(piece int) uint64 {
 	switch piece {
 	case WP:

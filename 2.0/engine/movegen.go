@@ -42,16 +42,36 @@ func (p *Position) GenerateAllMoves(ml *MoveList) {
 		p.generateBlackCastleMoves(ml)
 	}
 }
+func (p *Position) GenerateAllCaptures(ml *MoveList) {
+	ml.Count = 0
+	if p.Side == data.White {
+		p.generateWhitePawnCaptureMoves(ml)
+		p.generateWhitePawnEnPassantMoves(ml)
+		p.generateSliderMoves(ml, WQ, false)
+		p.generateSliderMoves(ml, WR, false)
+		p.generateSliderMoves(ml, WB, false)
+		p.generateSliderMoves(ml, WN, false)
+		p.generateSliderMoves(ml, WK, false)
+	} else {
+		p.generateBlackPawnEnPassantMoves(ml)
+		p.generateBlackPawnCaptureMoves(ml)
+		p.generateSliderMoves(ml, BQ, false)
+		p.generateSliderMoves(ml, BR, false)
+		p.generateSliderMoves(ml, BB, false)
+		p.generateSliderMoves(ml, BN, false)
+		p.generateSliderMoves(ml, BK, false)
+	}
+}
 
 func (p *Position) generateWhitePawnMoves(ml *MoveList) {
-	p.generateWhitePawnQuietMoves(ml)
 	p.generateWhitePawnEnPassantMoves(ml)
 	p.generateWhitePawnCaptureMoves(ml)
+	p.generateWhitePawnQuietMoves(ml)
 }
 func (p *Position) generateBlackPawnMoves(ml *MoveList) {
 	p.generateBlackPawnQuietMoves(ml)
-	p.generateBlackPawnEnPassantMoves(ml)
 	p.generateBlackPawnCaptureMoves(ml)
+	p.generateBlackPawnEnPassantMoves(ml)
 }
 
 func (p *Position) generateWhitePawnQuietMoves(ml *MoveList) {
@@ -411,14 +431,22 @@ func (p *Position) IsKingAttacked() bool {
 	return p.SquaresUnderAttack(p.Side, sq64)
 }
 
-func (p *Position) PrintMoveList() {
+func (p *Position) PrintMoveList(captures bool) {
 	moveList := &MoveList{}
-	p.GenerateAllMoves(moveList)
-	fmt.Println("\nPrinting move list:")
-	for i := 0; i < moveList.Count; i++ {
-		fmt.Printf("Move %v: %v (score: %v) %v\n", i+1, io.PrintMove(moveList.Moves[i].Move), moveList.Moves[i].Score, moveList.Moves[i].Move)
+	if captures {
+		p.GenerateAllCaptures(moveList)
+	} else {
+		p.GenerateAllMoves(moveList)
 	}
-	fmt.Printf("Printed %v total moves.\n", moveList.Count)
+	if moveList.Count > 0 {
+		fmt.Println("\nPrinting move list:")
+		for i := 0; i < moveList.Count; i++ {
+			fmt.Printf("Move %v: %v (score: %v) %v\n", i+1, io.PrintMove(moveList.Moves[i].Move), moveList.Moves[i].Score, moveList.Moves[i].Move)
+		}
+		fmt.Printf("Printed %v total moves.\n", moveList.Count)
+	} else {
+		fmt.Println("Empty")
+	}
 }
 
 func init() {
@@ -452,7 +480,7 @@ func calculateKnightMoves(sq64 int) uint64 {
 	sq120 := data.Square64ToSquare120[sq64]
 
 	for i := 0; i < data.NumDir[WN]; i++ {
-		dir := data.PieceDir[WN][i]
+		dir := data.PieceDir[BN][i]
 		tempSq := sq120 + dir
 		if !validate.SquareOnBoard(tempSq) {
 			continue
