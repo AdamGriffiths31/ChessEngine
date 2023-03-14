@@ -7,6 +7,8 @@ type Position struct {
 	Side             int
 	CastlePermission int
 	EnPassant        int
+	FailHighFirst    float32
+	FailHigh         float32
 }
 
 type Bitboard struct {

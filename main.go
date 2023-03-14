@@ -36,46 +36,24 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 	//defer util.TimeTrackMilliseconds(time.Now(), "Main")
-	p := &engine.Position{}
-	p.ParseFen(data.StartFEN)
-	e := search.Engine{Position: p, IsMainEngine: true}
-
-	// p1 := &engine.Position{}
-	// p1.ParseFen(data.StartFEN)
-	// e1 := search.Engine{Position: p1}
-
-	// p2 := &engine.Position{}
-	// p2.ParseFen(data.StartFEN)
-	// e2 := search.Engine{Position: p2}
-
-	// p3 := &engine.Position{}
-	// p3.ParseFen(data.StartFEN)
-	// e3 := search.Engine{Position: p3}
+	test := engine.Position{}
+	test.ParseFen(data.StartFEN)
+	test2 := engine.Position{}
+	test2.ParseFen(data.StartFEN)
+	h := search.NewEngineHolder(2)
+	h.Engines[0].Position = &test
+	h.Engines[1].Position = &test2
 
 	time1 := time.Now()
-	//list := []*search.Engine{&e, &e1, &e2, &e3}
-	list := []*search.Engine{&e}
 
-	h := search.EngineHolder{Engines: list}
-	fmt.Printf("score %v\n", e.Position.Evaluate())
-	h.Search(9)
+	h.Search(6)
 	util.TimeTrackMilliseconds(time1, "new")
 	fmt.Printf("\n\n")
-	time2 := time.Now()
-	// e.Position.PrintMoveList(false)
-	// p.MakeMove(9427)
+	//time2 := time.Now()
 
-	testOld()
-	util.TimeTrackMilliseconds(time2, "old")
-	// p.Board.PrintBitboard(p.Board.WhitePieces)
-	// p.TakeMoveBack(531363, data.Empty)
+	//testOld()
+	//util.TimeTrackMilliseconds(time2, "old")
 
-	// e.Position.Board.PrintBitboard(e.Position.Board.Pieces)
-	// e.Position.PrintMoveList(false)
-
-	// _, enPas, CastleRight := p.MakeMove(123054)
-	// p.TakeMoveBack(123054, enPas, CastleRight)
-	// e.Position.CheckBitboard()
 }
 
 func testOld() {
@@ -86,10 +64,9 @@ func testOld() {
 	board.ParseFEN(data.StartFEN, pos)
 	info := &data.SearchInfo{}
 	info.WorkerNumber = 0
-	info.Depth = 9
+	info.Depth = 10
 	info.PostThinking = false
 	info.GameMode = data.ConsoleMode
-
 	search2.SearchPosition(pos, info, hash)
 
 	fmt.Printf("score %v\n", evaluate.EvalPosition(pos))

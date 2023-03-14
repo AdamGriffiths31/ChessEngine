@@ -93,6 +93,9 @@ func addQuiteMove(pos *data.Board, move int, moveList *data.MoveList) {
 func addCaptureMove(pos *data.Board, move int, moveList *data.MoveList) {
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = data.MvvLvaScores[data.Captured(move)][pos.Pieces[data.FromSquare(move)]] + 1000000
+	if moveList.Moves[moveList.Count].Score <= 1000000 {
+		panic("err")
+	}
 	moveList.Count++
 }
 

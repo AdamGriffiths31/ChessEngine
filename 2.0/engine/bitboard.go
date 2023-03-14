@@ -198,3 +198,24 @@ func (b *Bitboard) PrintBitboard(bitBoard uint64) {
 	fmt.Printf("\n")
 	fmt.Printf("\n")
 }
+
+func (b *Bitboard) PrintBoard() {
+	var shiftMe uint64 = 1
+	for rank := data.Rank8; rank >= data.Rank1; rank-- {
+		for file := data.FileA; file <= data.FileH; file++ {
+			sq := data.FileRankToSquare(file, rank)
+			sq64 := data.Square120ToSquare64[sq]
+			if ((shiftMe << sq64) & b.Pieces) == 0 {
+				x := "-"
+				fmt.Printf("%3s", x)
+
+			} else {
+
+				fmt.Printf("%3s", data.PceChar[b.PieceAt(sq64)])
+			}
+		}
+		fmt.Printf("\n")
+	}
+	fmt.Printf("\n")
+	fmt.Printf("\n")
+}

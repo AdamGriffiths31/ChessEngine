@@ -205,6 +205,7 @@ func (p *Position) addCaptureMove(move int, moveList *MoveList) {
 	piece := p.Board.PieceAt(data.Square120ToSquare64[data.FromSquare(move)])
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = data.MvvLvaScores[data.Captured(move)][piece] + 1000000
+
 	moveList.Count++
 }
 
@@ -420,15 +421,15 @@ func (p *Position) SquaresUnderAttack(side int, sq64 int) bool {
 	return (attacked & mask) != 0
 }
 
-func (p *Position) IsKingAttacked() bool {
+func (p *Position) IsKingAttacked(side int) bool {
 	var king uint64
-	if p.Side == data.White {
+	if side == data.White {
 		king = p.Board.BlackKing
 	} else {
 		king = p.Board.WhiteKing
 	}
 	sq64 := bits.TrailingZeros64(king)
-	return p.SquaresUnderAttack(p.Side, sq64)
+	return p.SquaresUnderAttack(side, sq64)
 }
 
 func (p *Position) PrintMoveList(captures bool) {

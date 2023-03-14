@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/AdamGriffiths31/ChessEngine/2.0/engine"
@@ -31,21 +32,24 @@ func (e *Engine) ClearForSearch() {
 func (e *Engine) SearchRoot(wg *sync.WaitGroup, depth int) {
 	defer wg.Done()
 	fmt.Printf("worker searching\n")
-
 	for currentDepth := 1; currentDepth <= depth; currentDepth++ {
-		score := e.alphaBeta(-30000, 30000, currentDepth, 0)
+		score := e.alphaBeta(-30000, 30000, currentDepth, 0, true)
 		if e.IsMainEngine {
-			fmt.Printf("Score:%v Depth %v Nodes:%v cut:%v\n", score, currentDepth, e.Nodes, e.TranspositionTable.Cut)
+			fmt.Printf("Score:%v Depth %v Nodes:%v hit: %v cut:%v\n", score, currentDepth, e.Nodes, e.TranspositionTable.Hit, e.TranspositionTable.Cut)
+			fmt.Printf("Ordering: %.2f\n", e.Position.FailHighFirst/e.Position.FailHigh)
+		} else {
+			fmt.Printf("\tSecond runner : depth %v nodes:%v\n", currentDepth, e.Nodes)
 		}
 	}
 	if e.IsMainEngine {
+		e.Parent.CancelSearch()
 		fmt.Printf("best move %v \n", io.PrintMove(e.TranspositionTable.Probe(e.Position.PositionKey)))
 	}
 }
 
-func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int) int {
+func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed bool) int {
 	e.Position.CheckBitboard()
-	if searchHeight < 0 {
+	if depthLeft < 0 {
 		panic(fmt.Errorf("alphaBeta depth was  %v", depthLeft))
 	}
 	if beta < alpha {
@@ -53,29 +57,35 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int) int {
 	}
 
 	if depthLeft <= 0 {
+		//return e.Position.Evaluate()
 		return e.quiescence(alpha, beta, searchHeight)
 	}
 	//TODO checkUp
 	e.Nodes++
 	//TODO isRepetitionOrFiftyMove
-	if depthLeft == 0 {
-		return e.Position.Evaluate()
-	}
 
-	inCheck := e.Position.IsKingAttacked()
+	inCheck := e.Position.IsKingAttacked(e.Position.Side ^ 1)
 	if inCheck {
-		fmt.Printf("inCheck")
 		depthLeft++
 	}
 
 	score := -data.ABInfinite
 	pvMove := data.NoMove
-	if e.TranspositionTable.Get(e.Position.PositionKey, searchHeight, &pvMove, &score, alpha, beta, depthLeft) {
+	if e.TranspositionTable.Get(e.Position.PositionKey, e.Position.Play, &pvMove, &score, alpha, beta, depthLeft) {
 		e.TranspositionTable.Cut++
 		return score
 	}
 
 	//TODO NULL Move
+	doNullMove := nullAllowed && !inCheck && e.Position.Play != 0 && depthLeft >= 4 && !e.Position.IsEndGame()
+	if doNullMove {
+		_, enPas, castle := e.Position.MakeNullMove()
+		score = -e.alphaBeta(-beta, -beta+1, depthLeft-4, searchHeight+1, false)
+		e.Position.TakeNullMoveBack(enPas, castle)
+		if score >= beta && math.Abs(float64(score)) < data.Mate {
+			return beta
+		}
+	}
 
 	ml := &engine.MoveList{}
 	e.Position.GenerateAllMoves(ml)
@@ -95,26 +105,29 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int) int {
 		}
 	}
 	for i := 0; i < ml.Count; i++ {
-		e.pickNextMove(i, ml)
-		move := ml.Moves[i].Move
-		isAllowed, enPas, CastleRight := e.Position.MakeMove(move)
+		e.PickNextMove(i, ml)
+		//fmt.Printf("%v %v\n", io.PrintMove(move), ml.Moves[i].Score)
+		isAllowed, enPas, CastleRight := e.Position.MakeMove(ml.Moves[i].Move)
 		if !isAllowed {
 			continue
 		}
 		legal++
-		score = -e.alphaBeta(-beta, -alpha, depthLeft-1, searchHeight+1)
-		e.Position.TakeMoveBack(move, enPas, CastleRight)
+		score = -e.alphaBeta(-beta, -alpha, depthLeft-1, searchHeight+1, true)
+		e.Position.TakeMoveBack(ml.Moves[i].Move, enPas, CastleRight)
 		if score > bestScore {
 			bestScore = score
-			bestMove = move
+			bestMove = ml.Moves[i].Move
 			if score > alpha {
 				if score >= beta {
+					if legal == 1 {
+						e.Position.FailHighFirst++
+					}
 					if ml.Moves[i].Move&data.MFLAGCAP == 0 {
 						//e.SearchHistory.Killers[1][searchHeight] = e.SearchHistory.Killers[0][searchHeight]
 						//e.SearchHistory.Killers[0][searchHeight] = move
 					}
-
-					e.TranspositionTable.Store(e.Position.PositionKey, searchHeight, bestMove, beta, data.PVBeta, depthLeft)
+					e.Position.FailHigh++
+					e.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, beta, data.PVBeta, depthLeft)
 					return beta
 				}
 				alpha = score
@@ -127,7 +140,7 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int) int {
 
 	}
 	if legal == 0 {
-		if e.Position.IsKingAttacked() {
+		if e.Position.IsKingAttacked(e.Position.Side) {
 			return -data.ABInfinite + searchHeight
 		} else {
 			return 0
@@ -137,9 +150,10 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int) int {
 		panic(fmt.Errorf("alphaBeta alpha %v oldAlpha %v", score, oldAlpha))
 	}
 	if alpha != oldAlpha {
-		e.TranspositionTable.Store(e.Position.PositionKey, searchHeight, bestMove, bestScore, data.PVExact, depthLeft)
+		//fmt.Printf("storing %v (%v) for depth %v\n", io.PrintMove(bestMove), bestScore, depthLeft)
+		e.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, bestScore, data.PVExact, depthLeft)
 	} else {
-		e.TranspositionTable.Store(e.Position.PositionKey, searchHeight, bestMove, alpha, data.PVAlpha, depthLeft)
+		e.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, alpha, data.PVAlpha, depthLeft)
 	}
 	return alpha
 }
@@ -166,9 +180,8 @@ func (e *Engine) quiescence(alpha, beta, searchHeight int) int {
 	e.Position.GenerateAllCaptures(ml)
 	legal := 0
 	for i := 0; i < ml.Count; i++ {
-		e.pickNextMove(i, ml)
+		e.PickNextMove(i, ml)
 		move := ml.Moves[i].Move
-		//fmt.Printf("Capture = %v (side %v)\n", io.PrintMove(move), e.Position.Side)
 		isAllowed, enPas, CastleRight := e.Position.MakeMove(move)
 		if !isAllowed {
 			continue
@@ -178,6 +191,10 @@ func (e *Engine) quiescence(alpha, beta, searchHeight int) int {
 		legal++
 		if score > alpha {
 			if score >= beta {
+				if legal == 1 {
+					e.Position.FailHighFirst++
+				}
+				e.Position.FailHigh++
 				return beta
 			}
 			alpha = score
@@ -186,7 +203,7 @@ func (e *Engine) quiescence(alpha, beta, searchHeight int) int {
 	return alpha
 }
 
-func (e *Engine) pickNextMove(moveNum int, ml *engine.MoveList) {
+func (e *Engine) PickNextMove(moveNum int, ml *engine.MoveList) {
 	bestScore := 0
 	bestNum := moveNum
 	for i := moveNum; i < ml.Count; i++ {

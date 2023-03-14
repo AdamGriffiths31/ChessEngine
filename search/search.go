@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/AdamGriffiths31/ChessEngine/attack"
 	"github.com/AdamGriffiths31/ChessEngine/board"
@@ -43,7 +44,8 @@ func iterativeDeepenNoWorkers(pos *data.Board, info *data.SearchInfo, table *dat
 	if bestMove == data.NoMove {
 		for currentDepth := 1; currentDepth < info.Depth+1; currentDepth++ {
 			bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info, true, table)
-			fmt.Printf("Score:%v Depth %v Nodes:%v cut:%v\n", bestScore, currentDepth, info.Node, table.HashTable.Cut)
+			fmt.Printf("Score:%v Depth %v Nodes:%v hit:%v cut:%v\n", bestScore, currentDepth, info.Node, table.HashTable.Hit, table.HashTable.Cut)
+			fmt.Printf("Ordering: %.2f\n", info.FailHighFirst/info.FailHigh)
 			if info.Stopped {
 				break
 			}
@@ -106,6 +108,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 	}
 
 	if depth <= 0 {
+		//return evaluate.EvalPosition(pos)
 		return quiescence(alpha, beta, pos, info)
 	}
 
@@ -122,7 +125,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		return evaluate.EvalPosition(pos)
 	}
 
-	// limited value in checking the position if in check
+	//limited value in checking the position if in check
 	inCheck := attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos)
 	if inCheck {
 		depth++
@@ -138,19 +141,19 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 
 	// null move check reduces the search by trying a 'null' move, then seeing if the score
 	// of the subtree search is still high enough to cause a beta cutoff. Nodes are saved by
-	//reducing the depth of the subtree under the null move.
-	// if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
-	// 	moveGen.MakeNullMove(pos)
-	// 	score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false, table)
-	// 	moveGen.TakeBackNullMove(pos)
-	// 	if info.Stopped {
-	// 		return 0
-	// 	}
-	// 	if score >= beta && math.Abs(float64(score)) < data.Mate {
-	// 		info.NullCut++
-	// 		return beta
-	// 	}
-	// }
+	// reducing the depth of the subtree under the null move.
+	if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
+		moveGen.MakeNullMove(pos)
+		score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false, table)
+		moveGen.TakeBackNullMove(pos)
+		if info.Stopped {
+			return 0
+		}
+		if score >= beta && math.Abs(float64(score)) < data.Mate {
+			info.NullCut++
+			return beta
+		}
+	}
 
 	ml := &data.MoveList{}
 	moveGen.GenerateAllMoves(pos, ml)
@@ -220,6 +223,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		panic(fmt.Errorf("alphaBeta alpha %v oldAlpha %v", score, oldAlpha))
 	}
 	if alpha != oldAlpha {
+		//fmt.Printf("storing %v (%v) for depth %v\n", io.PrintMove(bestMove), bestScore, depth)
 		moveGen.StorePvMove(pos, bestMove, bestScore, data.PVExact, depth, table)
 	} else {
 		moveGen.StorePvMove(pos, bestMove, alpha, data.PVAlpha, depth, table)
@@ -306,7 +310,7 @@ func clearForSearch(pos *data.Board, info *data.SearchInfo, table *data.PvHashTa
 	table.HashTable.Cut = 0
 	table.HashTable.Hit = 0
 	table.HashTable.CurrentAge++
-
+	fmt.Printf("%v age\n", table.HashTable.CurrentAge)
 	info.StartTime = util.GetTimeMs()
 	info.ForceStop = false
 	info.Stopped = false

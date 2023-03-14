@@ -7,7 +7,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
-var TranspositionTable = NewCache(64)
+var TranspositionTable = NewCache()
 
 type CacheEntry struct {
 	Age     int
@@ -38,10 +38,20 @@ func (c *Cache) Probe(key uint64) int {
 
 func (c *Cache) Store(key uint64, play int, move, score, flag, depth int) {
 	index := key % uint64(c.NumberEntries)
-
 	replace := false
+
+	// oldValue := c.CacheTable[index]
+	// oldKey := oldValue.SMPKey
+	// oldData := oldValue.SMPData
+	// oldPosKey := oldKey ^ oldData
+
+	// if oldPosKey == key {
+	// 	fmt.Printf("depth %v (%v)   %v (%v)\n", extractDepth(oldData), extractScore(uint64(oldData)), depth, score)
+	// }
 	if c.CacheTable[index].SMPKey == 0 {
 		replace = true
+		// } else if oldPosKey == key {
+		// 	replace = (flag == data.PVExact) || (uint64(depth) >= extractDepth(c.CacheTable[index].SMPData)-3)
 	} else {
 		if c.CacheTable[index].Age < c.CurrentAge {
 			replace = true
@@ -59,7 +69,7 @@ func (c *Cache) Store(key uint64, play int, move, score, flag, depth int) {
 	} else if score < -data.Mate {
 		score -= play
 	}
-
+	fmt.Printf("store %v  %v (%v)\n", key, depth, score)
 	smpData := foldData(uint64(score), uint64(depth), uint64(flag), move)
 	smpKey := key ^ smpData
 
@@ -122,11 +132,9 @@ func foldData(score, depth, flag uint64, move int) uint64 {
 	return (score + data.Infinite) | (depth << 16) | (flag << 23) | (uint64(move) << 25)
 }
 
-func NewCache(megabytes int) *Cache {
-	if megabytes < 1 {
-		return nil
-	}
-	size := int((megabytes * 1024 * 1024) / int(unsafe.Sizeof(CacheEntry{})))
+func NewCache() *Cache {
+	size := ((0x100000 * 64) / int(unsafe.Sizeof(CacheEntry{})))
 	length := size - 2
+	fmt.Printf("%v cache size\n", length)
 	return &Cache{make([]CacheEntry, length), length, 0, 0, 0}
 }
