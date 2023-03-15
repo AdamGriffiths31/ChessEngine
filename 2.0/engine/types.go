@@ -9,6 +9,8 @@ type Position struct {
 	EnPassant        int
 	FailHighFirst    float32
 	FailHigh         float32
+	MoveHistory      MoveHistory
+	CurrentScore     int
 }
 
 type Bitboard struct {
@@ -29,4 +31,9 @@ type Bitboard struct {
 	WhiteRook   uint64
 	WhiteQueen  uint64
 	WhiteKing   uint64
+}
+
+type MoveHistory struct {
+	Killers [2][64]int
+	History [13][120]int
 }

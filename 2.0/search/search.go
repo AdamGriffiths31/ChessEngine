@@ -1,6 +1,7 @@
 package search
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -8,42 +9,62 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/2.0/engine"
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/io"
+	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
+var errTimeout = errors.New("Search timeout")
+
 func (h *EngineHolder) Search(depth int) {
+	h.ClearForSearch()
+
 	var wg sync.WaitGroup
-	for i := 0; i < len(h.Engines); i++ {
+	done := make(chan struct{})
+
+	for _, engine := range h.Engines {
 		wg.Add(1)
-		fmt.Printf("worker added %v\n", h.Engines[i].Position.PositionKey)
-		go h.Engines[i].ParallelSearch(&wg, depth)
+		fmt.Printf("worker added %v\n", engine.Position.PositionKey)
+		go func(e *Engine) {
+			defer wg.Done()
+			e.SearchRoot(depth)
+		}(engine)
 	}
-	wg.Wait()
+
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	<-done
 }
 
-func (e *Engine) ParallelSearch(wg *sync.WaitGroup, depth int) {
-	e.ClearForSearch()
-	e.SearchRoot(wg, depth)
-}
-
-func (e *Engine) ClearForSearch() {
+func (e *EngineHolder) ClearForSearch() {
 	e.TranspositionTable = engine.TranspositionTable
 }
 
-func (e *Engine) SearchRoot(wg *sync.WaitGroup, depth int) {
-	defer wg.Done()
+func (e *Engine) SearchRoot(depth int) {
+	defer recoverFromTimeout()
 	fmt.Printf("worker searching\n")
+	timeNow := util.GetTimeMs()
 	for currentDepth := 1; currentDepth <= depth; currentDepth++ {
 		score := e.alphaBeta(-30000, 30000, currentDepth, 0, true)
 		if e.IsMainEngine {
-			fmt.Printf("Score:%v Depth %v Nodes:%v hit: %v cut:%v\n", score, currentDepth, e.Nodes, e.TranspositionTable.Hit, e.TranspositionTable.Cut)
+			fmt.Printf("Score:%v Depth %v Nodes:%v time %v hit: %v cut:%v\n", score, currentDepth, e.Parent.NodeCount, util.GetTimeMs()-timeNow, e.Parent.TranspositionTable.Hit, e.Parent.TranspositionTable.Cut)
 			fmt.Printf("Ordering: %.2f\n", e.Position.FailHighFirst/e.Position.FailHigh)
-		} else {
-			fmt.Printf("\tSecond runner : depth %v nodes:%v\n", currentDepth, e.Nodes)
 		}
 	}
+
 	if e.IsMainEngine {
 		e.Parent.CancelSearch()
-		fmt.Printf("best move %v \n", io.PrintMove(e.TranspositionTable.Probe(e.Position.PositionKey)))
+		fmt.Printf("best move %v \n", io.PrintMove(e.Parent.TranspositionTable.Probe(e.Position.PositionKey)))
+	} else {
+		fmt.Printf("Other thread ends\n")
+	}
+}
+
+func recoverFromTimeout() {
+	err := recover()
+	if err != nil && err != errTimeout {
+		panic(err)
 	}
 }
 
@@ -57,12 +78,16 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 	}
 
 	if depthLeft <= 0 {
-		//return e.Position.Evaluate()
 		return e.quiescence(alpha, beta, searchHeight)
 	}
-	//TODO checkUp
-	e.Nodes++
-	//TODO isRepetitionOrFiftyMove
+
+	e.Checkup()
+
+	e.NodesVisited++
+
+	if e.isRepetitionOrFiftyMove() {
+		return 0
+	}
 
 	inCheck := e.Position.IsKingAttacked(e.Position.Side ^ 1)
 	if inCheck {
@@ -71,12 +96,11 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 
 	score := -data.ABInfinite
 	pvMove := data.NoMove
-	if e.TranspositionTable.Get(e.Position.PositionKey, e.Position.Play, &pvMove, &score, alpha, beta, depthLeft) {
-		e.TranspositionTable.Cut++
+	if e.Parent.TranspositionTable.Get(e.Position.PositionKey, e.Position.Play, &pvMove, &score, alpha, beta, depthLeft) {
+		e.Parent.TranspositionTable.Cut++
 		return score
 	}
 
-	//TODO NULL Move
 	doNullMove := nullAllowed && !inCheck && e.Position.Play != 0 && depthLeft >= 4 && !e.Position.IsEndGame()
 	if doNullMove {
 		_, enPas, castle := e.Position.MakeNullMove()
@@ -89,7 +113,6 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 
 	ml := &engine.MoveList{}
 	e.Position.GenerateAllMoves(ml)
-
 	legal := 0
 	oldAlpha := alpha
 	bestMove := data.NoMove
@@ -106,7 +129,6 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 	}
 	for i := 0; i < ml.Count; i++ {
 		e.PickNextMove(i, ml)
-		//fmt.Printf("%v %v\n", io.PrintMove(move), ml.Moves[i].Score)
 		isAllowed, enPas, CastleRight := e.Position.MakeMove(ml.Moves[i].Move)
 		if !isAllowed {
 			continue
@@ -123,17 +145,18 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 						e.Position.FailHighFirst++
 					}
 					if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-						//e.SearchHistory.Killers[1][searchHeight] = e.SearchHistory.Killers[0][searchHeight]
-						//e.SearchHistory.Killers[0][searchHeight] = move
+						e.Position.MoveHistory.Killers[1][e.Position.Play] = e.Position.MoveHistory.Killers[0][e.Position.Play]
+						e.Position.MoveHistory.Killers[0][e.Position.Play] = ml.Moves[i].Move
 					}
 					e.Position.FailHigh++
-					e.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, beta, data.PVBeta, depthLeft)
+					e.Parent.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, beta, data.PVBeta, depthLeft)
+
 					return beta
 				}
 				alpha = score
 
 				if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-					//e.SearchHistory.History[e.Position.Board.PieceAt(data.FromSquare(bestMove))][data.ToSquare(bestMove)] += searchHeight
+					e.Position.MoveHistory.History[e.Position.Board.PieceAt(data.Square120ToSquare64[data.FromSquare(bestMove)])][data.ToSquare(bestMove)] += e.Position.Play
 				}
 			}
 		}
@@ -141,7 +164,7 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 	}
 	if legal == 0 {
 		if e.Position.IsKingAttacked(e.Position.Side) {
-			return -data.ABInfinite + searchHeight
+			return -data.ABInfinite + e.Position.Play
 		} else {
 			return 0
 		}
@@ -150,17 +173,20 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 		panic(fmt.Errorf("alphaBeta alpha %v oldAlpha %v", score, oldAlpha))
 	}
 	if alpha != oldAlpha {
-		//fmt.Printf("storing %v (%v) for depth %v\n", io.PrintMove(bestMove), bestScore, depthLeft)
-		e.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, bestScore, data.PVExact, depthLeft)
+		e.Parent.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, bestScore, data.PVExact, depthLeft)
 	} else {
-		e.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, alpha, data.PVAlpha, depthLeft)
+		e.Parent.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, alpha, data.PVAlpha, depthLeft)
 	}
 	return alpha
 }
 func (e *Engine) quiescence(alpha, beta, searchHeight int) int {
 	e.Position.CheckBitboard()
-	//TODO isRepetitionOrFiftyMove
-	e.Nodes++
+
+	if e.isRepetitionOrFiftyMove() {
+		return 0
+	}
+
+	e.NodesVisited++
 
 	score := e.Position.Evaluate()
 
@@ -212,18 +238,23 @@ func (e *Engine) PickNextMove(moveNum int, ml *engine.MoveList) {
 			bestNum = i
 		}
 	}
-	if moveNum < 0 || moveNum > ml.Count {
-		panic(fmt.Errorf("pickNextMove: moveNum %v", moveNum))
-	}
 
-	if bestNum < 0 || bestNum > ml.Count {
-		panic(fmt.Errorf("pickNextMove: bestNum %v", bestNum))
-	}
-
-	if bestNum < moveNum {
-		panic(fmt.Errorf("pickNextMove: bestNum %v moveNum %v", bestNum, moveNum))
-	}
 	holder := ml.Moves[moveNum]
 	ml.Moves[moveNum] = ml.Moves[bestNum]
 	ml.Moves[bestNum] = holder
+}
+
+func (e *Engine) isRepetitionOrFiftyMove() bool {
+	return false
+}
+
+func (e *Engine) Checkup() {
+	if (e.NodesVisited % 2048) == 0 {
+		select {
+		case <-e.Parent.Ctx.Done():
+			fmt.Printf("Ending early (%v)\n", e.IsMainEngine)
+			panic(errTimeout)
+		default:
+		}
+	}
 }

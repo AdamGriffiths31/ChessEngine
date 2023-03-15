@@ -203,25 +203,25 @@ func (p *Position) addEnPasMove(move int, moveList *MoveList) {
 
 func (p *Position) addCaptureMove(move int, moveList *MoveList) {
 	piece := p.Board.PieceAt(data.Square120ToSquare64[data.FromSquare(move)])
+	if piece > BK || piece < WP {
+		panic("err")
+	}
 	moveList.Moves[moveList.Count].Move = move
 	moveList.Moves[moveList.Count].Score = data.MvvLvaScores[data.Captured(move)][piece] + 1000000
-
 	moveList.Count++
 }
 
 func (p *Position) addQuiteMove(move int, moveList *MoveList) {
-	//moveList.Moves[moveList.Count].Move = move
-	// piece := p.Board.PieceAt(data.Square120ToSquare64[data.FromSquare(move)])
-	// switch move {
-	// case pos.SearchKillers[0][pos.Play]:
-	// 	moveList.Moves[moveList.Count].Score = 900000
-	// case pos.SearchKillers[1][pos.Play]:
-	// 	moveList.Moves[moveList.Count].Score = 800000
-	// default:
-	// 	moveList.Moves[moveList.Count].Score = pos.SearchHistory[piece][data.ToSquare(move)]
-	// }
 	moveList.Moves[moveList.Count].Move = move
-	moveList.Moves[moveList.Count].Score = 0
+	piece := p.Board.PieceAt(data.Square120ToSquare64[data.FromSquare(move)])
+	switch move {
+	case p.MoveHistory.Killers[0][p.Play]:
+		moveList.Moves[moveList.Count].Score = 900000
+	case p.MoveHistory.Killers[1][p.Play]:
+		moveList.Moves[moveList.Count].Score = 800000
+	default:
+		moveList.Moves[moveList.Count].Score = p.MoveHistory.History[piece][data.ToSquare(move)]
+	}
 	moveList.Count++
 }
 

@@ -8,26 +8,20 @@ import (
 )
 
 type Engine struct {
-	Position           *engine.Position
-	TranspositionTable *engine.Cache
-	SearchHistory      MoveHistory
-	Nodes              uint64
-	IsMainEngine       bool
-	Parent             *EngineHolder
+	Position     *engine.Position
+	IsMainEngine bool
+	Parent       *EngineHolder
+	NodesVisited int
 }
 
 type EngineHolder struct {
-	Engines      []*Engine
-	PvArray      [64]int
-	Move         data.Move
-	Ctx          context.Context
-	CancelSearch context.CancelFunc
-}
-
-func (r *EngineHolder) ResetHistory() {
-	for i := 0; i < len(r.Engines); i++ {
-		r.Engines[i].SearchHistory = MoveHistory{}
-	}
+	Engines            []*Engine
+	PvArray            [64]int
+	Move               data.Move
+	Ctx                context.Context
+	CancelSearch       context.CancelFunc
+	TranspositionTable *engine.Cache
+	NodeCount          uint64
 }
 
 func NewEngineHolder(numberOfThreads int) *EngineHolder {

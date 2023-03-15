@@ -204,7 +204,7 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 					alpha = score
 
 					if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-						//pos.SearchHistory[pos.Pieces[data.FromSquare(bestMove)]][data.ToSquare(bestMove)] += depth
+						pos.SearchHistory[pos.Pieces[data.FromSquare(bestMove)]][data.ToSquare(bestMove)] += depth
 					}
 				}
 			}

@@ -21,6 +21,7 @@ type Cache struct {
 	Hit           int
 	Cut           int
 	CurrentAge    int
+	Stored        int
 }
 
 func (c *Cache) BestMove(key uint64, play int) int {
@@ -40,18 +41,15 @@ func (c *Cache) Store(key uint64, play int, move, score, flag, depth int) {
 	index := key % uint64(c.NumberEntries)
 	replace := false
 
-	// oldValue := c.CacheTable[index]
-	// oldKey := oldValue.SMPKey
-	// oldData := oldValue.SMPData
-	// oldPosKey := oldKey ^ oldData
+	oldValue := c.CacheTable[index]
+	oldKey := oldValue.SMPKey
+	oldData := oldValue.SMPData
+	oldPosKey := oldKey ^ oldData
 
-	// if oldPosKey == key {
-	// 	fmt.Printf("depth %v (%v)   %v (%v)\n", extractDepth(oldData), extractScore(uint64(oldData)), depth, score)
-	// }
-	if c.CacheTable[index].SMPKey == 0 {
+	if oldData == 0 {
 		replace = true
-		// } else if oldPosKey == key {
-		// 	replace = (flag == data.PVExact) || (uint64(depth) >= extractDepth(c.CacheTable[index].SMPData)-3)
+	} else if oldPosKey == key {
+		replace = (flag == data.PVExact) || (uint64(depth) >= extractDepth(c.CacheTable[index].SMPData)-3)
 	} else {
 		if c.CacheTable[index].Age < c.CurrentAge {
 			replace = true
@@ -60,38 +58,37 @@ func (c *Cache) Store(key uint64, play int, move, score, flag, depth int) {
 		}
 	}
 
-	if !replace {
-		return
+	if replace {
+		c.Stored++
+		if score > data.Mate {
+			score += play
+		} else if score < -data.Mate {
+			score -= play
+		}
+		smpData := foldData(uint64(score), uint64(depth), uint64(flag), move)
+		smpKey := key ^ smpData
+		c.CacheTable[index].Age = c.CurrentAge
+		c.CacheTable[index].SMPData = smpData
+		c.CacheTable[index].SMPKey = smpKey
 	}
 
-	if score > data.Mate {
-		score += play
-	} else if score < -data.Mate {
-		score -= play
-	}
-	fmt.Printf("store %v  %v (%v)\n", key, depth, score)
-	smpData := foldData(uint64(score), uint64(depth), uint64(flag), move)
-	smpKey := key ^ smpData
-
-	c.CacheTable[index].Age = c.CurrentAge
-	c.CacheTable[index].SMPData = smpData
-	c.CacheTable[index].SMPKey = smpKey
 }
 
 func (c *Cache) Get(key uint64, play int, move *int, score *int, alpha, beta, depth int) bool {
 	index := key % uint64(c.NumberEntries)
-	testKey := key ^ c.CacheTable[index].SMPData
+	entry := c.CacheTable[index]
+	testKey := key ^ entry.SMPData
 	if testKey == c.CacheTable[index].SMPKey {
-		*move = extractMove(c.CacheTable[index].SMPData)
-		if int(extractDepth(c.CacheTable[index].SMPData)) >= depth {
+		*move = extractMove(entry.SMPData)
+		if int(extractDepth(entry.SMPData)) >= depth {
 			c.Hit++
-			*score = int(extractScore(c.CacheTable[index].SMPData))
+			*score = int(extractScore(entry.SMPData))
 			if *score > data.Mate {
 				*score -= play
 			} else if *score < -data.Mate {
 				*score += play
 			}
-			switch extractFlag(c.CacheTable[index].SMPData) {
+			switch extractFlag(entry.SMPData) {
 			case data.PVAlpha:
 				if *score <= alpha {
 					*score = alpha
@@ -136,5 +133,5 @@ func NewCache() *Cache {
 	size := ((0x100000 * 64) / int(unsafe.Sizeof(CacheEntry{})))
 	length := size - 2
 	fmt.Printf("%v cache size\n", length)
-	return &Cache{make([]CacheEntry, length), length, 0, 0, 0}
+	return &Cache{make([]CacheEntry, length), length, 0, 0, 0, 0}
 }

@@ -28,7 +28,7 @@ func TestMoveGenPerft2(t *testing.T) {
 		parts := strings.Split(line, ",")
 		fen := parts[0]
 		counter++
-		for i := 1; i < len(parts) && i <= 4; i++ {
+		for i := 1; i < len(parts) && i <= 5; i++ {
 			ans := PerftTest2(i, fen)
 			t.Logf("depth: %v   %v got wanted  %v\n", i, ans, parts[i])
 

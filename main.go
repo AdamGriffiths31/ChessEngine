@@ -8,9 +8,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strings"
-	"time"
 
-	"github.com/AdamGriffiths31/ChessEngine/2.0/engine"
 	"github.com/AdamGriffiths31/ChessEngine/2.0/search"
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	consolemode "github.com/AdamGriffiths31/ChessEngine/consoleMode"
@@ -19,7 +17,6 @@ import (
 	polyglot "github.com/AdamGriffiths31/ChessEngine/polyGlot"
 	search2 "github.com/AdamGriffiths31/ChessEngine/search"
 	"github.com/AdamGriffiths31/ChessEngine/uci"
-	"github.com/AdamGriffiths31/ChessEngine/util"
 	"github.com/AdamGriffiths31/ChessEngine/xboard"
 )
 
@@ -35,20 +32,26 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-	//defer util.TimeTrackMilliseconds(time.Now(), "Main")
-	test := engine.Position{}
-	test.ParseFen(data.StartFEN)
-	test2 := engine.Position{}
-	test2.ParseFen(data.StartFEN)
-	h := search.NewEngineHolder(2)
-	h.Engines[0].Position = &test
-	h.Engines[1].Position = &test2
+	// test := engine.Position{}
+	// test.ParseFen(data.StartFEN)
+	// test2 := engine.Position{}
+	// test2.ParseFen(data.StartFEN)
+	// test3 := engine.Position{}
+	// test3.ParseFen(data.StartFEN)
+	// test4 := engine.Position{}
+	// test4.ParseFen(data.StartFEN)
+	// h := search.NewEngineHolder(4)
+	// h.Engines[0].Position = &test
+	// h.Engines[1].Position = &test2
+	// h.Engines[2].Position = &test3
+	// h.Engines[3].Position = &test4
+	// h.ClearForSearch()
 
-	time1 := time.Now()
-
-	h.Search(6)
-	util.TimeTrackMilliseconds(time1, "new")
-	fmt.Printf("\n\n")
+	// time1 := time.Now()
+	// h.Search(15)
+	//util.TimeTrackMilliseconds(time1, "new")
+	//fmt.Printf("\n\nstored %v (%v)\n", h.TranspositionTable.Stored, h.NodeCount)
+	search.RunBenchmark()
 	//time2 := time.Now()
 
 	//testOld()

@@ -127,7 +127,7 @@ func (p *Position) MakeMove(move int) (bool, int, int) {
 		p.TakeMoveBack(move, p.EnPassant, castlePerm)
 		return false, p.EnPassant, castlePerm
 	}
-
+	//p.History[p.PositionKey]++
 	return true, enPas, castlePerm
 }
 
@@ -190,6 +190,7 @@ func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int) {
 			p.AddPiece(data.Square120ToSquare64[from], data.BP)
 		}
 	}
+	//p.History[p.PositionKey]--
 }
 
 func (p *Position) MovePiece(from, to int) {

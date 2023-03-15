@@ -24,7 +24,7 @@ func (e *Engine) AlphaBetatest(alpha, beta, depthLeft, searchHeight int, nullAll
 		return e.quiescence(alpha, beta, searchHeight)
 	}
 	//TODO checkUp
-	e.Nodes++
+	e.Parent.NodeCount++
 	//TODO isRepetitionOrFiftyMove
 	inCheck2 := attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos)
 	inCheck := e.Position.IsKingAttacked(e.Position.Side ^ 1)
@@ -42,8 +42,8 @@ func (e *Engine) AlphaBetatest(alpha, beta, depthLeft, searchHeight int, nullAll
 
 	score := -data.ABInfinite
 	pvMove := data.NoMove
-	if e.TranspositionTable.Get(e.Position.PositionKey, e.Position.Play, &pvMove, &score, alpha, beta, depthLeft) {
-		e.TranspositionTable.Cut++
+	if e.Parent.TranspositionTable.Get(e.Position.PositionKey, e.Position.Play, &pvMove, &score, alpha, beta, depthLeft) {
+		e.Parent.TranspositionTable.Cut++
 		return score
 	}
 
@@ -116,7 +116,7 @@ func (e *Engine) AlphaBetatest(alpha, beta, depthLeft, searchHeight int, nullAll
 					fmt.Printf("Storing %v for depth %v\n", io.PrintMove(bestMove), depth)
 					moveGen.StorePvMove(pos, bestMove, beta, data.PVBeta, depth, table)
 					fmt.Printf("Storing %v for depth %v\n\n", io.PrintMove(bestMove), depthLeft)
-					e.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, beta, data.PVBeta, depthLeft)
+					e.Parent.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, beta, data.PVBeta, depthLeft)
 					return beta
 				}
 				alpha = score

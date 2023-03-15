@@ -2,7 +2,6 @@ package engine
 
 import (
 	"math/bits"
-	"sync"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
@@ -80,32 +79,26 @@ var rookSemiOpenFile = 5
 var queenOpenFile = 5
 var queenSemiOpenFile = 3
 var bishopPair = 30
-var score int
+
+// var score int
 
 func (p *Position) Evaluate() int {
-	var wg sync.WaitGroup
 
-	score = p.calculateWhiteMaterial() - p.calculateBlackMaterial()
+	p.CurrentScore = p.calculateWhiteMaterial() - p.calculateBlackMaterial()
+
 	bothPawns := p.Board.WhitePawn | p.Board.BlackPawn
 
-	wg.Add(1)
-	p.calculateEvalPawns(&wg)
-	wg.Add(1)
-	p.calculateEvalKnights(&wg)
-	wg.Add(1)
-	p.calculateEvalBishop(&wg)
-	wg.Add(1)
-	p.calculateEvalRook(&wg, bothPawns)
-	wg.Add(1)
-	p.calculateEvalQueens(&wg, bothPawns)
-	wg.Add(1)
-	p.calculateEvalKings(&wg)
-	wg.Wait()
+	p.calculateEvalPawns()
+	p.calculateEvalKnights()
+	p.calculateEvalBishop()
+	p.calculateEvalRook(bothPawns)
+	p.calculateEvalQueens(bothPawns)
+	p.calculateEvalKings()
 
 	if p.Side == data.White {
-		return score
+		return p.CurrentScore
 	} else {
-		return -score
+		return -p.CurrentScore
 	}
 }
 
@@ -135,51 +128,48 @@ func isEndGame() int {
 	return (1 * data.PieceVal[data.WR]) + (2 * data.PieceVal[data.WN]) + (2 * data.PieceVal[data.WP]) + data.PieceVal[data.WK]
 }
 
-func (p *Position) calculateEvalPawns(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (p *Position) calculateEvalPawns() {
 	for wp := p.Board.WhitePawn; wp != 0; wp &= wp - 1 {
 		sq := bits.TrailingZeros64(wp)
-		score += pawnTable[sq]
+		p.CurrentScore += pawnTable[sq]
 		if data.IsolatedMask[sq]&p.Board.WhitePawn == 0 {
-			score += pawnIsolated
+			p.CurrentScore += pawnIsolated
 		}
 
 		if data.WhitePassedMask[sq]&p.Board.BlackPawn == 0 {
-			score += pawnPassed[data.RanksBoard[data.Square64ToSquare120[sq]]]
+			p.CurrentScore += pawnPassed[data.RanksBoard[data.Square64ToSquare120[sq]]]
 		}
 	}
 
 	for bp := p.Board.BlackPawn; bp != 0; bp &= bp - 1 {
 		sq := bits.TrailingZeros64(bp)
-		score -= pawnTable[data.Mirror64[sq]]
+		p.CurrentScore -= pawnTable[data.Mirror64[sq]]
 
 		if data.IsolatedMask[sq]&p.Board.BlackPawn == 0 {
-			score -= pawnIsolated
+			p.CurrentScore -= pawnIsolated
 		}
 
 		if data.BlackPassedMask[sq]&p.Board.WhitePawn == 0 {
-			score -= pawnPassed[data.Rank8-data.RanksBoard[data.Square64ToSquare120[sq]]]
+			p.CurrentScore -= pawnPassed[data.Rank8-data.RanksBoard[data.Square64ToSquare120[sq]]]
 		}
 	}
 }
-func (p *Position) calculateEvalKnights(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (p *Position) calculateEvalKnights() {
 	bb := p.Board.WhiteKnight
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		score += knightTable[sq]
+		p.CurrentScore += knightTable[sq]
 	}
 	bb = p.Board.BlackKnight
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		score -= knightTable[data.Mirror64[sq]]
+		p.CurrentScore -= knightTable[data.Mirror64[sq]]
 	}
 }
 
-func (p *Position) calculateEvalBishop(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (p *Position) calculateEvalBishop() {
 	bb := p.Board.WhiteBishop
 	countWB := 0
 	countBB := 0
@@ -187,60 +177,58 @@ func (p *Position) calculateEvalBishop(wg *sync.WaitGroup) {
 		countWB++
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		score += bishopTable[sq]
+		p.CurrentScore += bishopTable[sq]
 	}
 	bb = p.Board.BlackBishop
 	for bb != 0 {
 		countBB++
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		score -= bishopTable[data.Mirror64[sq]]
+		p.CurrentScore -= bishopTable[data.Mirror64[sq]]
 	}
 	if countWB >= 2 {
-		score += bishopPair
+		p.CurrentScore += bishopPair
 	}
 	if countBB >= 2 {
-		score -= bishopPair
+		p.CurrentScore -= bishopPair
 	}
 }
-func (p *Position) calculateEvalRook(wg *sync.WaitGroup, bothPawns uint64) {
-	defer wg.Done()
+func (p *Position) calculateEvalRook(bothPawns uint64) {
 	bb := p.Board.WhiteRook
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		score += rookTable[sq]
+		p.CurrentScore += rookTable[sq]
 
 		if bothPawns&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score += rookOpenFile
+			p.CurrentScore += rookOpenFile
 		} else if p.Board.WhitePawn&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score += rookSemiOpenFile
+			p.CurrentScore += rookSemiOpenFile
 		}
 	}
 	bb = p.Board.BlackRook
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		score -= rookTable[data.Mirror64[sq]]
+		p.CurrentScore -= rookTable[data.Mirror64[sq]]
 
 		if bothPawns&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score -= rookOpenFile
+			p.CurrentScore -= rookOpenFile
 		} else if p.Board.BlackPawn&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score -= rookSemiOpenFile
+			p.CurrentScore -= rookSemiOpenFile
 		}
 	}
 }
 
-func (p *Position) calculateEvalQueens(wg *sync.WaitGroup, bothPawns uint64) {
-	defer wg.Done()
+func (p *Position) calculateEvalQueens(bothPawns uint64) {
 	bb := p.Board.WhiteQueen
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
 		if bothPawns&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score += queenOpenFile
+			p.CurrentScore += queenOpenFile
 		} else if p.Board.WhitePawn&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score += queenSemiOpenFile
+			p.CurrentScore += queenSemiOpenFile
 		}
 	}
 	bb = p.Board.BlackQueen
@@ -248,23 +236,22 @@ func (p *Position) calculateEvalQueens(wg *sync.WaitGroup, bothPawns uint64) {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
 		if bothPawns&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score -= queenOpenFile
+			p.CurrentScore -= queenOpenFile
 		} else if p.Board.BlackPawn&data.FileBBMask[data.FilesBoard[data.Square64ToSquare120[sq]]] == 0 {
-			score -= queenSemiOpenFile
+			p.CurrentScore -= queenSemiOpenFile
 		}
 	}
 }
 
-func (p *Position) calculateEvalKings(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (p *Position) calculateEvalKings() {
 	bb := p.Board.WhiteKing
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
 		if p.calculateBlackMaterial() <= isEndGame() {
-			score += kingE[sq]
+			p.CurrentScore += kingE[sq]
 		} else {
-			score += kingO[sq]
+			p.CurrentScore += kingO[sq]
 		}
 	}
 	bb = p.Board.BlackKing
@@ -272,9 +259,9 @@ func (p *Position) calculateEvalKings(wg *sync.WaitGroup) {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
 		if p.calculateWhiteMaterial() <= isEndGame() {
-			score -= kingE[data.Mirror64[sq]]
+			p.CurrentScore -= kingE[data.Mirror64[sq]]
 		} else {
-			score -= kingO[data.Mirror64[sq]]
+			p.CurrentScore -= kingO[data.Mirror64[sq]]
 		}
 	}
 }
