@@ -56,13 +56,14 @@ func (p *Position) MakeNullMove() (bool, int, int) {
 	return true, enPas, p.CastlePermission
 }
 
-func (p *Position) MakeMove(move int) (bool, int, int) {
+func (p *Position) MakeMove(move int) (bool, int, int, int) {
 	p.CheckBitboard()
 	from := data.FromSquare(move)
 	to := data.ToSquare(move)
 	side := p.Side
 	castlePerm := p.CastlePermission
 	enPas := p.EnPassant
+	fifty := p.FiftyMove
 	if (move & data.MFLAGEP) != 0 {
 		if side == data.White {
 			p.ClearPiece(data.Square120ToSquare64[to-10])
@@ -93,15 +94,17 @@ func (p *Position) MakeMove(move int) (bool, int, int) {
 	p.EnPassant = data.NoSquare
 	p.hashCastle()
 
+	p.FiftyMove++
 	captured := data.Captured(move)
 	if captured != data.Empty {
+		p.FiftyMove = 0
 		p.ClearPiece(data.Square120ToSquare64[to])
 	}
-
 	p.Play++
 
 	piece := p.Board.PieceAt(data.Square120ToSquare64[from])
 	if piece == WP || piece == BP {
+		p.FiftyMove = 0
 		if (move & data.MFLAGPS) != 0 {
 			if side == data.White {
 				p.EnPassant = from + 10
@@ -124,14 +127,14 @@ func (p *Position) MakeMove(move int) (bool, int, int) {
 	p.hashSide()
 
 	if p.IsKingAttacked(p.Side) {
-		p.TakeMoveBack(move, p.EnPassant, castlePerm)
-		return false, p.EnPassant, castlePerm
+		p.TakeMoveBack(move, p.EnPassant, castlePerm, fifty)
+		return false, p.EnPassant, castlePerm, fifty
 	}
 	//p.History[p.PositionKey]++
-	return true, enPas, castlePerm
+	return true, enPas, castlePerm, fifty
 }
 
-func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int) {
+func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int, fifty int) {
 	p.CheckBitboard()
 	p.Play--
 	from := data.FromSquare(move)
@@ -145,6 +148,7 @@ func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int) {
 
 	p.CastlePermission = castlePerm
 	p.EnPassant = enPas
+	p.FiftyMove = fifty
 
 	if p.EnPassant != data.NoSquare && p.EnPassant != Empty {
 		p.hashEnPas()

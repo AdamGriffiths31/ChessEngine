@@ -11,6 +11,7 @@ type Position struct {
 	FailHigh         float32
 	MoveHistory      MoveHistory
 	CurrentScore     int
+	FiftyMove        int
 }
 
 type Bitboard struct {

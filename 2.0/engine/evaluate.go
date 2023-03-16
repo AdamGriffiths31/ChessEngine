@@ -84,6 +84,9 @@ var bishopPair = 30
 
 func (p *Position) Evaluate() int {
 
+	if p.isMaterialDraw() {
+		return 0
+	}
 	p.CurrentScore = p.calculateWhiteMaterial() - p.calculateBlackMaterial()
 
 	bothPawns := p.Board.WhitePawn | p.Board.BlackPawn
@@ -264,4 +267,31 @@ func (p *Position) calculateEvalKings() {
 			p.CurrentScore -= kingO[data.Mirror64[sq]]
 		}
 	}
+}
+
+func (p *Position) isMaterialDraw() bool {
+	if p.Board.WhitePawn != 0 || p.Board.BlackPawn != 0 ||
+		p.Board.WhiteQueen != 0 || p.Board.BlackQueen != 0 ||
+		p.Board.WhiteRook != 0 || p.Board.BlackRook != 0 {
+		return false
+	}
+	wKnightsNum := p.Board.CountBits(p.Board.WhiteKnight)
+	bKnightsNum := p.Board.CountBits(p.Board.BlackKnight)
+	wBishopsNum := p.Board.CountBits(p.Board.WhiteBishop)
+	bBishopsNum := p.Board.CountBits(p.Board.BlackBishop)
+	all := wKnightsNum + bKnightsNum + wBishopsNum + bBishopsNum
+
+	if all <= 1 {
+		if wKnightsNum != 0 {
+			return wKnightsNum == 1
+		} else if bKnightsNum != 0 {
+			return bKnightsNum == 1
+		} else if wBishopsNum != 0 {
+			return wBishopsNum == 1
+		} else if bBishopsNum != 0 {
+			return wBishopsNum == 1
+		}
+	}
+
+	return false
 }

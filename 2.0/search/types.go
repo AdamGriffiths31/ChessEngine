@@ -22,6 +22,7 @@ type EngineHolder struct {
 	CancelSearch       context.CancelFunc
 	TranspositionTable *engine.Cache
 	NodeCount          uint64
+	UseBook            bool
 }
 
 func NewEngineHolder(numberOfThreads int) *EngineHolder {
@@ -36,6 +37,7 @@ func NewEngineHolder(numberOfThreads int) *EngineHolder {
 		engines[i] = engine
 	}
 	t.Engines = engines
+	t.TranspositionTable = engine.NewCache()
 	return t
 }
 

@@ -88,7 +88,7 @@ func (b *Bitboard) RemovePieceAtSquare(sq64, piece int) {
 
 // PieceAt returns the piece at a given square
 func (b *Bitboard) PieceAt(sq64 int) int {
-	if sq64 == data.NoSquare {
+	if sq64 == data.NoSquare || sq64 < 0 || sq64 >= 64 {
 		return data.Empty
 	}
 	mask := data.SquareMask[sq64]
@@ -218,4 +218,24 @@ func (b *Bitboard) PrintBoard() {
 	}
 	fmt.Printf("\n")
 	fmt.Printf("\n")
+}
+
+func (b *Bitboard) copy() Bitboard {
+	return Bitboard{
+		Pieces:      b.Pieces,
+		BlackPieces: b.BlackPieces,
+		BlackPawn:   b.BlackPawn,
+		BlackKnight: b.BlackKnight,
+		BlackBishop: b.BlackBishop,
+		BlackRook:   b.BlackRook,
+		BlackQueen:  b.BlackQueen,
+		BlackKing:   b.BlackKing,
+		WhitePieces: b.WhitePieces,
+		WhitePawn:   b.WhitePawn,
+		WhiteKnight: b.WhiteKnight,
+		WhiteBishop: b.WhiteBishop,
+		WhiteRook:   b.WhiteRook,
+		WhiteQueen:  b.WhiteQueen,
+		WhiteKing:   b.WhiteKing,
+	}
 }

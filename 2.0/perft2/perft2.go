@@ -39,7 +39,7 @@ func Perft2(depth int, e search.Engine) {
 	// }
 	for moveNum := 0; moveNum < ml.Count; moveNum++ {
 		//allowed2 := movegen.MakeMove(ml.Moves[moveNum].Move, pos)
-		allowed, enpas, castle := e.Position.MakeMove(ml.Moves[moveNum].Move)
+		allowed, enpas, castle, fifty := e.Position.MakeMove(ml.Moves[moveNum].Move)
 
 		// if allowed != allowed2 {
 		// 	fmt.Printf("new said %v old said %v for %v \n", allowed, allowed2, io.PrintMove(ml.Moves[moveNum].Move))
@@ -51,7 +51,7 @@ func Perft2(depth int, e search.Engine) {
 			continue
 		}
 		Perft2(depth-1, e)
-		e.Position.TakeMoveBack(ml.Moves[moveNum].Move, enpas, castle)
+		e.Position.TakeMoveBack(ml.Moves[moveNum].Move, enpas, castle, fifty)
 		//movegen.TakeMoveBack(pos)
 	}
 }
@@ -103,7 +103,7 @@ func PerftTest2(depth int, fen string) int64 {
 	for moveNum := 0; moveNum < ml.Count; moveNum++ {
 		move := ml.Moves[moveNum].Move
 		// allowedOld := movegen.MakeMove(ml.Moves[moveNum].Move, &bOld)
-		allowed, enpas, castle := b.Position.MakeMove(move)
+		allowed, enpas, castle, fifty := b.Position.MakeMove(move)
 		// if allowed != allowedOld {
 		// 	fmt.Printf("%v was not found for old", io.PrintMove(ml.Moves[moveNum].Move))
 		// 	b.Position.Board.PrintBitboard(b.Position.Board.Pieces)
@@ -114,7 +114,7 @@ func PerftTest2(depth int, fen string) int64 {
 		}
 
 		Perft2(depth-1, b)
-		b.Position.TakeMoveBack(move, enpas, castle)
+		b.Position.TakeMoveBack(move, enpas, castle, fifty)
 		//movegen.TakeMoveBack(&bOld)
 
 	}
