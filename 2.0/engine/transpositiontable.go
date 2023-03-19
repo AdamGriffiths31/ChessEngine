@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"sync/atomic"
 	"unsafe"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
@@ -14,7 +13,6 @@ type CacheEntry struct {
 	Age     int
 	SMPData uint64
 	SMPKey  uint64
-	Gate    int32
 }
 
 type Cache struct {
@@ -44,67 +42,66 @@ func (c *Cache) Store(key uint64, play int, move, score, flag, depth int) {
 	replace := false
 
 	oldValue := c.CacheTable[index]
-	if atomic.CompareAndSwapInt32(&oldValue.Gate, 0, 1) {
-		oldKey := oldValue.SMPKey
-		oldData := oldValue.SMPData
-		oldPosKey := oldKey ^ oldData
+	oldKey := oldValue.SMPKey
+	oldData := oldValue.SMPData
+	oldPosKey := oldKey ^ oldData
 
-		if oldData == 0 {
+	if oldData == 0 {
+		replace = true
+	} else if oldPosKey == key {
+		replace = (flag == data.PVExact) || (uint64(depth) >= extractDepth(c.CacheTable[index].SMPData)-3)
+	} else {
+		if c.CacheTable[index].Age < c.CurrentAge {
 			replace = true
-		} else if oldPosKey == key {
-			replace = (flag == data.PVExact) || (uint64(depth) >= extractDepth(c.CacheTable[index].SMPData)-3)
-		} else {
-			if c.CacheTable[index].Age < c.CurrentAge {
-				replace = true
-			} else if extractDepth(c.CacheTable[index].SMPData) <= uint64(depth) {
-				replace = true
-			}
+		} else if extractDepth(c.CacheTable[index].SMPData) <= uint64(depth) {
+			replace = true
 		}
+	}
 
-		if replace {
-			c.Stored++
-			if score > data.Mate {
-				score += play
-			} else if score < -data.Mate {
-				score -= play
-			}
-			smpData := foldData(uint64(score), uint64(depth), uint64(flag), move)
-			smpKey := key ^ smpData
-			c.CacheTable[index].Age = c.CurrentAge
-			c.CacheTable[index].SMPData = smpData
-			c.CacheTable[index].SMPKey = smpKey
+	if replace {
+		c.Stored++
+		if score > data.Mate {
+			score += play
+		} else if score < -data.Mate {
+			score -= play
 		}
-		atomic.StoreInt32(&oldValue.Gate, 0)
+		smpData := foldData(uint64(score), uint64(depth), uint64(flag), move)
+		smpKey := key ^ smpData
+		c.CacheTable[index].Age = c.CurrentAge
+		c.CacheTable[index].SMPData = smpData
+		c.CacheTable[index].SMPKey = smpKey
 	}
 }
 
 func (c *Cache) Get(key uint64, play int, move *int, score *int, alpha, beta, depth int) bool {
 	index := key % uint64(c.NumberEntries)
 	entry := c.CacheTable[index]
-	if atomic.CompareAndSwapInt32(&entry.Gate, 0, 1) {
-		testKey := key ^ entry.SMPData
-		if testKey == c.CacheTable[index].SMPKey {
-			*move = extractMove(entry.SMPData)
-			if int(extractDepth(entry.SMPData)) >= depth {
-				c.Hit++
-				*score = int(extractScore(entry.SMPData))
-				if *score > data.Mate {
-					*score -= play
-				} else if *score < -data.Mate {
-					*score += play
+	testKey := key ^ entry.SMPData
+	if testKey == c.CacheTable[index].SMPKey {
+		*move = extractMove(entry.SMPData)
+		if int(extractDepth(entry.SMPData)) >= depth {
+			c.Hit++
+			*score = int(extractScore(entry.SMPData))
+			if *score > data.Mate {
+				*score -= play
+			} else if *score < -data.Mate {
+				*score += play
+			}
+			switch extractFlag(entry.SMPData) {
+			case data.PVAlpha:
+				if *score <= alpha {
+					*score = alpha
+					return true
 				}
-				switch extractFlag(entry.SMPData) {
-				case data.PVAlpha:
-					if *score <= alpha {
-						*score = alpha
-					}
-				case data.PVBeta:
-					if *score >= beta {
-						*score = beta
-					}
+			case data.PVBeta:
+				if *score >= beta {
+					*score = beta
+					return true
 				}
-				atomic.StoreInt32(&entry.Gate, 0)
+			case data.PVExact:
 				return true
+			default:
+				panic(fmt.Errorf("ProbePvTable: flag was not found"))
 			}
 		}
 	}
@@ -134,6 +131,6 @@ func foldData(score, depth, flag uint64, move int) uint64 {
 func NewCache() *Cache {
 	size := ((0x100000 * 64) / int(unsafe.Sizeof(CacheEntry{})))
 	length := size - 2
-	fmt.Printf("%v cache size\n", length)
+	fmt.Printf("\n\n%v cache size\n\n", length)
 	return &Cache{make([]CacheEntry, length), length, 0, 0, 0, 0}
 }

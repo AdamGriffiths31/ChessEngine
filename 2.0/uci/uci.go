@@ -21,7 +21,7 @@ type UCI struct {
 
 func NewUCI() *UCI {
 	return &UCI{
-		search.NewEngineHolder(1),
+		search.NewEngineHolder(6),
 	}
 }
 
@@ -67,6 +67,10 @@ func (uci *UCI) UCIMode() {
 		} else if text == "run" {
 			uci.engineHolder.UseBook = false
 			uci.parseGo("go infinite", game, &info)
+		} else if text == "test" {
+			uci.parsePosition("position startpos moves d2d4 d7d5 c1g5 f7f6 g5h4 g8h6 e2e3 h6f5 h4g3 b8c6 b1c3 g7g6 f1b5 a7a6 b5c6 b7c6 g1f3 f8g7 e3e4 d5e4 c3e4 a8b8 b2b3 g6g5 h2h3 h7h5 c2c3 f5g3 e4g3 d8d5 c3c4 d5e6 e1f1 h5h4 g3e2 g5g4 f3g1 f6f5 d1d2 c6c5 a1d1 c5d4 e2d4 e6d6 f2f4 g4f3 g1f3 c7c5 d4c2 d6d2 d1d2 c8b7 d2d1 h8h5 c2e3 e7e5 f3e1 f5f4 e3d5 e5e4 d5c7 e8e7 f1g1 b8c8", game)
+			game.Position().Board.PrintBoard()
+			//uci.parseGo("go wtime 45195 btime 58866 winc 5000 binc 5000", game, &info)
 		} else if text == "quit" {
 			info.Quit = data.True
 			break
@@ -223,7 +227,7 @@ func (uci *UCI) parsePosition(lineIn string, game engine.Game) {
 				fmt.Printf("UCI move error: Parsing UCI (%v) (%v) %v - %v\n", parts[i], lineIn, move, io.PrintMove(move))
 			}
 			game.Position().MakeMove(move)
-			fmt.Printf("Debug: %v has been played it is now %v\n", io.PrintMove(move), game.Position().Side)
+			game.Position().Play = 0
 		}
 	}
 }

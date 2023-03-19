@@ -38,10 +38,10 @@ func (h *EngineHolder) Search(info *data.SearchInfo) {
 
 	for _, engine := range h.Engines {
 		wg.Add(1)
-		fmt.Printf("worker added\n")
+		fmt.Printf("worker added %v\n", e.Position.PositionKey)
 		go func(e *Engine) {
-			defer wg.Done()
 			e.SearchRoot(info)
+			wg.Done()
 		}(engine)
 	}
 
@@ -61,16 +61,31 @@ func (e *EngineHolder) ClearForSearch() {
 
 func (e *Engine) ClearForSearch() {
 	e.Position.FiftyMove = 0
+	e.Position.CurrentScore = 0
+
+	for i := 0; i < 13; i++ {
+		for j := 0; j < 120; j++ {
+			e.Position.MoveHistory.History[i][j] = 0
+		}
+	}
+
+	for i := 0; i < 2; i++ {
+		for j := 0; j < data.MaxDepth; j++ {
+			e.Position.MoveHistory.Killers[i][j] = 0
+		}
+	}
 }
 
 func (e *Engine) SearchRoot(info *data.SearchInfo) {
 	defer recoverFromTimeout()
-	fmt.Printf("worker searching\n")
 	info.Stopped = false
 	info.ForceStop = false
 	bestMove := data.NoMove
+	e.ClearForSearch()
 	for currentDepth := 1; currentDepth <= info.Depth; currentDepth++ {
-		e.ClearForSearch()
+		if e.IsMainEngine {
+			fmt.Printf("Searching depth %v\n", currentDepth)
+		}
 		score := e.alphaBeta(-30000, 30000, currentDepth, 0, true, info)
 		if info.Stopped {
 			break
@@ -113,6 +128,10 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 
 	if e.isRepetitionOrFiftyMove() {
 		return 0
+	}
+
+	if searchHeight > data.MaxDepth-1 {
+		return e.Position.Evaluate()
 	}
 
 	inCheck := e.Position.IsKingAttacked(e.Position.Side ^ 1)
@@ -197,7 +216,7 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 
 	}
 	if legal == 0 {
-		if e.Position.IsKingAttacked(e.Position.Side) {
+		if e.Position.IsKingAttacked(e.Position.Side ^ 1) {
 			return -data.ABInfinite + e.Position.Play
 		} else {
 			return 0
@@ -223,6 +242,10 @@ func (e *Engine) quiescence(alpha, beta, searchHeight int, info *data.SearchInfo
 	e.Checkup(info)
 
 	e.NodesVisited++
+
+	if searchHeight > data.MaxDepth-1 {
+		return e.Position.Evaluate()
+	}
 
 	score := e.Position.Evaluate()
 
@@ -269,7 +292,7 @@ func (e *Engine) quiescence(alpha, beta, searchHeight int, info *data.SearchInfo
 }
 
 func (e *Engine) PickNextMove(moveNum int, ml *engine.MoveList) {
-	bestScore := math.MinInt32
+	bestScore := 0
 	bestNum := moveNum
 	for i := moveNum; i < ml.Count; i++ {
 		if ml.Moves[i].Score > bestScore {
@@ -277,7 +300,9 @@ func (e *Engine) PickNextMove(moveNum int, ml *engine.MoveList) {
 		}
 	}
 
-	ml.Moves[moveNum], ml.Moves[bestNum] = ml.Moves[bestNum], ml.Moves[moveNum]
+	holder := ml.Moves[moveNum]
+	ml.Moves[moveNum] = ml.Moves[bestNum]
+	ml.Moves[bestNum] = holder
 }
 
 func (e *Engine) isRepetitionOrFiftyMove() bool {

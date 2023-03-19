@@ -74,19 +74,17 @@ func MoveExists(pos *data.Board, move int) bool {
 }
 
 func addQuiteMove(pos *data.Board, move int, moveList *data.MoveList) {
-	// moveList.Moves[moveList.Count].Move = move
-
-	// switch move {
-	// case pos.SearchKillers[0][pos.Play]:
-	// 	moveList.Moves[moveList.Count].Score = 900000
-	// case pos.SearchKillers[1][pos.Play]:
-	// 	moveList.Moves[moveList.Count].Score = 800000
-	// default:
-	// 	moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[data.FromSquare(move)]][data.ToSquare(move)]
-	// }
-
 	moveList.Moves[moveList.Count].Move = move
-	moveList.Moves[moveList.Count].Score = 0
+
+	switch move {
+	case pos.SearchKillers[0][pos.Play]:
+		moveList.Moves[moveList.Count].Score = 900000
+	case pos.SearchKillers[1][pos.Play]:
+		moveList.Moves[moveList.Count].Score = 800000
+	default:
+		moveList.Moves[moveList.Count].Score = pos.SearchHistory[pos.Pieces[data.FromSquare(move)]][data.ToSquare(move)]
+	}
+
 	moveList.Count++
 }
 

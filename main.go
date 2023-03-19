@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
+	"strings"
 
 	"github.com/AdamGriffiths31/ChessEngine/2.0/search"
+	"github.com/AdamGriffiths31/ChessEngine/2.0/uci"
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/evaluate"
@@ -26,29 +29,47 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-	search.RunBenchmark()
-	// reader := bufio.NewReader(os.Stdin)
-	// for {
-	// 	input, err := reader.ReadString('\n')
-	// 	if err != nil {
-	// 		panic(fmt.Errorf("main reader loop: %v", err))
-	// 	}
-	// 	input = strings.TrimSpace(input)
 
-	// 	if input == "uci" {
-	// 		uci := uci.NewUCI()
-	// 		uci.UCIMode()
-	// 		continue
-	// 	}
+	// table := &data.PVTable{}
+	// hash := &data.PvHashTable{HashTable: table}
+	// data.InitPvTable(hash.HashTable)
+	// pos := data.NewBoardPos()
+	// board.ParseFEN(data.StartFEN, pos)
+	// fmt.Printf("%v score\n", evaluate.EvalPosition(pos))
 
-	// 	if input == "b" {
-	// 		search.RunBenchmark()
-	// 	}
+	// board := engine.Bitboard{}
+	// pos1 := &engine.Position{Board: board}
+	// b := search.Engine{Position: pos1}
+	// b.Position.ParseFen(data.StartFEN)
+	// fmt.Printf("%v score\n", b.Position.Evaluate())
 
-	// 	if input == "quit" {
-	// 		break
-	// 	}
-	// }
+	// search2.RunBenchmark()
+
+	// search.RunBenchmark()
+
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			panic(fmt.Errorf("main reader loop: %v", err))
+		}
+		input = strings.TrimSpace(input)
+
+		if input == "uci" {
+			uci := uci.NewUCI()
+			uci.UCIMode()
+			continue
+		}
+
+		if input == "b" {
+			search2.RunBenchmark()
+			search.RunBenchmark()
+		}
+
+		if input == "quit" {
+			break
+		}
+	}
 }
 
 func testOld() {

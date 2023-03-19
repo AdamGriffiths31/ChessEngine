@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"math"
 	"math/bits"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
@@ -80,11 +81,9 @@ var queenOpenFile = 5
 var queenSemiOpenFile = 3
 var bishopPair = 30
 
-// var score int
-
 func (p *Position) Evaluate() int {
 
-	if p.isMaterialDraw() {
+	if p.Board.WhitePawn == 0 && p.Board.BlackPawn == 0 && p.isMaterialDraw() {
 		return 0
 	}
 	p.CurrentScore = p.calculateWhiteMaterial() - p.calculateBlackMaterial()
@@ -270,26 +269,45 @@ func (p *Position) calculateEvalKings() {
 }
 
 func (p *Position) isMaterialDraw() bool {
-	if p.Board.WhitePawn != 0 || p.Board.BlackPawn != 0 ||
-		p.Board.WhiteQueen != 0 || p.Board.BlackQueen != 0 ||
-		p.Board.WhiteRook != 0 || p.Board.BlackRook != 0 {
-		return false
-	}
-	wKnightsNum := p.Board.CountBits(p.Board.WhiteKnight)
-	bKnightsNum := p.Board.CountBits(p.Board.BlackKnight)
-	wBishopsNum := p.Board.CountBits(p.Board.WhiteBishop)
-	bBishopsNum := p.Board.CountBits(p.Board.BlackBishop)
-	all := wKnightsNum + bKnightsNum + wBishopsNum + bBishopsNum
+	if p.Board.WhiteQueen == 0 && p.Board.BlackQueen == 0 ||
+		p.Board.WhiteQueen == 0 && p.Board.BlackQueen == 0 && p.Board.WhiteRook == 0 && p.Board.BlackRook == 0 {
+		wKnightsNum := p.Board.CountBits(p.Board.WhiteKnight)
+		bKnightsNum := p.Board.CountBits(p.Board.BlackKnight)
+		wBishopsNum := p.Board.CountBits(p.Board.WhiteBishop)
+		bBishopsNum := p.Board.CountBits(p.Board.BlackBishop)
+		wRooksNum := p.Board.CountBits(p.Board.WhiteRook)
+		bRooksNum := p.Board.CountBits(p.Board.BlackRook)
+		wQueenNum := p.Board.CountBits(p.Board.WhiteQueen)
+		bQueenNum := p.Board.CountBits(p.Board.BlackQueen)
 
-	if all <= 1 {
-		if wKnightsNum != 0 {
-			return wKnightsNum == 1
-		} else if bKnightsNum != 0 {
-			return bKnightsNum == 1
-		} else if wBishopsNum != 0 {
-			return wBishopsNum == 1
-		} else if bBishopsNum != 0 {
-			return wBishopsNum == 1
+		if wRooksNum == 0 && bRooksNum == 0 && wQueenNum == 0 && bQueenNum == 0 {
+			if wBishopsNum == 0 && bBishopsNum == 0 {
+				if wKnightsNum < 3 && bKnightsNum < 3 {
+					return true
+				}
+			} else if wKnightsNum == 0 && bKnightsNum == 0 {
+				if math.Abs(float64(wBishopsNum-bBishopsNum)) < 2 {
+					return true
+				}
+			} else if (wKnightsNum < 3 && wBishopsNum == 0) || (wBishopsNum == 1 && wKnightsNum == 0) {
+				if (bKnightsNum < 3 && bBishopsNum == 0) || (bBishopsNum == 1 && bKnightsNum == 0) {
+					return true
+				}
+			}
+		} else if wQueenNum == 0 && bQueenNum == 0 {
+			if wRooksNum == 1 && bRooksNum == 1 {
+				if (wKnightsNum+wBishopsNum) < 2 && (bKnightsNum+bBishopsNum) < 2 {
+					return true
+				}
+			} else if wRooksNum == 1 && bRooksNum == 0 {
+				if (wKnightsNum+wBishopsNum == 0) && (((bKnightsNum + bBishopsNum) == 1) || ((bKnightsNum + bBishopsNum) == 2)) {
+					return true
+				}
+			} else if bRooksNum == 1 && wRooksNum == 0 {
+				if (bKnightsNum+bBishopsNum == 0) && (((wKnightsNum + wBishopsNum) == 1) || ((wKnightsNum + wBishopsNum) == 2)) {
+					return true
+				}
+			}
 		}
 	}
 

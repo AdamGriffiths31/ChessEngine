@@ -116,12 +116,11 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 
 	info.Node++
 
-	// if isRepetitionOrFiftyMove(pos) {
-	// 	return 0
-	// }
+	if isRepetitionOrFiftyMove(pos) {
+		return 0
+	}
 
 	if pos.Play > data.MaxDepth-1 {
-		panic("err")
 		return evaluate.EvalPosition(pos)
 	}
 
@@ -192,8 +191,8 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 						}
 
 						if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-							//pos.SearchKillers[1][pos.Play] = pos.SearchKillers[0][pos.Play]
-							//pos.SearchKillers[0][pos.Play] = ml.Moves[i].Move
+							pos.SearchKillers[1][pos.Play] = pos.SearchKillers[0][pos.Play]
+							pos.SearchKillers[0][pos.Play] = ml.Moves[i].Move
 						}
 
 						info.FailHigh++
@@ -242,12 +241,11 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 
 	info.Node++
 
-	// if isRepetitionOrFiftyMove(pos) {
-	// 	return 0
-	// }
+	if isRepetitionOrFiftyMove(pos) {
+		return 0
+	}
 
 	if pos.Play > data.MaxDepth-1 {
-		panic("err")
 		return evaluate.EvalPosition(pos)
 	}
 
