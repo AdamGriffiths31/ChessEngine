@@ -23,6 +23,7 @@ Go implementation of a UCI compatible chess engine.
 ### v0.7
 
 - Code refactor
+- LazySMP
 
 ### v0.6 (done)
 
@@ -31,7 +32,7 @@ Go implementation of a UCI compatible chess engine.
 
 ### v0.5 (done)
 
-- PolyGlot openning book
+- PolyGlot opening book
 
 ### v0.4 (done)
 
@@ -41,14 +42,14 @@ Go implementation of a UCI compatible chess engine.
 
 ### v0.3 (done)
 
-- Xboard intergration
+- Xboard integration
 - Console mode
 
 ### v0.2 (done)
 
 - AB Logic
 - Quiescence
-- UCI intergration
+- UCI integration
 
 ### v0.1 (done)
 

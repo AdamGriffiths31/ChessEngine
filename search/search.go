@@ -1,161 +1,170 @@
 package search
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"sync"
 
-	"github.com/AdamGriffiths31/ChessEngine/attack"
-	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/data"
-	"github.com/AdamGriffiths31/ChessEngine/evaluate"
+	"github.com/AdamGriffiths31/ChessEngine/engine"
 	"github.com/AdamGriffiths31/ChessEngine/io"
-	"github.com/AdamGriffiths31/ChessEngine/moveGen"
-	polyglot "github.com/AdamGriffiths31/ChessEngine/polyGlot"
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
-// SearchPosition starts the iterative deepening alpha beta search
-func SearchPosition(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
+var moveListPool = sync.Pool{
+	New: func() interface{} {
+		return &engine.MoveList{}
+	},
+}
+
+var errTimeout = errors.New("Search timeout")
+
+func (h *EngineHolder) Search(info *data.SearchInfo) {
+	e := h.Engines[0]
+	e.IsMainEngine = true
+	if h.UseBook {
+		bestMove := GetBookMove(e.Position)
+		if bestMove != data.NoMove {
+			fmt.Printf("bestmove %s\n", io.PrintMove(bestMove))
+			return
+		}
+		fmt.Printf("No book move found for %v\n", e.Position.Side)
+	}
+	h.ClearForSearch()
+
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+
+	for _, engine := range h.Engines {
+		wg.Add(1)
+		fmt.Printf("worker added %v\n", e.Position.PositionKey)
+		go func(e *Engine) {
+			e.SearchRoot(info)
+			wg.Done()
+		}(engine)
+	}
+
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	<-done
+	fmt.Printf("bestmove %v \n", io.PrintMove(h.Move.Move))
+
+}
+
+func (e *EngineHolder) ClearForSearch() {
+	e.TranspositionTable.CurrentAge++
+}
+
+func (e *Engine) ClearForSearch() {
+	e.Position.FiftyMove = 0
+	e.Position.CurrentScore = 0
+	e.Position.PositionHistory.ClearPositionHistory()
+
+	for i := 0; i < 13; i++ {
+		for j := 0; j < 120; j++ {
+			e.Position.MoveHistory.History[i][j] = 0
+		}
+	}
+
+	for i := 0; i < 2; i++ {
+		for j := 0; j < data.MaxDepth; j++ {
+			e.Position.MoveHistory.Killers[i][j] = 0
+		}
+	}
+}
+
+func (e *Engine) SearchRoot(info *data.SearchInfo) {
+	defer recoverFromTimeout()
+	info.Stopped = false
+	info.ForceStop = false
 	bestMove := data.NoMove
-	clearForSearch(pos, info, table)
-	if data.EngineSettings.UseBook {
-		bestMove = polyglot.GetBookMove(pos)
-	}
-
-	if bestMove == data.NoMove {
-		if info.WorkerNumber == 0 {
-			iterativeDeepenNoWorkers(pos, info, table)
-		} else {
-			createWorkers(pos, info, table)
+	e.ClearForSearch()
+	for currentDepth := 1; currentDepth <= info.Depth; currentDepth++ {
+		if e.IsMainEngine {
+			fmt.Printf("Searching depth %v\n", currentDepth)
 		}
-	} else {
-		printSearchResult(pos, info, bestMove)
-	}
-}
-
-func iterativeDeepenNoWorkers(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
-	bestScore := 30000
-	bestMove := data.NoMove
-	clearForSearch(pos, info, table)
-	if data.EngineSettings.UseBook {
-		bestMove = polyglot.GetBookMove(pos)
-	}
-
-	if bestMove == data.NoMove {
-		for currentDepth := 1; currentDepth < info.Depth+1; currentDepth++ {
-			bestScore = alphaBeta(-30000, 30000, currentDepth, pos, info, true, table)
-			fmt.Printf("Score:%v Depth %v Nodes:%v hit:%v cut:%v\n", bestScore, currentDepth, info.Node, table.HashTable.Hit, table.HashTable.Cut)
-			fmt.Printf("Ordering: %.2f\n", info.FailHighFirst/info.FailHigh)
-			if info.Stopped {
-				break
-			}
-			pvMoves := moveGen.GetPvLine(currentDepth, pos, table)
-			bestMove = pos.PvArray[0]
-			printPVData(info, currentDepth, bestScore)
-			printPVLine(pos, info, pvMoves)
+		score := e.alphaBeta(-30000, 30000, currentDepth, 0, true, info)
+		if info.Stopped {
+			break
+		}
+		if e.IsMainEngine {
+			bestMove = e.Parent.TranspositionTable.Probe(e.Position.PositionKey)
+			e.Parent.Move.Move = bestMove
+			fmt.Printf("info score cp %d depth %d nodes %v time %d pv %v\n", score, currentDepth, info.Node, util.GetTimeMs()-info.StartTime, io.PrintMove(bestMove))
+			//fmt.Printf("Ordering: %.2f\n", e.Position.FailHighFirst/e.Position.FailHigh)
 		}
 	}
-	printSearchResult(pos, info, bestMove)
-}
-
-// printPVData prints the principle variation data
-func printPVData(info *data.SearchInfo, currentDepth, bestScore int) {
-	if info.GameMode == data.UCIMode {
-		fmt.Printf("info score cp %d depth %d nodes %v time %d ", bestScore, currentDepth, info.Node, util.GetTimeMs()-info.StartTime)
-	} else if info.GameMode == data.XboardMode && info.PostThinking {
-		fmt.Printf("%d %d %d %v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
-	} else if info.PostThinking {
-		fmt.Printf("depth: %d score: %d time:%d  nodes:%v\n", currentDepth, bestScore, (util.GetTimeMs()-info.StartTime)/10, info.Node)
+	if e.IsMainEngine {
+		e.Parent.CancelSearch()
 	}
 }
 
-// printPVLine prints the principle variation line data
-func printPVLine(pos *data.Board, info *data.SearchInfo, pvMoves int) {
-	if info.GameMode == data.UCIMode || info.PostThinking {
-		fmt.Printf("pv")
-		for _, move := range pos.PvArray[:pvMoves] {
-			fmt.Printf(" %s", io.PrintMove(move))
-		}
-		fmt.Printf("\n")
-		fmt.Printf("Ordering: %.2f\n", info.FailHighFirst/info.FailHigh)
+func recoverFromTimeout() {
+	err := recover()
+	if err != nil && err != errTimeout {
+		panic(err)
 	}
 }
 
-// printSearchResult prints the result of the search
-func printSearchResult(pos *data.Board, info *data.SearchInfo, bestMove int) {
-	if info.GameMode == data.UCIMode {
-		fmt.Printf("bestmove %s\n", io.PrintMove(bestMove))
-	} else if info.GameMode == data.XboardMode {
-		fmt.Printf("move %s\n", io.PrintMove(bestMove))
-		moveGen.MakeMove(bestMove, pos)
-	} else {
-		fmt.Printf("Engine plays %s\n", io.PrintMove(bestMove))
-		//moveGen.MakeMove(bestMove, pos)
-		//io.PrintBoard(pos)
-	}
-}
-
-// alphaBeta generates the score / best move for a position using quiescence, transposition tables
-// and null move pruning
-func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, doNull bool, table *data.PvHashTable) int {
-	board.CheckBoard(pos)
-
-	if depth < 0 {
-		panic(fmt.Errorf("alphaBeta depth was  %v", depth))
+func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed bool, info *data.SearchInfo) int {
+	e.Position.CheckBitboard()
+	if depthLeft < 0 {
+		panic(fmt.Errorf("alphaBeta depth was  %v", depthLeft))
 	}
 	if beta < alpha {
 		panic(fmt.Errorf("alphaBeta beta %v < alpha %v", beta, alpha))
 	}
 
-	if depth <= 0 {
-		//return evaluate.EvalPosition(pos)
-		return quiescence(alpha, beta, pos, info)
+	if depthLeft <= 0 {
+		return e.quiescence(alpha, beta, searchHeight, info)
 	}
 
-	checkUp(info)
+	e.Checkup(info)
 
-	info.Node++
+	e.NodesVisited++
 
-	if isRepetitionOrFiftyMove(pos) {
+	if e.isRepetitionOrFiftyMove() {
 		return 0
 	}
 
-	if pos.Play > data.MaxDepth-1 {
-		return evaluate.EvalPosition(pos)
+	if searchHeight > data.MaxDepth-1 {
+		return e.Position.Evaluate()
 	}
 
-	//limited value in checking the position if in check
-	inCheck := attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos)
+	inCheck := e.Position.IsKingAttacked(e.Position.Side ^ 1)
 	if inCheck {
-		depth++
+		depthLeft++
 	}
 
-	// check principle variation for a transposition score to save repeating searches
 	score := -data.ABInfinite
 	pvMove := data.NoMove
-	if moveGen.ProbePvTable(pos, &pvMove, &score, alpha, beta, depth, table) {
-		table.HashTable.Cut++
+	if e.Parent.TranspositionTable.Get(e.Position.PositionKey, e.Position.Play, &pvMove, &score, alpha, beta, depthLeft) {
+		e.Parent.TranspositionTable.Cut++
 		return score
 	}
 
-	// null move check reduces the search by trying a 'null' move, then seeing if the score
-	// of the subtree search is still high enough to cause a beta cutoff. Nodes are saved by
-	// reducing the depth of the subtree under the null move.
-	if doNull && !inCheck && pos.Play != 0 && pos.BigPiece[pos.Side] > 1 && depth >= 4 {
-		moveGen.MakeNullMove(pos)
-		score = -alphaBeta(-beta, -beta+1, depth-4, pos, info, false, table)
-		moveGen.TakeBackNullMove(pos)
+	doNullMove := nullAllowed && !inCheck && e.Position.Play != 0 && depthLeft >= 4 && !e.Position.IsEndGame()
+	if doNullMove {
+		_, enPas, castle := e.Position.MakeNullMove()
+		e.Position.PositionHistory.AddPositionHistory(e.Position.PositionKey)
+		score = -e.alphaBeta(-beta, -beta+1, depthLeft-4, searchHeight+1, false, info)
+		e.Position.PositionHistory.ClearPositionHistory()
+		e.Position.TakeNullMoveBack(enPas, castle)
 		if info.Stopped {
 			return 0
 		}
 		if score >= beta && math.Abs(float64(score)) < data.Mate {
-			info.NullCut++
 			return beta
 		}
 	}
 
-	ml := &data.MoveList{}
-	moveGen.GenerateAllMoves(pos, ml)
+	ml := moveListPool.Get().(*engine.MoveList)
+	defer moveListPool.Put(ml)
+	e.Position.GenerateAllMoves(ml)
 
 	legal := 0
 	oldAlpha := alpha
@@ -171,49 +180,49 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 			}
 		}
 	}
-
 	for i := 0; i < ml.Count; i++ {
-		pickNextMove(i, ml)
-		if moveGen.MakeMove(ml.Moves[i].Move, pos) {
-			legal++
-			score = -alphaBeta(-beta, -alpha, depth-1, pos, info, true, table)
-			moveGen.TakeMoveBack(pos)
-			if info.Stopped {
-				return 0
-			}
-			if score > bestScore {
-				bestScore = score
-				bestMove = ml.Moves[i].Move
-				if score > alpha {
-					if score >= beta {
-						if legal == 1 {
-							info.FailHighFirst++
-						}
-
-						if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-							pos.SearchKillers[1][pos.Play] = pos.SearchKillers[0][pos.Play]
-							pos.SearchKillers[0][pos.Play] = ml.Moves[i].Move
-						}
-
-						info.FailHigh++
-						moveGen.StorePvMove(pos, bestMove, beta, data.PVBeta, depth, table)
-						return beta
+		e.PickNextMove(i, ml)
+		isAllowed, enPas, CastleRight, fifty := e.Position.MakeMove(ml.Moves[i].Move)
+		if !isAllowed {
+			continue
+		}
+		legal++
+		e.Position.PositionHistory.AddPositionHistory(e.Position.PositionKey)
+		score = -e.alphaBeta(-beta, -alpha, depthLeft-1, searchHeight+1, true, info)
+		e.Position.PositionHistory.ClearPositionHistory()
+		e.Position.TakeMoveBack(ml.Moves[i].Move, enPas, CastleRight, fifty)
+		if info.Stopped {
+			return 0
+		}
+		if score > bestScore {
+			bestScore = score
+			bestMove = ml.Moves[i].Move
+			if score > alpha {
+				if score >= beta {
+					if legal == 1 {
+						e.Position.FailHighFirst++
 					}
-
-					alpha = score
-
 					if ml.Moves[i].Move&data.MFLAGCAP == 0 {
-						pos.SearchHistory[pos.Pieces[data.FromSquare(bestMove)]][data.ToSquare(bestMove)] += depth
+						e.Position.MoveHistory.Killers[1][e.Position.Play] = e.Position.MoveHistory.Killers[0][e.Position.Play]
+						e.Position.MoveHistory.Killers[0][e.Position.Play] = ml.Moves[i].Move
 					}
+					e.Position.FailHigh++
+					e.Parent.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, beta, data.PVBeta, depthLeft)
+
+					return beta
+				}
+				alpha = score
+
+				if ml.Moves[i].Move&data.MFLAGCAP == 0 {
+					e.Position.MoveHistory.History[e.Position.Board.PieceAt(data.Square120ToSquare64[data.FromSquare(bestMove)])][data.ToSquare(bestMove)] += e.Position.Play
 				}
 			}
 		}
-	}
 
-	// if no legal moves then the position must be either mate or stalemate
+	}
 	if legal == 0 {
-		if attack.SquareAttacked(pos.KingSquare[pos.Side], pos.Side^1, pos) {
-			return -data.ABInfinite + pos.Play
+		if e.Position.IsKingAttacked(e.Position.Side ^ 1) {
+			return -data.ABInfinite + e.Position.Play
 		} else {
 			return 0
 		}
@@ -222,38 +231,33 @@ func alphaBeta(alpha, beta, depth int, pos *data.Board, info *data.SearchInfo, d
 		panic(fmt.Errorf("alphaBeta alpha %v oldAlpha %v", score, oldAlpha))
 	}
 	if alpha != oldAlpha {
-		//fmt.Printf("storing %v (%v) for depth %v\n", io.PrintMove(bestMove), bestScore, depth)
-		moveGen.StorePvMove(pos, bestMove, bestScore, data.PVExact, depth, table)
+		e.Parent.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, bestScore, data.PVExact, depthLeft)
 	} else {
-		moveGen.StorePvMove(pos, bestMove, alpha, data.PVAlpha, depth, table)
+		e.Parent.TranspositionTable.Store(e.Position.PositionKey, e.Position.Play, bestMove, alpha, data.PVAlpha, depthLeft)
 	}
 	return alpha
 }
+func (e *Engine) quiescence(alpha, beta, searchHeight int, info *data.SearchInfo) int {
+	e.Position.CheckBitboard()
 
-// quiescence the purpose of this search is to only evaluate "quiet" positions, or
-// positions where there are no winning tactical moves to be made. This search is
-// needed to avoid the horizon effect.
-// TODO Delta Pruning
-func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
-	board.CheckBoard(pos)
-
-	checkUp(info)
-
-	info.Node++
-
-	if isRepetitionOrFiftyMove(pos) {
+	if e.isRepetitionOrFiftyMove() {
 		return 0
 	}
 
-	if pos.Play > data.MaxDepth-1 {
-		return evaluate.EvalPosition(pos)
+	e.Checkup(info)
+
+	e.NodesVisited++
+
+	if searchHeight > data.MaxDepth-1 {
+		return e.Position.Evaluate()
 	}
 
-	score := evaluate.EvalPosition(pos)
+	score := e.Position.Evaluate()
 
 	if !(score > -data.ABInfinite) && !(score < data.ABInfinite) {
 		panic(fmt.Errorf("quiescence score error  %v", score))
 	}
+
 	if score >= beta {
 		return beta
 	}
@@ -262,110 +266,79 @@ func quiescence(alpha, beta int, pos *data.Board, info *data.SearchInfo) int {
 		alpha = score
 	}
 
-	ml := &data.MoveList{}
-	moveGen.GenerateAllCaptures(pos, ml)
+	ml := &engine.MoveList{}
+	e.Position.GenerateAllCaptures(ml)
 	legal := 0
 	for i := 0; i < ml.Count; i++ {
-		pickNextMove(i, ml)
-		if moveGen.MakeMove(ml.Moves[i].Move, pos) {
-			score = -quiescence(-beta, -alpha, pos, info)
-			moveGen.TakeMoveBack(pos)
-			legal++
-			if info.Stopped {
-				return 0
-			}
-			if score > alpha {
-				if score >= beta {
-					if legal == 1 {
-						info.FailHighFirst++
-					}
-					info.FailHigh++
-					return beta
+		e.PickNextMove(i, ml)
+		move := ml.Moves[i].Move
+		isAllowed, enPas, CastleRight, fifty := e.Position.MakeMove(move)
+		if !isAllowed {
+			continue
+		}
+		e.Position.PositionHistory.AddPositionHistory(e.Position.PositionKey)
+		score = -e.quiescence(-beta, -alpha, searchHeight+1, info)
+		e.Position.PositionHistory.ClearPositionHistory()
+		e.Position.TakeMoveBack(move, enPas, CastleRight, fifty)
+		if info.Stopped {
+			return 0
+		}
+		legal++
+		if score > alpha {
+			if score >= beta {
+				if legal == 1 {
+					e.Position.FailHighFirst++
 				}
-				alpha = score
+				e.Position.FailHigh++
+				return beta
 			}
+			alpha = score
 		}
 	}
 	return alpha
 }
 
-// clearForSearch resets data used in search
-func clearForSearch(pos *data.Board, info *data.SearchInfo, table *data.PvHashTable) {
-	for i := 0; i < 13; i++ {
-		for j := 0; j < 120; j++ {
-			pos.SearchHistory[i][j] = 0
-		}
-	}
-
-	for i := 0; i < 2; i++ {
-		for j := 0; j < data.MaxDepth; j++ {
-			pos.SearchKillers[i][j] = 0
-		}
-	}
-
-	pos.Play = 0
-
-	table.HashTable.Cut = 0
-	table.HashTable.Hit = 0
-	table.HashTable.CurrentAge++
-	fmt.Printf("%v age\n", table.HashTable.CurrentAge)
-	info.StartTime = util.GetTimeMs()
-	info.ForceStop = false
-	info.Stopped = false
-	info.Node = 0
-	info.FailHighFirst = 0
-	info.FailHigh = 0
-	info.NullCut = 0
-	info.Cut = 0
-}
-
-// pickNextMove improves the order the moves are searched in
-func pickNextMove(moveNum int, ml *data.MoveList) {
+func (e *Engine) PickNextMove(moveNum int, ml *engine.MoveList) {
 	bestScore := 0
 	bestNum := moveNum
 	for i := moveNum; i < ml.Count; i++ {
 		if ml.Moves[i].Score > bestScore {
-			bestScore = ml.Moves[i].Score
-			bestNum = i
+			bestScore, bestNum = ml.Moves[i].Score, i
 		}
 	}
-	if moveNum < 0 || moveNum > ml.Count {
-		panic(fmt.Errorf("pickNextMove: moveNum %v", moveNum))
-	}
 
-	if bestNum < 0 || bestNum > ml.Count {
-		panic(fmt.Errorf("pickNextMove: bestNum %v", bestNum))
-	}
-
-	if bestNum < moveNum {
-		panic(fmt.Errorf("pickNextMove: bestNum %v moveNum %v", bestNum, moveNum))
-	}
 	holder := ml.Moves[moveNum]
 	ml.Moves[moveNum] = ml.Moves[bestNum]
 	ml.Moves[bestNum] = holder
 }
 
-// checkUp determines if the engine needs to stop searching and return its findings
-func checkUp(info *data.SearchInfo) {
-	if info.Node&2047 == 0 {
-		if (info.TimeSet == data.True && util.GetTimeMs() > info.StopTime) || info.ForceStop {
-			info.Stopped = true
-		}
+func (e *Engine) isRepetitionOrFiftyMove() bool {
+	if e.Position.FiftyMove >= 50 {
+		return true
 	}
-}
 
-// isRepetitionOrFiftyMove evaluate if its a repetition or a fifty move draw
-func isRepetitionOrFiftyMove(pos *data.Board) bool {
-	return isRepetition(pos) || pos.FiftyMove >= 100 && pos.Play > 0
-}
-
-// isRepetition check if the position has been seen before
-// TODO Convert this to var repetitionTable = make(map[uint64]int) in data
-func isRepetition(pos *data.Board) bool {
-	for i := pos.HistoryPlay - pos.FiftyMove; i < pos.HistoryPlay-1; i++ {
-		if pos.PositionKey == pos.History[i].PositionKey {
+	for i := e.Position.PositionHistory.Count - 2; i >= 0; i -= 2 {
+		var candidate = e.Position.PositionHistory.History[i]
+		if e.Position.PositionKey == candidate {
 			return true
 		}
 	}
-	return false
+
+	previouslySeen := e.Position.Positions[e.Position.PositionKey]
+
+	return previouslySeen >= 2
+}
+
+func (e *Engine) Checkup(info *data.SearchInfo) {
+	if (e.NodesVisited % 2048) == 0 {
+		if (info.TimeSet == data.True && util.GetTimeMs() > info.StopTime) || info.ForceStop {
+			info.Stopped = true
+		}
+		select {
+		case <-e.Parent.Ctx.Done():
+			fmt.Printf("Ending early (%v)\n", e.IsMainEngine)
+			panic(errTimeout)
+		default:
+		}
+	}
 }

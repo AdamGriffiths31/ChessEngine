@@ -3,7 +3,6 @@ package data
 import (
 	"math/rand"
 	"time"
-	"unsafe"
 )
 
 func init() {
@@ -22,26 +21,9 @@ const MaxMoves = 2048
 const MaxPositionMoves = 256
 const MaxDepth = 64
 const MaxWorkers = 32
+const BoardSize = 64
 
 const StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-
-//const StartFEN = "r1b2rk1/2q1b1pp/p2ppn2/1p6/3QP3/1BN1B3/PPP3PP/R4RK1 w - 0 1"
-
-//const StartFEN = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"
-
-//const StartFEN = "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1"
-
-//const StartFEN = "rnbqkbnr/ppp1pppp/8/3p4/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 0 2"
-
-// const StartFEN = "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w WKkq e6 0 1"
-// const StartFEN = "rnbqkbnr/p1p1p3/3p3p/1p1p4/2P1Pp2/8/PP1P1PpP/RNBQKB1R b KQkq e3 0 1"
-// const StartFEN = "5k2/1n6/4n3/6N1/8/3N4/8/5K2 w - - 0 1"
-//const StartFEN = "r3kb1r/3n1pp1/p6p/2pPp2q/Pp2N3/3B2PP/1PQ2P2/R3K2R w KQkq -"
-
-// const StartFEN = "r3k23/8/8/8/8/8/8/R3K2R b KQkq - 0 1"
-//const StartFEN = "3rk2r/8/8/8/8/8/6p1/R3K2R b KQk - 0 1"
-
-// const StartFEN = "r3k2r/p1ppqb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 
 const (
 	False = iota
@@ -205,80 +187,10 @@ var BitTable = [64]int{
 	58, 20, 37, 17, 36, 8,
 }
 
-type SearchWorker struct {
-	Pos  *Board
-	Info *SearchInfo
-	Hash *PvHashTable
-
-	Number    int
-	Depth     int
-	BestMove  int
-	BestScore int
-}
-type MoveList struct {
-	Moves [MaxPositionMoves]Move
-	Count int
-}
-
 type Move struct {
 	Score int
 	Move  int
 	Depth int
-}
-
-type PvHashTable struct {
-	HashTable *PVTable
-}
-
-type Board struct {
-	Pieces           [120]int
-	KingSquare       [2]int
-	Side             int
-	EnPas            int
-	FiftyMove        int
-	Play             int
-	HistoryPlay      int
-	PositionKey      uint64
-	PieceNumber      [13]int
-	Pawns            [3]uint64
-	BigPiece         [2]int
-	MajorPiece       [2]int
-	MinPiece         [2]int
-	Material         [2]int
-	PieceList        [13][10]int
-	CastlePermission int
-	History          [MaxMoves]Undo
-
-	PvArray [MaxDepth]int
-
-	SearchHistory [13][120]int
-	SearchKillers [2][MaxDepth]int
-
-	ColoredPiecesBB uint64
-	WhitePiecesBB   uint64
-	PiecesBB        uint64
-}
-
-type Undo struct {
-	Move             int
-	CastlePermission int
-	EnPas            int
-	FiftyMove        int
-	PositionKey      uint64
-}
-
-type PVEntry struct {
-	Age     int
-	SMPData uint64
-	SMPKey  uint64
-}
-
-type PVTable struct {
-	PTable        []PVEntry
-	NumberEntries int
-	Hit           int
-	Cut           int
-	CurrentAge    int
 }
 
 type SearchInfo struct {
@@ -310,12 +222,6 @@ type SearchInfo struct {
 
 	WorkerNumber int
 }
-
-type EngineOptions struct {
-	UseBook bool
-}
-
-var EngineSettings EngineOptions
 
 const Infinite = 32000
 const ABInfinite = 30000
@@ -414,11 +320,10 @@ func FileRankToSquare(file, rank int) int {
 }
 
 // initSquareMask sets SquareMask
-func initSquareMask() [64]uint64 {
-	var sqm [64]uint64
-	for sq := 0; sq < 64; sq++ {
-		var b = uint64(1 << sq)
-		sqm[sq] = b
+func initSquareMask() [BoardSize]uint64 {
+	var sqm [BoardSize]uint64
+	for sq := 0; sq < BoardSize; sq++ {
+		sqm[sq] = 1 << uint(sq)
 	}
 	return sqm
 }
@@ -466,19 +371,19 @@ func setSquares() {
 }
 
 func initSquareBB() {
-	for sq := 0; sq < 64; sq++ {
+	for sq := 0; sq < BoardSize; sq++ {
 		SquareBB[sq] = 1 << uint64(sq)
 	}
 }
 
 // setBitMasks populates ClearMask & SetMask
 func setBitMasks() {
-	for index := 0; index < 64; index++ {
+	for index := 0; index < BoardSize; index++ {
 		SetMask[index] = uint64(0)
 		ClearMask[index] = uint64(0)
 	}
 
-	for index := 0; index < 64; index++ {
+	for index := 0; index < BoardSize; index++ {
 		SetMask[index] |= uint64(1) << index
 		ClearMask[index] = ^SetMask[index]
 	}
@@ -515,13 +420,13 @@ func setEvalMasks() {
 	}
 
 	// Initialize IsolatedMask, WhitePassedMask, and BlackPassedMask
-	for sq := 0; sq < 64; sq++ {
+	for sq := 0; sq < BoardSize; sq++ {
 		IsolatedMask[sq] = 0
 		WhitePassedMask[sq] = 0
 		BlackPassedMask[sq] = 0
 
 		tsq := sq + 8
-		for tsq < 64 {
+		for tsq < BoardSize {
 			WhitePassedMask[sq] |= 1 << tsq
 			tsq += 8
 		}
@@ -536,7 +441,7 @@ func setEvalMasks() {
 			IsolatedMask[sq] |= FileBBMask[FilesBoard[Square64ToSquare120[sq]]-1]
 
 			tsq = sq + 7
-			for tsq < 64 {
+			for tsq < BoardSize {
 				WhitePassedMask[sq] |= 1 << tsq
 				tsq += 8
 			}
@@ -552,7 +457,7 @@ func setEvalMasks() {
 			IsolatedMask[sq] |= FileBBMask[FilesBoard[Square64ToSquare120[sq]]+1]
 
 			tsq = sq + 9
-			for tsq < 64 {
+			for tsq < BoardSize {
 				WhitePassedMask[sq] |= 1 << tsq
 				tsq += 8
 			}
@@ -610,22 +515,6 @@ func initMvvLva() {
 			MvvLvaScores[victim][attacker] = VictimScore[victim] + 6 - (VictimScore[attacker] / 100)
 		}
 	}
-}
-
-func NewBoardPos() *Board {
-	pos := &Board{}
-	return pos
-}
-
-func InitPvTable(table *PVTable) {
-	if table == nil {
-		table = &PVTable{}
-	}
-	var pvSize = 0x100000 * 64
-	table.NumberEntries = pvSize / int(unsafe.Sizeof(PVEntry{}))
-	table.NumberEntries -= 2
-
-	table.PTable = make([]PVEntry, table.NumberEntries)
 }
 
 var BishopMask [64]uint64
