@@ -46,6 +46,7 @@ type PositionHistory struct {
 	Count   int
 }
 
+// newPositionHistory creates a new PositionHistory
 func newPositionHistory() PositionHistory {
 	return PositionHistory{History: make([]uint64, 64), Count: -1}
 }

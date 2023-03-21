@@ -28,6 +28,7 @@ func (c *Cache) BestMove(key uint64, play int) int {
 	return c.Probe(key)
 }
 
+// Probe for the given Position key return the move stored in the TT
 func (c *Cache) Probe(key uint64) int {
 	index := key % uint64(c.NumberEntries)
 	testKey := key ^ c.CacheTable[index].SMPData
@@ -37,6 +38,8 @@ func (c *Cache) Probe(key uint64) int {
 	return data.NoMove
 }
 
+// Store Attempts to store the vale in the TT if a value is not already present or
+// the depth of the move is greater than the original
 func (c *Cache) Store(key uint64, play int, move, score, flag, depth int) {
 	index := key % uint64(c.NumberEntries)
 	replace := false
@@ -73,6 +76,7 @@ func (c *Cache) Store(key uint64, play int, move, score, flag, depth int) {
 	}
 }
 
+// Get searches the TT for the given Position key for a move
 func (c *Cache) Get(key uint64, play int, move *int, score *int, alpha, beta, depth int) bool {
 	index := key % uint64(c.NumberEntries)
 	entry := c.CacheTable[index]
@@ -124,10 +128,12 @@ func extractFlag(value uint64) uint64 {
 	return (value >> 23) & 0x3
 }
 
+// foldData hashes the data into a unique key
 func foldData(score, depth, flag uint64, move int) uint64 {
 	return (score + data.Infinite) | (depth << 16) | (flag << 23) | (uint64(move) << 25)
 }
 
+// NewCache allocates the space for a new cache
 func NewCache() *Cache {
 	size := ((0x100000 * 64) / int(unsafe.Sizeof(CacheEntry{})))
 	length := size - 2

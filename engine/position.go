@@ -6,6 +6,9 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
+// CheckBitboard validates that the board is in the correct form for the current
+// position
+// TODO make this check based on a flag
 func (p *Position) CheckBitboard() {
 	return
 	newBB := Bitboard{}
@@ -29,6 +32,7 @@ func (p *Position) CheckBitboard() {
 	}
 }
 
+// TakeNullMoveBack undo a null move
 func (p *Position) TakeNullMoveBack(enPas int, castlePerm int) {
 	p.Play--
 	if p.EnPassant != data.NoSquare && p.EnPassant != data.Empty {
@@ -43,6 +47,7 @@ func (p *Position) TakeNullMoveBack(enPas int, castlePerm int) {
 	p.hashSide()
 }
 
+// MakeNullMove update position with a null move
 func (p *Position) MakeNullMove() (bool, int, int) {
 	p.CheckBitboard()
 	p.Play++
@@ -56,6 +61,8 @@ func (p *Position) MakeNullMove() (bool, int, int) {
 	return true, enPas, p.CastlePermission
 }
 
+// MakeMove update position with given move, if the move is invalid (the
+// player ends in check) then undo the move
 func (p *Position) MakeMove(move int) (bool, int, int, int) {
 	p.CheckBitboard()
 	from := data.FromSquare(move)
@@ -134,6 +141,7 @@ func (p *Position) MakeMove(move int) (bool, int, int, int) {
 	return true, enPas, castlePerm, fifty
 }
 
+// TakeMoveBack undo the move
 func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int, fifty int) {
 	p.CheckBitboard()
 	p.Play--
@@ -197,6 +205,7 @@ func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int, fifty int) 
 	//p.History[p.PositionKey]--
 }
 
+// MovePiece update piece location
 func (p *Position) MovePiece(from, to int) {
 	piece := p.Board.PieceAt(data.Square120ToSquare64[from])
 	p.hashPiece(piece, from)
@@ -205,11 +214,13 @@ func (p *Position) MovePiece(from, to int) {
 	p.Board.SetPieceAtSquare(data.Square120ToSquare64[to], piece)
 }
 
+// ClearPiece removes a piece at the given square
 func (p *Position) ClearPiece(sq64 int) {
 	p.hashPiece(p.Board.PieceAt(sq64), data.Square64ToSquare120[sq64])
 	p.Board.RemovePieceAtSquare(sq64, p.Board.PieceAt(sq64))
 }
 
+// AddPiece adds a piece at the given square
 func (p *Position) AddPiece(sq, piece int) {
 	p.hashPiece(piece, data.Square64ToSquare120[sq])
 	p.Board.SetPieceAtSquare(sq, piece)
@@ -231,6 +242,7 @@ func (p *Position) hashEnPas() {
 	p.PositionKey ^= data.PieceKeys[data.Empty][p.EnPassant]
 }
 
+// GeneratePositionKey generates a unique key based on the position
 func (p *Position) GeneratePositionKey() uint64 {
 	var finalKey uint64 = 0
 	piece := data.Empty
@@ -254,6 +266,7 @@ func (p *Position) GeneratePositionKey() uint64 {
 	return finalKey
 }
 
+// IsEndGame checks the material count to determine if it's an 'end game'
 func (p *Position) IsEndGame() bool {
 	if p.Side == data.White {
 		return p.Board.WhiteQueen+p.Board.WhiteRook+p.Board.WhiteBishop+p.Board.WhiteKnight == 0
@@ -262,11 +275,13 @@ func (p *Position) IsEndGame() bool {
 	}
 }
 
+// AddPositionHistory inserts the position key at the end of the history slice
 func (p *PositionHistory) AddPositionHistory(posKey uint64) {
 	p.Count++
 	p.History[p.Count] = posKey
 }
 
+// RemovePositionHistory removes the last entry in the history
 func (p *PositionHistory) RemovePositionHistory() {
 	if p.Count < 0 {
 		return
@@ -274,6 +289,7 @@ func (p *PositionHistory) RemovePositionHistory() {
 	p.Count--
 }
 
+// ClearPositionHistory empties the position history
 func (p *PositionHistory) ClearPositionHistory() {
 	p.Count = -1
 }

@@ -22,6 +22,10 @@ type Move struct {
 	Move  int
 }
 
+func init() {
+	preCalculatedMoves()
+}
+
 func (p *Position) GenerateAllMoves(ml *MoveList) {
 	ml.Count = 0
 	if p.Side == data.White {
@@ -42,6 +46,7 @@ func (p *Position) GenerateAllMoves(ml *MoveList) {
 		p.generateBlackCastleMoves(ml)
 	}
 }
+
 func (p *Position) GenerateAllCaptures(ml *MoveList) {
 	ml.Count = 0
 	if p.Side == data.White {
@@ -68,6 +73,7 @@ func (p *Position) generateWhitePawnMoves(ml *MoveList) {
 	p.generateWhitePawnCaptureMoves(ml)
 	p.generateWhitePawnQuietMoves(ml)
 }
+
 func (p *Position) generateBlackPawnMoves(ml *MoveList) {
 	p.generateBlackPawnQuietMoves(ml)
 	p.generateBlackPawnCaptureMoves(ml)
@@ -112,7 +118,6 @@ func (p *Position) generateBlackPawnQuietMoves(ml *MoveList) {
 }
 
 func (p *Position) generateWhitePawnEnPassantMoves(ml *MoveList) {
-
 	if p.EnPassant != data.NoSquare && p.EnPassant != data.Empty {
 		pawns := p.Board.WhitePawn &^ (data.RankBBMask[data.Rank8] | data.RankBBMask[data.Rank7])
 		leftAttacks := (pawns << 7) &^ data.FileBBMask[data.FileH] & data.SquareBB[data.Square120ToSquare64[p.EnPassant]]
@@ -151,12 +156,10 @@ func (p *Position) generateBlackPawnEnPassantMoves(moveList *MoveList) {
 }
 
 func (p *Position) generateWhitePawnCaptureMoves(ml *MoveList) {
-	// Generate attacks to the left
 	whitePawns := p.Board.WhitePawn
 	blackPieces := p.Board.BlackPieces
 
 	leftAttacks := (whitePawns << 7) &^ data.FileBBMask[data.FileH] & blackPieces
-
 	for leftAttacks != 0 {
 		sq := bits.TrailingZeros64(leftAttacks)
 		leftAttacks &= leftAttacks - 1
@@ -164,7 +167,6 @@ func (p *Position) generateWhitePawnCaptureMoves(ml *MoveList) {
 		p.addWhitePawnCaptureMove(ml, sq-9, sq, p.Board.PieceAt(data.Square120ToSquare64[sq]))
 	}
 
-	// Generate attacks to the right
 	rightAttacks := (whitePawns << 9) &^ data.FileBBMask[data.FileA] & blackPieces
 	for rightAttacks != 0 {
 		sq := bits.TrailingZeros64(rightAttacks)
@@ -175,8 +177,6 @@ func (p *Position) generateWhitePawnCaptureMoves(ml *MoveList) {
 }
 
 func (p *Position) generateBlackPawnCaptureMoves(moveList *MoveList) {
-
-	// Generate attacks to the left
 	leftAttacks := (p.Board.BlackPawn >> 9) &^ data.FileBBMask[data.FileH] & p.Board.WhitePieces
 	for leftAttacks != 0 {
 		sq := bits.TrailingZeros64(leftAttacks)
@@ -185,7 +185,6 @@ func (p *Position) generateBlackPawnCaptureMoves(moveList *MoveList) {
 		p.addBlackPawnCaptureMove(moveList, sq+11, sq, p.Board.PieceAt(data.Square120ToSquare64[sq]))
 	}
 
-	// Generate attacks to the right
 	rightAttacks := (p.Board.BlackPawn >> 7) &^ data.FileBBMask[data.FileA] & p.Board.WhitePieces
 	for rightAttacks != 0 {
 		sq := bits.TrailingZeros64(rightAttacks)
@@ -448,10 +447,6 @@ func (p *Position) PrintMoveList(captures bool) {
 	} else {
 		fmt.Println("Empty")
 	}
-}
-
-func init() {
-	preCalculatedMoves()
 }
 
 func preCalculatedMoves() {
