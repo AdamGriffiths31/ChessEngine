@@ -6,6 +6,7 @@ Go implementation of a UCI compatible chess engine.
 
 | Version | File          | Time | Score      |
 | ------- | ------------- | ---- | ---------- |
+| 0.7     | benchmark.epd | 10s  | 439 of 948 |
 | 0.6     | benchmark.epd | 10s  | 452 of 948 |
 
 ## Perft
@@ -20,7 +21,7 @@ Go implementation of a UCI compatible chess engine.
 
 ## Versions
 
-### v0.7
+### v0.7 (done)
 
 - Code refactor
 - LazySMP

@@ -117,3 +117,33 @@ func TestTakeBackPromotion(t *testing.T) {
 		t.Errorf("Expected 2 but got %v", game.Position().Board.CountBits(game.position.Board.WhitePieces))
 	}
 }
+
+func TestMakeNullMove(t *testing.T) {
+	game := ParseFen("4k3/8/8/8/8/8/5PPP/4K2R w K - 0 1")
+	preMovePlay := game.Position().Play
+	game.Position().MakeNullMove()
+
+	if preMovePlay+1 != game.Position().Play {
+		t.Errorf("Expected %v but got %v", preMovePlay+1, game.Position().Play)
+	}
+
+	if game.Position().Side != data.Black {
+		t.Errorf("Expected %v but got %v", data.Black, game.Position().Side)
+	}
+}
+
+func TestTakeBackNullMove(t *testing.T) {
+	game := ParseFen("4k3/8/8/8/8/8/5PPP/4K2R w K - 0 1")
+	preMoveHash := game.Position().PositionKey
+	preMovePlay := game.Position().Play
+	_, enPas, castle := game.Position().MakeNullMove()
+	game.Position().TakeNullMoveBack(enPas, castle)
+
+	if preMoveHash != game.Position().PositionKey {
+		t.Errorf("Expected %v but got %v", preMoveHash, game.Position().PositionKey)
+	}
+
+	if preMovePlay != game.Position().Play {
+		t.Errorf("Expected %v but got %v", preMovePlay, game.Position().Play)
+	}
+}

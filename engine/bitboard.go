@@ -153,6 +153,8 @@ func (b *Bitboard) CountBits(bb uint64) int {
 	return int(bb) & (1<<7 - 1)
 }
 
+// GetBitboardForPiece returns the piece bitboard for the given
+// piece
 func (b *Bitboard) GetBitboardForPiece(piece int) uint64 {
 	switch piece {
 	case data.WP:
@@ -184,6 +186,7 @@ func (b *Bitboard) GetBitboardForPiece(piece int) uint64 {
 	panic(fmt.Errorf("GetBitboardForPiece: could not find bitboard for %v", piece))
 }
 
+// PrintBitboard visual representation of the given bitboard
 func (b *Bitboard) PrintBitboard(bitBoard uint64) {
 	var shiftMe uint64 = 1
 	fmt.Printf("bitBoard:%v\n", bitBoard)
@@ -206,6 +209,7 @@ func (b *Bitboard) PrintBitboard(bitBoard uint64) {
 	fmt.Printf("\n")
 }
 
+// PrintBoard visual representation of the current position
 func (b *Bitboard) PrintBoard() {
 	var shiftMe uint64 = 1
 	for rank := data.Rank8; rank >= data.Rank1; rank-- {
@@ -227,6 +231,7 @@ func (b *Bitboard) PrintBoard() {
 	fmt.Printf("\n")
 }
 
+// copy returns a copy of the current bitboard data
 func (b *Bitboard) copy() Bitboard {
 	return Bitboard{
 		Pieces:      b.Pieces,
