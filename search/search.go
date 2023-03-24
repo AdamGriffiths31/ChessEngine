@@ -77,21 +77,20 @@ func (e *Engine) SearchRoot(searchInfo *data.SearchInfo) {
 	alpha, beta := e.getInitialAlphaBeta()
 
 	for depth := 1; depth <= searchInfo.Depth; depth++ {
-		if e.IsMainEngine {
-			fmt.Printf("History = %v\n", e.Position.PositionHistory.Count)
-		}
 		score := e.alphaBeta(alpha, beta, depth, 0, true, searchInfo)
 		if searchInfo.Stopped {
 			break
 		}
 		e.Position.PositionHistory.ClearPositionHistory()
-		if score <= alpha || score >= beta {
-			alpha, beta = e.getInitialAlphaBeta()
-			continue
-		}
+		if depth >= 5 {
+			if score <= alpha || score >= beta {
+				alpha, beta = e.getInitialAlphaBeta()
+				continue
+			}
 
-		alpha = score - window
-		beta = score + window
+			alpha = score - window
+			beta = score + window
+		}
 
 		if e.IsMainEngine {
 			e.printSearchInfo(score, depth, searchInfo.Node, searchInfo.StartTime)
@@ -141,18 +140,30 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 	}
 
 	e.Checkup(info)
-
+	pvNode := beta != alpha+1
 	e.NodesVisited++
 
 	if e.isRepetitionOrFiftyMove() {
 		return 0
 	}
 
+	staticEval := e.Position.Evaluate()
+
 	if searchHeight > data.MaxDepth-1 {
-		return e.Position.Evaluate()
+		return staticEval
 	}
 
 	inCheck := e.Position.IsKingAttacked(e.Position.Side ^ 1)
+
+	// Mate Distance Pruning
+	if e.MateIn(searchHeight+1) <= alpha {
+		return alpha
+	}
+
+	if e.MatedIn(searchHeight+2) >= beta && inCheck {
+		return beta
+	}
+
 	if inCheck {
 		depthLeft++
 	}
@@ -162,6 +173,14 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 	if e.Parent.TranspositionTable.Get(e.Position.PositionKey, e.Position.Play, &pvMove, &score, alpha, beta, depthLeft) {
 		e.Parent.TranspositionTable.Cut++
 		return score
+	}
+
+	// Reverse Futility Pruning
+	if !pvNode && depthLeft <= 8 && !inCheck {
+		var score = staticEval - data.PieceVal[data.WP]*depthLeft
+		if score >= beta {
+			return staticEval
+		}
 	}
 
 	doNullMove := nullAllowed && !inCheck && e.Position.Play != 0 && depthLeft >= 4 && !e.Position.IsEndGame()
