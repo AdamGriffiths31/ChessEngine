@@ -68,9 +68,9 @@ func (uci *UCI) UCIMode() {
 			uci.engineHolder.UseBook = false
 			uci.parseGo("go infinite", game, &info)
 		} else if text == "test" {
-			uci.parsePosition("position startpos moves d2d4 d7d5 g1f3 c8f5 c1f4 e7e6 e2e3 f8d6 b1c3 g8e7 f1d3 d6f4 e3f4 d8d6 d3f5 e7f5 d1d2 d6b6 c3a4 b6c6 a4c5 b8a6 c5d3 e8c8 e1g1 f7f6 f1e1 h8e8 e1e2 f5d6 a1e1 c6a4 a2a3 h7h5 c2c3 d6e4 d2e3 d8d6 f3d2 e4d2 e2d2 g7g6 e3g3 e8g8 g3h4 g8f8 d2e2 a4d7 h4h3 f6f5 h3f3 f8g8 f3g3 d7e8 e2e5 e8f7 g3e3 g8e8 d3c5 a6c5 d4c5 d6c6 e5d5 e6d5 e3e8 f7e8 e1e8 c8d7 e8b8 c6e6 f2f3 b7b6 c5b6 a7b6 g1f2 c7c5 b8a8 d5d4 c3d4 c5d4 a8a4 e6d6 f2e2 d4d3 e2d2 h5h4 a4c4 d7e6 c4b4 e6d5 b4b3 d5c5 b3d3 d6e6 d3c3 c5d5 c3c7 d5d4 a3a4 d4d5 d2d3 e6e1 c7d7 d5c5 d7c7 c5d5", game)
+			uci.parsePosition("position startpos moves d2d4 d7d5 c1f4 c7c6 e2e3 d8b6 b2b3 e7e6 g1f3 f8b4 c2c3 b4e7 f1e2 g8f6 e1g1 e8g8 h2h3", game)
 			game.Position().Board.PrintBoard()
-			uci.parseGo("go wtime 45195 btime 58866 winc 5000 binc 5000", game, &info)
+			uci.parseGo("go wtime 93687 btime 51739 winc 5000 binc 5000", game, &info)
 		} else if text == "quit" {
 			info.Quit = data.True
 			break
@@ -229,6 +229,7 @@ func (uci *UCI) parsePosition(lineIn string, game engine.Game) {
 			game.Position().MakeMove(move)
 			game.Position().Positions[game.Position().PositionKey]++
 			game.Position().Play = 0
+			game.Position().PositionHistory.RemovePositionHistory()
 		}
 	}
 }

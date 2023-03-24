@@ -7,6 +7,7 @@ func MakeMoveInt(f, t, ca, pro, fl int) int {
 	return f | t<<7 | ca<<14 | pro<<20 | fl
 }
 
+// ParseMove parses a move from a string
 func (p *Position) ParseMove(move []byte) int {
 	if move[1] > '8' || move[1] < '1' {
 		return data.NoMove

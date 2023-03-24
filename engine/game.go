@@ -11,7 +11,7 @@ func NewGame(
 	moves []Move,
 	numberOfMoves uint16) Game {
 	if position == nil {
-		position = &Position{PositionHistory: newPositionHistory(), Positions: map[uint64]int{}}
+		position = &Position{PositionHistory: NewPositionHistory(), Positions: map[uint64]int{}}
 	}
 	return Game{
 		position,
@@ -48,7 +48,7 @@ func (p *Position) Copy() *Position {
 		MoveHistory:      p.MoveHistory,
 		CurrentScore:     p.CurrentScore,
 		FiftyMove:        p.FiftyMove,
-		PositionHistory:  newPositionHistory(),
+		PositionHistory:  NewPositionHistory(),
 		Positions:        copyMap,
 	}
 	return newPos

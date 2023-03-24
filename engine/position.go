@@ -65,6 +65,7 @@ func (p *Position) MakeNullMove() (bool, int, int) {
 // player ends in check) then undo the move
 func (p *Position) MakeMove(move int) (bool, int, int, int) {
 	p.CheckBitboard()
+
 	from := data.FromSquare(move)
 	to := data.ToSquare(move)
 	side := p.Side
@@ -133,6 +134,7 @@ func (p *Position) MakeMove(move int) (bool, int, int, int) {
 
 	p.hashSide()
 
+	p.PositionHistory.AddPositionHistory(p.PositionKey)
 	if p.IsKingAttacked(p.Side) {
 		p.TakeMoveBack(move, p.EnPassant, castlePerm, fifty)
 		return false, p.EnPassant, castlePerm, fifty
@@ -202,7 +204,7 @@ func (p *Position) TakeMoveBack(move int, enPas int, castlePerm int, fifty int) 
 			p.AddPiece(data.Square120ToSquare64[from], data.BP)
 		}
 	}
-	//p.History[p.PositionKey]--
+	p.PositionHistory.RemovePositionHistory()
 }
 
 // MovePiece update piece location

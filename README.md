@@ -21,6 +21,11 @@ Go implementation of a UCI compatible chess engine.
 
 ## Versions
 
+### v0.8
+
+- Delta Pruning
+- Aspiration windows
+
 ### v0.7 (done)
 
 - Code refactor

@@ -147,3 +147,107 @@ func TestTakeBackNullMove(t *testing.T) {
 		t.Errorf("Expected %v but got %v", preMovePlay, game.Position().Play)
 	}
 }
+
+func TestPositionHistoryIsUpdated(t *testing.T) {
+	game := ParseFen("4k3/8/8/8/8/8/5PPP/4K2R w K - 0 1")
+	game.Position().MakeMove(4505)
+	moveOneKey := game.Position().PositionKey
+	game.Position().MakeMove(10847)
+	moveTwoKey := game.Position().PositionKey
+	game.Position().MakeMove(531621)
+	moveThreeKey := game.Position().PositionKey
+
+	if game.Position().Play != 3 {
+		t.Errorf("Expected %v but got %v", 3, game.Position().Play)
+	}
+
+	if game.Position().PositionHistory.Count != 2 { //starts at -1
+		t.Errorf("Expected %v but got %v", 2, game.Position().PositionHistory.Count)
+	}
+
+	if game.Position().PositionHistory.History[0] != moveOneKey {
+		t.Errorf("Expected %v but got %v", game.Position().PositionHistory.History[0], moveOneKey)
+	}
+
+	if game.Position().PositionHistory.History[1] != moveTwoKey {
+		t.Errorf("Expected %v but got %v", game.Position().PositionHistory.History[1], moveTwoKey)
+	}
+
+	if game.Position().PositionHistory.History[2] != moveThreeKey {
+		t.Errorf("Expected %v but got %v", game.Position().PositionHistory.History[2], moveThreeKey)
+	}
+
+	if game.Position().PositionHistory.History[3] != 0 {
+		t.Errorf("Expected %v but got %v", game.Position().PositionHistory.History[3], 0)
+	}
+}
+
+func TestPositionHistoryTakeBackMove(t *testing.T) {
+	game := ParseFen("4k3/8/8/8/8/8/5PPP/4K2R w K - 0 1")
+	game.Position().MakeMove(4505)
+	moveOneKey := game.Position().PositionKey
+	game.Position().MakeMove(10847)
+	moveTwoKey := game.Position().PositionKey
+	game.Position().MakeMove(531621)
+	game.Position().TakeMoveBack(531621, 0, 0, 0)
+
+	if game.Position().Play != 2 {
+		t.Errorf("Expected %v but got %v", 2, game.Position().Play)
+	}
+
+	if game.Position().PositionHistory.Count != 1 { //starts at -1
+		t.Errorf("Expected %v but got %v", 1, game.Position().PositionHistory.Count)
+	}
+
+	if game.Position().PositionHistory.History[0] != moveOneKey {
+		t.Errorf("Expected %v but got %v", game.Position().PositionHistory.History[0], moveOneKey)
+	}
+
+	if game.Position().PositionHistory.History[1] != moveTwoKey {
+		t.Errorf("Expected %v but got %v", game.Position().PositionHistory.History[1], moveTwoKey)
+	}
+}
+
+func TestPositionHistoryTakeBackAllMoves(t *testing.T) {
+	game := ParseFen("4k3/8/8/8/8/8/5PPP/4K2R w K - 0 1")
+	game.Position().MakeMove(4505)
+	game.Position().MakeMove(10847)
+	game.Position().MakeMove(531621)
+	game.Position().TakeMoveBack(531621, 0, 0, 0)
+	game.Position().TakeMoveBack(10847, 0, 0, 0)
+	game.Position().TakeMoveBack(4505, 0, 0, 0)
+
+	if game.Position().Play != 0 {
+		t.Errorf("Expected %v but got %v", 0, game.Position().Play)
+	}
+
+	if game.Position().PositionHistory.Count != -1 { //starts at -1
+		t.Errorf("Expected %v but got %v", -1, game.Position().PositionHistory.Count)
+	}
+}
+
+func TestClearPositionHistory(t *testing.T) {
+	game := ParseFen("4k3/8/8/8/8/8/5PPP/4K2R w K - 0 1")
+	game.Position().MakeMove(4505)
+	game.Position().MakeMove(10847)
+	game.Position().MakeMove(531621)
+	game.Position().PositionHistory.ClearPositionHistory()
+
+	if game.Position().PositionHistory.Count != -1 { //starts at -1
+		t.Errorf("Expected %v but got %v", -1, game.Position().PositionHistory.Count)
+	}
+}
+
+func TestPositionHistoryTakeBackNullMove(t *testing.T) {
+	game := ParseFen("4k3/8/8/8/8/8/5PPP/4K2R w K - 0 1")
+	game.Position().MakeNullMove()
+	game.Position().TakeNullMoveBack(0, 0)
+
+	if game.Position().Play != 0 {
+		t.Errorf("Expected %v but got %v", 0, game.Position().Play)
+	}
+
+	if game.Position().PositionHistory.Count != -1 { //starts at -1
+		t.Errorf("Expected %v but got %v", 0, game.Position().PositionHistory.Count)
+	}
+}

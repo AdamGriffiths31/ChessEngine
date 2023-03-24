@@ -28,9 +28,8 @@ func Perft(depth int, e search.Engine) {
 }
 
 func PerftTest(depth int, fen string) int64 {
-
 	board := engine.Bitboard{}
-	pos := &engine.Position{Board: board}
+	pos := &engine.Position{Board: board, PositionHistory: engine.NewPositionHistory()}
 	b := search.Engine{Position: pos}
 	b.Position.ParseFen(fen)
 
