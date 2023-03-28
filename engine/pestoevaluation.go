@@ -156,7 +156,7 @@ var egPestoTable = [6][64]int{
 	egKingTable,
 }
 
-var gamePhaseInc = [12]int{0, 0, 1, 1, 1, 1, 2, 2, 4, 4, 0, 0}
+var gamePhaseInc = [12]int{0, 1, 1, 2, 4, 0, 0, 1, 1, 2, 4, 0}
 var mgValue = [6]int{82, 337, 365, 477, 1025, 0}
 var egValue = [6]int{94, 281, 297, 512, 936, 0}
 var mgTable = [12][64]int{}
@@ -171,7 +171,7 @@ func init() {
 		}
 	}
 	for p := data.BP; p <= data.BK; p++ {
-		fmt.Println("Piece Black: ", p, "")
+		fmt.Println("Piece Black: ", p, "becomes: ", p-7, "")
 		for sq := 0; sq < 64; sq++ {
 			mgTable[p-1][sq] = mgValue[p-7] + mgPestoTable[p-7][flip(sq)]
 			egTable[p-1][sq] = egValue[p-7] + egPestoTable[p-7][flip(sq)]
@@ -188,14 +188,9 @@ func (p *Position) Eval() int {
 		return 0
 	}
 
-	var mg = [2]int{}
-	var eg = [2]int{}
+	var mg = [2]int{0, 0}
+	var eg = [2]int{0, 0}
 	gamePhase := 0
-
-	mg[data.White] = 0
-	mg[data.Black] = 0
-	eg[data.White] = 0
-	eg[data.Black] = 0
 
 	//eval material
 	for sq := 0; sq < 64; sq++ {
