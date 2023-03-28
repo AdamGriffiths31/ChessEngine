@@ -68,7 +68,7 @@ func (uci *UCI) UCIMode() {
 			uci.engineHolder.UseBook = false
 			uci.parseGo("go infinite", game, &info)
 		} else if text == "test" {
-			uci.parsePosition("position startpos moves d2d4 d7d5 c1f4 c7c6 e2e3 d8b6 b2b3 e7e6 g1f3 f8b4 c2c3 b4e7 f1e2 g8f6 e1g1 e8g8 h2h3", game)
+			uci.parsePosition("position startpos moves d2d4 d7d5 c1f4 g8f6 b1c3 c8f5 e2e3 e7e6 f1d3 f8b4 g1e2 e8g8 e1g1 b8c6 d3f5 e6f5 f4g5 b4e7 g5f6 e7f6 d1d3 c6e7 f2f3 c7c6 e3e4 f5e4 f3e4 d8b6 b2b3 a8d8 e4e5 f6g5 d3g3 g5d2 c3a4 b6b5 g3f3 e7g6 a1d1 d2b4 f3e3 b5a5 g1h1 f8e8 e3f3 e8e7 d1a1 d8f8 a2a3 b4d2 f3h3 f7f6 e5e6 f8e8 e2g3 b7b6 g3f5 e7e6 h3g3 e8c8 g3g4 c8e8 g4g3", game)
 			game.Position().Board.PrintBoard()
 			uci.parseGo("go wtime 93687 btime 51739 winc 5000 binc 5000", game, &info)
 		} else if text == "quit" {
