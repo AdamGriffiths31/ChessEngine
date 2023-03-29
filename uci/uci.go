@@ -10,6 +10,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/engine"
+	"github.com/AdamGriffiths31/ChessEngine/eval"
 	"github.com/AdamGriffiths31/ChessEngine/io"
 	"github.com/AdamGriffiths31/ChessEngine/search"
 	"github.com/AdamGriffiths31/ChessEngine/util"
@@ -21,7 +22,7 @@ type UCI struct {
 
 func NewUCI() *UCI {
 	return &UCI{
-		search.NewEngineHolder(6),
+		search.NewEngineHolder(6, eval.Get("pesto")),
 	}
 }
 

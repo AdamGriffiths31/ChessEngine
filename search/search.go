@@ -31,7 +31,7 @@ func (h *EngineHolder) Search(info *data.SearchInfo) {
 
 	for _, engine := range h.Engines {
 		wg.Add(1)
-		fmt.Printf("worker added %v\n", e.Position.PositionKey)
+		fmt.Printf("worker added with key %v\n", engine.Position.PositionKey)
 		go func(e *Engine) {
 			e.SearchRoot(info)
 			wg.Done()
@@ -147,7 +147,7 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 		return 0
 	}
 
-	staticEval := e.Position.Evaluate()
+	staticEval := e.evaluator.Evaluate((e.Position))
 
 	if searchHeight > data.MaxDepth-1 {
 		return staticEval
@@ -284,7 +284,7 @@ func (e *Engine) quiescence(alpha, beta, searchHeight int, info *data.SearchInfo
 	e.NodesVisited++
 
 	if searchHeight > data.MaxDepth-1 {
-		return e.Position.Evaluate()
+		return e.evaluator.Evaluate((e.Position))
 	}
 
 	score := -data.ABInfinite
@@ -294,7 +294,7 @@ func (e *Engine) quiescence(alpha, beta, searchHeight int, info *data.SearchInfo
 		return score
 	}
 
-	score = e.Position.Evaluate()
+	score = e.evaluator.Evaluate((e.Position))
 
 	if !(score > -data.ABInfinite) && !(score < data.ABInfinite) {
 		panic(fmt.Errorf("quiescence score error  %v", score))

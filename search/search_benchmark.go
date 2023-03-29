@@ -6,6 +6,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/engine"
+	"github.com/AdamGriffiths31/ChessEngine/eval"
 	"github.com/AdamGriffiths31/ChessEngine/util"
 )
 
@@ -40,7 +41,7 @@ func RunBenchmark() {
 	start := time.Now()
 	for _, fen := range fens {
 		fmt.Printf("%v\n", fen)
-		h := NewEngineHolder(6)
+		h := NewEngineHolder(6, eval.Get("pesto"))
 		h.UseBook = false
 		var game engine.Game = engine.ParseFen(fen)
 		for _, eng := range h.Engines {

@@ -1,4 +1,4 @@
-package engine
+package eval
 
 import (
 	"fmt"
@@ -6,7 +6,11 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/data"
 )
 
-var mgPawnTable = [64]int{
+type Weights struct {
+	PST [2][7][64]Score
+}
+
+var mgPawnTable = [64]int16{
 	0, 0, 0, 0, 0, 0, 0, 0,
 	98, 134, 61, 95, 68, 126, 34, -11,
 	-6, 7, 26, 31, 65, 56, 25, -20,
@@ -17,7 +21,7 @@ var mgPawnTable = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-var egPawnTable = [64]int{
+var egPawnTable = [64]int16{
 	0, 0, 0, 0, 0, 0, 0, 0,
 	178, 173, 158, 134, 147, 132, 165, 187,
 	94, 100, 85, 67, 56, 53, 82, 84,
@@ -28,7 +32,7 @@ var egPawnTable = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-var mgKnightTable = [64]int{
+var mgKnightTable = [64]int16{
 	-167, -89, -34, -49, 61, -97, -15, -107,
 	-73, -41, 72, 36, 23, 62, 7, -17,
 	-47, 60, 37, 65, 84, 129, 73, 44,
@@ -39,7 +43,7 @@ var mgKnightTable = [64]int{
 	-105, -21, -58, -33, -17, -28, -19, -23,
 }
 
-var egKnightTable = [64]int{
+var egKnightTable = [64]int16{
 	-58, -38, -13, -28, -31, -27, -63, -99,
 	-25, -8, -25, -2, -9, -25, -24, -52,
 	-24, -20, 10, 9, -1, -9, -19, -41,
@@ -50,7 +54,7 @@ var egKnightTable = [64]int{
 	-29, -51, -23, -15, -22, -18, -50, -64,
 }
 
-var mgBishopTable = [64]int{
+var mgBishopTable = [64]int16{
 	-29, 4, -82, -37, -25, -42, 7, -8,
 	-26, 16, -18, -13, 30, 59, 18, -47,
 	-16, 37, 43, 40, 35, 50, 37, -2,
@@ -61,7 +65,7 @@ var mgBishopTable = [64]int{
 	-33, -3, -14, -21, -13, -12, -39, -21,
 }
 
-var egBishopTable = [64]int{
+var egBishopTable = [64]int16{
 	-14, -21, -11, -8, -7, -9, -17, -24,
 	-8, -4, 7, -12, -3, -13, -4, -14,
 	2, -8, 0, -1, -2, 6, 0, 4,
@@ -72,7 +76,7 @@ var egBishopTable = [64]int{
 	-23, -9, -23, -5, -9, -16, -5, -17,
 }
 
-var mgRookTable = [64]int{
+var mgRookTable = [64]int16{
 	32, 42, 32, 51, 63, 9, 31, 43,
 	27, 32, 58, 62, 80, 67, 26, 44,
 	-5, 19, 26, 36, 17, 45, 61, 16,
@@ -83,7 +87,7 @@ var mgRookTable = [64]int{
 	-19, -13, 1, 17, 16, 7, -37, -26,
 }
 
-var egRookTable = [64]int{
+var egRookTable = [64]int16{
 	13, 10, 18, 15, 12, 12, 8, 5,
 	11, 13, 13, 11, -3, 3, 8, 3,
 	7, 7, 7, 5, 4, -3, -5, -3,
@@ -94,7 +98,7 @@ var egRookTable = [64]int{
 	-9, 2, 3, -1, -5, -13, 4, -20,
 }
 
-var mgQueenTable = [64]int{
+var mgQueenTable = [64]int16{
 	-28, 0, 29, 12, 59, 44, 43, 45,
 	-24, -39, -5, 1, -16, 57, 28, 54,
 	-13, -17, 7, 8, 29, 56, 47, 57,
@@ -105,7 +109,7 @@ var mgQueenTable = [64]int{
 	-1, -18, -9, 10, -15, -25, -31, -50,
 }
 
-var egQueenTable = [64]int{
+var egQueenTable = [64]int16{
 	-9, 22, 22, 27, 27, 19, 10, 20,
 	-17, 20, 32, 41, 58, 25, 30, 0,
 	-20, 6, 9, 49, 47, 35, 19, 9,
@@ -116,7 +120,7 @@ var egQueenTable = [64]int{
 	-33, -28, -22, -43, -5, -32, -20, -41,
 }
 
-var mgKingTable = [64]int{
+var mgKingTable = [64]int16{
 	-65, 23, 16, -15, -56, -34, 2, 13,
 	29, -1, -20, -7, -8, -4, -38, -29,
 	-9, 24, 2, -16, -20, 6, 22, -22,
@@ -127,7 +131,7 @@ var mgKingTable = [64]int{
 	-15, 36, 12, -54, 8, -28, 24, 14,
 }
 
-var egKingTable = [64]int{
+var egKingTable = [64]int16{
 	-74, -35, -18, -18, -11, 15, 4, -17,
 	-12, 17, 14, 17, 17, 38, 23, 11,
 	10, 17, 23, 15, 20, 45, 44, 13,
@@ -138,77 +142,33 @@ var egKingTable = [64]int{
 	-53, -34, -21, -11, -28, -14, -24, -43,
 }
 
-var mgPestoTable = [6][64]int{
-	mgPawnTable,
-	mgKnightTable,
-	mgBishopTable,
-	mgRookTable,
-	mgQueenTable,
-	mgKingTable,
-}
-
-var egPestoTable = [6][64]int{
-	egPawnTable,
-	egKnightTable,
-	egBishopTable,
-	egRookTable,
-	egQueenTable,
-	egKingTable,
-}
-
-var gamePhaseInc = [12]int{0, 1, 1, 2, 4, 0, 0, 1, 1, 2, 4, 0}
-var mgValue = [6]int{82, 337, 365, 477, 1025, 0}
-var egValue = [6]int{94, 281, 297, 512, 936, 0}
-var mgTable = [12][64]int{}
-var egTable = [12][64]int{}
-
-func init() {
-	for p := data.WP; p <= data.WK; p++ {
-		fmt.Println("Piece White: ", p, "")
-		for sq := 0; sq < 64; sq++ {
-			mgTable[p-1][sq] = mgValue[p-1] + mgPestoTable[p-1][sq]
-			egTable[p-1][sq] = egValue[p-1] + egPestoTable[p-1][sq]
-		}
-	}
-	for p := data.BP; p <= data.BK; p++ {
-		fmt.Println("Piece Black: ", p, "becomes: ", p-7, "")
-		for sq := 0; sq < 64; sq++ {
-			mgTable[p-1][sq] = mgValue[p-7] + mgPestoTable[p-7][flip(sq)]
-			egTable[p-1][sq] = egValue[p-7] + egPestoTable[p-7][flip(sq)]
-		}
-	}
-}
-
-func flip(sq int) int {
-	return data.Mirror64[sq]
-}
-
-func (p *Position) Eval() int {
-	if p.Board.WhitePawn == 0 && p.Board.BlackPawn == 0 && p.isMaterialDraw() {
-		return 0
+func (w *Weights) init() {
+	fmt.Println("init weights")
+	var material = [...]Score{
+		data.WP: S(82, 94),
+		data.WN: S(337, 281),
+		data.WB: S(365, 297),
+		data.WR: S(477, 512),
+		data.WQ: S(1025, 936),
+		data.WK: 0,
 	}
 
-	var mg = [2]int{0, 0}
-	var eg = [2]int{0, 0}
-	gamePhase := 0
-
-	//eval material
 	for sq := 0; sq < 64; sq++ {
-		pc := p.Board.PieceAt(sq)
-		if pc != data.Empty {
-			mg[data.PieceCol[pc]] += mgTable[pc-1][sq]
-			eg[data.PieceCol[pc]] += egTable[pc-1][sq]
-			gamePhase += gamePhaseInc[pc-1]
-		}
+		var flipSq = flip(sq)
+		w.PST[data.White][data.WP-1][sq] = S(mgPawnTable[flipSq], egPawnTable[flipSq])
+		w.PST[data.White][data.WN-1][sq] = S(mgKnightTable[flipSq], egKnightTable[flipSq])
+		w.PST[data.White][data.WB-1][sq] = S(mgBishopTable[flipSq], egBishopTable[flipSq])
+		w.PST[data.White][data.WR-1][sq] = S(mgRookTable[flipSq], egRookTable[flipSq])
+		w.PST[data.White][data.WQ-1][sq] = S(mgQueenTable[flipSq], egQueenTable[flipSq])
+		w.PST[data.White][data.WK-1][sq] = S(mgKingTable[flipSq], egKingTable[flipSq])
 	}
 
-	//tapered eval
-	mgScore := mg[p.Side] - mg[p.Side^1]
-	egSore := eg[p.Side] - eg[p.Side^1]
-	mgPhase := gamePhase
-	if mgPhase > 24 {
-		mgPhase = 24
+	for pieceType := data.WP; pieceType <= data.WK; pieceType++ {
+		for sq := 0; sq < 64; sq++ {
+			w.PST[data.White][pieceType-1][sq] += material[pieceType]
+		}
+		for sq := 0; sq < 64; sq++ {
+			w.PST[data.Black][pieceType-1][sq] = -w.PST[data.White][pieceType-1][flip(sq)]
+		}
 	}
-	egPhase := 24 - mgPhase
-	return (mgScore*mgPhase + egSore*egPhase) / 24
 }

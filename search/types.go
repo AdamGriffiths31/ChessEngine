@@ -12,6 +12,7 @@ type Engine struct {
 	IsMainEngine bool
 	Parent       *EngineHolder
 	NodesVisited int
+	evaluator    IUpdatableEvaluator
 }
 
 type EngineHolder struct {
@@ -23,10 +24,27 @@ type EngineHolder struct {
 	TranspositionTable *engine.Cache
 	NodeCount          uint64
 	UseBook            bool
+	EvalBuilder        func() interface{}
 }
 
-func NewEngineHolder(numberOfThreads int) *EngineHolder {
-	t := &EngineHolder{}
+type IEvaluator interface {
+	Evaluate(p *engine.Position) int
+}
+
+type IUpdatableEvaluator interface {
+	Evaluate(p *engine.Position) int
+}
+
+type EvaluatorAdapter struct {
+	evaluator IEvaluator
+}
+
+func (e *EvaluatorAdapter) Evaluate(p *engine.Position) int {
+	return e.evaluator.Evaluate(p)
+}
+
+func NewEngineHolder(numberOfThreads int, evalBuilder func() interface{}) *EngineHolder {
+	t := &EngineHolder{EvalBuilder: evalBuilder}
 	t.Ctx, t.CancelSearch = context.WithCancel(context.Background())
 	engines := make([]*Engine, numberOfThreads)
 	for i := 0; i < numberOfThreads; i++ {
@@ -35,6 +53,7 @@ func NewEngineHolder(numberOfThreads int) *EngineHolder {
 			engine.IsMainEngine = true
 		}
 		engines[i] = engine
+		engines[i].evaluator = t.buildEvaluator()
 	}
 	t.Engines = engines
 	t.TranspositionTable = engine.NewCache()
@@ -43,4 +62,16 @@ func NewEngineHolder(numberOfThreads int) *EngineHolder {
 
 func NewEngine(parent *EngineHolder) *Engine {
 	return &Engine{Parent: parent, Position: nil}
+}
+
+func (h *EngineHolder) buildEvaluator() IUpdatableEvaluator {
+	var evaluationService = h.EvalBuilder()
+	if ue, ok := evaluationService.(IUpdatableEvaluator); ok {
+		return ue
+	}
+	if e, ok := evaluationService.(IEvaluator); ok {
+		return &EvaluatorAdapter{evaluator: e}
+	}
+
+	panic("unknown evaluator")
 }
