@@ -314,6 +314,28 @@ var Mirror64 = [64]int{
 	0, 1, 2, 3, 4, 5, 6, 7,
 }
 
+const (
+	FileAMask uint64 = 0x0101010101010101 << iota
+	FileBMask
+	FileCMask
+	FileDMask
+	FileEMask
+	FileFMask
+	FileGMask
+	FileHMask
+)
+
+const (
+	Rank1Mask uint64 = 0xFF << (8 * iota)
+	Rank2Mask
+	Rank3Mask
+	Rank4Mask
+	Rank5Mask
+	Rank6Mask
+	Rank7Mask
+	Rank8Mask
+)
+
 // FileRankToSquare converts file & rank to the 120 square
 func FileRankToSquare(file, rank int) int {
 	return (21 + file) + (rank * 10)

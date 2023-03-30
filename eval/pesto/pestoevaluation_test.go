@@ -38,12 +38,12 @@ func TestWeights(t *testing.T) {
 	var w = &Weights{}
 	w.init()
 
-	printPst("Pawn", w.PST[data.White][data.WP-1])
-	printPst("Knight", w.PST[data.White][data.WN-1])
-	printPst("Bishop", w.PST[data.White][data.WB-1])
-	printPst("Rook", w.PST[data.White][data.WR-1])
-	printPst("Queen", w.PST[data.White][data.WQ-1])
-	printPst("King", w.PST[data.White][data.WK-1])
+	printPst("Pawn", w.PST[data.Black][data.WP-1])
+	printPst("Knight", w.PST[data.Black][data.WN-1])
+	printPst("Bishop", w.PST[data.Black][data.WB-1])
+	printPst("Rook", w.PST[data.Black][data.WR-1])
+	printPst("Queen", w.PST[data.Black][data.WQ-1])
+	printPst("King", w.PST[data.Black][data.WK-1])
 
 	//t.Fatal("Test failed")
 }
@@ -53,7 +53,8 @@ func printPst(name string, source [64]Score) {
 	for i := 0; i < 64; i++ {
 		sq := flip(i)
 		fmt.Printf("%+v", source[sq])
+		if i%8 == 7 {
+			fmt.Println("")
+		}
 	}
-	fmt.Println()
-
 }

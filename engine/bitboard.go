@@ -186,6 +186,16 @@ func (b *Bitboard) GetBitboardForPiece(piece int) uint64 {
 	panic(fmt.Errorf("GetBitboardForPiece: could not find bitboard for %v", piece))
 }
 
+// AllWhitePawnAttacks returns all white pawn attacks for the given bitboard
+func (b *Bitboard) AllWhitePawnAttacks(bitboard uint64) uint64 {
+	return ((bitboard & ^data.FileAMask) << 7) | ((bitboard & ^data.FileHMask) << 9)
+}
+
+// AllBlackPawnAttacks returns all black pawn attacks for the given bitboard
+func (b *Bitboard) AllBlackPawnAttacks(bitboard uint64) uint64 {
+	return ((bitboard & ^data.FileAMask) >> 9) | ((bitboard & ^data.FileHMask) >> 7)
+}
+
 // PrintBitboard visual representation of the given bitboard
 func (b *Bitboard) PrintBitboard(bitBoard uint64) {
 	var shiftMe uint64 = 1

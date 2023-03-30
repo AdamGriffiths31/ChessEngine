@@ -1,101 +1,46 @@
-package engine
+package eval
 
 import (
 	"math"
 	"math/bits"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	"github.com/AdamGriffiths31/ChessEngine/engine"
 )
 
-var pawnTable = [64]int{
-	0, 0, 0, 0, 0, 0, 0, 0,
-	10, 10, 0, -10, -10, 0, 10, 10,
-	5, 0, 0, 5, 5, 0, 0, 5,
-	0, 0, 10, 20, 20, 10, 0, 0,
-	5, 5, 5, 10, 10, 5, 5, 5,
-	10, 10, 10, 20, 20, 10, 10, 10,
-	20, 20, 20, 30, 30, 20, 20, 20,
-	0, 0, 0, 0, 0, 0, 0, 0,
+type EvaluationService struct {
+	Weights
+
+	pawnAttacks [2]uint64
 }
 
-var knightTable = [64]int{
-	0, -10, 0, 0, 0, 0, -10, 0,
-	0, 0, 0, 5, 5, 0, 0, 0,
-	0, 0, 10, 10, 10, 10, 0, 0,
-	0, 0, 10, 20, 20, 10, 5, 0,
-	5, 10, 15, 20, 20, 15, 10, 5,
-	5, 10, 10, 20, 20, 10, 10, 5,
-	0, 0, 5, 10, 10, 5, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
+func NewEvaluationService() *EvaluationService {
+	var es = &EvaluationService{}
+	es.Weights.init()
+	return es
 }
 
-var bishopTable = [64]int{
-	0, 0, -10, 0, 0, -10, 0, 0,
-	0, 0, 0, 10, 10, 0, 0, 0,
-	0, 0, 10, 15, 15, 10, 0, 0,
-	0, 10, 15, 20, 20, 15, 10, 0,
-	0, 10, 15, 20, 20, 15, 10, 0,
-	0, 0, 10, 15, 15, 10, 0, 0,
-	0, 0, 0, 10, 10, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-}
+func (e *EvaluationService) Evaluate(p *engine.Position) int {
 
-var rookTable = [64]int{
-	0, 0, 5, 10, 10, 5, 0, 0,
-	0, 0, 5, 10, 10, 5, 0, 0,
-	0, 0, 5, 10, 10, 5, 0, 0,
-	0, 0, 5, 10, 10, 5, 0, 0,
-	0, 0, 5, 10, 10, 5, 0, 0,
-	0, 0, 5, 10, 10, 5, 0, 0,
-	25, 25, 25, 25, 25, 25, 25, 25,
-	0, 0, 5, 10, 10, 5, 0, 0,
-}
-
-var kingE = [64]int{
-	-50, -10, 0, 0, 0, 0, -10, -50,
-	-10, 0, 10, 10, 10, 10, 0, -10,
-	0, 10, 20, 20, 20, 20, 10, 0,
-	0, 10, 20, 40, 40, 20, 10, 0,
-	0, 10, 20, 40, 40, 20, 10, 0,
-	0, 10, 20, 20, 20, 20, 10, 0,
-	-10, 0, 10, 10, 10, 10, 0, -10,
-	-50, -10, 0, 0, 0, 0, -10, -50,
-}
-
-var kingO = [64]int{
-	0, 5, 5, -10, -10, 0, 10, 5,
-	-30, -30, -30, -30, -30, -30, -30, -30,
-	-50, -50, -50, -50, -50, -50, -50, -50,
-	-70, -70, -70, -70, -70, -70, -70, -70,
-	-70, -70, -70, -70, -70, -70, -70, -70,
-	-70, -70, -70, -70, -70, -70, -70, -70,
-	-70, -70, -70, -70, -70, -70, -70, -70,
-	-70, -70, -70, -70, -70, -70, -70, -70,
-}
-
-var pawnIsolated = -10
-var pawnPassed = [8]int{0, 5, 10, 20, 35, 60, 100, 200}
-var rookOpenFile = 10
-var rookSemiOpenFile = 5
-var queenOpenFile = 5
-var queenSemiOpenFile = 3
-var bishopPair = 30
-
-func (p *Position) Evaluate() int {
-
-	if p.Board.WhitePawn == 0 && p.Board.BlackPawn == 0 && p.IsMaterialDraw() {
+	if p.Board.WhitePawn == 0 && p.Board.BlackPawn == 0 && e.IsMaterialDraw(p) {
 		return 0
 	}
-	p.CurrentScore = p.calculateWhiteMaterial() - p.calculateBlackMaterial()
+	p.CurrentScore = e.calculateWhiteMaterial(p) - e.calculateBlackMaterial(p)
 
 	bothPawns := p.Board.WhitePawn | p.Board.BlackPawn
+	e.pawnAttacks[data.White] = p.Board.AllWhitePawnAttacks(bothPawns & p.Board.WhitePawn)
+	e.pawnAttacks[data.Black] = p.Board.AllBlackPawnAttacks(bothPawns & p.Board.BlackPawn)
 
-	p.calculateEvalPawns()
-	p.calculateEvalKnights()
-	p.calculateEvalBishop()
-	p.calculateEvalRook(bothPawns)
-	p.calculateEvalQueens(bothPawns)
-	p.calculateEvalKings()
+	e.calculateEvalPawns(p)
+	e.calculateEvalKnights(p)
+	e.calculateEvalBishop(p)
+	e.calculateEvalRook(p, bothPawns)
+	e.calculateEvalQueens(p, bothPawns)
+	e.calculateEvalKings(p)
+
+	eval := e.evaluateThreats(p, data.White, bothPawns) - e.evaluateThreats(p, data.Black, bothPawns)
+
+	p.CurrentScore += eval.Middle()
 
 	if p.Side == data.White {
 		return p.CurrentScore
@@ -104,7 +49,7 @@ func (p *Position) Evaluate() int {
 	}
 }
 
-func (p *Position) calculateWhiteMaterial() int {
+func (e *EvaluationService) calculateWhiteMaterial(p *engine.Position) int {
 	score := 0
 	score += p.Board.CountBits(p.Board.WhitePawn) * data.PieceVal[data.WP]
 	score += p.Board.CountBits(p.Board.WhiteKnight) * data.PieceVal[data.WN]
@@ -115,7 +60,7 @@ func (p *Position) calculateWhiteMaterial() int {
 	return score
 }
 
-func (p *Position) calculateBlackMaterial() int {
+func (e *EvaluationService) calculateBlackMaterial(p *engine.Position) int {
 	score := 0
 	score += p.Board.CountBits(p.Board.BlackPawn) * data.PieceVal[data.WP]
 	score += p.Board.CountBits(p.Board.BlackKnight) * data.PieceVal[data.WN]
@@ -130,7 +75,7 @@ func isEndGame() int {
 	return (1 * data.PieceVal[data.WR]) + (2 * data.PieceVal[data.WN]) + (2 * data.PieceVal[data.WP]) + data.PieceVal[data.WK]
 }
 
-func (p *Position) calculateEvalPawns() {
+func (e *EvaluationService) calculateEvalPawns(p *engine.Position) {
 	for wp := p.Board.WhitePawn; wp != 0; wp &= wp - 1 {
 		sq := bits.TrailingZeros64(wp)
 		p.CurrentScore += pawnTable[sq]
@@ -156,7 +101,7 @@ func (p *Position) calculateEvalPawns() {
 		}
 	}
 }
-func (p *Position) calculateEvalKnights() {
+func (e *EvaluationService) calculateEvalKnights(p *engine.Position) {
 	bb := p.Board.WhiteKnight
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
@@ -171,7 +116,7 @@ func (p *Position) calculateEvalKnights() {
 	}
 }
 
-func (p *Position) calculateEvalBishop() {
+func (e *EvaluationService) calculateEvalBishop(p *engine.Position) {
 	bb := p.Board.WhiteBishop
 	countWB := 0
 	countBB := 0
@@ -195,7 +140,7 @@ func (p *Position) calculateEvalBishop() {
 		p.CurrentScore -= bishopPair
 	}
 }
-func (p *Position) calculateEvalRook(bothPawns uint64) {
+func (e *EvaluationService) calculateEvalRook(p *engine.Position, bothPawns uint64) {
 	bb := p.Board.WhiteRook
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
@@ -222,7 +167,7 @@ func (p *Position) calculateEvalRook(bothPawns uint64) {
 	}
 }
 
-func (p *Position) calculateEvalQueens(bothPawns uint64) {
+func (e *EvaluationService) calculateEvalQueens(p *engine.Position, bothPawns uint64) {
 	bb := p.Board.WhiteQueen
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
@@ -245,12 +190,12 @@ func (p *Position) calculateEvalQueens(bothPawns uint64) {
 	}
 }
 
-func (p *Position) calculateEvalKings() {
+func (e *EvaluationService) calculateEvalKings(p *engine.Position) {
 	bb := p.Board.WhiteKing
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		if p.calculateBlackMaterial() <= isEndGame() {
+		if e.calculateBlackMaterial(p) <= isEndGame() {
 			p.CurrentScore += kingE[sq]
 		} else {
 			p.CurrentScore += kingO[sq]
@@ -260,7 +205,7 @@ func (p *Position) calculateEvalKings() {
 	for bb != 0 {
 		sq := bits.TrailingZeros64(bb)
 		bb ^= (1 << sq)
-		if p.calculateWhiteMaterial() <= isEndGame() {
+		if e.calculateWhiteMaterial(p) <= isEndGame() {
 			p.CurrentScore -= kingE[data.Mirror64[sq]]
 		} else {
 			p.CurrentScore -= kingO[data.Mirror64[sq]]
@@ -268,7 +213,33 @@ func (p *Position) calculateEvalKings() {
 	}
 }
 
-func (p *Position) IsMaterialDraw() bool {
+func (e *EvaluationService) evaluateThreats(p *engine.Position, colour int, bothPawns uint64) Score {
+	var currentSide, enemySide = colour, colour ^ 1
+	var friendly uint64
+	var eval Score
+
+	if currentSide == data.White {
+		friendly = p.Board.WhitePieces
+	} else {
+		friendly = p.Board.BlackPieces
+	}
+
+	count := p.Board.CountBits(bothPawns & friendly & e.pawnAttacks[enemySide])
+	eval += Score(count) * e.ThreatByPawn
+
+	var pawnPushAttacks uint64
+	if currentSide == data.White {
+		pawnPushAttacks = (bothPawns << 8) & ^p.Board.Pieces
+	} else {
+		pawnPushAttacks = (bothPawns >> 8) & ^p.Board.Pieces
+	}
+	count = p.Board.CountBits(^bothPawns & friendly & pawnPushAttacks)
+	eval += Score(count) * e.ThreatByPawnPush
+
+	return eval
+}
+
+func (e *EvaluationService) IsMaterialDraw(p *engine.Position) bool {
 	if p.Board.WhiteQueen == 0 && p.Board.BlackQueen == 0 ||
 		p.Board.WhiteQueen == 0 && p.Board.BlackQueen == 0 && p.Board.WhiteRook == 0 && p.Board.BlackRook == 0 {
 		wKnightsNum := p.Board.CountBits(p.Board.WhiteKnight)

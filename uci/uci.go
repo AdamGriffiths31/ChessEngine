@@ -22,7 +22,7 @@ type UCI struct {
 
 func NewUCI() *UCI {
 	return &UCI{
-		search.NewEngineHolder(6, eval.Get("pesto")),
+		search.NewEngineHolder(6, eval.Get("custom")),
 	}
 }
 
