@@ -4,7 +4,25 @@ import (
 	"fmt"
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
+	"github.com/AdamGriffiths31/ChessEngine/validate"
 )
+
+var PreCalculatedKnightMoves [64]uint64
+var PreCalculatedKingMoves [64]uint64
+var index64 [64]int
+
+func init() {
+	preCalculatedMoves()
+	for sq := 0; sq < 64; sq++ {
+		b := uint64(1) << uint(sq)
+		index64[(((b-1)^b)*0x03f79d71b4cb0a89)>>58] = sq
+	}
+}
+
+// FirstSquare returns the first square in a bitboard
+func FirstSquare(b uint64) int {
+	return index64[(((b-1)^b)*0x03f79d71b4cb0a89)>>58]
+}
 
 // SetPieceAtSquare updates the bitboard for the corresponding
 // piece to an active occupancy
@@ -186,6 +204,53 @@ func (b *Bitboard) GetBitboardForPiece(piece int) uint64 {
 	panic(fmt.Errorf("GetBitboardForPiece: could not find bitboard for %v", piece))
 }
 
+// GetPiecesBitboard returns the bitboard for the given side
+func (b *Bitboard) GetPiecesBitboard(side int) uint64 {
+	if side == data.White {
+		return b.WhitePieces
+	} else if side == data.Black {
+		return b.BlackPieces
+	}
+
+	panic(fmt.Errorf("GetPiecesBitboard: could not find bitboard for %v", side))
+}
+
+// GetPieces returns the piece bitboard for the given side
+func (b *Bitboard) GetPieces(side, piece int) uint64 {
+	if side == data.White {
+		switch piece {
+		case data.WP:
+			return b.WhitePawn
+		case data.WN:
+			return b.WhiteKnight
+		case data.WB:
+			return b.WhiteBishop
+		case data.WR:
+			return b.WhiteRook
+		case data.WQ:
+			return b.WhiteQueen
+		case data.WK:
+			return b.WhiteKing
+		}
+	} else if side == data.Black {
+		switch piece {
+		case data.WP:
+			return b.BlackPawn
+		case data.WN:
+			return b.BlackKnight
+		case data.WB:
+			return b.BlackBishop
+		case data.WR:
+			return b.BlackRook
+		case data.WQ:
+			return b.BlackQueen
+		case data.WK:
+			return b.BlackKing
+		}
+	}
+	panic(fmt.Errorf("GetPieces: could not find bitboard for %v %v", piece, side))
+}
+
 // AllWhitePawnAttacks returns all white pawn attacks for the given bitboard
 func (b *Bitboard) AllWhitePawnAttacks(bitboard uint64) uint64 {
 	return ((bitboard & ^data.FileAMask) << 7) | ((bitboard & ^data.FileHMask) << 9)
@@ -260,4 +325,44 @@ func (b *Bitboard) copy() Bitboard {
 		WhiteQueen:  b.WhiteQueen,
 		WhiteKing:   b.WhiteKing,
 	}
+}
+
+// preCalculatedMoves pre-calculates all possible knight and king moves
+func preCalculatedMoves() {
+	for i := 0; i < 64; i++ {
+		PreCalculatedKnightMoves[i] = calculateKnightMoves(i)
+		PreCalculatedKingMoves[i] = calculateKingMoves(i)
+	}
+}
+
+// calculateKingMoves calculates all possible king moves for the given square
+func calculateKingMoves(sq64 int) uint64 {
+	var attacks uint64
+	sq120 := data.Square64ToSquare120[sq64]
+
+	for i := 0; i < data.NumDir[data.WK]; i++ {
+		dir := data.PieceDir[data.WK][i]
+		tempSq := sq120 + dir
+		if !validate.SquareOnBoard(tempSq) {
+			continue
+		}
+		SetBit(&attacks, data.Square120ToSquare64[tempSq])
+	}
+	return attacks
+}
+
+// calculateKnightMoves calculates all possible knight moves for the given square
+func calculateKnightMoves(sq64 int) uint64 {
+	var attacks uint64
+	sq120 := data.Square64ToSquare120[sq64]
+
+	for i := 0; i < data.NumDir[data.WN]; i++ {
+		dir := data.PieceDir[data.BN][i]
+		tempSq := sq120 + dir
+		if !validate.SquareOnBoard(tempSq) {
+			continue
+		}
+		SetBit(&attacks, data.Square120ToSquare64[tempSq])
+	}
+	return attacks
 }

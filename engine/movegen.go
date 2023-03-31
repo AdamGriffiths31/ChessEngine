@@ -6,11 +6,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/data"
 	"github.com/AdamGriffiths31/ChessEngine/io"
-	"github.com/AdamGriffiths31/ChessEngine/validate"
 )
-
-var preCalculatedKnightMoves [64]uint64
-var preCalculatedKingMoves [64]uint64
 
 type MoveList struct {
 	Moves [300]Move
@@ -290,19 +286,19 @@ func (p *Position) generateSliderMoves(moveList *MoveList, piece int, includeQui
 			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.WhitePieces)
 		}
 		if piece == data.WK {
-			attack := preCalculatedKingMoves[sq]
+			attack := PreCalculatedKingMoves[sq]
 			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.BlackPieces)
 		}
 		if piece == data.BK {
-			attack := preCalculatedKingMoves[sq]
+			attack := PreCalculatedKingMoves[sq]
 			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.WhitePieces)
 		}
 		if piece == data.WN {
-			attack := preCalculatedKnightMoves[sq]
+			attack := PreCalculatedKnightMoves[sq]
 			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.BlackPieces)
 		}
 		if piece == data.BN {
-			attack := preCalculatedKnightMoves[sq]
+			attack := PreCalculatedKnightMoves[sq]
 			p.generateMovesForSlider(moveList, includeQuite, sq120, attack, p.Board.WhitePieces)
 		}
 		bitboard &= bitboard - 1
@@ -449,43 +445,6 @@ func (p *Position) PrintMoveList(captures bool) {
 	}
 }
 
-func preCalculatedMoves() {
-	for i := 0; i < 64; i++ {
-		preCalculatedKnightMoves[i] = calculateKnightMoves(i)
-		preCalculatedKingMoves[i] = calculateKingMoves(i)
-	}
-}
-
-func calculateKingMoves(sq64 int) uint64 {
-	var attacks uint64
-	sq120 := data.Square64ToSquare120[sq64]
-
-	for i := 0; i < data.NumDir[data.WK]; i++ {
-		dir := data.PieceDir[data.WK][i]
-		tempSq := sq120 + dir
-		if !validate.SquareOnBoard(tempSq) {
-			continue
-		}
-		SetBit(&attacks, data.Square120ToSquare64[tempSq])
-	}
-	return attacks
-}
-
-func calculateKnightMoves(sq64 int) uint64 {
-	var attacks uint64
-	sq120 := data.Square64ToSquare120[sq64]
-
-	for i := 0; i < data.NumDir[data.WN]; i++ {
-		dir := data.PieceDir[data.BN][i]
-		tempSq := sq120 + dir
-		if !validate.SquareOnBoard(tempSq) {
-			continue
-		}
-		SetBit(&attacks, data.Square120ToSquare64[tempSq])
-	}
-	return attacks
-}
-
 func (p *Position) getBishopAttackedSquares(enemyBishop uint64) uint64 {
 	var attacked uint64
 	for enemyBishop != 0 {
@@ -525,7 +484,7 @@ func (p *Position) getKnightAttackedSquares(enemyKnight uint64) uint64 {
 	attacked := uint64(0)
 	for enemyKnight != 0 {
 		sq := bits.TrailingZeros64(enemyKnight)
-		attacked |= preCalculatedKnightMoves[sq]
+		attacked |= PreCalculatedKnightMoves[sq]
 		enemyKnight &= enemyKnight - 1
 	}
 	return attacked
@@ -535,7 +494,7 @@ func (p *Position) getKingAttackedSquares(enemyKing uint64) uint64 {
 	attacked := uint64(0)
 	for enemyKing != 0 {
 		sq := bits.TrailingZeros64(enemyKing)
-		attacked |= preCalculatedKingMoves[sq]
+		attacked |= PreCalculatedKingMoves[sq]
 		enemyKing &= enemyKing - 1
 	}
 	return attacked

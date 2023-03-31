@@ -11,7 +11,8 @@ import (
 type EvaluationService struct {
 	Weights
 
-	pawnAttacks [2]uint64
+	mobilityAreas [2]uint64
+	pawnAttacks   [2]uint64
 }
 
 func NewEvaluationService() *EvaluationService {
@@ -28,8 +29,8 @@ func (e *EvaluationService) Evaluate(p *engine.Position) int {
 	p.CurrentScore = e.calculateWhiteMaterial(p) - e.calculateBlackMaterial(p)
 
 	bothPawns := p.Board.WhitePawn | p.Board.BlackPawn
-	e.pawnAttacks[data.White] = p.Board.AllWhitePawnAttacks(bothPawns & p.Board.WhitePawn)
-	e.pawnAttacks[data.Black] = p.Board.AllBlackPawnAttacks(bothPawns & p.Board.BlackPawn)
+
+	e.SetupEvaluate(p)
 
 	e.calculateEvalPawns(p)
 	e.calculateEvalKnights(p)
@@ -39,6 +40,7 @@ func (e *EvaluationService) Evaluate(p *engine.Position) int {
 	e.calculateEvalKings(p)
 
 	eval := e.evaluateThreats(p, data.White, bothPawns) - e.evaluateThreats(p, data.Black, bothPawns)
+	eval += e.evaluateMobility(p)
 
 	p.CurrentScore += eval.Middle()
 
@@ -47,6 +49,16 @@ func (e *EvaluationService) Evaluate(p *engine.Position) int {
 	} else {
 		return -p.CurrentScore
 	}
+}
+
+func (e *EvaluationService) SetupEvaluate(p *engine.Position) {
+	bothPawns := p.Board.WhitePawn | p.Board.BlackPawn
+
+	e.pawnAttacks[data.White] = p.Board.AllWhitePawnAttacks(bothPawns & p.Board.WhitePawn)
+	e.pawnAttacks[data.Black] = p.Board.AllBlackPawnAttacks(bothPawns & p.Board.BlackPawn)
+
+	e.mobilityAreas[data.White] = ^(e.pawnAttacks[data.Black] | bothPawns&p.Board.WhitePieces&(data.Rank2Mask|(p.Board.Pieces>>8)))
+	e.mobilityAreas[data.Black] = ^(e.pawnAttacks[data.White] | bothPawns&p.Board.BlackPieces&(data.Rank7Mask|(p.Board.Pieces<<8)))
 }
 
 func (e *EvaluationService) calculateWhiteMaterial(p *engine.Position) int {
@@ -211,6 +223,41 @@ func (e *EvaluationService) calculateEvalKings(p *engine.Position) {
 			p.CurrentScore -= kingO[data.Mirror64[sq]]
 		}
 	}
+}
+
+func (e *EvaluationService) evaluateMobility(p *engine.Position) Score {
+	eval := e.EvaluateMobilityKnights(p, data.White) - e.EvaluateMobilityKnights(p, data.Black)
+	eval += e.EvaluateMobilityBishops(p, data.White) - e.EvaluateMobilityBishops(p, data.Black)
+
+	return eval
+}
+
+func (e *EvaluationService) EvaluateMobilityKnights(p *engine.Position, colour int) Score {
+	friendly := p.Board.GetPieces(colour, data.WN)
+	eval := Score(0)
+
+	for friendly != 0 {
+		sq := engine.FirstSquare(friendly)
+		eval += e.KnightMobility[p.Board.CountBits(e.mobilityAreas[colour]&engine.PreCalculatedKnightMoves[sq])]
+		friendly &= friendly - 1
+	}
+
+	return eval
+}
+
+// TODO Add x-ray attacks
+func (e *EvaluationService) EvaluateMobilityBishops(p *engine.Position, colour int) Score {
+	friendly := p.Board.GetPieces(colour, data.WB)
+	eval := Score(0)
+
+	for friendly != 0 {
+		sq := engine.FirstSquare(friendly)
+		attack := data.GetBishopAttacks(p.Board.Pieces, sq)
+		eval += e.BishopMobility[p.Board.CountBits(e.mobilityAreas[colour]&attack)]
+		friendly &= friendly - 1
+	}
+
+	return eval
 }
 
 func (e *EvaluationService) evaluateThreats(p *engine.Position, colour int, bothPawns uint64) Score {

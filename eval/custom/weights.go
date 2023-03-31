@@ -3,6 +3,9 @@ package eval
 type Weights struct {
 	ThreatByPawn     Score
 	ThreatByPawnPush Score
+
+	KnightMobility [9]Score
+	BishopMobility [14]Score
 }
 
 var pawnTable = [64]int{
@@ -82,4 +85,12 @@ var bishopPair = 30
 func (w *Weights) init() {
 	w.ThreatByPawn = S(-52, -73)
 	w.ThreatByPawnPush = S(-18, -7)
+
+	w.KnightMobility = [...]Score{
+		S(-35, -142), S(-28, -19), S(-7, 46), S(3, 81), S(13, 92), S(16, 111), S(23, 111), S(32, 106),
+		S(46, 77)}
+
+	w.BishopMobility = [...]Score{
+		S(-40, -93), S(-21, -54), S(-9, 6), S(-2, 44), S(8, 61), S(17, 89), S(22, 107), S(22, 114),
+		S(20, 126), S(26, 126), S(31, 125), S(55, 107), S(51, 119), S(103, 71)}
 }
