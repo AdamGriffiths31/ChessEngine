@@ -228,7 +228,8 @@ func (e *EvaluationService) calculateEvalKings(p *engine.Position) {
 func (e *EvaluationService) evaluateMobility(p *engine.Position) Score {
 	eval := e.EvaluateMobilityKnights(p, data.White) - e.EvaluateMobilityKnights(p, data.Black)
 	eval += e.EvaluateMobilityBishops(p, data.White) - e.EvaluateMobilityBishops(p, data.Black)
-
+	eval += e.EvaluateMobilityRooks(p, data.White) - e.EvaluateMobilityRooks(p, data.Black)
+	eval += e.EvaluateMobilityQueens(p, data.White) - e.EvaluateMobilityQueens(p, data.Black)
 	return eval
 }
 
@@ -254,6 +255,35 @@ func (e *EvaluationService) EvaluateMobilityBishops(p *engine.Position, colour i
 		sq := engine.FirstSquare(friendly)
 		attack := data.GetBishopAttacks(p.Board.Pieces, sq)
 		eval += e.BishopMobility[p.Board.CountBits(e.mobilityAreas[colour]&attack)]
+		friendly &= friendly - 1
+	}
+
+	return eval
+}
+
+func (e *EvaluationService) EvaluateMobilityQueens(p *engine.Position, colour int) Score {
+	friendly := p.Board.GetPieces(colour, data.WQ)
+	eval := Score(0)
+
+	for friendly != 0 {
+		sq := engine.FirstSquare(friendly)
+		bishopAttacks := data.GetBishopAttacks(p.Board.Pieces, sq)
+		rookAttacks := data.GetRookAttacks(p.Board.Pieces, sq)
+		eval += e.QueenMobility[p.Board.CountBits(e.mobilityAreas[colour]&(bishopAttacks|rookAttacks))]
+		friendly &= friendly - 1
+	}
+
+	return eval
+}
+
+func (e *EvaluationService) EvaluateMobilityRooks(p *engine.Position, colour int) Score {
+	friendly := p.Board.GetPieces(colour, data.WR)
+	eval := Score(0)
+
+	for friendly != 0 {
+		sq := engine.FirstSquare(friendly)
+		attack := data.GetRookAttacks(p.Board.Pieces, sq)
+		eval += e.RookMobility[p.Board.CountBits(e.mobilityAreas[colour]&attack)]
 		friendly &= friendly - 1
 	}
 
