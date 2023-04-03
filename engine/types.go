@@ -10,7 +10,6 @@ type Position struct {
 	FailHighFirst    float32
 	FailHigh         float32
 	MoveHistory      MoveHistory
-	CurrentScore     int
 	FiftyMove        int
 	PositionHistory  PositionHistory
 	Positions        map[uint64]int

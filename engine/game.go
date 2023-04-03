@@ -46,7 +46,6 @@ func (p *Position) Copy() *Position {
 		FailHighFirst:    p.FailHighFirst,
 		FailHigh:         p.FailHigh,
 		MoveHistory:      p.MoveHistory,
-		CurrentScore:     p.CurrentScore,
 		FiftyMove:        p.FiftyMove,
 		PositionHistory:  NewPositionHistory(),
 		Positions:        copyMap,

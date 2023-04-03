@@ -27,6 +27,7 @@ Go implementation of a UCI compatible chess engine.
 - Aspiration windows
 - Reverse Futility Pruning
 - Mate Distance Pruning
+- Razoring
 
 ### v0.7 (done)
 

@@ -50,7 +50,7 @@ func (e *EngineHolder) ClearForSearch() {
 
 func (e *Engine) ClearForSearch() {
 	e.Position.FiftyMove = 0
-	e.Position.CurrentScore = 0
+
 	e.Position.PositionHistory.ClearPositionHistory()
 
 	for i := 0; i < 13; i++ {
@@ -182,6 +182,14 @@ func (e *Engine) alphaBeta(alpha, beta, depthLeft, searchHeight int, nullAllowed
 			return staticEval
 		}
 	}
+
+	// Razoring
+	// if depthLeft <= 5 && staticEval+200*depthLeft <= alpha {
+	// 	score := e.quiescence(alpha, beta, searchHeight, info)
+	// 	if score <= alpha {
+	// 		return score
+	// 	}
+	// }
 
 	doNullMove := nullAllowed && !inCheck && e.Position.Play != 0 && depthLeft >= 4 && !e.Position.IsEndGame()
 	if doNullMove {

@@ -18,3 +18,10 @@ func TimeTrackMilliseconds(start time.Time, name string) {
 func GetTimeMs() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
+
+func Min(l, r int) int {
+	if l < r {
+		return l
+	}
+	return r
+}
