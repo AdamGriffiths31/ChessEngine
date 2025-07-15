@@ -1,0 +1,57 @@
+[
+  {
+    "name": "initial_position",
+    "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "expected": "  a b c d e f g h\n8 r n b q k b n r 8\n7 p p p p p p p p 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 P P P P P P P P 2\n1 R N B Q K B N R 1\n  a b c d e f g h"
+  },
+  {
+    "name": "empty_board",
+    "fen": "8/8/8/8/8/8/8/8 w - - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 . . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 . . . . . . . . 2\n1 . . . . . . . . 1\n  a b c d e f g h"
+  },
+  {
+    "name": "midgame_position",
+    "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4",
+    "expected": "  a b c d e f g h\n8 r . b q k b n r 8\n7 p p p p . p p p 7\n6 . . n . . . . . 6\n5 . . . . p . . . 5\n4 . . B . P . . . 4\n3 . . . . . N . . 3\n2 P P P P . P P P 2\n1 R N B Q K . . R 1\n  a b c d e f g h"
+  },
+  {
+    "name": "edge_rank_file",
+    "fen": "8/8/8/8/8/8/8/R3K2R w KQ - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 . . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 . . . . . . . . 2\n1 R . . . K . . R 1\n  a b c d e f g h"
+  },
+  {
+    "name": "promotion_scenario",
+    "fen": "8/P7/8/8/8/8/7p/8 w - - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 P . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 . . . . . . . p 2\n1 . . . . . . . . 1\n  a b c d e f g h"
+  },
+  {
+    "name": "king_vs_king",
+    "fen": "8/8/8/8/8/8/8/4K3 w - - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 . . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 . . . . . . . . 2\n1 . . . . K . . . 1\n  a b c d e f g h"
+  },
+  {
+    "name": "malformed_fen_extra_rank",
+    "fen": "8/8/8/8/8/8/8/8/8 w - - 0 1",
+    "expected": "ERROR: Invalid FEN - too many ranks"
+  },
+  {
+    "name": "single_white_queen",
+    "fen": "8/8/8/8/8/8/8/4Q3 w - - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 . . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 . . . . . . . . 2\n1 . . . . Q . . . 1\n  a b c d e f g h"
+  },
+  {
+    "name": "single_black_pawn",
+    "fen": "8/8/8/8/8/8/8/4p3 w - - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 . . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 . . . . . . . . 2\n1 . . . . p . . . 1\n  a b c d e f g h"
+  },
+  {
+    "name": "white_pawn_second_rank",
+    "fen": "8/8/8/8/8/8/P7/8 w - - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 . . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 P . . . . . . . 2\n1 . . . . . . . . 1\n  a b c d e f g h"
+  },
+  {
+    "name": "black_pawn_first_rank",
+    "fen": "8/8/8/8/8/8/8/p7 w - - 0 1",
+    "expected": "  a b c d e f g h\n8 . . . . . . . . 8\n7 . . . . . . . . 7\n6 . . . . . . . . 6\n5 . . . . . . . . 5\n4 . . . . . . . . 4\n3 . . . . . . . . 3\n2 . . . . . . . . 2\n1 p . . . . . . . 1\n  a b c d e f g h"
+  }
+]
