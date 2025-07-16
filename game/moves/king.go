@@ -4,11 +4,17 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/board"
 )
 
-// GenerateKingMoves generates all legal king moves for the given player
-func (g *Generator) GenerateKingMoves(b *board.Board, player Player) *MoveList {
-	moveList := NewMoveList()
-	
-	// Determine king piece based on player
+// Castling constants
+const (
+	KingStartFile    = 4 // King starts on file e (index 4)
+	KingsideTargetFile = 6 // King moves to file g (index 6) for kingside castling
+	QueensideTargetFile = 2 // King moves to file c (index 2) for queenside castling
+	WhiteKingStartRank = 0 // White king starts on rank 1 (index 0)
+	BlackKingStartRank = 7 // Black king starts on rank 8 (index 7)
+)
+
+// findKingSquare finds the king's position for the given player
+func (g *Generator) findKingSquare(b *board.Board, player Player) *board.Square {
 	var kingPiece board.Piece
 	if player == White {
 		kingPiece = board.WhiteKing
@@ -16,16 +22,25 @@ func (g *Generator) GenerateKingMoves(b *board.Board, player Player) *MoveList {
 		kingPiece = board.BlackKing
 	}
 	
-	// Scan the board for the king of the current player
 	for rank := 0; rank < 8; rank++ {
 		for file := 0; file < 8; file++ {
 			piece := b.GetPiece(rank, file)
 			if piece == kingPiece {
-				// Generate moves for this king
-				g.generateKingMovesFromSquare(b, player, rank, file, moveList)
-				return moveList // There should only be one king
+				return &board.Square{File: file, Rank: rank}
 			}
 		}
+	}
+	return nil
+}
+
+// GenerateKingMoves generates all legal king moves for the given player
+func (g *Generator) GenerateKingMoves(b *board.Board, player Player) *MoveList {
+	moveList := NewMoveList()
+	
+	kingSquare := g.findKingSquare(b, player)
+	if kingSquare != nil {
+		// Generate moves for this king
+		g.generateKingMovesFromSquare(b, player, kingSquare.Rank, kingSquare.File, moveList)
 	}
 	
 	return moveList
@@ -44,6 +59,13 @@ func (g *Generator) generateKingMovesFromSquare(b *board.Board, player Player, r
 
 // generateKingSingleMoves generates single-square moves in all 8 directions
 func (g *Generator) generateKingSingleMoves(b *board.Board, player Player, from board.Square, moveList *MoveList) {
+	// Determine king piece based on player
+	var kingPiece board.Piece
+	if player == White {
+		kingPiece = board.WhiteKing
+	} else {
+		kingPiece = board.BlackKing
+	}
 	// All possible king moves: one square in any direction
 	kingMoves := []struct{ rankDelta, fileDelta int }{
 		{1, 0},   // Up
@@ -70,6 +92,7 @@ func (g *Generator) generateKingSingleMoves(b *board.Board, player Player, from 
 				kingMove := board.Move{
 					From:       from,
 					To:         to,
+					Piece:      kingPiece,
 					IsCapture:  false,
 					IsCastling: false,
 					Promotion:  board.Empty,
@@ -80,6 +103,7 @@ func (g *Generator) generateKingSingleMoves(b *board.Board, player Player, from 
 				kingMove := board.Move{
 					From:       from,
 					To:         to,
+					Piece:      kingPiece,
 					IsCapture:  true,
 					Captured:   piece,
 					IsCastling: false,
@@ -94,34 +118,39 @@ func (g *Generator) generateKingSingleMoves(b *board.Board, player Player, from 
 
 // generateCastlingMoves generates castling moves if conditions are met
 func (g *Generator) generateCastlingMoves(b *board.Board, player Player, from board.Square, moveList *MoveList) {
-	// Basic castling conditions:
-	// 1. King must be on starting square
-	// 2. No pieces between king and rook
-	// 3. King and rook must not have moved (we'll assume they haven't for now)
-	// 4. King must not be in check (we'll skip this check for now)
-	// 5. King must not pass through or land on a square that is attacked (we'll skip this for now)
+	castlingRights := b.GetCastlingRights()
 	
 	var kingStartRank int
+	var kingPiece board.Piece
 	var rookPiece board.Piece
+	var kingsideRight, queensideRight rune
 	
 	if player == White {
-		kingStartRank = 0 // White king starts on rank 1 (index 0)
+		kingStartRank = WhiteKingStartRank
+		kingPiece = board.WhiteKing
 		rookPiece = board.WhiteRook
+		kingsideRight = 'K'
+		queensideRight = 'Q'
 	} else {
-		kingStartRank = 7 // Black king starts on rank 8 (index 7)
+		kingStartRank = BlackKingStartRank
+		kingPiece = board.BlackKing
 		rookPiece = board.BlackRook
+		kingsideRight = 'k'
+		queensideRight = 'q'
 	}
 	
 	// Only allow castling if king is on starting square
-	if from.Rank != kingStartRank || from.File != 4 {
+	if from.Rank != kingStartRank || from.File != KingStartFile {
 		return
 	}
 	
 	// Check kingside castling (O-O)
-	if g.canCastleKingside(b, player, kingStartRank, rookPiece) {
+	if g.hasCastlingRight(castlingRights, kingsideRight) && g.canCastleKingside(b, player, kingStartRank, rookPiece) && 
+	   g.isCastlingPathSafe(b, player, from, board.Square{File: KingsideTargetFile, Rank: kingStartRank}) {
 		castlingMove := board.Move{
 			From:       from,
-			To:         board.Square{File: 6, Rank: kingStartRank},
+			To:         board.Square{File: KingsideTargetFile, Rank: kingStartRank},
+			Piece:      kingPiece,
 			IsCapture:  false,
 			IsCastling: true,
 			Promotion:  board.Empty,
@@ -130,10 +159,12 @@ func (g *Generator) generateCastlingMoves(b *board.Board, player Player, from bo
 	}
 	
 	// Check queenside castling (O-O-O)
-	if g.canCastleQueenside(b, player, kingStartRank, rookPiece) {
+	if g.hasCastlingRight(castlingRights, queensideRight) && g.canCastleQueenside(b, player, kingStartRank, rookPiece) && 
+	   g.isCastlingPathSafe(b, player, from, board.Square{File: QueensideTargetFile, Rank: kingStartRank}) {
 		castlingMove := board.Move{
 			From:       from,
-			To:         board.Square{File: 2, Rank: kingStartRank},
+			To:         board.Square{File: QueensideTargetFile, Rank: kingStartRank},
+			Piece:      kingPiece,
 			IsCapture:  false,
 			IsCastling: true,
 			Promotion:  board.Empty,
@@ -170,4 +201,111 @@ func (g *Generator) canCastleQueenside(b *board.Board, player Player, rank int, 
 	}
 	
 	return true
+}
+
+// hasCastlingRight checks if a specific castling right is available
+func (g *Generator) hasCastlingRight(castlingRights string, right rune) bool {
+	for _, r := range castlingRights {
+		if r == right {
+			return true
+		}
+	}
+	return false
+}
+
+// isCastlingPathSafe checks if the king doesn't pass through or end up in check during castling
+func (g *Generator) isCastlingPathSafe(b *board.Board, player Player, from, to board.Square) bool {
+	// Check each square the king passes through (including destination)
+	startFile := from.File
+	endFile := to.File
+	
+	// Determine direction and squares to check
+	var filesToCheck []int
+	if endFile > startFile {
+		// Kingside castling: check e1, f1, g1
+		filesToCheck = []int{startFile, startFile + 1, startFile + 2}
+	} else {
+		// Queenside castling: check e1, d1, c1
+		filesToCheck = []int{startFile, startFile - 1, startFile - 2}
+	}
+	
+	// Test each square for safety
+	for _, file := range filesToCheck {
+		testSquare := board.Square{File: file, Rank: from.Rank}
+		if g.isSquareAttacked(b, testSquare, player) {
+			return false
+		}
+	}
+	
+	return true
+}
+
+// isSquareAttacked checks if a square is attacked by the enemy
+func (g *Generator) isSquareAttacked(b *board.Board, square board.Square, player Player) bool {
+	enemyPlayer := Black
+	if player == Black {
+		enemyPlayer = White
+	}
+	
+	// Generate all enemy moves (without castling to avoid recursion)
+	enemyMoves := g.generateMovesWithoutCastling(b, enemyPlayer)
+	
+	for _, move := range enemyMoves.Moves {
+		if move.To.File == square.File && move.To.Rank == square.Rank {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// generateMovesWithoutCastling generates all moves except castling (to avoid recursion)
+func (g *Generator) generateMovesWithoutCastling(b *board.Board, player Player) *MoveList {
+	moveList := NewMoveList()
+
+	pawnMoves := g.GeneratePawnMoves(b, player)
+	for _, move := range pawnMoves.Moves {
+		moveList.AddMove(move)
+	}
+
+	rookMoves := g.GenerateRookMoves(b, player)
+	for _, move := range rookMoves.Moves {
+		moveList.AddMove(move)
+	}
+
+	bishopMoves := g.GenerateBishopMoves(b, player)
+	for _, move := range bishopMoves.Moves {
+		moveList.AddMove(move)
+	}
+
+	knightMoves := g.GenerateKnightMoves(b, player)
+	for _, move := range knightMoves.Moves {
+		moveList.AddMove(move)
+	}
+
+	queenMoves := g.GenerateQueenMoves(b, player)
+	for _, move := range queenMoves.Moves {
+		moveList.AddMove(move)
+	}
+
+	// Generate only non-castling king moves
+	kingMoves := g.generateKingNonCastlingMoves(b, player)
+	for _, move := range kingMoves.Moves {
+		moveList.AddMove(move)
+	}
+
+	return moveList
+}
+
+// generateKingNonCastlingMoves generates only single-square king moves (no castling)
+func (g *Generator) generateKingNonCastlingMoves(b *board.Board, player Player) *MoveList {
+	moveList := NewMoveList()
+	
+	kingSquare := g.findKingSquare(b, player)
+	if kingSquare != nil {
+		// Generate only single-square moves for this king
+		g.generateKingSingleMoves(b, player, *kingSquare, moveList)
+	}
+	
+	return moveList
 }

@@ -17,11 +17,6 @@ type Move struct {
 	IsEnPassant bool
 }
 
-type Square struct {
-	File int // 0-7 (a-h)
-	Rank int // 0-7 (1-8)
-}
-
 func ParseSquare(notation string) (Square, error) {
 	if len(notation) != 2 {
 		return Square{}, errors.New("invalid square notation: must be 2 characters")

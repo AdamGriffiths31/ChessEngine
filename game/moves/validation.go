@@ -22,12 +22,6 @@ func (v *Validator) ValidateMove(b *board.Board, move board.Move, player Player)
 	return legalMoves.Contains(move)
 }
 
-// ValidatePawnMove specifically validates pawn moves
-func (v *Validator) ValidatePawnMove(b *board.Board, move board.Move, player Player) bool {
-	legalMoves := v.generator.GeneratePawnMoves(b, player)
-	return legalMoves.Contains(move)
-}
-
 // IsMoveLegal is a convenience function that checks if a move is legal
 func IsMoveLegal(b *board.Board, move board.Move, player Player) bool {
 	validator := NewValidator()
@@ -40,11 +34,6 @@ func GetLegalMoves(b *board.Board, player Player) *MoveList {
 	return generator.GenerateAllMoves(b, player)
 }
 
-// GetLegalPawnMoves returns all legal pawn moves for the current position
-func GetLegalPawnMoves(b *board.Board, player Player) *MoveList {
-	generator := NewGenerator()
-	return generator.GeneratePawnMoves(b, player)
-}
 
 // MoveMatchesInput checks if a move matches user input (considering promotion)
 func MoveMatchesInput(move board.Move, inputMove board.Move) bool {
