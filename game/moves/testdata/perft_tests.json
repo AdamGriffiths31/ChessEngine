@@ -18,11 +18,12 @@
       "description": "Complex middlegame position with many piece interactions",
       "fen": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
       "depths": [
-        {"depth": 1, "nodes": 48, "captures": 8, "en_passant": 0, "castles": 2, "promotions": 0},
-        {"depth": 2, "nodes": 2039, "captures": 351, "en_passant": 1, "castles": 91, "promotions": 0},
-        {"depth": 3, "nodes": 97862, "captures": 17102, "en_passant": 45, "castles": 3162, "promotions": 0},
-        {"depth": 4, "nodes": 4085603, "captures": 757163, "en_passant": 1929, "castles": 128013, "promotions": 15172},
-        {"depth": 5, "nodes": 193690690, "captures": 35043416, "en_passant": 73365, "castles": 4993637, "promotions": 8392}
+        {"depth": 1, "nodes": 48},
+        {"depth": 2, "nodes": 2039},
+        {"depth": 3, "nodes": 97862},
+        {"depth": 4, "nodes": 4085603},
+        {"depth": 5, "nodes": 193690690},
+        {"depth": 6, "nodes": 8031647685}
       ]
     },
     {

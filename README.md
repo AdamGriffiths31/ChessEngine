@@ -1,438 +1,274 @@
-# Golang CLI Chess Engine
+# Chess Engine Performance Optimization Plan
 
-## Phase 1: CLI Chess Board Renderer ✅ COMPLETED
+## Problem Analysis
 
-### Overview
+The kiwipete_depth6 perft test is taking 10+ minutes instead of seconds, indicating severe performance bottlenecks. The current implementation has several critical issues:
 
-This module focuses on rendering the current board state to the command line using ASCII art. The output is clean, consistent, and testable — forming the visual foundation for human interaction with the chess engine.
+1. **Expensive Legal Move Validation**: Every pseudo-legal move requires makeMove → IsKingInCheck → unmakeMove
+2. **Inefficient Board Scanning**: Full 8x8 board scans for each piece type repeatedly  
+3. **Memory Allocation Overhead**: Frequent MoveList object creation
+4. **Attack Detection Inefficiency**: Repeated IsSquareAttacked calls without caching
+5. **No Incremental Updates**: Complete board state recalculation after each move
 
-### Objectives ✅
+Expected nodes for kiwipete_depth6: **8,031,647,685** (should complete in seconds, not minutes)
 
-- Render an 8x8 chess board with:
-  - Piece placement
-  - File and rank labels (`a`–`h`, `1`–`8`)
-- Use standard symbols:
-  - Uppercase letters for White pieces (`P`, `N`, `B`, `R`, `Q`, `K`)
-  - Lowercase letters for Black pieces (`p`, `n`, `b`, `r`, `q`, `k`)
-  - Dots (`.`) for empty squares
-- Output must be a multiline string suitable for terminal printing
-- Designed for testability — rendering correctness validated via snapshot-style unit tests
+## Stage 1: Core Performance Infrastructure (Priority: Critical)
+**Target**: Reduce move generation time by 10-50x
 
----
+### 1.1 Bitboard System Implementation
+- Replace array-based board representation with 64-bit bitboards
+- Create bitboards for each piece type (whitePawns, blackPawns, whiteRooks, etc.)
+- Implement bitwise operations for piece movements and attacks
+- Add utility functions for bitboard manipulation (LSB, MSB, popcount)
 
-## Phase 2: Game Mode 1 - Manual Play ✅ COMPLETED
+**Files to modify:**
+- `board/bitboard.go` (new)
+- `board/board.go` (major refactor)
+- `game/moves/types.go` (add bitboard types)
 
-### Overview
+### 1.2 Piece Lists and Incremental Updates
+- Maintain piece lists to avoid board scanning (max 16 pieces per type)
+- Update piece lists incrementally during make/unmake moves
+- Cache king positions for fast check detection
+- Implement zobrist hashing for position identification
 
-Game Mode 1 allows users to manually play both sides of a chess game through the CLI. This mode focuses on move input, board state management, and user interaction without move validation — assuming the user makes legal moves.
+**Files to modify:**
+- `game/moves/piece_lists.go` (new)
+- `game/moves/generator.go` (major refactor)
+- `game/moves/board_utils.go` (update MoveExecutor)
 
-### Objectives ✅
+### 1.3 Pre-computed Attack Tables
+- Generate attack tables for knights (64 entries)
+- Generate attack tables for kings (64 entries)  
+- Create ray tables for sliding pieces
+- Implement distance and direction lookup tables
 
-- Interactive CLI game loop with move input
-- Support coordinate notation moves (e.g., "e2e4", "o-o", "o-o-o")
-- Display current board state after each move
-- Track whose turn it is (White/Black)
-- Handle basic commands:
-  - Move input (e.g., "e2e4")
-  - "quit" to exit game
-  - "reset" to start new game
-  - "fen" to display current FEN string
-- Clean user interface with prompts and feedback
-- No move validation (trust user input)
+**Files to modify:**
+- `game/moves/attack_tables.go` (new)
+- `game/moves/attacks.go` (major refactor)
 
-### File Structure
+## Stage 2: Move Generation Optimization (Priority: High)
+**Target**: Achieve 1M+ nodes/second in perft tests
 
+### 2.1 Magic Bitboards for Sliding Pieces
+- Implement magic bitboards for rooks and bishops
+- Pre-calculate magic numbers and attack databases
+- Optimize queen moves as combination of rook + bishop attacks
+- Add blocking piece detection using bitboard intersections
+
+**Files to modify:**
+- `game/moves/magic_bitboards.go` (new)
+- `game/moves/sliding_pieces.go` (new)
+- `game/moves/generator.go` (update sliding piece generation)
+
+### 2.2 Optimized Pseudo-Legal Move Generation
+- Use bitboard operations for piece movement calculations
+- Implement bulk move generation (generate all moves of a type at once)
+- Add move ordering hints during generation
+- Optimize pawn move generation with bitboard shifts
+
+**Files to modify:**
+- `game/moves/pawn.go` (major refactor)
+- `game/moves/knight.go` (major refactor)
+- `game/moves/king.go` (major refactor)
+- `game/moves/generator.go` (major refactor)
+
+### 2.3 Fast Legal Move Filtering
+- Implement pinned piece detection using bitboards
+- Add discovered check detection
+- Optimize king safety checks
+- Cache attack information between moves
+
+**Files to modify:**
+- `game/moves/pins.go` (new)
+- `game/moves/legal_moves.go` (new)
+- `game/moves/generator.go` (update legal move filtering)
+
+## Stage 3: Memory and Algorithm Optimization (Priority: Medium)
+**Target**: Reduce memory allocations and improve cache efficiency
+
+### 3.1 Memory Management
+- Implement object pooling for MoveList and frequently allocated objects
+- Use stack-based move history instead of dynamic allocation
+- Pre-allocate move arrays with sufficient capacity
+- Implement memory-efficient move representation
+
+**Files to modify:**
+- `game/moves/memory_pool.go` (new)
+- `game/moves/types.go` (optimize move representation)
+- `game/moves/generator.go` (use pooled objects)
+
+### 3.2 Algorithm Optimizations
+- Add bulk operations to reduce function call overhead
+- Implement compiler hints for hot paths (inline, likely/unlikely)
+- Optimize critical loops with manual unrolling where beneficial
+- Add SIMD optimizations for bitboard operations
+
+**Files to modify:**
+- `game/moves/optimizations.go` (new)
+- `game/moves/bitboard_ops.go` (new)
+- All move generation files (add inlining hints)
+
+### 3.3 Cache-Friendly Data Structures
+- Organize data structures for better cache locality
+- Minimize pointer indirection in hot paths
+- Use bit-packed structures where appropriate
+- Implement copy-make for shallow position copies
+
+**Files to modify:**
+- `game/moves/types.go` (optimize data layout)
+- `board/board.go` (cache-friendly board representation)
+- `game/moves/generator.go` (minimize pointer dereferencing)
+
+## Stage 4: Advanced Optimizations (Priority: Low)
+**Target**: Achieve competitive engine performance (5M+ nodes/second)
+
+### 4.1 Parallel Processing
+- Implement parallel perft using goroutines
+- Add work-stealing for load balancing
+- Optimize for multi-core systems
+- Add parallel move generation for complex positions
+
+**Files to modify:**
+- `game/moves/parallel_perft.go` (new)
+- `game/moves/perft.go` (add parallel option)
+
+### 4.2 Transposition Tables
+- Implement hash tables for position caching
+- Add move ordering based on hash moves
+- Implement replacement schemes (always replace, depth preferred)
+- Add collision detection and handling
+
+**Files to modify:**
+- `game/moves/transposition_table.go` (new)
+- `game/moves/zobrist.go` (new)
+- `game/moves/perft.go` (add transposition table usage)
+
+### 4.3 Assembly Optimizations
+- Use CPU-specific optimizations for critical functions
+- Implement fast bit manipulation routines
+- Add vectorized operations for multiple piece calculations
+- Optimize for specific processor architectures
+
+**Files to modify:**
+- `game/moves/asm_amd64.s` (new)
+- `game/moves/bitboard_ops.go` (add assembly calls)
+
+## Implementation Strategy
+
+### Phase 1: Foundation (Week 1-2)
+1. **Day 1-3**: Implement basic bitboard system and utilities
+2. **Day 4-6**: Create piece lists and incremental updates
+3. **Day 7-10**: Add pre-computed attack tables
+4. **Day 11-14**: Ensure all existing tests pass with new system
+
+### Phase 2: Core Optimizations (Week 3-4)
+1. **Day 15-18**: Implement magic bitboards for sliding pieces
+2. **Day 19-22**: Optimize move generation algorithms
+3. **Day 23-26**: Add fast legal move filtering
+4. **Day 27-28**: Target 10x performance improvement
+
+### Phase 3: Refinement (Week 5-6)
+1. **Day 29-32**: Implement memory optimizations
+2. **Day 33-36**: Add cache-friendly data structures
+3. **Day 37-40**: Optimize critical algorithms
+4. **Day 41-42**: Target 50x performance improvement
+
+### Phase 4: Advanced Features (Week 7-8)
+1. **Day 43-46**: Add parallel processing
+2. **Day 47-50**: Implement transposition tables
+3. **Day 51-54**: Add assembly optimizations
+4. **Day 55-56**: Target 100x+ performance improvement
+
+## Success Metrics
+
+### Performance Targets
+- **kiwipete_depth6**: Complete in < 10 seconds (currently 10+ minutes)
+- **initial_position_depth6**: Complete in < 30 seconds
+- **Nodes per second**: Achieve 1M+ nodes/second minimum
+- **Memory usage**: Reduce allocation overhead by 90%
+
+### Benchmarking Command
+```bash
+go test -run=TestKiwipeteDepth6Timing -v
 ```
-chess-cli/
-├── game/
-│   ├── modes/
-│   │   ├── mode1.go          # Manual play game mode
-│   │   └── mode1_test.go
-│   ├── engine.go             # Game state management
-│   ├── engine_test.go
-│   └── moves.go              # Move parsing and application
-├── ui/
-│   ├── renderer.go
-│   ├── renderer_test.go
-│   ├── prompts.go            # User interaction
-│   └── prompts_test.go
-├── board/
-│   ├── board.go
-│   ├── board_test.go
-│   └── moves.go              # Board move operations
-```
+
+### Expected Results by Stage
+- **Stage 1**: 10x improvement (1-2 minutes → 6-12 seconds)
+- **Stage 2**: 50x improvement (10+ minutes → 10-20 seconds)
+- **Stage 3**: 100x improvement (10+ minutes → 5-10 seconds)
+- **Stage 4**: 200x+ improvement (10+ minutes → 1-5 seconds)
+
+## Code Quality Standards
+
+### Testing Requirements
+- Maintain 100% test coverage for existing functionality
+- Add comprehensive performance benchmarks
+- Run full perft test suite after each major change
+- Use property-based testing for move generation
+
+### Documentation Standards
+- Document all performance-critical sections
+- Add inline comments explaining optimization techniques
+- Maintain clear separation between optimization and logic
+- Include performance analysis for each optimization
+
+## Risk Mitigation
+
+### Technical Risks
+- **Complexity**: Implement incrementally with continuous testing
+- **Correctness**: Maintain rigorous test suite throughout development
+- **Performance**: Profile at each stage to ensure improvements
+- **Maintainability**: Keep clear separation between optimization and logic
+
 ### Testing Strategy
+- Run full perft test suite after each optimization
+- Add performance regression tests
+- Implement continuous benchmarking
+- Use property-based testing for move generation
 
-#### Game Mode 1 Testing Requirements:
+## Current Baseline Performance
 
-- **Move Parsing Tests**: Validate algebraic notation parsing
-  - Standard moves: "e2e4", "Nf3", "Qh5"
-  - Castling: "O-O", "O-O-O"
-  - Captures: "exd5", "Nxf7"
-  - Promotions: "e8=Q", "a1=N"
-  - Edge cases: Invalid format handling
+### Perft Test Results (as of 2025-07-17)
+- **kiwipete_depth6**: DNF (10+ minutes) - Target: 8,031,647,685 nodes
+- **initial_position_depth6**: Not tested - Target: 119,060,324 nodes
 
-- **Game State Tests**: Ensure proper state management
-  - Turn tracking (White/Black alternation)
-  - Board state updates after moves
-  - Command handling (quit, reset, fen)
-  - Game loop integration
+### Critical Bottlenecks Identified
+1. **Move Generation**: `generator.go:37-49` - Full board scanning
+2. **Legal Move Validation**: `generator.go:262-305` - Make/unmake for each move
+3. **Attack Detection**: `attacks.go` - Repeated square attack calculations
+4. **Memory Allocation**: `types.go` - Frequent MoveList creation
 
-- **UI Interaction Tests**: Validate user experience
-  - Prompt display and formatting
-  - Input handling and validation
-  - Error message clarity
-  - Board rendering integration
+## Expected Outcomes
 
-#### Test Structure:
-- Use table-driven tests for move parsing scenarios
-- Mock user input for game loop testing
-- Golden file approach for complex game state scenarios
-- Integration tests for full game flow
+### Short-term (1-2 weeks)
+- 10x performance improvement in perft tests
+- Solid foundation for future optimizations
+- All existing functionality preserved
 
-### Milestone Tasks
+### Medium-term (1-2 months)
+- 50-100x performance improvement
+- Competitive chess engine performance
+- Scalable architecture for AI features
 
-1. **Move System**: Implement algebraic notation parsing and board updates
-2. **Game Engine**: Create game state management and turn tracking
-3. **User Interface**: Build interactive prompts and command handling
-4. **Game Mode 1**: Integrate all components into playable manual mode
-5. **Testing Suite**: Comprehensive tests for all components
-6. **Main Integration**: Update main.go to launch Game Mode 1
+### Long-term (2+ months)
+- Foundation for advanced chess AI
+- Tournament-ready performance
+- Extensible optimization framework
 
-### Example User Experience
+## Getting Started
 
-```
-Chess Engine - Game Mode 1: Manual Play
-========================================
+### Prerequisites
+- Go 1.19+ for latest performance features
+- Benchmarking tools: `go test -bench=.`
+- Profiling tools: `go tool pprof`
 
-Current turn: White
-
-  a b c d e f g h
-8 r n b q k b n r 8
-7 p p p p p p p p 7
-6 . . . . . . . . 6
-5 . . . . . . . . 5
-4 . . . . . . . . 4
-3 . . . . . . . . 3
-2 P P P P P P P P 2
-1 R N B Q K B N R 1
-  a b c d e f g h
-
-Enter move (or 'quit', 'reset', 'fen'): e2e4
-
-Current turn: Black
-
-  a b c d e f g h
-8 r n b q k b n r 8
-7 p p p p p p p p 7
-6 . . . . . . . . 6
-5 . . . . . . . . 5
-4 . . . . P . . . 4
-3 . . . . . . . . 3
-2 P P P P . P P P 2
-1 R N B Q K B N R 1
-  a b c d e f g h
-
-Enter move (or 'quit', 'reset', 'fen'): 
-```
+### First Steps
+1. Run current performance baseline: `go test -run=TestKiwipeteDepth6Timing -v`
+2. Begin with Stage 1.1: Bitboard system implementation
+3. Set up continuous benchmarking pipeline
+4. Document performance improvements at each stage
 
 ---
 
-## Phase 3: Move Generation and Validation
-
-### Overview
-
-Phase 3 introduces legal move generation and validation to the chess engine. Users can now type "moves" to see all valid moves available for the current position. This phase establishes the foundation for proper chess rule enforcement and AI gameplay.
-
-Phase 3 is implemented in multiple sub-phases, each focusing on specific piece types:
-- **Phase 3a**: Pawn move generation ✅ COMPLETED
-- **Phase 3b**: Rook move generation ✅ COMPLETED
-- **Phase 3c**: Bishop move generation ✅ COMPLETED
-- **Phase 3d**: Knight move generation ✅ COMPLETED
-- **Phase 3e**: Queen move generation ✅ COMPLETED
-- **Phase 3f**: King move generation ✅ COMPLETED
-
-### Phase 3a: Pawn Move Generation ✅ COMPLETED
-
-The initial implementation focuses exclusively on pawn moves, covering all pawn-specific rules and edge cases.
-
-### Objectives
-
-- **Move Generation Command**: Type "moves" to display all legal moves for current player
-- **Pawn Move Logic**: Complete implementation of pawn movement rules:
-  - Forward moves (one square from any rank)
-  - Initial two-square moves (from starting rank only)
-  - Diagonal captures (when enemy piece present)
-  - En passant captures (when conditions met)
-  - Promotion moves (when reaching end rank)
-- **Move Validation**: Validate user input against generated legal moves
-- **Move Display**: Clean, organized presentation of available moves
-- **Integration**: Seamless integration with existing Game Mode 1
-
-### File Structure
-
-```
-chess-cli/
-├── game/
-│   ├── moves/
-│   │   ├── generator.go        # Move generation engine
-│   │   ├── generator_test.go
-│   │   ├── pawn.go            # Pawn-specific move logic
-│   │   ├── pawn_test.go
-│   │   └── validation.go      # Move validation
-│   ├── modes/
-│   │   ├── mode1.go          # Updated with move generation
-│   │   └── mode1_test.go
-│   ├── engine.go             # Enhanced game state
-│   ├── engine_test.go
-│   └── moves.go              # Move parsing
-├── ui/
-│   ├── renderer.go
-│   ├── renderer_test.go
-│   ├── prompts.go            # Updated with move display
-│   ├── prompts_test.go
-│   └── moves_display.go      # Move formatting and display
-├── board/
-│   ├── board.go
-│   ├── board_test.go
-│   ├── moves.go              # Board operations
-│   └── position.go           # Position analysis utilities
-```
-
-### Testing Strategy
-
-#### Pawn Move Generation Tests:
-
-- **Basic Forward Moves**:
-  - Single square forward (any rank)
-  - Two square initial move (rank 2/7 only)
-  - Blocked path detection
-  - Edge of board boundaries
-
-- **Capture Moves**:
-  - Diagonal captures (left/right)
-  - No capture when no enemy piece
-  - Cannot capture own pieces
-  - Cannot capture empty squares
-
-- **En Passant**:
-  - Valid en passant scenarios
-  - Previous move was pawn two-square advance
-  - Capturing pawn on correct rank (5th/4th)
-  - Target square availability
-
-- **Promotion**:
-  - Pawn reaching end rank (8th/1st)
-  - All promotion piece options (Q, R, B, N)
-  - Promotion on captures vs forward moves
-  - Multiple promotion moves per position
-
-- **Edge Cases**:
-  - Pawns on starting rank but obstructed
-  - Pawns near board edges
-  - Multiple en passant possibilities
-  - Promotion with captures
-
-#### Move Generation Integration Tests:
-
-- **"moves" Command**: Verify command parsing and execution
-- **Move Display**: Validate formatting and completeness
-- **Move Validation**: Ensure only legal moves accepted
-- **Game Flow**: Integration with existing Game Mode 1
-
-#### Test Structure:
-- **Golden File Tests**: Board positions with expected move lists
-- **Table-Driven Tests**: Comprehensive pawn scenarios
-- **Integration Tests**: Full command and validation flow
-- **Performance Tests**: Move generation efficiency
-
-### Milestone Tasks
-
-1. **Move Generation Framework**: Create base generator infrastructure
-2. **Pawn Move Logic**: Implement all pawn movement rules
-3. **Move Validation System**: Validate moves against generated legal moves
-4. **UI Integration**: Add "moves" command and move display
-5. **Comprehensive Testing**: Full test coverage for all pawn scenarios
-6. **Game Mode Enhancement**: Integrate with existing manual play mode
-
-### Example User Experience
-
-```
-Chess Engine - Game Mode 1: Manual Play
-========================================
-
-Current turn: White
-Move: 1
-
-  a b c d e f g h
-8 r n b q k b n r 8
-7 p p p p p p p p 7
-6 . . . . . . . . 6
-5 . . . . . . . . 5
-4 . . . . . . . . 4
-3 . . . . . . . . 3
-2 P P P P P P P P 2
-1 R N B Q K B N R 1
-  a b c d e f g h
-
-Enter move (or 'quit', 'reset', 'fen', 'moves'): moves
-
-Available moves for White:
-Pawn moves:
-  a2a3, a2a4, b2b3, b2b4, c2c3, c2c4, d2d3, d2d4
-  e2e3, e2e4, f2f3, f2f4, g2g3, g2g4, h2h3, h2h4
-
-Enter move (or 'quit', 'reset', 'fen', 'moves'): e2e4
-
-Move validated ✓
-
-Current turn: Black
-Move: 1
-
-  a b c d e f g h
-8 r n b q k b n r 8
-7 p p p p p p p p 7
-6 . . . . . . . . 6
-5 . . . . . . . . 5
-4 . . . . P . . . 4
-3 . . . . . . . . 3
-2 P P P P . P P P 2
-1 R N B Q K B N R 1
-  a b c d e f g h
-
-Enter move (or 'quit', 'reset', 'fen', 'moves'): moves
-
-Available moves for Black:
-Pawn moves:
-  a7a6, a7a5, b7b6, b7b5, c7c6, c7c5, d7d6, d7d5
-  e7e6, e7e5, f7f6, f7f5, g7g6, g7g5, h7h6, h7h5
-
-Enter move (or 'quit', 'reset', 'fen', 'moves'): d7d5
-
-Move validated ✓
-```
-
-### Phase 3b-3f: Additional Piece Move Generation
-
-The remaining phases implement move generation for all other piece types, following the same comprehensive approach as Phase 3a:
-
-#### Phase 3b: Rook Move Generation
-- **Straight Line Movement**: Horizontal and vertical moves until blocked
-- **Path Validation**: Cannot jump over pieces
-- **Capture Logic**: Enemy piece captures
-- **Board Boundary Respect**: Proper edge handling
-
-#### Phase 3c: Bishop Move Generation  
-- **Diagonal Movement**: Four diagonal directions until blocked
-- **Path Validation**: Cannot jump over pieces
-- **Capture Logic**: Enemy piece captures
-- **Board Boundary Respect**: Proper edge handling
-
-#### Phase 3d: Knight Move Generation
-- **L-Shaped Moves**: Eight possible L-shaped moves
-- **Jump Ability**: Can jump over other pieces
-- **Capture Logic**: Enemy piece captures
-- **Board Boundary Respect**: Proper edge handling
-
-#### Phase 3e: Queen Move Generation
-- **Combined Movement**: Rook and bishop patterns combined
-- **Path Validation**: Cannot jump over pieces (straight/diagonal)
-- **Capture Logic**: Enemy piece captures
-- **Board Boundary Respect**: Proper edge handling
-
-#### Phase 3f: King Move Generation
-- **Single Square Moves**: One square in any direction
-- **Castling Logic**: Kingside and queenside castling
-- **Castling Conditions**: King/rook unmoved, clear path, not in check
-- **Capture Logic**: Enemy piece captures
-
-### Testing Strategy for All Piece Types
-
-Each piece type follows the same rigorous testing approach:
-
-1. **Basic Movement Tests**: Normal moves from various board positions
-2. **Blocking and Path Tests**: Piece interference and path validation
-3. **Capture Tests**: Valid/invalid capture scenarios
-4. **Edge Case Tests**: Board boundaries and complex positions
-5. **Integration Tests**: Multi-piece interactions and performance
-
-### Implementation Timeline
-
-- **Phase 3a (Pawn)**: ✅ COMPLETED
-- **Phase 3b (Rook)**: ✅ COMPLETED
-- **Phase 3c (Bishop)**: ✅ COMPLETED
-- **Phase 3d (Knight)**: ✅ COMPLETED
-- **Phase 3e (Queen)**: ✅ COMPLETED
-- **Phase 3f (King)**: ✅ COMPLETED (includes castling)
-- **Phase 3 Complete**: ✅ ALL CHESS PIECES IMPLEMENTED
-
----
-
-## Phase 1 Testing Strategy (Completed)
-
-The renderer will be validated using Go's built-in testing framework with a thorough suite of unit tests.
-
-### Testing Requirements:
-
-
-### FEN-based Testing Requirements:
-
-All FEN-based renderer tests will use a golden file approach. Each test case will be defined in a JSON file containing:
-
-- The FEN string representing the board state
-- The expected multiline string output from the renderer
-
-
-Example JSON structure (showing one test case):
-```json
-[
-  {
-    "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-    "expected": "<expected board rendering as multiline string>"
-  }
-]
-```
-
-Test scenarios to be included (all will be present in the golden file):
-- Initial board position (standard setup):  
-    - `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`
-- Completely empty board:  
-    - `8/8/8/8/8/8/8/8 w - - 0 1`
-- Custom midgame positions (e.g., pinned piece, checks, multiple captures):  
-    - `r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4`
-- Edge rank/file alignment:  
-    - `8/8/8/8/8/8/8/R3K2R w KQ - 0 1`
-- Promotion scenarios:  
-    - `8/P7/8/8/8/8/7p/8 w - - 0 1`
-- Minimal piece endgame (e.g., King vs King):  
-    - `8/8/8/8/8/8/8/4K3 w - - 0 1`
-- Inconsistent/malformed FEN (robustness):  
-    - `8/8/8/8/8/8/8/8/8 w - - 0 1`  (extra rank, invalid FEN)
-- Single piece boards:
-    - `8/8/8/8/8/8/8/4Q3 w - - 0 1`  (only a white queen)
-    - `8/8/8/8/8/8/8/4p3 w - - 0 1`  (only a black pawn)
-- Non-standard piece placement:
-    - `8/8/8/8/8/8/P7/8 w - - 0 1`  (white pawn on 2nd rank)
-    - `8/8/8/8/8/8/8/p7 w - - 0 1`  (black pawn on 1st rank)
-
-Each test will:
-- Use a FEN string from the JSON file to define the board state
-- Compare the renderer's output to the expected multiline string from the JSON
-
-This golden file strategy ensures rendering correctness and guards against regressions.
-
-## Milestone Tasks
-
-1. Define minimal `Board` and `Piece` types (mock or real)
-2. Implement `RenderBoard(*Board) string`
-3. Write exhaustive test suite
-4. Refactor rendering for readability and single-responsibility
-5. Approve rendering outputs as snapshots
-
----
-
-## Best Practices
-
-- Keep rendering logic pure and deterministic
-- Decouple board formatting from game or engine logic
-- Run renderer tests on each CI build to avoid visual regressions
+**Note**: This plan represents a complete transformation from a functional chess engine to a high-performance chess engine. Each stage builds upon the previous one, with careful attention to maintaining correctness while dramatically improving performance.

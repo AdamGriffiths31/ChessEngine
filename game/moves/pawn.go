@@ -71,14 +71,12 @@ func (g *Generator) generatePawnForwardMoves(b *board.Board, player Player, from
 
 			// Check for promotion
 			if newRank == promotionRank {
-				g.addPromotionMoves(from, to, player, moveList)
-			} else {
-				move := board.Move{
-					From:      from,
-					To:        to,
-					Piece:     pawnPiece,
-					Promotion: board.Empty,
+				createMove := func(f, t board.Square, isCapture bool, captured, promotion board.Piece) board.Move {
+					return g.createMove(b, f, t, isCapture, captured, promotion)
 				}
+				g.promotionHandler.AddPromotionMoves(b, from, to, player, moveList, createMove)
+			} else {
+				move := g.createMove(b, from, to, false, board.Empty, board.Empty)
 				moveList.AddMove(move)
 			}
 
@@ -87,12 +85,7 @@ func (g *Generator) generatePawnForwardMoves(b *board.Board, player Player, from
 				newRank2 := newRank + direction
 				if newRank2 >= 0 && newRank2 <= 7 && b.GetPiece(newRank2, from.File) == board.Empty {
 					to2 := board.Square{File: from.File, Rank: newRank2}
-					move := board.Move{
-						From:      from,
-						To:        to2,
-						Piece:     pawnPiece,
-						Promotion: board.Empty,
-					}
+					move := g.createMove(b, from, to2, false, board.Empty, board.Empty)
 					moveList.AddMove(move)
 				}
 			}
@@ -114,16 +107,12 @@ func (g *Generator) generatePawnCaptures(b *board.Board, player Player, from boa
 			to := board.Square{File: from.File - 1, Rank: newRank}
 
 			if newRank == promotionRank {
-				g.addPromotionMoves(from, to, player, moveList)
-			} else {
-				move := board.Move{
-					From:      from,
-					To:        to,
-					Piece:     pawnPiece,
-					IsCapture: true,
-					Captured:  piece,
-					Promotion: board.Empty,
+				createMove := func(f, t board.Square, isCapture bool, captured, promotion board.Piece) board.Move {
+					return g.createMove(b, f, t, isCapture, captured, promotion)
 				}
+				g.promotionHandler.AddPromotionMoves(b, from, to, player, moveList, createMove)
+			} else {
+				move := g.createMove(b, from, to, true, piece, board.Empty)
 				moveList.AddMove(move)
 			}
 		}
@@ -136,16 +125,12 @@ func (g *Generator) generatePawnCaptures(b *board.Board, player Player, from boa
 			to := board.Square{File: from.File + 1, Rank: newRank}
 
 			if newRank == promotionRank {
-				g.addPromotionMoves(from, to, player, moveList)
-			} else {
-				move := board.Move{
-					From:      from,
-					To:        to,
-					Piece:     pawnPiece,
-					IsCapture: true,
-					Captured:  piece,
-					Promotion: board.Empty,
+				createMove := func(f, t board.Square, isCapture bool, captured, promotion board.Piece) board.Move {
+					return g.createMove(b, f, t, isCapture, captured, promotion)
 				}
+				g.promotionHandler.AddPromotionMoves(b, from, to, player, moveList, createMove)
+			} else {
+				move := g.createMove(b, from, to, true, piece, board.Empty)
 				moveList.AddMove(move)
 			}
 		}
@@ -175,15 +160,8 @@ func (g *Generator) generateEnPassantMoves(b *board.Board, player Player, from b
 		if piece != board.Empty && g.isEnemyPiece(piece, player) {
 			// Check if it's actually a pawn
 			if (player == White && piece == board.BlackPawn) || (player == Black && piece == board.WhitePawn) {
-				move := board.Move{
-					From:        from,
-					To:          *enPassantTarget,
-					Piece:       pawnPiece,
-					IsCapture:   true,
-					IsEnPassant: true,
-					Captured:    piece,
-					Promotion:   board.Empty,
-				}
+				move := g.createMove(b, from, *enPassantTarget, true, piece, board.Empty)
+				move.IsEnPassant = true
 				moveList.AddMove(move)
 			}
 		}
