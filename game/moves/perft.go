@@ -30,27 +30,29 @@ type PerftDepth struct {
 
 // Perft calculates the number of possible moves at a given depth
 func Perft(b *board.Board, depth int, player Player) int64 {
+	generator := NewGenerator()
+	return PerftWithGenerator(b, depth, player, generator)
+}
+
+// PerftWithGenerator calculates the number of possible moves at a given depth using a provided generator
+func PerftWithGenerator(b *board.Board, depth int, player Player, generator *Generator) int64 {
 	if depth == 0 {
 		return 1
 	}
 
 	// Performance optimization: if depth is 1, just return move count
 	if depth == 1 {
-		generator := NewGenerator()
 		moves := generator.GenerateAllMoves(b, player)
 		return int64(moves.Count)
 	}
 
-	generator := NewGenerator()
 	moves := generator.GenerateAllMoves(b, player)
 
 	var nodeCount int64
-
-	executor := &MoveExecutor{}
 	
 	for _, move := range moves.Moves {
-		// Make the move and store history
-		history := executor.MakeMove(b, move, generator.updateBoardState)
+		// Make the move and store history using the generator
+		history := generator.makeMove(b, move)
 
 		// Recursively calculate nodes for next player
 		nextPlayer := White
@@ -58,10 +60,10 @@ func Perft(b *board.Board, depth int, player Player) int64 {
 			nextPlayer = Black
 		}
 
-		nodeCount += Perft(b, depth-1, nextPlayer)
+		nodeCount += PerftWithGenerator(b, depth-1, nextPlayer, generator)
 
-		// Undo the move
-		executor.UnmakeMove(b, history)
+		// Undo the move using the generator
+		generator.unmakeMove(b, history)
 	}
 
 	return nodeCount

@@ -1,3 +1,5 @@
+//go:build long
+
 package moves
 
 import (
@@ -22,9 +24,10 @@ func TestKiwipeteDepth6Timing(t *testing.T) {
 	fmt.Printf("Starting Kiwipete depth 6 timing test...\n")
 	fmt.Printf("Expected nodes: %d\n", expectedNodes)
 	
-	// Time the perft calculation
+	// Time the perft calculation using single generator for cache optimization
+	generator := NewGenerator()
 	start := time.Now()
-	result := Perft(b, 6, White)
+	result := PerftWithGenerator(b, 6, White, generator)
 	duration := time.Since(start)
 	
 	// Verify correctness

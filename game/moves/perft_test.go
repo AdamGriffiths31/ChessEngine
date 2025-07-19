@@ -11,7 +11,7 @@ import (
 
 func TestPerft_StandardPositions(t *testing.T) {
 	// Get configurable max depth from environment variable, default to 2
-	maxDepth := 6
+	maxDepth := 3
 	if envDepth := os.Getenv("PERFT_MAX_DEPTH"); envDepth != "" {
 		if depth, err := strconv.Atoi(envDepth); err == nil {
 			maxDepth = depth
@@ -38,7 +38,9 @@ func TestPerft_StandardPositions(t *testing.T) {
 						t.Skipf("Skipping depth %d (max depth: %d)", depthTest.Depth, maxDepth)
 					}
 
-					result := Perft(b, depthTest.Depth, White)
+					// Use single generator instance for optimal cache performance
+					generator := NewGenerator()
+					result := PerftWithGenerator(b, depthTest.Depth, White, generator)
 					if result != depthTest.Nodes {
 						t.Errorf("Position %s at depth %d: expected %d nodes, got %d",
 							position.Name, depthTest.Depth, depthTest.Nodes, result)

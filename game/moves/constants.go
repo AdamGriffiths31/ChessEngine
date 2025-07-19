@@ -23,6 +23,14 @@ const (
 // Move list capacity
 const (
 	InitialMoveListCapacity = 64
+	MaxMoveListCapacity     = 512  // Pool capacity limit
+	PoolPreAllocCapacity    = 256  // Pre-allocation size for pool
+)
+
+// Chess board dimensions for validation
+const (
+	ChessboardFiles = 8  // Number of files (a-h)
+	ChessboardRanks = 8  // Number of ranks (1-8)
 )
 
 // Direction represents a movement direction with rank and file deltas

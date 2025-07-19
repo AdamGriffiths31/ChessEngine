@@ -2,7 +2,7 @@ package moves
 
 import "github.com/AdamGriffiths31/ChessEngine/board"
 
-// Player represents a chess player
+// Player represents a chess player (White or Black).
 type Player int
 
 const (
@@ -18,13 +18,15 @@ func (p Player) String() string {
 	return "Black"
 }
 
-// MoveList represents a collection of moves
+// MoveList represents a collection of chess moves with efficient storage.
+// Should be obtained from GetMoveList() and released with ReleaseMoveList() for optimal performance.
 type MoveList struct {
 	Moves []board.Move
 	Count int
 }
 
-// NewMoveList creates a new empty move list
+// NewMoveList creates a new empty move list with pre-allocated capacity.
+// Consider using GetMoveList() from the pool for better performance.
 func NewMoveList() *MoveList {
 	return &MoveList{
 		Moves: make([]board.Move, 0, InitialMoveListCapacity), // Pre-allocate for performance

@@ -119,21 +119,6 @@ func (me *MoveExecutor) UnmakeMove(b *board.Board, history *MoveHistory) {
 	b.SetFullMoveNumber(history.FullMoveNumber)
 }
 
-// copyBoard creates a copy of the board for testing moves
-func (g *Generator) copyBoard(b *board.Board) *board.Board {
-	newBoard := &board.Board{}
-	for rank := MinRank; rank < BoardSize; rank++ {
-		for file := MinFile; file < BoardSize; file++ {
-			newBoard.SetPiece(rank, file, b.GetPiece(rank, file))
-		}
-	}
-	newBoard.SetCastlingRights(b.GetCastlingRights())
-	newBoard.SetEnPassantTarget(b.GetEnPassantTarget())
-	newBoard.SetHalfMoveClock(b.GetHalfMoveClock())
-	newBoard.SetFullMoveNumber(b.GetFullMoveNumber())
-	newBoard.SetSideToMove(b.GetSideToMove())
-	return newBoard
-}
 
 // updateBoardState updates castling rights, en passant, and move counters
 func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
@@ -205,6 +190,9 @@ func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
 	if b.GetSideToMove() == "b" {
 		b.SetFullMoveNumber(b.GetFullMoveNumber() + 1)
 	}
+	
+	// Update king cache if a king moved
+	g.updateKingCache(move)
 }
 
 // removeCastlingRights removes specific castling rights from the string
