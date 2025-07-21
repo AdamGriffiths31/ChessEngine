@@ -17,6 +17,17 @@ type Move struct {
 	IsEnPassant bool
 }
 
+// MoveUndo stores the state needed to undo a move
+type MoveUndo struct {
+	Move Move
+	CapturedPiece Piece
+	CastlingRights string
+	EnPassantTarget *Square
+	HalfMoveClock int
+	FullMoveNumber int
+	SideToMove string
+}
+
 func ParseSquare(notation string) (Square, error) {
 	if len(notation) != 2 {
 		return Square{}, errors.New("invalid square notation: must be 2 characters")
@@ -34,6 +45,24 @@ func ParseSquare(notation string) (Square, error) {
 
 func (s Square) String() string {
 	return string(rune('a'+s.File)) + string(rune('1'+s.Rank))
+}
+
+// MakeMoveWithUndo makes a move and returns undo information
+func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
+	// Store current state for undo
+	undo := MoveUndo{
+		Move: move,
+		CapturedPiece: b.GetPiece(move.To.Rank, move.To.File),
+		CastlingRights: b.castlingRights,
+		EnPassantTarget: b.enPassantTarget,
+		HalfMoveClock: b.halfMoveClock,
+		FullMoveNumber: b.fullMoveNumber,
+		SideToMove: b.sideToMove,
+	}
+	
+	// Make the move
+	err := b.MakeMove(move)
+	return undo, err
 }
 
 func (b *Board) MakeMove(move Move) error {
@@ -167,6 +196,78 @@ func charToPiece(char byte) (Piece, error) {
 	default:
 		return Empty, errors.New("invalid piece character")
 	}
+}
+
+// UnmakeMove reverses a move using the undo information
+func (b *Board) UnmakeMove(undo MoveUndo) {
+	move := undo.Move
+	
+	// Get the piece that was moved (may be promoted)
+	movedPiece := b.GetPiece(move.To.Rank, move.To.File)
+	
+	// Handle undo of promotion
+	if move.Promotion != Empty {
+		// The original piece was a pawn
+		if isWhitePiece(move.Piece) {
+			movedPiece = WhitePawn
+		} else {
+			movedPiece = BlackPawn
+		}
+	}
+	
+	// Move piece back to original square
+	b.SetPiece(move.From.Rank, move.From.File, movedPiece)
+	
+	// Restore captured piece or clear destination
+	b.SetPiece(move.To.Rank, move.To.File, undo.CapturedPiece)
+	
+	// Handle undo of castling
+	if move.IsCastling {
+		b.undoCastling(move)
+	}
+	
+	// Handle undo of en passant
+	if move.IsEnPassant {
+		b.undoEnPassant(move, undo.CapturedPiece)
+	}
+	
+	// Restore board state
+	b.castlingRights = undo.CastlingRights
+	b.enPassantTarget = undo.EnPassantTarget
+	b.halfMoveClock = undo.HalfMoveClock
+	b.fullMoveNumber = undo.FullMoveNumber
+	b.sideToMove = undo.SideToMove
+}
+
+// undoCastling reverses the rook movement in castling
+func (b *Board) undoCastling(move Move) {
+	var rookFrom, rookTo Square
+	
+	if move.To.File == 6 { // King-side castling
+		rookFrom = Square{File: 5, Rank: move.From.Rank}
+		rookTo = Square{File: 7, Rank: move.From.Rank}
+	} else if move.To.File == 2 { // Queen-side castling  
+		rookFrom = Square{File: 3, Rank: move.From.Rank}
+		rookTo = Square{File: 0, Rank: move.From.Rank}
+	}
+	
+	// Move the rook back
+	rook := b.GetPiece(rookFrom.Rank, rookFrom.File)
+	b.SetPiece(rookFrom.Rank, rookFrom.File, Empty)
+	b.SetPiece(rookTo.Rank, rookTo.File, rook)
+}
+
+// undoEnPassant restores the captured pawn in en passant
+func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
+	// Restore the captured pawn on the same rank as the moving pawn
+	captureRank := move.From.Rank
+	b.SetPiece(captureRank, move.To.File, capturedPiece)
+}
+
+// isWhitePiece checks if a piece belongs to white
+func isWhitePiece(piece Piece) bool {
+	return piece == WhitePawn || piece == WhiteRook || piece == WhiteKnight || 
+		   piece == WhiteBishop || piece == WhiteQueen || piece == WhiteKing
 }
 
 func (b *Board) ToFEN() string {

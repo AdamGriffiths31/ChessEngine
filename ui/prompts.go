@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/AdamGriffiths31/ChessEngine/game"
+	"github.com/AdamGriffiths31/ChessEngine/game/ai"
 	"github.com/AdamGriffiths31/ChessEngine/game/moves"
 )
 
@@ -21,8 +22,23 @@ func NewPrompter() *Prompter {
 }
 
 func (p *Prompter) ShowWelcome() {
-	fmt.Println("Chess Engine - Game Mode 1: Manual Play")
-	fmt.Println("========================================")
+	fmt.Println("Chess Engine - Manual Play")
+	fmt.Println("==========================")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  - Enter moves in coordinate notation (e.g., e2e4)")
+	fmt.Println("  - 'o-o' or '0-0' for kingside castling")
+	fmt.Println("  - 'o-o-o' or '0-0-0' for queenside castling")
+	fmt.Println("  - 'moves' to show all legal moves")
+	fmt.Println("  - 'quit' or 'exit' to quit the game")
+	fmt.Println("  - 'reset' to start a new game")
+	fmt.Println("  - 'fen' to display current FEN string")
+	fmt.Println()
+}
+
+func (p *Prompter) ShowWelcomeComputer() {
+	fmt.Println("Chess Engine - Player vs Computer")
+	fmt.Println("=================================")
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  - Enter moves in coordinate notation (e.g., e2e4)")
@@ -101,5 +117,97 @@ func (p *Prompter) ShowMoves(moveList *moves.MoveList, playerName string) {
 
 func (p *Prompter) ShowMoveValidated() {
 	fmt.Println("Move validated ✓")
+	fmt.Println()
+}
+
+// PromptForChoice prompts the user to select from a list of options
+func (p *Prompter) PromptForChoice(prompt string, options []string) (int, error) {
+	fmt.Println(prompt)
+	for i, option := range options {
+		fmt.Printf("%d. %s\n", i+1, option)
+	}
+	fmt.Print("Enter choice (1-" + fmt.Sprintf("%d", len(options)) + "): ")
+
+	if !p.scanner.Scan() {
+		return -1, fmt.Errorf("failed to read input")
+	}
+
+	input := strings.TrimSpace(p.scanner.Text())
+	
+	// Parse the choice
+	var choice int
+	_, err := fmt.Sscanf(input, "%d", &choice)
+	if err != nil || choice < 1 || choice > len(options) {
+		return -1, fmt.Errorf("invalid choice, please enter a number between 1 and %d", len(options))
+	}
+
+	return choice - 1, nil // Convert to 0-indexed
+}
+
+// PromptForColorChoice prompts the user to select their color
+func (p *Prompter) PromptForColorChoice() (game.Player, error) {
+	options := []string{"White (play first)", "Black (play second)"}
+	choice, err := p.PromptForChoice("\nChoose your color:", options)
+	if err != nil {
+		return game.White, err
+	}
+
+	if choice == 0 {
+		return game.White, nil
+	}
+	return game.Black, nil
+}
+
+// PromptForDifficulty prompts the user to select difficulty level
+func (p *Prompter) PromptForDifficulty() (string, error) {
+	options := []string{"Easy", "Medium", "Hard"}
+	choice, err := p.PromptForChoice("\nChoose difficulty:", options)
+	if err != nil {
+		return "", err
+	}
+
+	difficulties := []string{"easy", "medium", "hard"}
+	return difficulties[choice], nil
+}
+
+// PromptForDebugMode prompts the user to enable/disable debug mode
+func (p *Prompter) PromptForDebugMode() (bool, error) {
+	options := []string{"Disabled", "Enabled"}
+	choice, err := p.PromptForChoice("\nDebug mode (show search statistics):", options)
+	if err != nil {
+		return false, err
+	}
+
+	return choice == 1, nil
+}
+
+// ShowSearchStats displays debug information about the search
+func (p *Prompter) ShowSearchStats(move string, stats ai.SearchStats, score ai.EvaluationScore, player moves.Player) {
+	fmt.Printf("🔍 DEBUG: Computer played %s\n", move)
+	fmt.Printf("   Search depth: %d\n", stats.Depth)
+	fmt.Printf("   Nodes searched: %d\n", stats.NodesSearched)
+	fmt.Printf("   Search time: %v\n", stats.Time)
+	
+	// Convert score to White's perspective for consistent display
+	displayScore := score
+	if player == moves.Black {
+		displayScore = -score
+	}
+	
+	fmt.Printf("   Position evaluation: %d centipawns (from White's perspective)\n", int(displayScore))
+	
+	// Show what the score means
+	if displayScore > 0 {
+		fmt.Printf("   Assessment: White is better by %d centipawns\n", int(displayScore))
+	} else if displayScore < 0 {
+		fmt.Printf("   Assessment: Black is better by %d centipawns\n", int(-displayScore))
+	} else {
+		fmt.Printf("   Assessment: Position is equal\n")
+	}
+	
+	// Show efficiency metrics
+	nodesPerSecond := float64(stats.NodesSearched) / stats.Time.Seconds()
+	fmt.Printf("   Search efficiency: %.0f nodes/second\n", nodesPerSecond)
+	
 	fmt.Println()
 }
