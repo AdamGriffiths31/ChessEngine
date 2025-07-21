@@ -11,7 +11,7 @@ import (
 
 func TestPerft_StandardPositions(t *testing.T) {
 	// Get configurable max depth from environment variable, default to 2
-	maxDepth := 3
+	maxDepth := 4
 	if envDepth := os.Getenv("PERFT_MAX_DEPTH"); envDepth != "" {
 		if depth, err := strconv.Atoi(envDepth); err == nil {
 			maxDepth = depth
