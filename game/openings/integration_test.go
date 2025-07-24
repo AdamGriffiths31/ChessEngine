@@ -114,6 +114,9 @@ func TestPolyglotBookLookupRealFile(t *testing.T) {
 		t.Fatalf("Failed to load book: %v", err)
 	}
 	
+	// Create test board
+	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	
 	// Try looking up some positions by hash
 	// These are random hashes - we expect most to not be found
 	testHashes := []uint64{
@@ -125,7 +128,7 @@ func TestPolyglotBookLookupRealFile(t *testing.T) {
 	
 	foundCount := 0
 	for i, hash := range testHashes {
-		moves, err := book.LookupMove(hash)
+		moves, err := book.LookupMove(hash, testBoard)
 		if err == ErrPositionNotFound {
 			t.Logf("Hash %d (0x%016x): not found (expected)", i+1, hash)
 		} else if err != nil {
@@ -158,12 +161,15 @@ func BenchmarkRealBookLookup(b *testing.B) {
 		b.Fatalf("Failed to load book: %v", err)
 	}
 	
+	// Create test board
+	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	
 	// Use a hash that exists in the book (from hex dump)
 	testHash := uint64(0x0000968b7fcb1868)
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := book.LookupMove(testHash)
+		_, err := book.LookupMove(testHash, testBoard)
 		if err != nil && err != ErrPositionNotFound {
 			b.Fatalf("Lookup failed: %v", err)
 		}

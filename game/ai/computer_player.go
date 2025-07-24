@@ -96,3 +96,32 @@ func (c *ComputerPlayer) SetDebugMode(enabled bool) {
 func (c *ComputerPlayer) IsDebugMode() bool {
 	return c.config.DebugMode
 }
+
+// SetOpeningBook configures the opening book settings
+func (c *ComputerPlayer) SetOpeningBook(enabled bool, bookFiles []string) {
+	c.config.UseOpeningBook = enabled
+	c.config.BookFiles = bookFiles
+	// Set reasonable defaults
+	c.config.BookSelectMode = BookSelectWeightedRandom
+	c.config.BookWeightThreshold = 1
+}
+
+// SetBookSelectionMode sets how moves are selected from opening books
+func (c *ComputerPlayer) SetBookSelectionMode(mode BookSelectionMode) {
+	c.config.BookSelectMode = mode
+}
+
+// SetBookWeightThreshold sets the minimum weight for considering book moves
+func (c *ComputerPlayer) SetBookWeightThreshold(threshold uint16) {
+	c.config.BookWeightThreshold = threshold
+}
+
+// IsUsingOpeningBook returns whether opening books are enabled
+func (c *ComputerPlayer) IsUsingOpeningBook() bool {
+	return c.config.UseOpeningBook
+}
+
+// GetBookFiles returns the list of configured book files
+func (c *ComputerPlayer) GetBookFiles() []string {
+	return c.config.BookFiles
+}

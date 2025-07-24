@@ -13,96 +13,102 @@ type ZobristHash struct {
 	sideKey      uint64         // side to move
 }
 
-// Standard Polyglot Zobrist keys (hardcoded for compatibility)
-var polyglotZobrist = &ZobristHash{
-	pieceKeys: [64][12]uint64{
-		// These would be the actual Polyglot Zobrist keys
-		// For now using placeholder values - should be replaced with actual Polyglot keys
-		{0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
-		 0x75834465489C0C89, 0x3290AC3A203001BF, 0x0FBBAD1F61042279, 0xE83A908FF2FB60CA,
-		 0x0D7E765D58755C10, 0x1A083822CEAFE02D, 0x9C69A97284B578D7, 0x8D8BCA50E5F571DB},
-		// ... (remaining 63 squares would have their 12 piece keys)
-		// This is a simplified version - actual implementation would need all 768 keys
-	},
-	castleKeys: [16]uint64{
-		0x0000000000000000, 0x0000000000000001, 0x0000000000000002, 0x0000000000000003,
-		0x0000000000000004, 0x0000000000000005, 0x0000000000000006, 0x0000000000000007,
-		0x0000000000000008, 0x0000000000000009, 0x000000000000000A, 0x000000000000000B,
-		0x000000000000000C, 0x000000000000000D, 0x000000000000000E, 0x000000000000000F,
-	},
-	enPassantKeys: [8]uint64{
-		0x0000000000000001, 0x0000000000000002, 0x0000000000000004, 0x0000000000000008,
-		0x0000000000000010, 0x0000000000000020, 0x0000000000000040, 0x0000000000000080,
-	},
-	sideKey: 0xF8D626AAAF278509,
-}
+// Standard Polyglot Zobrist keys (initialized in init function)
+var polyglotZobrist *ZobristHash
 
 // GetPolyglotHash returns the Zobrist hash instance for Polyglot compatibility
 func GetPolyglotHash() *ZobristHash {
+	if polyglotZobrist == nil {
+		polyglotZobrist = &ZobristHash{
+			pieceKeys:     officialPolyglotPieceKeys,
+			castleKeys:    officialPolyglotCastlingKeys,
+			enPassantKeys: officialPolyglotEnPassantKeys,
+			sideKey:       officialPolyglotSideKey,
+		}
+	}
 	return polyglotZobrist
 }
 
 // HashPosition generates a Zobrist hash for the given board position
+// Uses the same calculation method as polyBook.go for compatibility
 func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 	var hash uint64
 	
-	// Hash pieces on the board
+	// Hash pieces on the board - use polyBook.go method: (64*polyPiece)+(8*rank)+file
 	for square := 0; square < 64; square++ {
 		file := square % 8
 		rank := square / 8
 		piece := b.GetPiece(rank, file)
 		
 		if piece != board.Empty {
-			pieceIndex := zh.getPieceIndex(piece)
-			hash ^= zh.pieceKeys[square][pieceIndex]
+			polyPiece := zh.getPieceIndex(piece)
+			// Use the same indexing as polyBook.go: (64*polyPiece)+(8*rank)+file
+			index := (64*polyPiece) + (8*rank) + file
+			if index < 768 { // Ensure we don't exceed piece key range
+				hash ^= random64Poly[index]
+			}
 		}
 	}
 	
-	// Hash castling rights
-	castlingIndex := zh.getCastlingIndex(b)
-	hash ^= zh.castleKeys[castlingIndex]
-	
-	// Hash en passant target
-	if b.GetEnPassantTarget() != nil {
-		file := b.GetEnPassantTarget().File
-		hash ^= zh.enPassantKeys[file]
+	// Hash castling rights - use individual flags like polyBook.go (offset 768)
+	castlingRights := b.GetCastlingRights()
+	offset := 768
+	for _, r := range castlingRights {
+		switch r {
+		case 'K': // White kingside
+			hash ^= random64Poly[offset+0]
+		case 'Q': // White queenside  
+			hash ^= random64Poly[offset+1]
+		case 'k': // Black kingside
+			hash ^= random64Poly[offset+2]
+		case 'q': // Black queenside
+			hash ^= random64Poly[offset+3]
+		}
 	}
 	
-	// Hash side to move
-	if b.GetSideToMove() == "b" {
-		hash ^= zh.sideKey
+	// Hash en passant target - use offset 772 like polyBook.go
+	if b.GetEnPassantTarget() != nil {
+		file := b.GetEnPassantTarget().File
+		offset = 772
+		hash ^= random64Poly[offset+file]
+	}
+	
+	// Hash side to move - only when side is White (offset 780)
+	if b.GetSideToMove() == "w" {
+		offset = 780
+		hash ^= random64Poly[offset]
 	}
 	
 	return hash
 }
 
 // getPieceIndex converts a board piece to Zobrist array index
-// Polyglot order: WP, WN, WB, WR, WQ, WK, BP, BN, BB, BR, BQ, BK
+// Official Polyglot order: BP(0), WP(1), BN(2), WN(3), BB(4), WB(5), BR(6), WR(7), BQ(8), WQ(9), BK(10), WK(11)
 func (zh *ZobristHash) getPieceIndex(piece board.Piece) int {
 	switch piece {
-	case board.WhitePawn:
-		return 0
-	case board.WhiteKnight:
-		return 1
-	case board.WhiteBishop:
-		return 2
-	case board.WhiteRook:
-		return 3
-	case board.WhiteQueen:
-		return 4
-	case board.WhiteKing:
-		return 5
 	case board.BlackPawn:
-		return 6
+		return 0
+	case board.WhitePawn:
+		return 1
 	case board.BlackKnight:
-		return 7
+		return 2
+	case board.WhiteKnight:
+		return 3
 	case board.BlackBishop:
-		return 8
+		return 4
+	case board.WhiteBishop:
+		return 5
 	case board.BlackRook:
-		return 9
+		return 6
+	case board.WhiteRook:
+		return 7
 	case board.BlackQueen:
-		return 10
+		return 8
+	case board.WhiteQueen:
+		return 9
 	case board.BlackKing:
+		return 10
+	case board.WhiteKing:
 		return 11
 	default:
 		return 0 // Should not happen
@@ -110,12 +116,24 @@ func (zh *ZobristHash) getPieceIndex(piece board.Piece) int {
 }
 
 // getCastlingIndex converts castling rights to array index
+// Polyglot format: bit 0=white O-O, bit 1=white O-O-O, bit 2=black O-O, bit 3=black O-O-O
 func (zh *ZobristHash) getCastlingIndex(b *board.Board) int {
 	var index int
+	castlingRights := b.GetCastlingRights()
 	
-	// This would need to be implemented based on how the board stores castling rights
-	// For now, returning 0 as placeholder
-	// TODO: Implement proper castling rights indexing based on board representation
+	// Convert "KQkq" format to bit indices
+	for _, r := range castlingRights {
+		switch r {
+		case 'K': // White kingside
+			index |= 1
+		case 'Q': // White queenside  
+			index |= 2
+		case 'k': // Black kingside
+			index |= 4
+		case 'q': // Black queenside
+			index |= 8
+		}
+	}
 	
 	return index
 }

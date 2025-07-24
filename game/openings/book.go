@@ -102,7 +102,7 @@ func (bls *BookLookupService) FindBookMove(b *board.Board) (*board.Move, error) 
 	hash := bls.zobrist.HashPosition(b)
 	
 	// Lookup moves in books
-	bookMoves, err := bls.manager.LookupMove(hash)
+	bookMoves, err := bls.manager.LookupMove(hash, b)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (bls *BookLookupService) ValidateMove(b *board.Board, move board.Move) bool
 	}
 	
 	hash := bls.zobrist.HashPosition(b)
-	bookMoves, err := bls.manager.LookupMove(hash)
+	bookMoves, err := bls.manager.LookupMove(hash, b)
 	if err != nil {
 		return false
 	}

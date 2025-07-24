@@ -11,6 +11,9 @@ import (
 func TestMoveEncoding(t *testing.T) {
 	pb := NewPolyglotBook()
 	
+	// Create test board
+	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	
 	tests := []struct {
 		name string
 		move board.Move
@@ -51,7 +54,7 @@ func TestMoveEncoding(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Encode then decode
 			encoded := pb.encodeMove(test.move)
-			decoded, err := pb.decodeMove(encoded)
+			decoded, err := pb.decodeMove(encoded, testBoard)
 			
 			if err != nil {
 				t.Fatalf("Failed to decode move: %v", err)
@@ -67,6 +70,9 @@ func TestMoveEncoding(t *testing.T) {
 
 func TestMoveDecodingBitfields(t *testing.T) {
 	pb := NewPolyglotBook()
+	
+	// Create test board
+	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	
 	tests := []struct {
 		name     string
@@ -94,7 +100,7 @@ func TestMoveDecodingBitfields(t *testing.T) {
 	
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			decoded, err := pb.decodeMove(test.encoded)
+			decoded, err := pb.decodeMove(test.encoded, testBoard)
 			if err != nil {
 				t.Fatalf("Failed to decode move: %v", err)
 			}
@@ -173,8 +179,11 @@ func TestPolyglotBookLookup(t *testing.T) {
 		t.Fatalf("Failed to load book: %v", err)
 	}
 	
+	// Create test board
+	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	
 	// Lookup moves for the hash
-	bookMoves, err := book.LookupMove(hash)
+	bookMoves, err := book.LookupMove(hash, testBoard)
 	if err != nil {
 		t.Fatalf("Failed to lookup moves: %v", err)
 	}
@@ -192,7 +201,7 @@ func TestPolyglotBookLookup(t *testing.T) {
 	}
 	
 	// Lookup non-existent hash
-	_, err = book.LookupMove(0x999)
+	_, err = book.LookupMove(0x999, testBoard)
 	if err != ErrPositionNotFound {
 		t.Errorf("Expected ErrPositionNotFound for non-existent hash, got %v", err)
 	}
@@ -347,8 +356,11 @@ func BenchmarkMoveDecoding(b *testing.B) {
 	pb := NewPolyglotBook()
 	encoded := uint16(0x01CC)
 	
+	// Create test board
+	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		pb.decodeMove(encoded)
+		pb.decodeMove(encoded, testBoard)
 	}
 }

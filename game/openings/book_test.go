@@ -53,6 +53,9 @@ func TestBookLookupServiceConfiguration(t *testing.T) {
 func TestBookManager(t *testing.T) {
 	manager := NewBookManager()
 	
+	// Create test board
+	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	
 	// Create mock books
 	book1 := &MockBook{loaded: true, moves: map[uint64][]BookMove{
 		0x123: {{Weight: 100}, {Weight: 50}},
@@ -65,7 +68,7 @@ func TestBookManager(t *testing.T) {
 	manager.AddBook(book2)
 	
 	// Test lookup from primary book
-	moves, err := manager.LookupMove(0x123)
+	moves, err := manager.LookupMove(0x123, testBoard)
 	if err != nil {
 		t.Fatalf("Failed to lookup moves: %v", err)
 	}
@@ -74,7 +77,7 @@ func TestBookManager(t *testing.T) {
 	}
 	
 	// Test lookup from secondary book
-	moves, err = manager.LookupMove(0x456)
+	moves, err = manager.LookupMove(0x456, testBoard)
 	if err != nil {
 		t.Fatalf("Failed to lookup moves: %v", err)
 	}
@@ -83,7 +86,7 @@ func TestBookManager(t *testing.T) {
 	}
 	
 	// Test non-existent position
-	_, err = manager.LookupMove(0x999)
+	_, err = manager.LookupMove(0x999, testBoard)
 	if err != ErrPositionNotFound {
 		t.Errorf("Expected ErrPositionNotFound, got %v", err)
 	}
@@ -255,7 +258,7 @@ type MockBook struct {
 	info   BookInfo
 }
 
-func (mb *MockBook) LookupMove(hash uint64) ([]BookMove, error) {
+func (mb *MockBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, error) {
 	if !mb.loaded {
 		return nil, ErrBookNotLoaded
 	}

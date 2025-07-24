@@ -138,6 +138,7 @@ func TestMakeMove(t *testing.T) {
 	move := Move{
 		From:      Square{File: 4, Rank: 1}, // e2
 		To:        Square{File: 4, Rank: 3}, // e4
+		Piece:     Empty,  // Tell MakeMove to get piece from board
 		Promotion: Empty,
 	}
 	

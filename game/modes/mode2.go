@@ -30,8 +30,12 @@ func NewComputerMode() *ComputerMode {
 	// Create computer player with minimax engine
 	aiEngine := search.NewMinimaxEngine()
 	config := ai.SearchConfig{
-		MaxDepth: 4,
-		MaxTime:  3 * time.Second,
+		MaxDepth:            4,
+		MaxTime:             3 * time.Second,
+		UseOpeningBook:      true,
+		BookFiles:           []string{"game/openings/testdata/performance.bin"},
+		BookSelectMode:      ai.BookSelectWeightedRandom,
+		BookWeightThreshold: 1,
 	}
 	computer := ai.NewComputerPlayer("Computer", aiEngine, config)
 

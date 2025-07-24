@@ -2,33 +2,134 @@ package search
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/game/ai"
 	"github.com/AdamGriffiths31/ChessEngine/game/ai/evaluation"
 	"github.com/AdamGriffiths31/ChessEngine/game/moves"
+	"github.com/AdamGriffiths31/ChessEngine/game/openings"
 )
 
-// MinimaxEngine implements a basic minimax search
+// MinimaxEngine implements a basic minimax search with opening book support
 type MinimaxEngine struct {
-	evaluator ai.Evaluator
-	generator *moves.Generator
+	evaluator   ai.Evaluator
+	generator   *moves.Generator
+	bookService *openings.BookLookupService
 }
 
 // NewMinimaxEngine creates a new minimax search engine
 func NewMinimaxEngine() *MinimaxEngine {
 	return &MinimaxEngine{
-		evaluator: evaluation.NewMaterialEvaluator(),
-		generator: moves.NewGenerator(),
+		evaluator:   evaluation.NewMaterialEvaluator(),
+		generator:   moves.NewGenerator(),
+		bookService: nil, // Will be initialized when needed based on config
 	}
 }
 
-// FindBestMove searches for the best move using minimax
+// initializeBookService initializes the opening book service based on configuration
+func (m *MinimaxEngine) initializeBookService(config ai.SearchConfig) error {
+	if !config.UseOpeningBook || len(config.BookFiles) == 0 {
+		m.bookService = nil
+		return nil
+	}
+	
+	// Convert AI selection mode to openings selection mode
+	var selectionMode openings.SelectionMode
+	switch config.BookSelectMode {
+	case ai.BookSelectBest:
+		selectionMode = openings.SelectBest
+	case ai.BookSelectRandom:
+		selectionMode = openings.SelectRandom
+	case ai.BookSelectWeightedRandom:
+		selectionMode = openings.SelectWeightedRandom
+	default:
+		selectionMode = openings.SelectWeightedRandom
+	}
+	
+	bookConfig := openings.BookConfig{
+		Enabled:         true,
+		BookFiles:       config.BookFiles,
+		SelectionMode:   selectionMode,
+		WeightThreshold: config.BookWeightThreshold,
+	}
+	
+	service := openings.NewBookLookupService(bookConfig)
+	err := service.LoadBooks()
+	if err != nil {
+		return err
+	}
+	
+	m.bookService = service
+	
+	// Debug: Log successful book loading
+	if config.DebugMode {
+		loadedBooks := service.GetLoadedBooks()
+		for _, info := range loadedBooks {
+			println("📚 Loaded opening book:", info.Filename, "with", info.EntryCount, "entries")
+		}
+	}
+	
+	return nil
+}
+
+// FindBestMove searches for the best move using minimax with optional opening book
 func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig) ai.SearchResult {
 	startTime := time.Now()
 	result := ai.SearchResult{
-		Stats: ai.SearchStats{},
+		Stats: ai.SearchStats{
+			DebugInfo: make([]string, 0),
+		},
+	}
+	
+	// Initialize book service if needed
+	if err := m.initializeBookService(config); err != nil {
+		// Log error but continue with regular search
+		if config.DebugMode {
+			result.Stats.DebugInfo = append(result.Stats.DebugInfo, 
+				"Opening book initialization failed: "+err.Error())
+		}
+	}
+	
+	// Try opening book first
+	if m.bookService != nil && m.bookService.IsEnabled() {
+		// Debug: Show position hash
+		if config.DebugMode {
+			hash := openings.GetPolyglotHash().HashPosition(b)
+			result.Stats.DebugInfo = append(result.Stats.DebugInfo,
+				fmt.Sprintf("🔍 Position hash: %016X", hash))
+		}
+		
+		bookMove, err := m.bookService.FindBookMove(b)
+		if err == nil && bookMove != nil {
+			// Found a book move - return it immediately
+			result.BestMove = *bookMove
+			result.Score = 0 // Book moves don't have evaluation scores
+			result.Stats.Time = time.Since(startTime)
+			result.Stats.Depth = 0 // Book lookup doesn't count as search depth
+			result.Stats.NodesSearched = 0 // No nodes searched for book moves
+			result.Stats.BookMoveUsed = true
+			
+			if config.DebugMode {
+				fromSquare := string(rune('a'+bookMove.From.File)) + string(rune('1'+bookMove.From.Rank))
+				toSquare := string(rune('a'+bookMove.To.File)) + string(rune('1'+bookMove.To.Rank))
+				result.Stats.DebugInfo = append(result.Stats.DebugInfo, 
+					"✅ Opening book move selected: "+fromSquare+"-"+toSquare)
+			}
+			return result
+		}
+		
+		// Book lookup failed or found no moves
+		if config.DebugMode {
+			if err != nil {
+				result.Stats.DebugInfo = append(result.Stats.DebugInfo,
+					"❌ Opening book lookup failed: "+err.Error()+", falling back to search")
+			} else {
+				result.Stats.DebugInfo = append(result.Stats.DebugInfo,
+					"ℹ️  No moves found in opening book, falling back to search")
+			}
+		}
 	}
 
 	// Get all legal moves

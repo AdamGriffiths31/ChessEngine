@@ -2,40 +2,41 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"os"
-	"path/filepath"
+	"sort"
 
+	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/game/openings"
 )
 
 // This utility creates a minimal test Polyglot book for unit testing
 func main() {
-	// Create testdata directory
-	err := os.MkdirAll("testdata", 0755)
-	if err != nil {
-		panic(err)
-	}
-	
+	// Get the actual hash from our implementation
+	startingBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	zobrist := openings.GetPolyglotHash()
+	actualHash := zobrist.HashPosition(startingBoard)
+
 	// Define test entries - these represent common opening moves
 	testEntries := []openings.PolyglotEntry{
 		// Starting position - e2-e4 (King's pawn)
 		{
-			Hash:   0x463b96181691fc9c, // Actual Polyglot hash for starting position
-			Move:   0x01CC,             // e2-e4 encoded
+			Hash:   actualHash, // Actual hash from our implementation
+			Move:   0x031C,     // e2-e4 encoded correctly
 			Weight: 100,
 			Learn:  0,
 		},
 		// Starting position - d2-d4 (Queen's pawn)
 		{
-			Hash:   0x463b96181691fc9c, // Same starting position
-			Move:   0x01AB,             // d2-d4 encoded
+			Hash:   actualHash, // Same starting position
+			Move:   0x02DB,     // d2-d4 encoded correctly
 			Weight: 80,
 			Learn:  0,
 		},
 		// Starting position - Nf3
 		{
-			Hash:   0x463b96181691fc9c, // Same starting position
-			Move:   0x015D,             // Ng1-f3 encoded
+			Hash:   actualHash, // Same starting position
+			Move:   0x0195,     // Ng1-f3 encoded correctly
 			Weight: 60,
 			Learn:  0,
 		},
@@ -49,18 +50,22 @@ func main() {
 	}
 	
 	// Create minimal test book
-	createTestBook("testdata/minimal.bin", testEntries)
+	createTestBook("minimal.bin", testEntries)
 	
 	// Create empty book (for testing edge cases)
-	createTestBook("testdata/empty.bin", []openings.PolyglotEntry{})
+	createTestBook("empty.bin", []openings.PolyglotEntry{})
 	
 	// Create single entry book
-	createTestBook("testdata/single.bin", testEntries[:1])
+	createTestBook("single.bin", testEntries[:1])
 	
-	println("Test books created successfully in testdata/")
 }
 
 func createTestBook(filename string, entries []openings.PolyglotEntry) {
+	// Sort entries by hash (required for binary search)
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Hash < entries[j].Hash
+	})
+	
 	file, err := os.Create(filename)
 	if err != nil {
 		panic(err)
@@ -74,7 +79,6 @@ func createTestBook(filename string, entries []openings.PolyglotEntry) {
 		}
 	}
 	
-	println("Created", filename, "with", len(entries), "entries")
 }
 
 // Alternative approach using raw binary writing (if WriteEntry is not available)

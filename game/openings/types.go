@@ -16,7 +16,7 @@ var (
 // OpeningBook defines the interface for opening book implementations
 type OpeningBook interface {
 	// LookupMove finds book moves for the given position hash
-	LookupMove(hash uint64) ([]BookMove, error)
+	LookupMove(hash uint64, b *board.Board) ([]BookMove, error)
 	
 	// LoadFromFile loads the opening book from a file
 	LoadFromFile(filename string) error
@@ -94,9 +94,9 @@ func (bm *BookManager) SetPrimary(book OpeningBook) {
 }
 
 // LookupMove searches for moves in all loaded books, starting with primary
-func (bm *BookManager) LookupMove(hash uint64) ([]BookMove, error) {
+func (bm *BookManager) LookupMove(hash uint64, b *board.Board) ([]BookMove, error) {
 	if bm.primary != nil && bm.primary.IsLoaded() {
-		moves, err := bm.primary.LookupMove(hash)
+		moves, err := bm.primary.LookupMove(hash, b)
 		if err == nil && len(moves) > 0 {
 			return moves, nil
 		}
@@ -105,7 +105,7 @@ func (bm *BookManager) LookupMove(hash uint64) ([]BookMove, error) {
 	// Search other books if primary didn't have the position
 	for _, book := range bm.books {
 		if book != bm.primary && book.IsLoaded() {
-			moves, err := book.LookupMove(hash)
+			moves, err := book.LookupMove(hash, b)
 			if err == nil && len(moves) > 0 {
 				return moves, nil
 			}

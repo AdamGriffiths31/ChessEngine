@@ -106,7 +106,7 @@ func (pb *PolyglotBook) LoadFromFile(filename string) error {
 }
 
 // LookupMove finds book moves for the given position hash
-func (pb *PolyglotBook) LookupMove(hash uint64) ([]BookMove, error) {
+func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, error) {
 	if !pb.isLoaded {
 		return nil, ErrBookNotLoaded
 	}
@@ -126,7 +126,7 @@ func (pb *PolyglotBook) LookupMove(hash uint64) ([]BookMove, error) {
 		entry := pb.entries[i]
 		
 		// Decode the move
-		move, err := pb.decodeMove(entry.Move)
+		move, err := pb.decodeMove(entry.Move, b)
 		if err != nil {
 			continue // Skip invalid moves
 		}
@@ -158,7 +158,7 @@ func (pb *PolyglotBook) GetBookInfo() BookInfo {
 }
 
 // decodeMove converts a 16-bit Polyglot move encoding to a board.Move
-func (pb *PolyglotBook) decodeMove(encoded uint16) (board.Move, error) {
+func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, error) {
 	// Extract components
 	toSquare := int(encoded & ToSquareMask)
 	fromSquare := int((encoded & FromSquareMask) >> FromSquareShift)
@@ -170,9 +170,21 @@ func (pb *PolyglotBook) decodeMove(encoded uint16) (board.Move, error) {
 	toFile := toSquare % 8
 	toRank := toSquare / 8
 	
+	// Get the piece being moved
+	movingPiece := b.GetPiece(fromRank, fromFile)
+	if movingPiece == board.Empty {
+		return board.Move{}, fmt.Errorf("no piece at from square %c%d", 'a'+fromFile, fromRank+1)
+	}
+	
+	// Get any piece being captured
+	capturedPiece := b.GetPiece(toRank, toFile)
+	
 	move := board.Move{
-		From: board.Square{File: fromFile, Rank: fromRank},
-		To:   board.Square{File: toFile, Rank: toRank},
+		From:      board.Square{File: fromFile, Rank: fromRank},
+		To:        board.Square{File: toFile, Rank: toRank},
+		Piece:     movingPiece,
+		Captured:  capturedPiece,
+		IsCapture: capturedPiece != board.Empty,
 	}
 	
 	// Handle promotion

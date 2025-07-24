@@ -212,6 +212,7 @@ func (b *Board) SetPiece(rank, file int, piece Piece) {
 		square := Square{File: file, Rank: rank}
 		oldPiece := b.squares[rank][file]
 		
+		
 		// Remove old piece from bitboards
 		if oldPiece != Empty {
 			b.removePieceBitboard(rank, file, oldPiece)
@@ -366,6 +367,7 @@ func (b *Board) addPieceToList(piece Piece, square Square) {
 	
 	b.pieceLists[piece] = append(b.pieceLists[piece], square)
 	b.pieceCount[piece]++
+	
 }
 
 // removePieceFromList removes a piece from the piece list
@@ -375,6 +377,7 @@ func (b *Board) removePieceFromList(piece Piece, square Square) {
 	}
 	
 	list := b.pieceLists[piece]
+	
 	for i, sq := range list {
 		if sq.File == square.File && sq.Rank == square.Rank {
 			// Remove by swapping with last element
@@ -384,6 +387,7 @@ func (b *Board) removePieceFromList(piece Piece, square Square) {
 			break
 		}
 	}
+	
 }
 
 // GetPieceList returns all squares containing a specific piece type
@@ -415,6 +419,11 @@ func (b *Board) GetFullMoveNumber() int {
 
 func (b *Board) GetSideToMove() string {
 	return b.sideToMove
+}
+
+// DebugPieceCounts prints current piece counts for debugging
+func (b *Board) DebugPieceCounts(label string) {
+	// Debug output removed
 }
 
 // Setter methods for board state

@@ -77,18 +77,19 @@ func TestGetPieceIndex(t *testing.T) {
 		piece    board.Piece
 		expected int
 	}{
-		{board.WhitePawn, 0},
-		{board.WhiteKnight, 1},
-		{board.WhiteBishop, 2},
-		{board.WhiteRook, 3},
-		{board.WhiteQueen, 4},
-		{board.WhiteKing, 5},
-		{board.BlackPawn, 6},
-		{board.BlackKnight, 7},
-		{board.BlackBishop, 8},
-		{board.BlackRook, 9},
-		{board.BlackQueen, 10},
-		{board.BlackKing, 11},
+		// Official Polyglot piece order: BP(0), WP(1), BN(2), WN(3), BB(4), WB(5), BR(6), WR(7), BQ(8), WQ(9), BK(10), WK(11)
+		{board.BlackPawn, 0},
+		{board.WhitePawn, 1},
+		{board.BlackKnight, 2},
+		{board.WhiteKnight, 3},
+		{board.BlackBishop, 4},
+		{board.WhiteBishop, 5},
+		{board.BlackRook, 6},
+		{board.WhiteRook, 7},
+		{board.BlackQueen, 8},
+		{board.WhiteQueen, 9},
+		{board.BlackKing, 10},
+		{board.WhiteKing, 11},
 	}
 	
 	for _, test := range tests {

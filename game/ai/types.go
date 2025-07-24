@@ -12,6 +12,8 @@ type SearchStats struct {
 	Depth             int
 	Time              time.Duration
 	PrincipalVariation []board.Move
+	BookMoveUsed       bool     // True if move came from opening book
+	DebugInfo          []string // Debug messages (when DebugMode is enabled)
 }
 
 // SearchConfig configures the search parameters
@@ -21,7 +23,27 @@ type SearchConfig struct {
 	MaxNodes     int64
 	UseAlphaBeta bool
 	DebugMode    bool
+	
+	// Opening book configuration
+	UseOpeningBook    bool
+	BookFiles         []string
+	BookSelectMode    BookSelectionMode
+	BookWeightThreshold uint16
 }
+
+// BookSelectionMode defines how to select moves from opening books
+type BookSelectionMode int
+
+const (
+	// BookSelectBest always chooses the highest-weighted move
+	BookSelectBest BookSelectionMode = iota
+	
+	// BookSelectRandom chooses randomly (equal probability)
+	BookSelectRandom
+	
+	// BookSelectWeightedRandom uses weighted random selection based on move weights
+	BookSelectWeightedRandom
+)
 
 // EvaluationScore represents the score of a position
 type EvaluationScore int32

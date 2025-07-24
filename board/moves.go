@@ -66,17 +66,25 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 }
 
 func (b *Board) MakeMove(move Move) error {
-	// Get the piece at the from square
-	piece := b.GetPiece(move.From.Rank, move.From.File)
-	if piece == Empty {
-		return errors.New("no piece at from square")
+	// Use the piece from the Move struct if available, otherwise get from board
+	var piece Piece
+	if move.Piece != Empty {
+		piece = move.Piece
+	} else {
+		piece = b.GetPiece(move.From.Rank, move.From.File)
+		if piece == Empty {
+			return errors.New("no piece at from square")
+		}
 	}
+	
+	// Store captured piece before making move
+	capturedPiece := b.GetPiece(move.To.Rank, move.To.File)
 	
 	// Clear the from square
 	b.SetPiece(move.From.Rank, move.From.File, Empty)
 	
 	// Handle promotion
-	if move.Promotion != Empty {
+	if move.Promotion != Empty && move.Promotion != 0 {
 		b.SetPiece(move.To.Rank, move.To.File, move.Promotion)
 	} else {
 		// Place the piece at the to square
@@ -92,6 +100,9 @@ func (b *Board) MakeMove(move Move) error {
 	if move.IsEnPassant {
 		return b.handleEnPassant(move)
 	}
+	
+	// Update game state
+	b.updateGameState(move, piece, capturedPiece)
 	
 	return nil
 }
@@ -123,6 +134,74 @@ func (b *Board) handleEnPassant(move Move) error {
 	captureRank := move.From.Rank
 	b.SetPiece(captureRank, move.To.File, Empty)
 	return nil
+}
+
+func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
+	// Switch side to move
+	if b.sideToMove == "w" {
+		b.sideToMove = "b"
+	} else {
+		b.sideToMove = "w"
+		b.fullMoveNumber++
+	}
+	
+	// Update half move clock - reset if pawn move or capture
+	if piece == WhitePawn || piece == BlackPawn || capturedPiece != Empty {
+		b.halfMoveClock = 0
+	} else {
+		b.halfMoveClock++
+	}
+	
+	// Update castling rights if king or rook moved
+	b.updateCastlingRights(move, piece)
+	
+	// Update en passant target
+	b.updateEnPassantTarget(move, piece)
+}
+
+func (b *Board) updateCastlingRights(move Move, piece Piece) {
+	// If king moved, remove all castling rights for that side
+	if piece == WhiteKing {
+		b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
+		b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "")
+	} else if piece == BlackKing {
+		b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "")
+		b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
+	}
+	
+	// If rook moved from initial position, remove corresponding castling right
+	if piece == WhiteRook {
+		if move.From.Rank == 0 && move.From.File == 0 {
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "") // queenside
+		} else if move.From.Rank == 0 && move.From.File == 7 {
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "") // kingside
+		}
+	} else if piece == BlackRook {
+		if move.From.Rank == 7 && move.From.File == 0 {
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "") // queenside
+		} else if move.From.Rank == 7 && move.From.File == 7 {
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "") // kingside
+		}
+	}
+	
+	// If no castling rights remain, set to "-"
+	if b.castlingRights == "" {
+		b.castlingRights = "-"
+	}
+}
+
+func (b *Board) updateEnPassantTarget(move Move, piece Piece) {
+	// Clear previous en passant target
+	b.enPassantTarget = nil
+	
+	// Set en passant target if pawn moved two squares
+	if piece == WhitePawn && move.From.Rank == 1 && move.To.Rank == 3 {
+		square := Square{File: move.From.File, Rank: 2}
+		b.enPassantTarget = &square
+	} else if piece == BlackPawn && move.From.Rank == 6 && move.To.Rank == 4 {
+		square := Square{File: move.From.File, Rank: 5}
+		b.enPassantTarget = &square
+	}
 }
 
 func ParseSimpleMove(notation string) (Move, error) {
