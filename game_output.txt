@@ -1,0 +1,96 @@
+Chess Engine
+============
+
+Select game mode:
+1. Manual Play (Player vs Player)
+2. Player vs Computer
+
+Enter choice (1 or 2): Chess Engine - Player vs Computer
+=================================
+
+Commands:
+  - Enter moves in coordinate notation (e.g., e2e4)
+  - 'o-o' or '0-0' for kingside castling
+  - 'o-o-o' or '0-0-0' for queenside castling
+  - 'moves' to show all legal moves
+  - 'quit' or 'exit' to quit the game
+  - 'reset' to start a new game
+  - 'fen' to display current FEN string
+
+
+Choose your color:
+1. White (play first)
+2. Black (play second)
+Enter choice (1-2): You selected: White
+
+
+Choose difficulty:
+1. Easy
+2. Medium
+3. Hard
+Enter choice (1-3): Difficulty set to: Hard (depth 6, 5s think time)
+
+
+Debug mode (show search statistics):
+1. Disabled
+2. Enabled
+Enter choice (1-2): Debug mode: Enabled
+
+Current turn: White
+Move: 1
+
+  a b c d e f g h
+8 r n b q k b n r 8
+7 p p p p p p p p 7
+6 . . . . . . . . 6
+5 . . . . . . . . 5
+4 . . . . . . . . 4
+3 . . . . . . . . 3
+2 P P P P P P P P 2
+1 R N B Q K B N R 1
+  a b c d e f g h
+
+Enter move for White (or 'quit', 'reset', 'fen', 'moves'): Move validated ✓
+
+Current turn: Black
+Move: 1
+
+  a b c d e f g h
+8 r n b q k b n r 8
+7 p p p p p p p p 7
+6 . . . . . . . . 6
+5 . . . . . . . . 5
+4 . . . . P . . . 4
+3 . . . . . . . . 3
+2 P P P P . P P P 2
+1 R N B Q K B N R 1
+  a b c d e f g h
+
+Computer is thinking...
+📚 Loaded opening book: game/openings/testdata/performance.bin with 92954 entries
+Computer plays: a7a6
+   Search depth: 6
+   Nodes searched: 2565448
+   Search time: 3.000597886s
+   Position evaluation: 500 centipawns (from White's perspective)
+   Assessment: White is better by 500 centipawns
+   Search efficiency: 854979 nodes/second
+   Debug info:
+     🔍 Position hash: 4D0DDE8EF7CC031F
+     ❌ Opening book lookup failed: position not found in opening book, falling back to search
+
+Current turn: White
+Move: 2
+
+  a b c d e f g h
+8 r n b q k b n r 8
+7 . p . . . . . p 7
+6 p . . . . . . . 6
+5 . . . . . . . . 5
+4 . . . . P . . . 4
+3 . . . . . . . . 3
+2 P P P P . P P P 2
+1 R N B Q K B N R 1
+  a b c d e f g h
+
+Enter move for White (or 'quit', 'reset', 'fen', 'moves'): Are you sure you want to quit? (y/N): Thanks for playing!

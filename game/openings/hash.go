@@ -74,7 +74,8 @@ func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 	}
 	
 	// Hash side to move - only when side is White (offset 780)
-	if b.GetSideToMove() == "w" {
+	sideToMove := b.GetSideToMove()
+	if sideToMove == "w" {
 		offset = 780
 		hash ^= random64Poly[offset]
 	}

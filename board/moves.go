@@ -2,6 +2,7 @@ package board
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -49,9 +50,14 @@ func (s Square) String() string {
 
 // MakeMoveWithUndo makes a move and returns undo information
 func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
+	// Ensure move.Piece is set for proper undo
+	if move.Piece == Empty {
+		move.Piece = b.GetPiece(move.From.Rank, move.From.File)
+	}
+	
 	// Store current state for undo
 	undo := MoveUndo{
-		Move: move,
+		Move: move, // This now has the correct piece
 		CapturedPiece: b.GetPiece(move.To.Rank, move.To.File),
 		CastlingRights: b.castlingRights,
 		EnPassantTarget: b.enPassantTarget,
@@ -286,11 +292,37 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	
 	// Handle undo of promotion
 	if move.Promotion != Empty {
-		// The original piece was a pawn
-		if isWhitePiece(move.Piece) {
-			movedPiece = WhitePawn
+		// The original piece was a pawn - determine color from the promoted piece
+		// or from the destination square piece (which should be the promoted piece)
+		promotedPiece := b.GetPiece(move.To.Rank, move.To.File)
+		
+		// If the move.Piece field is set and valid, use it to determine color
+		if move.Piece != Empty && isValidPiece(move.Piece) {
+			if isWhitePiece(move.Piece) {
+				movedPiece = WhitePawn
+			} else {
+				movedPiece = BlackPawn
+			}
+		} else if promotedPiece != Empty && isValidPiece(promotedPiece) {
+			// Fallback: determine from the promoted piece on the board
+			if isWhitePiece(promotedPiece) {
+				movedPiece = WhitePawn
+			} else {
+				movedPiece = BlackPawn
+			}
 		} else {
-			movedPiece = BlackPawn
+			// Ultimate fallback: determine from board position
+			// Promotions only happen on ranks 1 and 8
+			if move.To.Rank == 7 {
+				// White pawn promoted to rank 8
+				movedPiece = WhitePawn
+			} else if move.To.Rank == 0 {
+				// Black pawn promoted to rank 1
+				movedPiece = BlackPawn
+			} else {
+				// This shouldn't happen, but default to the piece that was there
+				movedPiece = b.GetPiece(move.To.Rank, move.To.File)
+			}
 		}
 	}
 	
@@ -316,6 +348,13 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
 	b.sideToMove = undo.SideToMove
+	
+	// Validate board consistency after unmake (debug builds only)
+	if !b.validateBoardConsistency() {
+		// This is a critical error but we can't return an error from UnmakeMove
+		// Log it for debugging purposes
+		fmt.Printf("CRITICAL: Board inconsistency detected after UnmakeMove!\n")
+	}
 }
 
 // undoCastling reverses the rook movement in castling

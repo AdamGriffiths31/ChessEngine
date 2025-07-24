@@ -47,7 +47,7 @@ func (mp *MoveParser) ParseMove(notation string, gameBoard *board.Board) (board.
 	
 	// Handle simple coordinate moves (e.g., "e2e4")
 	if len(notation) >= 4 && len(notation) <= 5 {
-		return mp.parseCoordinateMove(notation)
+		return mp.parseCoordinateMove(notation, gameBoard)
 	}
 	
 	// Handle algebraic notation (basic implementation)
@@ -81,7 +81,7 @@ func (mp *MoveParser) parseCastling(kingside bool, gameBoard *board.Board) (boar
 	}, nil
 }
 
-func (mp *MoveParser) parseCoordinateMove(notation string) (board.Move, error) {
+func (mp *MoveParser) parseCoordinateMove(notation string, gameBoard *board.Board) (board.Move, error) {
 	// Handle moves like "e2e4" or "e7e8q" (with promotion)
 	from, err := board.ParseSquare(notation[:2])
 	if err != nil {
@@ -93,7 +93,13 @@ func (mp *MoveParser) parseCoordinateMove(notation string) (board.Move, error) {
 		return board.Move{}, err
 	}
 	
-	move := board.Move{From: from, To: to, Promotion: board.Empty}
+	// Get the piece at the from square
+	piece := gameBoard.GetPiece(from.Rank, from.File)
+	if piece == board.Empty {
+		return board.Move{}, errors.New("no piece at from square")
+	}
+	
+	move := board.Move{From: from, To: to, Piece: piece, Promotion: board.Empty}
 	
 	// Handle promotion
 	if len(notation) == 5 {

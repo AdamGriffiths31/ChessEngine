@@ -183,7 +183,7 @@ func (p *Prompter) PromptForDebugMode() (bool, error) {
 
 // ShowSearchStats displays debug information about the search
 func (p *Prompter) ShowSearchStats(move string, stats ai.SearchStats, score ai.EvaluationScore, player moves.Player) {
-	fmt.Printf("🔍 DEBUG: Computer played %s\n", move)
+	fmt.Printf("Computer plays: %s\n", move)
 	fmt.Printf("   Search depth: %d\n", stats.Depth)
 	fmt.Printf("   Nodes searched: %d\n", stats.NodesSearched)
 	fmt.Printf("   Search time: %v\n", stats.Time)

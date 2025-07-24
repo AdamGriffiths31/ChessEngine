@@ -2,6 +2,7 @@ package board
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -421,9 +422,63 @@ func (b *Board) GetSideToMove() string {
 	return b.sideToMove
 }
 
-// DebugPieceCounts prints current piece counts for debugging
+// DebugPieceCounts displays comprehensive piece count information
 func (b *Board) DebugPieceCounts(label string) {
-	// Debug output removed
+	fmt.Printf("\n=== Piece Counts: %s ===\n", label)
+	
+	// Count pieces by scanning the board
+	actualCounts := make(map[Piece]int)
+	for rank := 0; rank < 8; rank++ {
+		for file := 0; file < 8; file++ {
+			piece := b.GetPiece(rank, file)
+			if piece != Empty {
+				actualCounts[piece]++
+			}
+		}
+	}
+	
+	// Display counts
+	pieces := []Piece{WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing,
+					 BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing}
+	
+	for _, piece := range pieces {
+		actual := actualCounts[piece]
+		tracked := b.GetPieceCount(piece)
+		name := getPieceName(piece)
+		
+		if actual != tracked {
+			fmt.Printf("❌ %s: actual=%d, tracked=%d (MISMATCH!)\n", name, actual, tracked)
+		} else {
+			fmt.Printf("✅ %s: %d\n", name, actual)
+		}
+	}
+	
+	// Check total counts
+	whiteActual := actualCounts[WhitePawn] + actualCounts[WhiteRook] + actualCounts[WhiteKnight] + 
+				   actualCounts[WhiteBishop] + actualCounts[WhiteQueen] + actualCounts[WhiteKing]
+	blackActual := actualCounts[BlackPawn] + actualCounts[BlackRook] + actualCounts[BlackKnight] + 
+				   actualCounts[BlackBishop] + actualCounts[BlackQueen] + actualCounts[BlackKing]
+	
+	fmt.Printf("\nTotals: White=%d, Black=%d\n", whiteActual, blackActual)
+}
+
+// getPieceName returns a human-readable name for a piece
+func getPieceName(piece Piece) string {
+	switch piece {
+	case WhitePawn: return "White Pawn"
+	case WhiteRook: return "White Rook"
+	case WhiteKnight: return "White Knight"
+	case WhiteBishop: return "White Bishop"
+	case WhiteQueen: return "White Queen"
+	case WhiteKing: return "White King"
+	case BlackPawn: return "Black Pawn"
+	case BlackRook: return "Black Rook"
+	case BlackKnight: return "Black Knight"
+	case BlackBishop: return "Black Bishop"
+	case BlackQueen: return "Black Queen"
+	case BlackKing: return "Black King"
+	default: return "Unknown"
+	}
 }
 
 // Setter methods for board state
@@ -445,4 +500,34 @@ func (b *Board) SetFullMoveNumber(num int) {
 
 func (b *Board) SetSideToMove(side string) {
 	b.sideToMove = side
+}
+
+// validateBoardConsistency checks if the board state is internally consistent
+func (b *Board) validateBoardConsistency() bool {
+	// Count pieces by scanning the board
+	actualCounts := make(map[Piece]int)
+	for rank := 0; rank < 8; rank++ {
+		for file := 0; file < 8; file++ {
+			piece := b.GetPiece(rank, file)
+			if piece != Empty {
+				actualCounts[piece]++
+			}
+		}
+	}
+	
+	// Compare with tracked counts
+	pieces := []Piece{WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing,
+					 BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing}
+	
+	for _, piece := range pieces {
+		actual := actualCounts[piece]
+		tracked := b.GetPieceCount(piece)
+		
+		if actual != tracked {
+			fmt.Printf("Validation failed: %c has actual=%d, tracked=%d\n", piece, actual, tracked)
+			return false
+		}
+	}
+	
+	return true
 }
