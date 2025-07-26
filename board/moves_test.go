@@ -22,7 +22,7 @@ func TestParseSquare(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.notation, func(t *testing.T) {
 			result, err := ParseSquare(tc.notation)
-			
+
 			if tc.hasError {
 				if err == nil {
 					t.Errorf("Expected error for notation %q, but got none", tc.notation)
@@ -97,15 +97,15 @@ func TestParseSimpleMove(t *testing.T) {
 				Promotion:  Empty,
 			},
 		},
-		{"e9e4", true, Move{}},    // invalid square
-		{"e2", true, Move{}},      // too short
-		{"e2e4e5", true, Move{}},  // too long
+		{"e9e4", true, Move{}},   // invalid square
+		{"e2", true, Move{}},     // too short
+		{"e2e4e5", true, Move{}}, // too long
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.notation, func(t *testing.T) {
 			result, err := ParseSimpleMove(tc.notation)
-			
+
 			if tc.hasError {
 				if err == nil {
 					t.Errorf("Expected error for notation %q, but got none", tc.notation)
@@ -134,19 +134,19 @@ func TestParseSimpleMove(t *testing.T) {
 func TestMakeMove(t *testing.T) {
 	// Test basic pawn move
 	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	
+
 	move := Move{
 		From:      Square{File: 4, Rank: 1}, // e2
 		To:        Square{File: 4, Rank: 3}, // e4
-		Piece:     Empty,  // Tell MakeMove to get piece from board
+		Piece:     Empty,                    // Tell MakeMove to get piece from board
 		Promotion: Empty,
 	}
-	
+
 	err := board.MakeMove(move)
 	if err != nil {
 		t.Errorf("Expected no error making move, got: %v", err)
 	}
-	
+
 	// Check that the piece moved correctly
 	if board.GetPiece(1, 4) != Empty {
 		t.Errorf("Expected e2 to be empty after move, got: %c", board.GetPiece(1, 4))
@@ -159,10 +159,10 @@ func TestMakeMove(t *testing.T) {
 func TestBoardToFEN(t *testing.T) {
 	// Test initial position
 	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	
+
 	fen := board.ToFEN()
-	expected := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
-	
+	expected := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
 	if fen != expected {
 		t.Errorf("Expected FEN %q, got %q", expected, fen)
 	}

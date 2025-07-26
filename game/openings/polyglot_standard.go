@@ -217,8 +217,8 @@ const officialPolyglotSideKey = 0xF8D626AAAF278509 // Last element (index 780)
 func init() {
 	// Total 781 elements (indices 0-780):
 	// - 768 piece keys (indices 0-767)
-	// - 16 castling keys (indices 768-783, but we only have up to 780)
-	// - 8 en passant keys
+	// - 4 castling keys (indices 768-771)
+	// - 8 en passant keys (indices 772-779)
 	// - 1 side key (index 780)
 
 	// Initialize piece keys (indices 0-767)
@@ -229,14 +229,16 @@ func init() {
 		}
 	}
 
-	// Initialize castling keys - only take first 4 since we have limited space
-	// Use indices 768-771 for 4 castling combinations, repeat pattern for others
-	// Initialize castling keys - Polyglot only uses 4 keys
+	// Initialize castling keys (indices 768-771)
 	for i := 0; i < 4; i++ {
 		officialPolyglotCastlingKeys[i] = random64Poly[768+i]
 	}
 	// Fill the rest with zeros (HashPosition only uses 0-3)
 	for i := 4; i < 16; i++ {
 		officialPolyglotCastlingKeys[i] = 0
+	}
+
+	for i := 0; i < 8; i++ {
+		officialPolyglotEnPassantKeys[i] = random64Poly[772+i]
 	}
 }

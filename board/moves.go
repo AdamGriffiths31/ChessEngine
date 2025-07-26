@@ -117,13 +117,14 @@ func (b *Board) handleCastling(move Move) error {
 	// Determine which rook to move based on the king's destination
 	var rookFrom, rookTo Square
 
-	if move.To.File == 6 { // King-side castling (O-O)
+	switch move.To.File {
+	case 6: // King-side castling (O-O)
 		rookFrom = Square{File: 7, Rank: move.From.Rank}
 		rookTo = Square{File: 5, Rank: move.From.Rank}
-	} else if move.To.File == 2 { // Queen-side castling (O-O-O)
+	case 2: // Queen-side castling (O-O-O)
 		rookFrom = Square{File: 0, Rank: move.From.Rank}
 		rookTo = Square{File: 3, Rank: move.From.Rank}
-	} else {
+	default:
 		return errors.New("invalid castling move")
 	}
 
@@ -167,22 +168,24 @@ func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
 
 func (b *Board) updateCastlingRights(move Move, piece Piece) {
 	// If king moved, remove all castling rights for that side
-	if piece == WhiteKing {
+	switch piece {
+	case WhiteKing:
 		b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
 		b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "")
-	} else if piece == BlackKing {
+	case BlackKing:
 		b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "")
 		b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
 	}
 
 	// If rook moved from initial position, remove corresponding castling right
-	if piece == WhiteRook {
+	switch piece {
+	case WhiteRook:
 		if move.From.Rank == 0 && move.From.File == 0 {
 			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "") // queenside
 		} else if move.From.Rank == 0 && move.From.File == 7 {
 			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "") // kingside
 		}
-	} else if piece == BlackRook {
+	case BlackRook:
 		if move.From.Rank == 7 && move.From.File == 0 {
 			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "") // queenside
 		} else if move.From.Rank == 7 && move.From.File == 7 {
@@ -292,13 +295,14 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	if move.Promotion != Empty {
 		// For promotion moves, restore the original pawn
 		// Determine pawn color based on promotion rank
-		if move.To.Rank == 7 {
+		switch move.To.Rank {
+		case 7:
 			// White pawn promoted to rank 8
 			movedPiece = WhitePawn
-		} else if move.To.Rank == 0 {
+		case 0:
 			// Black pawn promoted to rank 1
 			movedPiece = BlackPawn
-		} else {
+		default:
 			// Fallback: use move.Piece if available, otherwise determine from promoted piece
 			if move.Piece != Empty && (move.Piece == WhitePawn || move.Piece == BlackPawn) {
 				movedPiece = move.Piece
@@ -365,10 +369,11 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 func (b *Board) undoCastling(move Move) {
 	var rookFrom, rookTo Square
 
-	if move.To.File == 6 { // King-side castling
+	switch move.To.File {
+	case 6: // King-side castling
 		rookFrom = Square{File: 5, Rank: move.From.Rank}
 		rookTo = Square{File: 7, Rank: move.From.Rank}
-	} else if move.To.File == 2 { // Queen-side castling
+	case 2: // Queen-side castling
 		rookFrom = Square{File: 3, Rank: move.From.Rank}
 		rookTo = Square{File: 0, Rank: move.From.Rank}
 	}
@@ -423,8 +428,25 @@ func (b *Board) ToFEN() string {
 		}
 	}
 
-	// Add minimal FEN metadata (assuming white to move, no castling rights, etc.)
-	fen.WriteString(" w - - 0 1")
+	// Add FEN metadata: side to move, castling rights, en passant, halfmove clock, fullmove number
+	fen.WriteString(" ")
+	fen.WriteString(b.sideToMove)
+	fen.WriteString(" ")
+	if b.castlingRights != "" {
+		fen.WriteString(b.castlingRights)
+	} else {
+		fen.WriteString("-")
+	}
+	fen.WriteString(" ")
+	if b.enPassantTarget != nil {
+		fen.WriteString(b.enPassantTarget.String())
+	} else {
+		fen.WriteString("-")
+	}
+	fen.WriteString(" ")
+	fen.WriteString(strconv.Itoa(b.halfMoveClock))
+	fen.WriteString(" ")
+	fen.WriteString(strconv.Itoa(b.fullMoveNumber))
 
 	return fen.String()
 }

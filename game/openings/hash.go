@@ -62,14 +62,34 @@ func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 		}
 	}
 
-	// 3. Hash en passant file (if any)
-	if b.GetEnPassantTarget() != nil {
-		file := b.GetEnPassantTarget().File
-		hash ^= zh.enPassantKeys[file] // Use the array
+	// 3. Hash en passant file (Polyglot: only if a pawn can actually capture)
+	ep := b.GetEnPassantTarget()
+	if ep != nil {
+		epFile := ep.File
+		side := b.GetSideToMove()
+		var pawnRank int
+		var pawnPiece board.Piece
+		if side == "w" {
+			pawnRank = 4 // White pawns on rank 5 (0-based)
+			pawnPiece = board.WhitePawn
+		} else {
+			pawnRank = 3 // Black pawns on rank 4 (0-based)
+			pawnPiece = board.BlackPawn
+		}
+		// Check for pawn on adjacent file
+		for _, df := range []int{-1, 1} {
+			adjFile := epFile + df
+			if adjFile >= 0 && adjFile < 8 {
+				if b.GetPiece(pawnRank, adjFile) == pawnPiece {
+					hash ^= zh.enPassantKeys[epFile]
+					break
+				}
+			}
+		}
 	}
 
-	// 4. Hash side to move - XOR only when BLACK to move
-	if b.GetSideToMove() == "b" {
+	// 4. Hash side to move - XOR only when White to move
+	if b.GetSideToMove() == "w" {
 		hash ^= zh.sideKey // Use the field
 	}
 
@@ -107,29 +127,6 @@ func (zh *ZobristHash) getPieceIndex(piece board.Piece) int {
 	default:
 		return 0 // Should not happen
 	}
-}
-
-// getCastlingIndex converts castling rights to array index
-// Polyglot format: bit 0=white O-O, bit 1=white O-O-O, bit 2=black O-O, bit 3=black O-O-O
-func (zh *ZobristHash) getCastlingIndex(b *board.Board) int {
-	var index int
-	castlingRights := b.GetCastlingRights()
-
-	// Convert "KQkq" format to bit indices
-	for _, r := range castlingRights {
-		switch r {
-		case 'K': // White kingside
-			index |= 1
-		case 'Q': // White queenside
-			index |= 2
-		case 'k': // Black kingside
-			index |= 4
-		case 'q': // Black queenside
-			index |= 8
-		}
-	}
-
-	return index
 }
 
 // HashMove generates a hash for a specific move (for move validation)

@@ -1,7 +1,6 @@
 package board
 
 import (
-	"math/rand"
 	"sync"
 )
 
@@ -364,72 +363,3 @@ func ResetMagicsForTesting() {
 	magicsInitialized = false
 	magicInitMutex = sync.Once{}
 }
-
-// Utility functions for magic bitboard generation (used for finding magic numbers)
-
-// generateRandomU64 generates a random 64-bit number with few bits set
-func generateRandomU64() uint64 {
-	u1 := uint64(rand.Uint32()) & uint64(rand.Uint32()) & uint64(rand.Uint32())
-	u2 := uint64(rand.Uint32()) & uint64(rand.Uint32()) & uint64(rand.Uint32())
-	return (u1 << 32) | u2
-}
-
-// findMagicNumber finds a magic number for a given square and piece type
-// This is computationally expensive and used for generating the pre-computed tables
-func findMagicNumber(square int, relevantBits int, isRook bool) uint64 {
-	var mask Bitboard
-	var attacks [4096]Bitboard
-	var occupancies [4096]Bitboard
-	var usedAttacks [4096]Bitboard
-
-	if isRook {
-		mask = rookRelevantOccupancy(square)
-	} else {
-		mask = bishopRelevantOccupancy(square)
-	}
-
-	occupancyIndices := 1 << relevantBits
-
-	// Generate all occupancy variations
-	for i := 0; i < occupancyIndices; i++ {
-		occupancies[i] = indexToOccupancy(i, mask)
-		if isRook {
-			attacks[i] = rookAttacksOnTheFly(square, occupancies[i])
-		} else {
-			attacks[i] = bishopAttacksOnTheFly(square, occupancies[i])
-		}
-	}
-
-	// Try to find a magic number
-	for randomCount := 0; randomCount < 100000000; randomCount++ {
-		magic := generateRandomU64()
-
-		// Skip inappropriate magic numbers
-		if ((Bitboard(magic) * mask) >> 56).PopCount() < 6 {
-			continue
-		}
-
-		// Clear used attacks
-		for i := 0; i < 4096; i++ {
-			usedAttacks[i] = 0
-		}
-
-		failed := false
-		for i := 0; i < occupancyIndices && !failed; i++ {
-			magicIndex := int((occupancies[i] * Bitboard(magic)) >> (64 - relevantBits))
-
-			if usedAttacks[magicIndex] == 0 {
-				usedAttacks[magicIndex] = attacks[i]
-			} else if usedAttacks[magicIndex] != attacks[i] {
-				failed = true
-			}
-		}
-
-		if !failed {
-			return magic
-		}
-	}
-
-	return 0 // Failed to find magic number
-}
-
