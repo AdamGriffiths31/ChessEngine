@@ -2,7 +2,7 @@ package openings
 
 // Official Polyglot Zobrist keys from the original Polyglot specification
 // The complete Polyglot Zobrist table has 781 keys:
-// - 768 piece keys (64 squares × 12 pieces)  
+// - 768 piece keys (64 squares × 12 pieces)
 // - 16 castling keys
 // - 8 en passant keys
 // - 1 side-to-move key
@@ -211,34 +211,32 @@ var random64Poly = [781]uint64{
 var officialPolyglotPieceKeys [64][12]uint64
 var officialPolyglotCastlingKeys [16]uint64
 var officialPolyglotEnPassantKeys [8]uint64
+
 const officialPolyglotSideKey = 0xF8D626AAAF278509 // Last element (index 780)
 
 func init() {
 	// Total 781 elements (indices 0-780):
 	// - 768 piece keys (indices 0-767)
 	// - 16 castling keys (indices 768-783, but we only have up to 780)
-	// - 8 en passant keys  
+	// - 8 en passant keys
 	// - 1 side key (index 780)
-	
+
 	// Initialize piece keys (indices 0-767)
-	for square := 0; square < 64; square++ {
-		for piece := 0; piece < 12; piece++ {
-			index := square*12 + piece
+	for piece := 0; piece < 12; piece++ {
+		for square := 0; square < 64; square++ {
+			index := piece*64 + square
 			officialPolyglotPieceKeys[square][piece] = random64Poly[index]
 		}
 	}
-	
+
 	// Initialize castling keys - only take first 4 since we have limited space
 	// Use indices 768-771 for 4 castling combinations, repeat pattern for others
-	baseIndex := 768
-	for i := 0; i < 16; i++ {
-		keyIndex := baseIndex + (i % 4) // Use modulo to cycle through available keys
-		officialPolyglotCastlingKeys[i] = random64Poly[keyIndex]
+	// Initialize castling keys - Polyglot only uses 4 keys
+	for i := 0; i < 4; i++ {
+		officialPolyglotCastlingKeys[i] = random64Poly[768+i]
 	}
-	
-	// Initialize en passant keys (indices 772-779)
-	for i := 0; i < 8; i++ {
-		officialPolyglotEnPassantKeys[i] = random64Poly[772+i]
+	// Fill the rest with zeros (HashPosition only uses 0-3)
+	for i := 4; i < 16; i++ {
+		officialPolyglotCastlingKeys[i] = 0
 	}
-	
 }
