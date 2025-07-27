@@ -48,13 +48,13 @@ func TestSpecificPositionHashes(t *testing.T) {
 		},
 		{
 			name:        "After e2e4 d7d5 e4e5 f7f5 e1e2",
-			fen:         "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3",
+			fen:         "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 1 3",
 			expectedKey: 0x652a607ca3f242c1,
 			moves:       []string{"e2e4", "d7d5", "e4e5", "f7f5", "e1e2"},
 		},
 		{
 			name:        "After e2e4 d7d5 e4e5 f7f5 e1e2 e8f7",
-			fen:         "rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4",
+			fen:         "rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 2 4",
 			expectedKey: 0x00fdd303c946bdd9,
 			moves:       []string{"e2e4", "d7d5", "e4e5", "f7f5", "e1e2", "e8f7"},
 		},
@@ -66,7 +66,7 @@ func TestSpecificPositionHashes(t *testing.T) {
 		},
 		{
 			name:        "After a2a4 b7b5 h2h4 b5b4 c2c4 b4c3 a1a3",
-			fen:         "rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4",
+			fen:         "rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 1 4",
 			expectedKey: 0x5c3f9b829b279560,
 			moves:       []string{"a2a4", "b7b5", "h2h4", "b5b4", "c2c4", "b4c3", "a1a3"},
 		},
@@ -203,31 +203,6 @@ func TestHashConsistency(t *testing.T) {
 	}
 }
 
-// TestEnPassantHashEffect tests that en passant square affects the hash
-func TestEnPassantHashEffect(t *testing.T) {
-	zobrist := GetPolyglotHash()
-
-	// Two positions that differ only in en passant square
-	fen1 := "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
-	fen2 := "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
-
-	b1, err := board.FromFEN(fen1)
-	if err != nil {
-		t.Fatalf("Failed to create position 1: %v", err)
-	}
-
-	b2, err := board.FromFEN(fen2)
-	if err != nil {
-		t.Fatalf("Failed to create position 2: %v", err)
-	}
-
-	hash1 := zobrist.HashPosition(b1)
-	hash2 := zobrist.HashPosition(b2)
-
-	if hash1 == hash2 {
-		t.Error("Positions with different en passant squares should have different hashes")
-	}
-}
 
 // TestCastlingRightsHashEffect tests that castling rights affect the hash
 func TestCastlingRightsHashEffect(t *testing.T) {

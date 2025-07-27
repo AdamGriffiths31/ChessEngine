@@ -83,6 +83,17 @@ func (b *Board) MakeMove(move Move) error {
 		}
 	}
 
+	// Auto-detect en passant if not already set
+	if !move.IsEnPassant && (piece == WhitePawn || piece == BlackPawn) {
+		targetPiece := b.GetPiece(move.To.Rank, move.To.File)
+		// If pawn moves diagonally to empty square and en passant target matches
+		if targetPiece == Empty && move.From.File != move.To.File {
+			if b.enPassantTarget != nil && b.enPassantTarget.File == move.To.File && b.enPassantTarget.Rank == move.To.Rank {
+				move.IsEnPassant = true
+			}
+		}
+	}
+
 	// Store captured piece before making move
 	capturedPiece := b.GetPiece(move.To.Rank, move.To.File)
 
@@ -104,7 +115,10 @@ func (b *Board) MakeMove(move Move) error {
 
 	// Handle en passant
 	if move.IsEnPassant {
-		return b.handleEnPassant(move)
+		err := b.handleEnPassant(move)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Update game state
@@ -152,8 +166,8 @@ func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
 		b.fullMoveNumber++
 	}
 
-	// Update half move clock - reset if pawn move or capture
-	if piece == WhitePawn || piece == BlackPawn || capturedPiece != Empty {
+	// Update half move clock - reset if pawn move, capture, or en passant
+	if piece == WhitePawn || piece == BlackPawn || capturedPiece != Empty || move.IsEnPassant {
 		b.halfMoveClock = 0
 	} else {
 		b.halfMoveClock++
