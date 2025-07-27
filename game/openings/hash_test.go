@@ -6,181 +6,290 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/board"
 )
 
-func TestZobristHashConsistency(t *testing.T) {
+// TestSpecificPositionHashes tests that various chess positions produce the expected Zobrist hash values
+func TestSpecificPositionHashes(t *testing.T) {
 	zobrist := GetPolyglotHash()
-	
-	// Create a test board in starting position
-	b := board.NewBoard()
-	
-	// Hash the same position multiple times - should be consistent
-	hash1 := zobrist.HashPosition(b)
-	hash2 := zobrist.HashPosition(b)
-	
-	if hash1 != hash2 {
-		t.Errorf("Hash inconsistency: expected %x, got %x", hash1, hash2)
-	}
-}
 
-func TestZobristHashDifferentPositions(t *testing.T) {
-	zobrist := GetPolyglotHash()
-	
-	// Create two different boards with pieces on different squares
-	b1 := board.NewBoard()
-	b2 := board.NewBoard()
-	
-	// Put different pieces to create definitely different positions
-	b1.SetPiece(0, 0, board.WhitePawn)  // a1
-	b2.SetPiece(1, 1, board.BlackPawn)  // b2
-	
-	hash1 := zobrist.HashPosition(b1)
-	hash2 := zobrist.HashPosition(b2)
-	
-	if hash1 == hash2 {
-		t.Logf("Hash collision detected - this is expected with placeholder Zobrist keys")
-		t.Logf("Hash1: %x, Hash2: %x", hash1, hash2)
-		// With proper Polyglot Zobrist keys, this would be a failure
-		// For now, we'll just log it since our keys are placeholders
-	} else {
-		t.Logf("Different positions produced different hashes: %x vs %x", hash1, hash2)
-	}
-}
-
-func TestZobristHashSideToMove(t *testing.T) {
-	zobrist := GetPolyglotHash()
-	
-	b := board.NewBoard()
-	
-	// Hash with white to move
-	hashWhite := zobrist.HashPosition(b)
-	
-	// Change active player to black
-	b.SetSideToMove("b")
-	hashBlack := zobrist.HashPosition(b)
-	
-	// Change back to white
-	b.SetSideToMove("w")
-	hashWhiteAgain := zobrist.HashPosition(b)
-	
-	if hashWhite == hashBlack {
-		t.Error("Side to move should affect hash")
-	}
-	
-	if hashWhite != hashWhiteAgain {
-		t.Error("Hash should be consistent when side to move returns to original")
-	}
-}
-
-func TestGetPieceIndex(t *testing.T) {
-	zobrist := GetPolyglotHash()
-	
 	tests := []struct {
-		piece    board.Piece
-		expected int
+		name        string
+		fen         string
+		expectedKey uint64
+		moves       []string // moves to reach this position from starting position
 	}{
-		// Official Polyglot piece order: BP(0), WP(1), BN(2), WN(3), BB(4), WB(5), BR(6), WR(7), BQ(8), WQ(9), BK(10), WK(11)
-		{board.BlackPawn, 0},
-		{board.WhitePawn, 1},
-		{board.BlackKnight, 2},
-		{board.WhiteKnight, 3},
-		{board.BlackBishop, 4},
-		{board.WhiteBishop, 5},
-		{board.BlackRook, 6},
-		{board.WhiteRook, 7},
-		{board.BlackQueen, 8},
-		{board.WhiteQueen, 9},
-		{board.BlackKing, 10},
-		{board.WhiteKing, 11},
+		{
+			name:        "Starting position",
+			fen:         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			expectedKey: 0x463b96181691fc9c,
+			moves:       []string{},
+		},
+		{
+			name:        "After e2e4",
+			fen:         "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+			expectedKey: 0x823c9b50fd114196,
+			moves:       []string{"e2e4"},
+		},
+		{
+			name:        "After e2e4 d7d5",
+			fen:         "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",
+			expectedKey: 0x0756b94461c50fb0,
+			moves:       []string{"e2e4", "d7d5"},
+		},
+		{
+			name:        "After e2e4 d7d5 e4e5",
+			fen:         "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2",
+			expectedKey: 0x662fafb965db29d4,
+			moves:       []string{"e2e4", "d7d5", "e4e5"},
+		},
+		{
+			name:        "After e2e4 d7d5 e4e5 f7f5",
+			fen:         "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+			expectedKey: 0x22a48b5a8e47ff78,
+			moves:       []string{"e2e4", "d7d5", "e4e5", "f7f5"},
+		},
+		{
+			name:        "After e2e4 d7d5 e4e5 f7f5 e1e2",
+			fen:         "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3",
+			expectedKey: 0x652a607ca3f242c1,
+			moves:       []string{"e2e4", "d7d5", "e4e5", "f7f5", "e1e2"},
+		},
+		{
+			name:        "After e2e4 d7d5 e4e5 f7f5 e1e2 e8f7",
+			fen:         "rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4",
+			expectedKey: 0x00fdd303c946bdd9,
+			moves:       []string{"e2e4", "d7d5", "e4e5", "f7f5", "e1e2", "e8f7"},
+		},
+		{
+			name:        "After a2a4 b7b5 h2h4 b5b4 c2c4",
+			fen:         "rnbqkbnr/p1pppppp/8/8/PpP4P/8/1P1PPPP1/RNBQKBNR b KQkq c3 0 3",
+			expectedKey: 0x3c8123ea7b067637,
+			moves:       []string{"a2a4", "b7b5", "h2h4", "b5b4", "c2c4"},
+		},
+		{
+			name:        "After a2a4 b7b5 h2h4 b5b4 c2c4 b4c3 a1a3",
+			fen:         "rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4",
+			expectedKey: 0x5c3f9b829b279560,
+			moves:       []string{"a2a4", "b7b5", "h2h4", "b5b4", "c2c4", "b4c3", "a1a3"},
+		},
 	}
-	
-	for _, test := range tests {
-		index := zobrist.getPieceIndex(test.piece)
-		if index != test.expected {
-			t.Errorf("getPieceIndex(%v) = %d, expected %d", test.piece, index, test.expected)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test 1: Create position from FEN and check hash
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatalf("Failed to create position from FEN: %v", err)
+			}
+
+			actualHash := zobrist.HashPosition(b)
+			if actualHash != tt.expectedKey {
+				t.Errorf("Hash mismatch for position from FEN\nExpected: 0x%016x\nGot:      0x%016x",
+					tt.expectedKey, actualHash)
+			}
+
+			// Test 2: Reach position by playing moves from starting position
+			if len(tt.moves) > 0 {
+				startBoard, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+				if err != nil {
+					t.Fatalf("Failed to create starting position: %v", err)
+				}
+
+				for i, moveStr := range tt.moves {
+					move, err := board.ParseSimpleMove(moveStr)
+					if err != nil {
+						t.Fatalf("Failed to parse move %s at index %d: %v", moveStr, i, err)
+					}
+
+					err = startBoard.MakeMove(move)
+					if err != nil {
+						t.Fatalf("Failed to make move %s at index %d: %v", moveStr, i, err)
+					}
+				}
+
+				hashAfterMoves := zobrist.HashPosition(startBoard)
+				if hashAfterMoves != tt.expectedKey {
+					t.Errorf("(%s vs %s)Hash mismatch after playing moves\nExpected: 0x%016x\nGot:      0x%016x",
+						startBoard.ToFEN(), tt.fen, tt.expectedKey, hashAfterMoves)
+				}
+
+				// Verify the final FEN matches expected (optional but useful)
+				finalFEN := startBoard.ToFEN()
+				if finalFEN != tt.fen {
+					t.Errorf("FEN mismatch after playing moves\nExpected: %s\nGot:      %s",
+						tt.fen, finalFEN)
+				}
+			}
+		})
+	}
+}
+
+// TestIncrementalHashUpdate tests that hash is correctly updated incrementally
+func TestIncrementalHashUpdate(t *testing.T) {
+	zobrist := GetPolyglotHash()
+
+	// Start from initial position
+	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create starting position: %v", err)
+	}
+
+	// Verify starting hash
+	startHash := zobrist.HashPosition(b)
+	if startHash != 0x463b96181691fc9c {
+		t.Errorf("Starting position hash mismatch\nExpected: 0x%016x\nGot:      0x%016x",
+			0x463b96181691fc9c, startHash)
+	}
+
+	// Sequence of moves and expected hashes
+	moveSequence := []struct {
+		move        string
+		expectedKey uint64
+	}{
+		{"e2e4", 0x823c9b50fd114196},
+		{"d7d5", 0x0756b94461c50fb0},
+		{"e4e5", 0x662fafb965db29d4},
+		{"f7f5", 0x22a48b5a8e47ff78},
+		{"e1e2", 0x652a607ca3f242c1},
+		{"e8f7", 0x00fdd303c946bdd9},
+	}
+
+	for i, ms := range moveSequence {
+		move, err := board.ParseSimpleMove(ms.move)
+		if err != nil {
+			t.Fatalf("Failed to parse move %s at step %d: %v", ms.move, i+1, err)
+		}
+
+		err = b.MakeMove(move)
+		if err != nil {
+			t.Fatalf("Failed to make move %s at step %d: %v", ms.move, i+1, err)
+		}
+
+		actualHash := zobrist.HashPosition(b)
+		if actualHash != ms.expectedKey {
+			t.Errorf("Hash mismatch after move %s (step %d)\nExpected: 0x%016x\nGot:      0x%016x",
+				ms.move, i+1, ms.expectedKey, actualHash)
 		}
 	}
 }
 
-func TestHashMoveConsistency(t *testing.T) {
+// TestHashConsistency tests that the same position always produces the same hash
+func TestHashConsistency(t *testing.T) {
 	zobrist := GetPolyglotHash()
-	
-	move := board.Move{
-		From: board.Square{File: 4, Rank: 1}, // e2
-		To:   board.Square{File: 4, Rank: 3}, // e4
+
+	testFENs := []string{
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+		"rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4",
+		"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4",
 	}
-	
-	hash1 := zobrist.HashMove(move)
-	hash2 := zobrist.HashMove(move)
-	
-	if hash1 != hash2 {
-		t.Errorf("Move hash inconsistency: expected %x, got %x", hash1, hash2)
+
+	for _, fen := range testFENs {
+		// Create the same position multiple times
+		hashes := make([]uint64, 5)
+		for i := 0; i < 5; i++ {
+			b, err := board.FromFEN(fen)
+			if err != nil {
+				t.Fatalf("Failed to create position from FEN: %v", err)
+			}
+			hashes[i] = zobrist.HashPosition(b)
+		}
+
+		// All hashes should be identical
+		for i := 1; i < len(hashes); i++ {
+			if hashes[i] != hashes[0] {
+				t.Errorf("Inconsistent hash for position %s\nFirst:  0x%016x\nOther:  0x%016x (iteration %d)",
+					fen, hashes[0], hashes[i], i+1)
+			}
+		}
 	}
 }
 
-func TestHashMoveDifferentMoves(t *testing.T) {
+// TestEnPassantHashEffect tests that en passant square affects the hash
+func TestEnPassantHashEffect(t *testing.T) {
 	zobrist := GetPolyglotHash()
-	
-	move1 := board.Move{
-		From: board.Square{File: 4, Rank: 1}, // e2
-		To:   board.Square{File: 4, Rank: 3}, // e4
+
+	// Two positions that differ only in en passant square
+	fen1 := "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+	fen2 := "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+
+	b1, err := board.FromFEN(fen1)
+	if err != nil {
+		t.Fatalf("Failed to create position 1: %v", err)
 	}
-	
-	move2 := board.Move{
-		From: board.Square{File: 3, Rank: 1}, // d2
-		To:   board.Square{File: 3, Rank: 3}, // d4
+
+	b2, err := board.FromFEN(fen2)
+	if err != nil {
+		t.Fatalf("Failed to create position 2: %v", err)
 	}
-	
-	hash1 := zobrist.HashMove(move1)
-	hash2 := zobrist.HashMove(move2)
-	
+
+	hash1 := zobrist.HashPosition(b1)
+	hash2 := zobrist.HashPosition(b2)
+
 	if hash1 == hash2 {
-		t.Errorf("Different moves produced same hash: %x", hash1)
+		t.Error("Positions with different en passant squares should have different hashes")
 	}
 }
 
-func TestHashMoveWithPromotion(t *testing.T) {
+// TestCastlingRightsHashEffect tests that castling rights affect the hash
+func TestCastlingRightsHashEffect(t *testing.T) {
 	zobrist := GetPolyglotHash()
-	
-	move := board.Move{
-		From:      board.Square{File: 4, Rank: 6}, // e7
-		To:        board.Square{File: 4, Rank: 7}, // e8
-		Promotion: board.WhiteQueen,
+
+	// Positions that differ only in castling rights
+	fenPairs := []struct {
+		fen1 string
+		fen2 string
+		desc string
+	}{
+		{
+			"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3",
+			"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b - - 0 3",
+			"with and without black castling rights",
+		},
+		{
+			"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4",
+			"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b kq - 0 4",
+			"with and without white kingside castling",
+		},
 	}
-	
-	hash1 := zobrist.HashMove(move)
-	
-	// Same move without promotion should be different
-	moveNoPromo := board.Move{
-		From: board.Square{File: 4, Rank: 6}, // e7
-		To:   board.Square{File: 4, Rank: 7}, // e8
+
+	for _, pair := range fenPairs {
+		b1, err := board.FromFEN(pair.fen1)
+		if err != nil {
+			t.Fatalf("Failed to create position 1 for %s: %v", pair.desc, err)
+		}
+
+		b2, err := board.FromFEN(pair.fen2)
+		if err != nil {
+			t.Fatalf("Failed to create position 2 for %s: %v", pair.desc, err)
+		}
+
+		hash1 := zobrist.HashPosition(b1)
+		hash2 := zobrist.HashPosition(b2)
+
+		if hash1 == hash2 {
+			t.Errorf("Positions %s should have different hashes", pair.desc)
+		}
 	}
-	
-	hash2 := zobrist.HashMove(moveNoPromo)
-	
+}
+
+// TestSideToMoveHashEffect tests that side to move affects hash correctly
+func TestSideToMoveHashEffect(t *testing.T) {
+	zobrist := GetPolyglotHash()
+
+	// Same position with different side to move
+	b1, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create position with white to move: %v", err)
+	}
+
+	b2, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create position with black to move: %v", err)
+	}
+
+	hash1 := zobrist.HashPosition(b1)
+	hash2 := zobrist.HashPosition(b2)
+
 	if hash1 == hash2 {
-		t.Error("Promotion should affect move hash")
-	}
-}
-
-// Benchmark tests for performance
-func BenchmarkHashPosition(b *testing.B) {
-	zobrist := GetPolyglotHash()
-	board := board.NewBoard()
-	
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		zobrist.HashPosition(board)
-	}
-}
-
-func BenchmarkHashMove(b *testing.B) {
-	zobrist := GetPolyglotHash()
-	move := board.Move{
-		From: board.Square{File: 4, Rank: 1},
-		To:   board.Square{File: 4, Rank: 3},
-	}
-	
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		zobrist.HashMove(move)
+		t.Error("Positions with different side to move should have different hashes")
 	}
 }

@@ -236,7 +236,7 @@ func ParseSimpleMove(notation string) (Move, error) {
 			return Move{}, err
 		}
 
-		return Move{From: from, To: to, Promotion: Empty}, nil
+		return Move{From: from, To: to, Promotion: Empty, Piece: Empty}, nil
 	}
 
 	// Handle promotion moves like "e7e8Q"
