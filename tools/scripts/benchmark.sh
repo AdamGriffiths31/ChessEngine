@@ -119,12 +119,12 @@ select_time_control() {
                 break
                 ;;
             4)
-                TIME_CONTROL="30"
+                TIME_CONTROL="inf/30"
                 TC_DESC="Fixed 30s/move"
                 break
                 ;;
             5)
-                TIME_CONTROL="60"
+                TIME_CONTROL="inf/60"
                 TC_DESC="Fixed 60s/move"
                 break
                 ;;
@@ -207,6 +207,19 @@ get_notes() {
     # If empty, set default
     if [ -z "$NOTES" ]; then
         NOTES="-"
+    fi
+}
+
+# Ask if user wants to record data
+ask_record_data() {
+    echo -e "${YELLOW}Record data to markdown file?${NC}"
+    echo -n "Save results to benchmark history? (Y/n): "
+    read record_choice
+    
+    if [[ "$record_choice" =~ ^[Nn]$ ]]; then
+        RECORD_DATA=false
+    else
+        RECORD_DATA=true
     fi
 }
 
@@ -392,10 +405,14 @@ analyze_results() {
     echo "Score: ${score}%"
     echo
     
-    # Log to markdown file
-    log_to_markdown "$timestamp" "$total_games" "$wins" "$losses" "$draws" "$score"
+    # Log to markdown file if requested
+    if [ "$RECORD_DATA" = true ]; then
+        log_to_markdown "$timestamp" "$total_games" "$wins" "$losses" "$draws" "$score"
+        echo -e "${GREEN}Results logged to: $BENCHMARK_LOG${NC}"
+    else
+        echo -e "${YELLOW}Results not logged to markdown file (as requested)${NC}"
+    fi
     
-    echo -e "${GREEN}Results logged to: $BENCHMARK_LOG${NC}"
     echo -e "${GREEN}Full PGN saved to: $pgn_file${NC}"
 }
 
@@ -447,11 +464,16 @@ main() {
     echo -e "${GREEN}Notes: $NOTES${NC}"
     echo
     
+    ask_record_data
+    echo -e "${GREEN}Record data: $([ "$RECORD_DATA" = true ] && echo "Yes" || echo "No")${NC}"
+    echo
+    
     echo -e "${YELLOW}Summary:${NC}"
     echo "  ChessEngine vs $OPPONENT"
     echo "  Time Control: $TC_DESC"
     echo "  Games: $GAME_COUNT"
     echo "  Notes: $NOTES"
+    echo "  Record data: $([ "$RECORD_DATA" = true ] && echo "Yes" || echo "No")"
     echo
     
     echo -n "Proceed with benchmark? (y/N): "

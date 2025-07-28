@@ -110,7 +110,10 @@ func (b *Board) MakeMove(move Move) error {
 
 	// Handle castling
 	if move.IsCastling {
-		return b.handleCastling(move)
+		err := b.handleCastling(move)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Handle en passant
