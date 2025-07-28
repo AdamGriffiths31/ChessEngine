@@ -83,3 +83,63 @@ if [ -f ../results/quick_benchmark.pgn ]; then
 else
     echo "No results file found"
 fi
+
+echo
+echo "=== Debug Log Analysis ==="
+cd /home/adam/Documents/git/ChessEngine
+
+# Check for UCI debug logs
+uci_logs=$(find logs/ -name "uci_debug_*.log" -type f 2>/dev/null | sort -r | head -1)
+if [ -n "$uci_logs" ]; then
+    echo "Latest UCI debug log: $uci_logs"
+    echo "Log file size: $(wc -l < "$uci_logs") lines"
+    
+    # Check for illegal move errors
+    illegal_moves=$(grep -c "CRITICAL ERROR.*illegal move" "$uci_logs" || echo "0")
+    if [ $illegal_moves -gt 0 ]; then
+        echo "⚠️  FOUND $illegal_moves ILLEGAL MOVE ERRORS!"
+        echo "Illegal move details:"
+        grep -A 3 "CRITICAL ERROR.*illegal move" "$uci_logs" | head -20
+    else
+        echo "✅ No illegal move errors found"
+    fi
+    
+    # Check for UCI command errors
+    uci_errors=$(grep -c "ERROR:" "$uci_logs" || echo "0")
+    echo "Total UCI errors: $uci_errors"
+    if [ $uci_errors -gt 0 ]; then
+        echo "Recent UCI errors:"
+        grep "ERROR:" "$uci_logs" | tail -5
+    fi
+    
+    echo
+    echo "To view full UCI debug log:"
+    echo "  cat $uci_logs"
+else
+    echo "No UCI debug logs found"
+fi
+
+# Check for game engine logs
+engine_logs=$(find logs/ -name "game_engine_*.log" -type f 2>/dev/null | sort -r | head -1)
+if [ -n "$engine_logs" ]; then
+    echo
+    echo "Latest game engine log: $engine_logs"
+    echo "Log file size: $(wc -l < "$engine_logs") lines"
+    
+    # Check for move validation failures
+    validation_failures=$(grep -c "Move validation FAILED" "$engine_logs" || echo "0")
+    echo "Move validation failures: $validation_failures"
+    if [ $validation_failures -gt 0 ]; then
+        echo "Recent validation failures:"
+        grep -A 5 "Move validation FAILED" "$engine_logs" | tail -20
+    fi
+    
+    echo
+    echo "To view full game engine log:"
+    echo "  cat $engine_logs"
+else
+    echo "No game engine logs found"
+fi
+
+echo
+echo "All debug logs preserved in: /home/adam/Documents/git/ChessEngine/logs/"
