@@ -90,12 +90,13 @@ select_opponent() {
 # Select time control
 select_time_control() {
     echo -e "${YELLOW}Available time controls:${NC}"
-    echo "  1) Blitz (3+0) - 3 minutes per game"
-    echo "  2) Rapid (10+0) - 10 minutes per game"
-    echo "  3) Long (30+0) - 30 minutes per game"
-    echo "  4) Fixed time (30s per move)"
-    echo "  5) Fixed time (60s per move)"
-    echo "  6) Custom"
+    echo "  1) Bullet (2+2) - 2 minutes + 2 second increment"
+    echo "  2) Blitz (3+0) - 3 minutes per game"
+    echo "  3) Rapid (10+0) - 10 minutes per game"
+    echo "  4) Long (30+0) - 30 minutes per game"
+    echo "  5) Fixed time (30s per move)"
+    echo "  6) Fixed time (60s per move)"
+    echo "  7) Custom"
     echo
     
     while true; do
@@ -104,38 +105,43 @@ select_time_control() {
         
         case $tc_selection in
             1)
-                TIME_CONTROL="3+0"
-                TC_DESC="Blitz (3+0)"
+                TIME_CONTROL="2:00+2"
+                TC_DESC="Bullet (2+2)"
                 break
                 ;;
             2)
-                TIME_CONTROL="10+0"
-                TC_DESC="Rapid (10+0)"
+                TIME_CONTROL="3:00+0"
+                TC_DESC="Blitz (3+0)"
                 break
                 ;;
             3)
-                TIME_CONTROL="30+0"
-                TC_DESC="Long (30+0)"
+                TIME_CONTROL="10:00+0"
+                TC_DESC="Rapid (10+0)"
                 break
                 ;;
             4)
-                TIME_CONTROL="inf/30"
-                TC_DESC="Fixed 30s/move"
+                TIME_CONTROL="30:00+0"
+                TC_DESC="Long (30+0)"
                 break
                 ;;
             5)
-                TIME_CONTROL="inf/60"
-                TC_DESC="Fixed 60s/move"
+                TIME_CONTROL="st=30"
+                TC_DESC="Fixed 30s/move"
                 break
                 ;;
             6)
+                TIME_CONTROL="st=60"
+                TC_DESC="Fixed 60s/move"
+                break
+                ;;
+            7)
                 echo -n "Enter custom time control (e.g., 5+3, 120, etc.): "
                 read TIME_CONTROL
                 TC_DESC="Custom ($TIME_CONTROL)"
                 break
                 ;;
             *)
-                echo -e "${RED}Invalid selection. Please enter a number between 1 and 6.${NC}"
+                echo -e "${RED}Invalid selection. Please enter a number between 1 and 7.${NC}"
                 ;;
         esac
     done
@@ -270,6 +276,7 @@ run_benchmark() {
     echo "Time Control: $TC_DESC"
     echo "Games: $GAME_COUNT"
     echo "Results will be saved to: $pgn_file"
+    echo "Debug logs will be monitored for illegal moves..."
     echo
     
     # Build ChessEngine
@@ -295,7 +302,14 @@ run_benchmark() {
         base_cmd="$base_cmd $opponent_options"
     fi
     
-    base_cmd="$base_cmd -each tc=\"$TIME_CONTROL\""
+    # Handle different time control formats
+    if [[ "$TIME_CONTROL" =~ ^st= ]]; then
+        # Fixed seconds per move - use st parameter globally, not per engine
+        base_cmd="$base_cmd -$TIME_CONTROL"
+    else
+        # Traditional time control - use tc parameter per engine  
+        base_cmd="$base_cmd -each tc=\"$TIME_CONTROL\""
+    fi
     base_cmd="$base_cmd -games \"$GAME_COUNT\""
     base_cmd="$base_cmd -concurrency 1"
     base_cmd="$base_cmd -ratinginterval 1"
@@ -304,10 +318,106 @@ run_benchmark() {
     base_cmd="$base_cmd -site \"Local Testing\""
     base_cmd="$base_cmd -pgnout \"$pgn_file\""
     
-    eval "$base_cmd"
+    # Capture cutechess-cli output to check for illegal moves
+    local cutechess_output_file="$RESULTS_DIR/cutechess_output_${timestamp}.log"
+    
+    echo -e "${YELLOW}Running cutechess-cli (output logged to: $cutechess_output_file)${NC}"
+    
+    # Run cutechess-cli and capture both stdout and stderr
+    if ! eval "$base_cmd" 2>&1 | tee "$cutechess_output_file"; then
+        echo -e "${RED}cutechess-cli failed to run successfully${NC}"
+        exit 1
+    fi
+    
+    # Check for illegal moves in the output
+    check_for_illegal_moves "$cutechess_output_file" "$pgn_file" "$timestamp"
     
     # Analyze results
     analyze_results "$pgn_file" "$timestamp"
+}
+
+# Check for illegal moves and dump debug logs if found
+check_for_illegal_moves() {
+    local cutechess_output="$1"
+    local pgn_file="$2" 
+    local timestamp="$3"
+    
+    echo -e "${YELLOW}Checking for illegal moves...${NC}"
+    
+    # Check cutechess-cli output for illegal move messages
+    if grep -q "illegal move" "$cutechess_output" || grep -q "makes an illegal move" "$pgn_file"; then
+        echo -e "${RED}🚨 ILLEGAL MOVE DETECTED! 🚨${NC}"
+        echo
+        
+        # Extract illegal move details from cutechess output
+        echo -e "${RED}=== CUTECHESS-CLI OUTPUT ===\n"
+        grep -A 5 -B 5 "illegal move" "$cutechess_output" || echo "No detailed illegal move info in cutechess output"
+        echo -e "${NC}"
+        
+        # Extract illegal move details from PGN file
+        echo -e "${RED}=== PGN GAME DETAILS ===\n"
+        grep -A 10 -B 5 "illegal move" "$pgn_file" || echo "No illegal move info in PGN"
+        echo -e "${NC}"
+        
+        # Find the most recent UCI debug log file
+        local uci_debug_log=""
+        local game_engine_log=""
+        
+        # Look for the most recent debug logs (they contain timestamp in filename)
+        uci_debug_log=$(ls -t /tmp/uci_debug_* 2>/dev/null | head -1)
+        game_engine_log=$(ls -t "$ENGINE_DIR"/../uci/logs/game_engine_* 2>/dev/null | head -1)
+        
+        echo -e "${RED}=== DEBUG LOG ANALYSIS ===\n"
+        echo "Most recent UCI debug log: $uci_debug_log"
+        echo "Most recent game engine log: $game_engine_log"
+        echo -e "${NC}"
+        
+        # Dump the critical sections of the UCI debug log
+        if [ -n "$uci_debug_log" ] && [ -f "$uci_debug_log" ]; then
+            echo -e "${RED}=== UCI DEBUG LOG (Last 100 lines) ===${NC}"
+            echo "File: $uci_debug_log"
+            echo "---"
+            tail -100 "$uci_debug_log"
+            echo -e "${RED}=========================================${NC}"
+            echo
+            
+            # Look for the final bestmove that caused the issue
+            echo -e "${RED}=== FINAL BESTMOVE ANALYSIS ===${NC}"
+            grep -A 10 -B 5 "SENDING FINAL BESTMOVE" "$uci_debug_log" | tail -20
+            echo -e "${RED}=================================${NC}"
+            echo
+        else
+            echo -e "${YELLOW}No UCI debug log found at $uci_debug_log${NC}"
+        fi
+        
+        # Dump critical sections of game engine log  
+        if [ -n "$game_engine_log" ] && [ -f "$game_engine_log" ]; then
+            echo -e "${RED}=== GAME ENGINE LOG (Last 50 lines) ===${NC}"
+            echo "File: $game_engine_log"
+            echo "---"
+            tail -50 "$game_engine_log"
+            echo -e "${RED}=======================================${NC}"
+            echo
+        else
+            echo -e "${YELLOW}No game engine log found at $game_engine_log${NC}"
+        fi
+        
+        # Stop the script here for investigation
+        echo -e "${RED}🛑 BENCHMARK STOPPED DUE TO ILLEGAL MOVE${NC}"
+        echo -e "${YELLOW}Debug information has been printed above.${NC}"
+        echo -e "${YELLOW}Investigate the logs to understand why the illegal move was generated.${NC}"
+        echo
+        echo -e "${BLUE}Files for investigation:${NC}"
+        echo "  - PGN file: $pgn_file"
+        echo "  - Cutechess output: $cutechess_output"
+        [ -n "$uci_debug_log" ] && echo "  - UCI debug log: $uci_debug_log"
+        [ -n "$game_engine_log" ] && echo "  - Game engine log: $game_engine_log"
+        echo
+        
+        exit 1
+    else
+        echo -e "${GREEN}✅ No illegal moves detected${NC}"
+    fi
 }
 
 # Analyze and display results
@@ -440,8 +550,15 @@ EOF
     fi
     
     # Append new result
-    local date=$(date -d "@${timestamp:0:8}" +"%Y-%m-%d" 2>/dev/null || date +"%Y-%m-%d")
-    local time=$(date -d "@${timestamp:0:8}" +"%H:%M" 2>/dev/null || echo "${timestamp:9:2}:${timestamp:11:2}")
+    # timestamp format is YYYYMMDD_HHMMSS, extract date and time parts
+    local date_part="${timestamp:0:8}"      # YYYYMMDD
+    local time_part="${timestamp:9:6}"      # HHMMSS
+    
+    # Format date as YYYY-MM-DD
+    local date="${date_part:0:4}-${date_part:4:2}-${date_part:6:2}"
+    
+    # Format time as HH:MM
+    local time="${time_part:0:2}:${time_part:2:2}"
     
     echo "| $date $time | $OPPONENT | $TC_DESC | $total | $wins | $losses | $draws | ${score}% | $NOTES |" >> "$BENCHMARK_LOG"
 }

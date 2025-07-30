@@ -23,6 +23,7 @@ type SearchParams struct {
 	WInc     time.Duration // White's increment per move
 	BInc     time.Duration // Black's increment per move
 	MovesToGo int          // Moves to next time control
+	Nodes    int64         // Maximum nodes to search
 }
 
 // ProtocolHandler handles UCI protocol parsing and response formatting
@@ -128,6 +129,13 @@ func (ph *ProtocolHandler) ParseGo(args []string) SearchParams {
 			if i+1 < len(args) {
 				if moves, err := strconv.Atoi(args[i+1]); err == nil {
 					params.MovesToGo = moves
+				}
+				i++
+			}
+		case "nodes":
+			if i+1 < len(args) {
+				if nodes, err := strconv.ParseInt(args[i+1], 10, 64); err == nil {
+					params.Nodes = nodes
 				}
 				i++
 			}

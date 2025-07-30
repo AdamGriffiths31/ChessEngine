@@ -690,16 +690,14 @@ func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player
 	// Create a proper move executor for make/unmake
 	moveExecutor := &MoveExecutor{}
 	
+	// Create a generator instance to access proper updateBoardState method
+	generator := NewGenerator()
+	
 	for i := 0; i < moves.Count; i++ {
 		move := moves.Moves[i]
 		
-		// Use proper make/unmake functions like the array implementation
-		updateBoardState := func(board *board.Board, move board.Move) {
-			// This function updates board state after a move
-			// Implementation would depend on the board package's interface
-		}
-		
-		history := moveExecutor.MakeMove(b, move, updateBoardState)
+		// Use the proper updateBoardState callback from Generator
+		history := moveExecutor.MakeMove(b, move, generator.updateBoardState)
 		
 		// Check if our king is in check after this move
 		var kingPiece board.Piece
@@ -721,8 +719,8 @@ func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player
 			}
 		}
 		
-		// Unmake the move
-		moveExecutor.UnmakeMove(b, history)
+		// Unmake the move using generator method for proper cache management
+		generator.unmakeMove(b, history)
 		
 		if isLegal {
 			legalMoves.AddMove(move)
