@@ -690,14 +690,29 @@ func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player
 	// Create a proper move executor for make/unmake
 	moveExecutor := &MoveExecutor{}
 	
-	// Create a generator instance to access proper updateBoardState method
-	generator := NewGenerator()
+	// Simple update function that doesn't require a generator instance
+	updateBoardState := func(b *board.Board, move board.Move) {
+		// Update castling rights based on the move
+		castlingRights := b.GetCastlingRights()
+		piece := b.GetPiece(move.To.Rank, move.To.File)
+		
+		// King moves remove all castling rights for that side
+		if piece == board.WhiteKing {
+			castlingRights = removeCastlingRights(castlingRights, "KQ")
+		} else if piece == board.BlackKing {
+			castlingRights = removeCastlingRights(castlingRights, "kq")
+		}
+		
+		// Update other board state as needed...
+		b.SetCastlingRights(castlingRights)
+		// ... rest of state updates
+	}
 	
 	for i := 0; i < moves.Count; i++ {
 		move := moves.Moves[i]
 		
-		// Use the proper updateBoardState callback from Generator
-		history := moveExecutor.MakeMove(b, move, generator.updateBoardState)
+		// Make the move
+		history := moveExecutor.MakeMove(b, move, updateBoardState)
 		
 		// Check if our king is in check after this move
 		var kingPiece board.Piece
@@ -719,8 +734,8 @@ func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player
 			}
 		}
 		
-		// Unmake the move using generator method for proper cache management
-		generator.unmakeMove(b, history)
+		// Unmake the move
+		moveExecutor.UnmakeMove(b, history)
 		
 		if isLegal {
 			legalMoves.AddMove(move)
@@ -730,6 +745,26 @@ func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player
 	return legalMoves
 }
 
+// Helper function to remove castling rights
+func removeCastlingRights(rights, toRemove string) string {
+	result := ""
+	for _, r := range rights {
+		remove := false
+		for _, remove_r := range toRemove {
+			if r == remove_r {
+				remove = true
+				break
+			}
+		}
+		if !remove {
+			result += string(r)
+		}
+	}
+	if result == "" {
+		return "-"
+	}
+	return result
+}
 
 // Release releases the temporary move list back to the pool
 func (bmg *BitboardMoveGenerator) Release() {
