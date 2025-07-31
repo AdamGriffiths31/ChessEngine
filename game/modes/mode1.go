@@ -37,11 +37,14 @@ func (mm *ManualMode) Run() error {
 		// Show current game state
 		mm.prompter.ShowGameState(state)
 		
+		// Get current player from engine
+		currentPlayer := mm.engine.GetCurrentPlayer()
+		
 		// Update parser's current player
-		mm.parser.SetCurrentPlayer(state.CurrentTurn)
+		mm.parser.SetCurrentPlayer(currentPlayer)
 		
 		// Get move input from user
-		input, err := mm.prompter.PromptForMove(state.CurrentTurn)
+		input, err := mm.prompter.PromptForMove(currentPlayer)
 		if err != nil {
 			mm.prompter.ShowError(err)
 			continue
@@ -99,7 +102,7 @@ func (mm *ManualMode) handleSpecialCommand(command string) error {
 		
 	case "MOVES":
 		moveList := mm.engine.GetLegalMoves()
-		playerName := mm.engine.GetState().CurrentTurn.String()
+		playerName := mm.engine.GetCurrentPlayer().String()
 		mm.prompter.ShowMoves(moveList, playerName)
 		return nil
 		

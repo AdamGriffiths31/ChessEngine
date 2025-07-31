@@ -18,8 +18,9 @@ func TestNewEngine(t *testing.T) {
 		t.Fatal("Expected state to be non-nil")
 	}
 	
-	if state.CurrentTurn != White {
-		t.Errorf("Expected initial turn to be White, got %v", state.CurrentTurn)
+	currentPlayer := engine.GetCurrentPlayer()
+	if currentPlayer != White {
+		t.Errorf("Expected initial turn to be White, got %v", currentPlayer)
 	}
 	
 	if state.MoveCount != 1 {
@@ -64,8 +65,9 @@ func TestEngineMakeMove(t *testing.T) {
 	}
 	
 	state := engine.GetState()
-	if state.CurrentTurn != Black {
-		t.Errorf("Expected turn to switch to Black after white move, got %v", state.CurrentTurn)
+	currentPlayer := engine.GetCurrentPlayer()
+	if currentPlayer != Black {
+		t.Errorf("Expected turn to switch to Black after white move, got %v", currentPlayer)
 	}
 	
 	if state.MoveCount != 1 {
@@ -85,8 +87,9 @@ func TestEngineMakeMove(t *testing.T) {
 	}
 	
 	state = engine.GetState()
-	if state.CurrentTurn != White {
-		t.Errorf("Expected turn to switch to White after black move, got %v", state.CurrentTurn)
+	currentPlayer = engine.GetCurrentPlayer()
+	if currentPlayer != White {
+		t.Errorf("Expected turn to switch to White after black move, got %v", currentPlayer)
 	}
 	
 	if state.MoveCount != 2 {
@@ -109,8 +112,9 @@ func TestEngineReset(t *testing.T) {
 	engine.Reset()
 	
 	state := engine.GetState()
-	if state.CurrentTurn != White {
-		t.Errorf("Expected turn to be White after reset, got %v", state.CurrentTurn)
+	currentPlayer := engine.GetCurrentPlayer()
+	if currentPlayer != White {
+		t.Errorf("Expected turn to be White after reset, got %v", currentPlayer)
 	}
 	
 	if state.MoveCount != 1 {

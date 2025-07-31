@@ -25,9 +25,16 @@ func (p Player) String() string {
 	return "Black"
 }
 
+// GetCurrentPlayer returns the current player based on board's side to move
+func (e *Engine) GetCurrentPlayer() Player {
+	if e.state.Board.GetSideToMove() == "w" {
+		return White
+	}
+	return Black
+}
+
 type GameState struct {
 	Board       *board.Board
-	CurrentTurn Player
 	MoveCount   int
 	GameOver    bool
 	Winner      Player
@@ -50,7 +57,6 @@ func NewEngine() *Engine {
 	engine := &Engine{
 		state: &GameState{
 			Board:       initialBoard,
-			CurrentTurn: White,
 			MoveCount:   1,
 			GameOver:    false,
 			EnPassant:   nil,
@@ -117,40 +123,22 @@ func (e *Engine) MakeMove(move board.Move) error {
 	e.logger.Printf("Successfully applied move to board")
 	e.logger.Printf("Board state after move: %s", e.state.Board.ToFEN())
 	
-	// CRITICAL FIX: Synchronize game state turn with board's side-to-move after move
-	// (Board.MakeMove already switched the turn, so we sync game state to match)
-	boardSideToMove := e.state.Board.GetSideToMove()
-	if boardSideToMove == "w" {
-		e.state.CurrentTurn = White
-	} else {
-		e.state.CurrentTurn = Black
-	}
-	
-	// Also synchronize move count with board's full move number
+	// Synchronize move count with board's full move number
 	e.state.MoveCount = int(e.state.Board.GetFullMoveNumber())
 	
-	e.logger.Printf("Synchronized game state turn to: %s (matching board side-to-move: %s)", 
-		e.state.CurrentTurn.String(), boardSideToMove)
+	e.logger.Printf("Current player after move: %s (from board side-to-move: %s)", 
+		e.GetCurrentPlayer().String(), e.state.Board.GetSideToMove())
 	e.logger.Printf("Synchronized move count to: %d (matching board full move number)", e.state.MoveCount)
 	
 	return nil
 }
 
-func (e *Engine) switchTurn() {
-	if e.state.CurrentTurn == White {
-		e.state.CurrentTurn = Black
-	} else {
-		e.state.CurrentTurn = White
-		e.state.MoveCount++
-	}
-}
 
 func (e *Engine) Reset() {
 	initialBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	
 	e.state = &GameState{
 		Board:       initialBoard,
-		CurrentTurn: White,
 		MoveCount:   1,
 		GameOver:    false,
 		EnPassant:   nil,
@@ -172,34 +160,26 @@ func (e *Engine) LoadFromFEN(fen string) error {
 	
 	e.state.Board = newBoard
 	
-	// CRITICAL FIX: Synchronize game state CurrentTurn with board side-to-move
-	boardSideToMove := newBoard.GetSideToMove()
-	if boardSideToMove == "w" {
-		e.state.CurrentTurn = White
-		e.logger.Printf("Set game state turn to White (from FEN side-to-move)")
-	} else {
-		e.state.CurrentTurn = Black
-		e.logger.Printf("Set game state turn to Black (from FEN side-to-move)")
-	}
-	
 	e.logger.Printf("Successfully loaded FEN position")
 	e.logger.Printf("New board state: %s", e.state.Board.ToFEN())
-	e.logger.Printf("Game state CurrentTurn: %s", e.state.CurrentTurn.String())
+	e.logger.Printf("Current player: %s (from board side-to-move: %s)", 
+		e.GetCurrentPlayer().String(), e.state.Board.GetSideToMove())
 	
 	return nil
 }
 
 // GetLegalMoves returns all legal moves for the current player
 func (e *Engine) GetLegalMoves() *moves.MoveList {
-	return e.generator.GenerateAllMoves(e.state.Board, moves.Player(e.state.CurrentTurn))
+	return e.generator.GenerateAllMoves(e.state.Board, moves.Player(e.GetCurrentPlayer()))
 }
 
 // ValidateMove checks if a move is legal for the current player
 func (e *Engine) ValidateMove(move board.Move) bool {
+	currentPlayer := e.GetCurrentPlayer()
 	e.logger.Printf("Validating move: From=%s, To=%s, Piece=%c, Captured=%c for player %s", 
-		move.From.String(), move.To.String(), move.Piece, move.Captured, e.state.CurrentTurn.String())
+		move.From.String(), move.To.String(), move.Piece, move.Captured, currentPlayer.String())
 	
-	isValid := e.validator.ValidateMove(e.state.Board, move, moves.Player(e.state.CurrentTurn))
+	isValid := e.validator.ValidateMove(e.state.Board, move, moves.Player(currentPlayer))
 	
 	if isValid {
 		e.logger.Printf("Move validation PASSED")

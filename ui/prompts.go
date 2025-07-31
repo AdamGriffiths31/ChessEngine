@@ -52,7 +52,14 @@ func (p *Prompter) ShowWelcomeComputer() {
 }
 
 func (p *Prompter) ShowGameState(state *game.GameState) {
-	fmt.Printf("Current turn: %s\n", state.CurrentTurn)
+	// Get current turn from board's side to move
+	var currentTurn string
+	if state.Board.GetSideToMove() == "w" {
+		currentTurn = "White"
+	} else {
+		currentTurn = "Black"
+	}
+	fmt.Printf("Current turn: %s\n", currentTurn)
 	fmt.Printf("Move: %d\n", state.MoveCount)
 	fmt.Println()
 	fmt.Println(RenderBoard(state.Board))

@@ -76,7 +76,8 @@ func (cm *ComputerMode) Run() error {
 		}
 
 		// Handle current player's turn
-		if state.CurrentTurn == cm.humanColor {
+		currentPlayer := cm.engine.GetCurrentPlayer()
+		if currentPlayer == cm.humanColor {
 			cm.handleHumanTurn()
 		} else {
 			cm.handleComputerTurn()
@@ -135,17 +136,17 @@ func (cm *ComputerMode) selectDebugMode() {
 
 // handleHumanTurn processes the human player's move
 func (cm *ComputerMode) handleHumanTurn() {
-	state := cm.engine.GetState()
-	cm.parser.SetCurrentPlayer(state.CurrentTurn)
+	currentPlayer := cm.engine.GetCurrentPlayer()
+	cm.parser.SetCurrentPlayer(currentPlayer)
 
-	input, err := cm.prompter.PromptForMove(state.CurrentTurn)
+	input, err := cm.prompter.PromptForMove(currentPlayer)
 	if err != nil {
 		cm.prompter.ShowError(err)
 		return
 	}
 
 	// Parse and validate move
-	move, err := cm.parser.ParseMove(input, state.Board)
+	move, err := cm.parser.ParseMove(input, cm.engine.GetState().Board)
 	if err != nil {
 		cm.handleSpecialCommand(err.Error())
 		return
@@ -164,12 +165,13 @@ func (cm *ComputerMode) handleHumanTurn() {
 // handleComputerTurn processes the computer's move
 func (cm *ComputerMode) handleComputerTurn() {
 	state := cm.engine.GetState()
+	currentPlayer := cm.engine.GetCurrentPlayer()
 
 	fmt.Println("Computer is thinking...")
 
 	// Convert game.Player to moves.Player
 	var movesPlayer moves.Player
-	if state.CurrentTurn == game.White {
+	if currentPlayer == game.White {
 		movesPlayer = moves.White
 	} else {
 		movesPlayer = moves.Black

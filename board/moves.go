@@ -51,14 +51,29 @@ func (s Square) String() string {
 // MakeMoveWithUndo makes a move and returns undo information
 func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 	// Ensure move.Piece is set for proper undo
-	if move.Piece == Empty {
+	if move.Piece == Empty || move.Piece == 0 {
 		move.Piece = b.GetPiece(move.From.Rank, move.From.File)
+	}
+
+	// For en passant moves, we need to capture the piece from the correct square
+	var capturedPiece Piece
+	if move.IsEnPassant {
+		// The captured pawn is not on the destination square
+		var captureRank int
+		if move.Piece == WhitePawn {
+			captureRank = 4 // Black pawn on rank 5
+		} else {
+			captureRank = 3 // White pawn on rank 4
+		}
+		capturedPiece = b.GetPiece(captureRank, move.To.File)
+	} else {
+		capturedPiece = b.GetPiece(move.To.Rank, move.To.File)
 	}
 
 	// Store current state for undo
 	undo := MoveUndo{
 		Move:            move, // This now has the correct piece
-		CapturedPiece:   b.GetPiece(move.To.Rank, move.To.File),
+		CapturedPiece:   capturedPiece,
 		CastlingRights:  b.castlingRights,
 		EnPassantTarget: b.enPassantTarget,
 		HalfMoveClock:   b.halfMoveClock,
@@ -155,7 +170,13 @@ func (b *Board) handleCastling(move Move) error {
 
 func (b *Board) handleEnPassant(move Move) error {
 	// Remove the captured pawn
-	captureRank := move.From.Rank
+	var captureRank int
+	if move.Piece == WhitePawn {
+		captureRank = 4
+	} else {
+		captureRank = 3
+	}
+
 	b.SetPiece(captureRank, move.To.File, Empty)
 	return nil
 }
@@ -306,40 +327,20 @@ func charToPiece(char byte) (Piece, error) {
 // UnmakeMove reverses a move using the undo information
 func (b *Board) UnmakeMove(undo MoveUndo) {
 	move := undo.Move
-
-	// Determine the piece to restore to the from square
+	
+	// Determine what piece to restore based on move type
 	var movedPiece Piece
-	if move.Promotion != Empty {
+	if move.Promotion != Empty && move.Promotion != 0 {
 		// For promotion moves, restore the original pawn
-		// Determine pawn color based on promotion rank
-		switch move.To.Rank {
-		case 7:
-			// White pawn promoted to rank 8
+		if move.To.Rank == 7 { // White promotion (to rank 8)
 			movedPiece = WhitePawn
-		case 0:
-			// Black pawn promoted to rank 1
+		} else if move.To.Rank == 0 { // Black promotion (to rank 1)
 			movedPiece = BlackPawn
-		default:
-			// Fallback: use move.Piece if available, otherwise determine from promoted piece
-			if move.Piece != Empty && (move.Piece == WhitePawn || move.Piece == BlackPawn) {
-				movedPiece = move.Piece
-			} else {
-				// Last resort: determine from the promoted piece color
-				promotedPiece := b.GetPiece(move.To.Rank, move.To.File)
-				if isWhitePiece(promotedPiece) {
-					movedPiece = WhitePawn
-				} else {
-					movedPiece = BlackPawn
-				}
-			}
+		} else {
+			movedPiece = move.Piece
 		}
 	} else {
-		// For non-promotion moves, use the piece from the move
 		movedPiece = move.Piece
-		if movedPiece == Empty {
-			// Fallback: get the piece currently at the destination
-			movedPiece = b.GetPiece(move.To.Rank, move.To.File)
-		}
 	}
 
 	// Validate that we have a valid piece to move back
@@ -349,7 +350,7 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 		return
 	}
 
-	// Handle special moves first (order matters for castling and en passant)
+	// Handle special moves first (order matters)
 
 	// Undo castling - must be done before moving the king back
 	if move.IsCastling {
@@ -365,7 +366,13 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	b.SetPiece(move.From.Rank, move.From.File, movedPiece)
 
 	// Restore the destination square
-	b.SetPiece(move.To.Rank, move.To.File, undo.CapturedPiece)
+	// For en passant, the destination square should be empty (pawn was captured elsewhere)
+	if move.IsEnPassant {
+		b.SetPiece(move.To.Rank, move.To.File, Empty)
+	} else {
+		// For normal moves, restore whatever was captured (or Empty)
+		b.SetPiece(move.To.Rank, move.To.File, undo.CapturedPiece)
+	}
 
 	// Restore all board state
 	b.castlingRights = undo.CastlingRights
@@ -373,13 +380,6 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
 	b.sideToMove = undo.SideToMove
-
-	if !b.validateBoardConsistency() {
-		fmt.Printf("CRITICAL: Board inconsistency detected after UnmakeMove for move %s-%s\n",
-			move.From.String(), move.To.String())
-		// Consider panicking in debug mode for easier debugging
-		// panic("Board inconsistency after UnmakeMove")
-	}
 }
 
 // undoCastling reverses the rook movement in castling
@@ -403,8 +403,19 @@ func (b *Board) undoCastling(move Move) {
 
 // undoEnPassant restores the captured pawn in en passant
 func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
-	// Restore the captured pawn on the same rank as the moving pawn
-	captureRank := move.From.Rank
+	// In en passant, the captured pawn is not on the destination square
+	// It's on the same rank as the capturing pawn started, same file as destination
+	
+	var captureRank int
+	if move.Piece == WhitePawn || (move.Piece == Empty && move.From.Rank < move.To.Rank) {
+		// White pawn captured - black pawn was on rank 5 (index 4)
+		captureRank = 4
+	} else {
+		// Black pawn captured - white pawn was on rank 4 (index 3)
+		captureRank = 3
+	}
+	
+	// Restore the captured pawn
 	b.SetPiece(captureRank, move.To.File, capturedPiece)
 }
 
