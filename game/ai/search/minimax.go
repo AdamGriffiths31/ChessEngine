@@ -172,6 +172,9 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		// Check for cancellation
 		select {
 		case <-ctx.Done():
+			if !bestMoveFound {
+				panic("NO MOVE FOUND")
+			}
 			result.BestMove = bestMove
 			result.Score = bestScore
 			result.Stats.Time = time.Since(startTime)
@@ -187,7 +190,6 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 	result.BestMove = bestMove
 	result.Score = bestScore
 	result.Stats.Time = time.Since(startTime)
-	// Depth will be set by the minimax function
 
 	return result
 }

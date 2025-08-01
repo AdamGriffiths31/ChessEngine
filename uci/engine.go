@@ -28,8 +28,7 @@ type UCIEngine struct {
 	stopChannel chan struct{}
 	output      io.Writer
 	debugLogger *log.Logger
-	myColor     *moves.Player // Track which color this engine plays (nil = not determined yet)
-	moveNumber  int           // Track move number for logging
+	moveNumber  int // Track move number for logging
 
 	// Enhanced communication logging
 	commLogger *UCICommunicationLogger
@@ -59,23 +58,20 @@ func NewUCIEngine() *UCIEngine {
 func createDebugLogger() *log.Logger {
 	// Try multiple locations for the log file
 	logLocations := []string{
-		"/tmp",
-		".",
-		"logs",
-		"../logs",
+		"/tmp/chess",
 	}
 
 	for _, dir := range logLocations {
 		// Create directory if it doesn't exist
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			continue
+			panic(err)
 		}
 
 		// Create timestamped log file
 		logFile := filepath.Join(dir, fmt.Sprintf("uci_debug_%d.log", time.Now().Unix()))
 		file, err := os.Create(logFile)
 		if err != nil {
-			continue
+			panic(err)
 		}
 
 		// Log to both file and stderr for visibility
@@ -148,7 +144,6 @@ func (ue *UCIEngine) HandleCommand(input string) string {
 
 	// Validate command name
 	if cmd.Name == "" {
-		ue.debugLogger.Printf("CMD-PARSE: Empty command name, ignoring")
 		return ""
 	}
 
@@ -200,32 +195,24 @@ func (ue *UCIEngine) handlePosition(args []string) string {
 
 	fen, moveList, err := ue.protocol.ParsePosition(args)
 	if err != nil {
-		ue.debugLogger.Printf("POSITION: Parse error: %v", err)
-		panic("failed to load board")
+		ue.debugLogger.Printf("fen: %q", fen)
+		ue.debugLogger.Fatal(err)
 	}
 
-	ue.debugLogger.Printf("POSITION: Parsed FEN=%q, %d moves to apply", fen, len(moveList))
-
-	// Load the FEN position
-	err = ue.engine.LoadFromFEN(fen)
-	if err != nil {
-		ue.debugLogger.Printf("POSITION: FEN load error: %v", err)
-		panic("failed to load FEN")
-	}
-
-	ue.debugLogger.Printf("POSITION: FEN loaded, current=%s", ue.engine.GetCurrentFEN())
+	ue.engine.Reset()
 
 	// Apply the moves
 	for _, moveStr := range moveList {
 		move, err := ue.converter.FromUCI(moveStr, ue.engine.GetState().Board)
 		if err != nil {
-			panic("failed to convert move")
+			ue.debugLogger.Printf("move: %s board: %+v", moveStr, ue.engine.GetCurrentFEN())
+			ue.debugLogger.Fatal(err)
 		}
 
-		ue.debugLogger.Printf("POSITION: Applying move to engine...")
 		err = ue.engine.MakeMove(move)
 		if err != nil {
-			panic("failed to make move")
+			ue.debugLogger.Printf("move: %+v", move)
+			ue.debugLogger.Fatal(err)
 		}
 	}
 
@@ -250,21 +237,15 @@ func (ue *UCIEngine) handleGo(args []string) {
 	player := moves.Player(ue.engine.GetCurrentPlayer())
 	ue.debugLogger.Printf("GO-PARSE: Current player from engine state: %s", player)
 
-	// Determine our color on first 'go' command
-	if ue.myColor == nil {
-		ue.myColor = &player
-	}
-
 	ue.searching = true
 	ue.stopChannel = make(chan struct{})
 
 	// Configure search parameters
 	config := ai.SearchConfig{
-		MaxDepth:     6,               // Default depth
-		MaxTime:      5 * time.Second, // Default time
-		DebugMode:    false,
-		UseAlphaBeta: false,
-		// Enable opening book
+		MaxDepth:            6,               // Default depth
+		MaxTime:             5 * time.Second, // Default time
+		DebugMode:           false,
+		UseAlphaBeta:        false,
 		UseOpeningBook:      true,
 		BookFiles:           []string{"/home/adam/Documents/git/ChessEngine/game/openings/testdata/performance.bin"},
 		BookSelectMode:      ai.BookSelectWeightedRandom,
@@ -296,8 +277,6 @@ func (ue *UCIEngine) handleGo(args []string) {
 			timeLeft = params.BTime
 			increment = params.BInc
 		}
-
-		// Improved time management strategy
 
 		// Estimate remaining moves (assume 40 moves per side, reduce as game progresses)
 		estimatedMovesRemaining := 40 - (ue.moveNumber / 2)
@@ -338,11 +317,9 @@ func (ue *UCIEngine) handleGo(args []string) {
 		}
 	}
 
-	// Create search context
 	ctx, cancel := context.WithTimeout(context.Background(), config.MaxTime)
 	defer cancel()
 
-	// Create a context that also responds to stop commands
 	stopCtx, stopCancel := context.WithCancel(ctx)
 	defer stopCancel()
 
@@ -354,185 +331,28 @@ func (ue *UCIEngine) handleGo(args []string) {
 		}
 	}()
 
-	// Increment move counter
 	ue.moveNumber++
 
-	// Log position before search
 	ue.debugLogger.Printf("Move %d search starting - Position: %s, Player: %v",
 		ue.moveNumber, ue.engine.GetCurrentFEN(), player)
-
-	// Add board synchronization check
-	engineBoard := ue.engine.GetState().Board
-	ue.debugLogger.Printf("SYNC-CHECK: Engine state validation before search:")
-	ue.debugLogger.Printf("SYNC-CHECK:   FEN: %s", ue.engine.GetCurrentFEN())
-	ue.debugLogger.Printf("SYNC-CHECK:   Side to move: %s", engineBoard.GetSideToMove())
-	ue.debugLogger.Printf("SYNC-CHECK:   Move number: %d", ue.moveNumber)
-	ue.debugLogger.Printf("SYNC-CHECK:   Player from game state: %s", player)
-	ue.debugLogger.Printf("SYNC-CHECK:   Castling rights: %s", engineBoard.GetCastlingRights())
-	enPassant := engineBoard.GetEnPassantTarget()
-	if enPassant != nil {
-		ue.debugLogger.Printf("SYNC-CHECK:   En passant target: %s", enPassant.String())
-	} else {
-		ue.debugLogger.Printf("SYNC-CHECK:   En passant target: none")
-	}
-
-	// Compare what UCI engine sees vs what AI will see
-	ue.debugLogger.Printf("Pre-search comparison:")
-	ue.debugLogger.Printf("  Engine FEN: %s", ue.engine.GetCurrentFEN())
-	ue.debugLogger.Printf("  Board side to move: %s", engineBoard.GetSideToMove())
-
-	// Test: Generate moves using the same board the AI will use
-	testLegalMoves := ue.engine.GetLegalMoves()
-	ue.debugLogger.Printf("  Pre-search legal moves: %d total", testLegalMoves.Count)
-
-	// Log ALL moves to see the full list
-	e2e4Found := false
-	d2d4Found := false
-	for i := 0; i < testLegalMoves.Count; i++ {
-		move := testLegalMoves.Moves[i]
-		moveUCI := ue.converter.ToUCI(move)
-		if i < 12 { // Show more moves
-			ue.debugLogger.Printf("    [%d]: %s (From=%s, To=%s, Piece=%d)", i, moveUCI, move.From.String(), move.To.String(), move.Piece)
-		}
-		if moveUCI == "e2e4" {
-			e2e4Found = true
-			ue.debugLogger.Printf("    FOUND e2e4 at index %d: From=%s, To=%s, Piece=%d, Captured=%d", i, move.From.String(), move.To.String(), move.Piece, move.Captured)
-		}
-		if moveUCI == "d2d4" {
-			d2d4Found = true
-			ue.debugLogger.Printf("    FOUND d2d4 at index %d: From=%s, To=%s, Piece=%d, Captured=%d", i, move.From.String(), move.To.String(), move.Piece, move.Captured)
-		}
-	}
-	ue.debugLogger.Printf("  Pre-search summary: e2e4=%v, d2d4=%v", e2e4Found, d2d4Found)
 
 	// Search for best move
 	searchStart := time.Now()
 	result := ue.aiEngine.FindBestMove(stopCtx, ue.engine.GetState().Board, player, config)
 	searchDuration := time.Since(searchStart)
 
-	// Debug: Check if book move was attempted but failed
-	if config.UseOpeningBook && !result.Stats.BookMoveUsed && ue.moveNumber <= 10 {
-		ue.debugLogger.Printf("Book enabled but no book move found for move %d", ue.moveNumber)
+	if config.UseOpeningBook && result.Stats.BookMoveUsed {
+		ue.debugLogger.Printf("Book move used for move %d", ue.moveNumber)
 	}
 
-	// Log the AI's chosen move before validation
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
-	ue.debugLogger.Printf("AI chose move: %s (From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d)",
-		bestMoveUCI, result.BestMove.From.String(), result.BestMove.To.String(),
-		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion)
-	ue.debugLogger.Printf("Book move used: %v", result.Stats.BookMoveUsed)
+	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI)
 
-	// Custom validation: Check if the move exists in legal moves by From/To comparison
-	legalMoves := ue.engine.GetLegalMoves()
-	isValid := false
+	ue.debugLogger.Printf("AI chose move: %s (%s) (From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d time=%d)",
+		bestMoveUCI, formattedBestMove, result.BestMove.From.String(), result.BestMove.To.String(),
+		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion, searchDuration)
 
-	for i := 0; i < legalMoves.Count; i++ {
-		legal := legalMoves.Moves[i]
-		// Compare the essential move components (From/To squares)
-		if legal.From.String() == result.BestMove.From.String() &&
-			legal.To.String() == result.BestMove.To.String() {
-			isValid = true
-			ue.debugLogger.Printf("Move validation: FOUND matching legal move at index %d", i)
-			break
-		}
-	}
-
-	ue.debugLogger.Printf("Move validation result: %v (From/To comparison)", isValid)
-
-	if !isValid {
-		ue.debugLogger.Printf("ILLEGAL-MOVE: AI selected move that failed validation: %s", bestMoveUCI)
-		ue.debugLogger.Printf("ILLEGAL-MOVE: Board state: %s", ue.engine.GetCurrentFEN())
-		ue.debugLogger.Printf("ILLEGAL-MOVE: Move details - From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d",
-			result.BestMove.From.String(), result.BestMove.To.String(),
-			result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion)
-		ue.debugLogger.Printf("ILLEGAL-MOVE: Book move used: %v", result.Stats.BookMoveUsed)
-
-		// Get legal moves to compare
-		legalMoves := ue.engine.GetLegalMoves()
-		ue.debugLogger.Printf("Available legal moves (%d total):", legalMoves.Count)
-
-		// Log detailed board state for debugging
-		board := ue.engine.GetState().Board
-		ue.debugLogger.Printf("Board internal state:")
-		ue.debugLogger.Printf("  Side to move: %s", board.GetSideToMove())
-		ue.debugLogger.Printf("  Castling rights: %s", board.GetCastlingRights())
-		ue.debugLogger.Printf("  En passant: %v", board.GetEnPassantTarget())
-		ue.debugLogger.Printf("  Halfmove clock: %d", board.GetHalfMoveClock())
-		ue.debugLogger.Printf("  Fullmove number: %d", board.GetFullMoveNumber())
-
-		// Look for exact match and similar moves
-		exactMatch := false
-		targetMoveUCI := bestMoveUCI
-		samePieceCount := 0
-
-		for i := 0; i < legalMoves.Count; i++ {
-			move := legalMoves.Moves[i]
-			moveUCI := ue.converter.ToUCI(move)
-
-			// Show first 15 moves for better visibility
-			if i < 15 {
-				matchIndicator := ""
-				if moveUCI == targetMoveUCI {
-					matchIndicator = " <-- EXACT MATCH!"
-					exactMatch = true
-				}
-				ue.debugLogger.Printf("  [%d] Legal: %s (From=%s, To=%s, Piece=%d, Captured=%d)%s",
-					i, moveUCI, move.From.String(), move.To.String(), move.Piece, move.Captured, matchIndicator)
-			}
-
-			// Count moves with same piece
-			if move.From.String() == result.BestMove.From.String() {
-				samePieceCount++
-			}
-
-			// Detailed comparison for potential matches
-			if moveUCI == targetMoveUCI {
-				ue.debugLogger.Printf("  MATCH FOUND: Legal move matches UCI notation")
-				ue.debugLogger.Printf("  Legal move:  From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d",
-					move.From.String(), move.To.String(), move.Piece, move.Captured, move.Promotion)
-				ue.debugLogger.Printf("  AI move:     From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d",
-					result.BestMove.From.String(), result.BestMove.To.String(),
-					result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion)
-			}
-		}
-
-		ue.debugLogger.Printf("Validation analysis: exactMatch=%v, samePieceCount=%d", exactMatch, samePieceCount)
-
-		// Log the piece at d2 specifically
-		// Need to check what piece is actually at d2
-		ue.debugLogger.Printf("Piece at d2: investigating board state...")
-		return
-	}
-
-	// Convert result to UCI format (bestMoveUCI already declared above)
-
-	// Send the result
-	response := ue.protocol.FormatBestMove(bestMoveUCI)
-
-	// CRITICAL LOG: Final bestmove being sent to cutechess-cli
-	ue.debugLogger.Printf("=== SENDING FINAL BESTMOVE ===")
-	ue.debugLogger.Printf("FINAL-MOVE: Move selected by AI: %s", bestMoveUCI)
-	ue.debugLogger.Printf("FINAL-MOVE: Internal move details: From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d",
-		result.BestMove.From.String(), result.BestMove.To.String(),
-		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion)
-	ue.debugLogger.Printf("FINAL-MOVE: Current position: %s", ue.engine.GetCurrentFEN())
-	ue.debugLogger.Printf("FINAL-MOVE: Move validated against legal moves: %v", isValid)
-	ue.debugLogger.Printf("FINAL-MOVE: Formatted response: %s", response)
-	ue.debugLogger.Printf("================================")
-
-	ue.debugLogger.Printf("UCI-OUT: %s", response)
-	if ue.output != nil {
-		fmt.Fprintf(ue.output, "%s\n", response)
-	}
-
-	// Log concise move summary with book move indicator
-	bookIndicator := ""
-	if result.Stats.BookMoveUsed {
-		bookIndicator = " [BOOK]"
-	}
-	ue.debugLogger.Printf("Move %d: %s%s, Time used: %v / %v (%.1f%%), Validation: OK",
-		ue.moveNumber, bestMoveUCI, bookIndicator, searchDuration, config.MaxTime, float64(searchDuration)/float64(config.MaxTime)*100)
-
+	fmt.Fprintf(ue.output, "%s\n", formattedBestMove)
 	ue.searching = false
 }
 
@@ -548,7 +368,8 @@ func (ue *UCIEngine) handleStop() string {
 func (ue *UCIEngine) handleSetOption(args []string) string {
 	name, value, err := ue.protocol.ParseSetOption(args)
 	if err != nil {
-		return "" // Silently ignore invalid setoption commands
+		ue.debugLogger.Printf("invalid option: %v", args)
+		return ""
 	}
 
 	ue.options[name] = value
@@ -559,25 +380,7 @@ func (ue *UCIEngine) handleSetOption(args []string) string {
 func (ue *UCIEngine) handleNewGame() string {
 	ue.debugLogger.Println("NEWGAME: Resetting engine...")
 	ue.engine.Reset()
-	ue.myColor = nil  // Reset color assignment for new game
-	ue.moveNumber = 0 // Reset move counter for new game
+	ue.moveNumber = 0
 
-	// Test move generation immediately after reset
-	resetMoves := ue.engine.GetLegalMoves()
-	ue.debugLogger.Printf("NEWGAME: After reset, %d legal moves available", resetMoves.Count)
-	d2d4Found := false
-	for i := 0; i < resetMoves.Count; i++ {
-		moveUCI := ue.converter.ToUCI(resetMoves.Moves[i])
-		if i < 8 {
-			ue.debugLogger.Printf("NEWGAME:   %s", moveUCI)
-		}
-		if moveUCI == "d2d4" {
-			d2d4Found = true
-		}
-	}
-	ue.debugLogger.Printf("NEWGAME: d2d4 found after reset: %v", d2d4Found)
-	ue.debugLogger.Printf("NEWGAME: Reset position: %s", ue.engine.GetCurrentFEN())
-	ue.debugLogger.Println("NEWGAME: New game started - opening book enabled")
 	return ""
 }
-

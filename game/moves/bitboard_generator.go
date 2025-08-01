@@ -687,55 +687,46 @@ func (bmg *BitboardMoveGenerator) generateCastlingMovesBitboard(b *board.Board, 
 func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player, moves *MoveList) *MoveList {
 	legalMoves := GetMoveList()
 	
-	// Create a proper move executor for make/unmake
-	moveExecutor := &MoveExecutor{}
-	
-	// Simple update function that doesn't require a generator instance
-	updateBoardState := func(b *board.Board, move board.Move) {
-		// Update castling rights based on the move
-		castlingRights := b.GetCastlingRights()
-		piece := b.GetPiece(move.To.Rank, move.To.File)
-		
-		// King moves remove all castling rights for that side
-		if piece == board.WhiteKing {
-			castlingRights = removeCastlingRights(castlingRights, "KQ")
-		} else if piece == board.BlackKing {
-			castlingRights = removeCastlingRights(castlingRights, "kq")
-		}
-		
-		// Update other board state as needed...
-		b.SetCastlingRights(castlingRights)
-		// ... rest of state updates
+	// Determine our king piece and opponent's color
+	var ourKingPiece board.Piece
+	var opponentColor board.BitboardColor
+	if player == White {
+		ourKingPiece = board.WhiteKing
+		opponentColor = board.BitboardBlack
+	} else {
+		ourKingPiece = board.BlackKing
+		opponentColor = board.BitboardWhite
 	}
 	
 	for i := 0; i < moves.Count; i++ {
 		move := moves.Moves[i]
 		
-		// Make the move
-		history := moveExecutor.MakeMove(b, move, updateBoardState)
-		
-		// Check if our king is in check after this move
-		var kingPiece board.Piece
-		var oppositeColor board.BitboardColor
-		if player == White {
-			kingPiece = board.WhiteKing
-			oppositeColor = board.BitboardBlack
-		} else {
-			kingPiece = board.BlackKing
-			oppositeColor = board.BitboardWhite
+		// Make the move using the board's MakeMove function
+		// This ensures proper bitboard updates
+		undo, err := b.MakeMoveWithUndo(move)
+		if err != nil {
+			continue // Skip invalid moves
 		}
 		
-		kingBitboard := b.GetPieceBitboard(kingPiece)
+		// Find our king's position after the move
+		ourKingBitboard := b.GetPieceBitboard(ourKingPiece)
 		isLegal := true
-		if kingBitboard != 0 {
-			kingSquare := kingBitboard.LSB()
-			if kingSquare != -1 && b.IsSquareAttackedByColor(kingSquare, oppositeColor) {
-				isLegal = false
+		
+		if ourKingBitboard != 0 {
+			kingSquare := ourKingBitboard.LSB()
+			if kingSquare != -1 {
+				// Check if our king is under attack
+				if b.IsSquareAttackedByColor(kingSquare, opponentColor) {
+					isLegal = false
+				}
 			}
+		} else {
+			// No king found - this should never happen
+			isLegal = false
 		}
 		
 		// Unmake the move
-		moveExecutor.UnmakeMove(b, history)
+		b.UnmakeMove(undo)
 		
 		if isLegal {
 			legalMoves.AddMove(move)
