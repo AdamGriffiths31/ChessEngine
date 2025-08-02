@@ -191,7 +191,7 @@ func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Boar
 			}
 
 			// Search at current depth
-			score := -m.minimaxWithDepthTracking(ctx, b, oppositePlayer(player), currentDepth-1, currentDepth, &result.Stats)
+			score := -m.negamaxWithDepthTracking(ctx, b, oppositePlayer(player), currentDepth-1, currentDepth, &result.Stats)
 
 			// Unmake the move
 			b.UnmakeMove(undo)
@@ -236,8 +236,7 @@ func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Boar
 	return result
 }
 
-// minimaxWithDepthTracking is the recursive minimax search with proper depth tracking
-func (m *MinimaxEngine) minimaxWithDepthTracking(ctx context.Context, b *board.Board, player moves.Player, depth int, originalMaxDepth int, stats *ai.SearchStats) ai.EvaluationScore {
+func (m *MinimaxEngine) negamaxWithDepthTracking(ctx context.Context, b *board.Board, player moves.Player, depth int, originalMaxDepth int, stats *ai.SearchStats) ai.EvaluationScore {
 	stats.NodesSearched++
 
 	// Track the maximum depth reached
@@ -249,23 +248,13 @@ func (m *MinimaxEngine) minimaxWithDepthTracking(ctx context.Context, b *board.B
 	// Check for cancellation more frequently
 	select {
 	case <-ctx.Done():
-		// Convert evaluator's White perspective to current player's perspective
-		eval := m.evaluator.Evaluate(b)
-		if player == moves.Black {
-			eval = -eval // Black's perspective is opposite of White's
-		}
-		return eval
+		return m.evaluator.Evaluate(b)
 	default:
 	}
 
 	// Terminal node - evaluate position
 	if depth == 0 {
-		// Convert evaluator's White perspective to current player's perspective
-		eval := m.evaluator.Evaluate(b)
-		if player == moves.Black {
-			eval = -eval // Black's perspective is opposite of White's
-		}
-		return eval
+		return m.evaluator.Evaluate(b)
 	}
 
 	// Get all legal moves
@@ -293,7 +282,7 @@ func (m *MinimaxEngine) minimaxWithDepthTracking(ctx context.Context, b *board.B
 		}
 
 		// Search deeper
-		score := -m.minimaxWithDepthTracking(ctx, b, oppositePlayer(player), depth-1, originalMaxDepth, stats)
+		score := -m.negamaxWithDepthTracking(ctx, b, oppositePlayer(player), depth-1, originalMaxDepth, stats)
 
 		// Unmake the move
 		b.UnmakeMove(undo)

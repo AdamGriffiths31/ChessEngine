@@ -534,3 +534,48 @@ func TestMinimaxSignConsistency(t *testing.T) {
 		t.Errorf("🚨 SIGN INCONSISTENCY: Direct eval %d vs search %d", directEval, result.Score)
 	}
 }
+
+func TestFindBestMoveOneSecondSearch(t *testing.T) {
+	engine := NewMinimaxEngine()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	
+	b, err := board.FromFEN("rn2r1k1/pp2qppp/2p2n2/3p1b2/PbPp3P/1P3PP1/3BP3/RN1QKBNR w KQ - 1 11")
+	if err != nil {
+		t.Fatalf("Failed to create test position: %v", err)
+	}
+
+	config := ai.SearchConfig{
+		MaxDepth:       6, // Set max depth to 6
+		UseOpeningBook: false,
+	}
+	
+	// Get direct evaluation first for comparison
+	directEval := engine.evaluator.Evaluate(b)
+	t.Logf("Direct evaluation: %d", directEval)
+	
+	result := engine.FindBestMove(ctx, b, moves.White, config)
+
+	// Should return a valid move
+	if result.BestMove.From.File == -1 && result.BestMove.From.Rank == -1 {
+		t.Error("FindBestMove should return a valid move after 1 second search")
+	}
+
+	// Should have taken approximately 1 second (with some tolerance)
+	if result.Stats.Time < 900*time.Millisecond || result.Stats.Time > 1200*time.Millisecond {
+		t.Logf("Search time: %v (expected ~1s)", result.Stats.Time)
+	}
+
+	// Should have searched some positions
+	if result.Stats.NodesSearched == 0 {
+		t.Error("Should have evaluated at least one position in 1 second")
+	}
+
+	t.Logf("1-second search results:")
+	t.Logf("  Best move: %s%s", result.BestMove.From.String(), result.BestMove.To.String())
+	t.Logf("  Score: %d", result.Score)
+	t.Logf("  Nodes searched: %d", result.Stats.NodesSearched)
+	t.Logf("  Time taken: %v", result.Stats.Time)
+	t.Logf("  Depth reached: %d", result.Stats.Depth)
+}
