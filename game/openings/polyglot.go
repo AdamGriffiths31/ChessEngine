@@ -185,6 +185,7 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 		Piece:     movingPiece,
 		Captured:  capturedPiece,
 		IsCapture: capturedPiece != board.Empty,
+		Promotion: board.Empty, // Initialize to Empty instead of zero value
 	}
 
 	// Handle promotion

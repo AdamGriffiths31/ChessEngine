@@ -9,8 +9,9 @@ import (
 
 // Evaluator defines the interface for position evaluation
 type Evaluator interface {
-	// Evaluate returns the score for the position from the given player's perspective
-	Evaluate(b *board.Board, player moves.Player) EvaluationScore
+	// Evaluate returns the score for the position from White's perspective
+	// Positive = good for White, Negative = good for Black
+	Evaluate(b *board.Board) EvaluationScore
 
 	// GetName returns the evaluator name
 	GetName() string

@@ -64,14 +64,16 @@ func createDebugLogger() *log.Logger {
 	for _, dir := range logLocations {
 		// Create directory if it doesn't exist
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			panic(err)
+			log.Printf("Failed to create log directory %s: %v", dir, err)
+			continue
 		}
 
 		// Create timestamped log file
 		logFile := filepath.Join(dir, fmt.Sprintf("uci_debug_%d.log", time.Now().Unix()))
 		file, err := os.Create(logFile)
 		if err != nil {
-			panic(err)
+			log.Printf("Failed to create log file %s: %v", logFile, err)
+			continue
 		}
 
 		// Log to both file and stderr for visibility
@@ -195,8 +197,7 @@ func (ue *UCIEngine) handlePosition(args []string) string {
 
 	fen, moveList, err := ue.protocol.ParsePosition(args)
 	if err != nil {
-		ue.debugLogger.Printf("fen: %q", fen)
-		ue.debugLogger.Fatal(err)
+		ue.debugLogger.Fatalf("POSITION: Failed to parse position - fen: %q, error: %v", fen, err)
 	}
 
 	ue.engine.Reset()
@@ -205,14 +206,13 @@ func (ue *UCIEngine) handlePosition(args []string) string {
 	for _, moveStr := range moveList {
 		move, err := ue.converter.FromUCI(moveStr, ue.engine.GetState().Board)
 		if err != nil {
-			ue.debugLogger.Printf("move: %s board: %+v", moveStr, ue.engine.GetCurrentFEN())
-			ue.debugLogger.Fatal(err)
+			ue.debugLogger.Fatalf("POSITION: Failed to convert UCI move - move: %s, board: %s, error: %v", 
+				moveStr, ue.engine.GetCurrentFEN(), err)
 		}
 
 		err = ue.engine.MakeMove(move)
 		if err != nil {
-			ue.debugLogger.Printf("move: %+v", move)
-			ue.debugLogger.Fatal(err)
+			ue.debugLogger.Fatalf("POSITION: Failed to make move - move: %+v, error: %v", move, err)
 		}
 	}
 
@@ -267,54 +267,7 @@ func (ue *UCIEngine) handleGo(args []string) {
 
 	// Calculate appropriate move time based on time controls
 	if params.WTime > 0 || params.BTime > 0 {
-		// Use appropriate time for current player
-		var timeLeft time.Duration
-		var increment time.Duration
-		if player == moves.White {
-			timeLeft = params.WTime
-			increment = params.WInc
-		} else {
-			timeLeft = params.BTime
-			increment = params.BInc
-		}
-
-		// Estimate remaining moves (assume 40 moves per side, reduce as game progresses)
-		estimatedMovesRemaining := 40 - (ue.moveNumber / 2)
-		if estimatedMovesRemaining < 10 {
-			estimatedMovesRemaining = 10 // Minimum for safety
-		}
-
-		// Base time allocation: divide remaining time by estimated moves
-		baseTime := timeLeft / time.Duration(estimatedMovesRemaining)
-
-		// Add most of the increment (keep small safety margin)
-		safeIncrement := increment * 9 / 10
-
-		// Use larger portion of time when we have plenty, be more conservative when low
-		var timeFactor float64
-		if timeLeft > 60*time.Second {
-			timeFactor = 1.5 // Use 150% of average when we have time
-		} else if timeLeft > 30*time.Second {
-			timeFactor = 1.2 // Use 120% of average
-		} else if timeLeft > 10*time.Second {
-			timeFactor = 1.0 // Use exactly average allocation
-		} else {
-			timeFactor = 0.7 // Be conservative when very low on time
-		}
-
-		config.MaxTime = time.Duration(float64(baseTime)*timeFactor) + safeIncrement
-
-		// Ensure we don't use more than 1/3 of remaining time on any single move
-		maxSafeTime := timeLeft / 3
-		if config.MaxTime > maxSafeTime {
-			config.MaxTime = maxSafeTime
-		}
-
-		// Minimum time: at least 50ms to make a reasonable move
-		minTime := 50 * time.Millisecond
-		if config.MaxTime < minTime {
-			config.MaxTime = minTime
-		}
+		config.MaxTime = ue.calculateMoveTime(params, player, ue.moveNumber)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MaxTime)
@@ -348,9 +301,9 @@ func (ue *UCIEngine) handleGo(args []string) {
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
 	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI)
 
-	ue.debugLogger.Printf("AI chose move: %s (%s) (From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d time=%d)",
+	ue.debugLogger.Printf("AI chose move: %s (%s) (From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d score=%d depth=%d nodes=%d book=%t time=%.3fs/%.3fs)",
 		bestMoveUCI, formattedBestMove, result.BestMove.From.String(), result.BestMove.To.String(),
-		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion, searchDuration)
+		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.BookMoveUsed, searchDuration.Seconds(), config.MaxTime.Seconds())
 
 	fmt.Fprintf(ue.output, "%s\n", formattedBestMove)
 	ue.searching = false
@@ -383,4 +336,58 @@ func (ue *UCIEngine) handleNewGame() string {
 	ue.moveNumber = 0
 
 	return ""
+}
+
+// calculateMoveTime calculates the appropriate time allocation for a move based on time controls
+func (ue *UCIEngine) calculateMoveTime(params SearchParams, player moves.Player, moveNumber int) time.Duration {
+	// Use appropriate time for current player
+	var timeLeft time.Duration
+	var increment time.Duration
+	if player == moves.White {
+		timeLeft = params.WTime
+		increment = params.WInc
+	} else {
+		timeLeft = params.BTime
+		increment = params.BInc
+	}
+
+	// Estimate remaining moves (assume 40 moves per side, reduce as game progresses)
+	estimatedMovesRemaining := 40 - (moveNumber / 2)
+	if estimatedMovesRemaining < 10 {
+		estimatedMovesRemaining = 10 // Minimum for safety
+	}
+
+	// Base time allocation: divide remaining time by estimated moves
+	baseTime := timeLeft / time.Duration(estimatedMovesRemaining)
+
+	// Add most of the increment (keep small safety margin)
+	safeIncrement := increment * 9 / 10
+
+	// Use larger portion of time when we have plenty, be more conservative when low
+	var timeFactor float64
+	if timeLeft > 60*time.Second {
+		timeFactor = 1.5 // Use 150% of average when we have time
+	} else if timeLeft > 30*time.Second {
+		timeFactor = 1.2 // Use 120% of average
+	} else if timeLeft > 10*time.Second {
+		timeFactor = 1.0 // Use exactly average allocation
+	} else {
+		timeFactor = 0.7 // Be conservative when very low on time
+	}
+
+	maxTime := time.Duration(float64(baseTime)*timeFactor) + safeIncrement
+
+	// Ensure we don't use more than 1/3 of remaining time on any single move
+	maxSafeTime := timeLeft / 3
+	if maxTime > maxSafeTime {
+		maxTime = maxSafeTime
+	}
+
+	// Minimum time: at least 50ms to make a reasonable move
+	minTime := 50 * time.Millisecond
+	if maxTime < minTime {
+		maxTime = minTime
+	}
+
+	return maxTime
 }

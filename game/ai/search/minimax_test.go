@@ -24,7 +24,7 @@ func TestNewMinimaxEngine(t *testing.T) {
 }
 
 func TestSetEvaluator(t *testing.T) {
-	evaluator := evaluation.NewMaterialEvaluator()
+	evaluator := evaluation.NewEvaluator()
 	engine := NewMinimaxEngine()
 
 	// Change evaluator
@@ -91,13 +91,16 @@ func TestFindBestMoveForcedMate(t *testing.T) {
 	engine := NewMinimaxEngine()
 
 	ctx := context.Background()
-	// Position where white can capture black queen
-	b, err := board.FromFEN("8/8/8/8/3q4/8/3R4/8 w - - 0 1")
+	// Position where white can capture black queen (White king on e1, Rook on d2, Black queen on d4)
+	b, err := board.FromFEN("4k3/8/8/8/3q4/8/3R4/4K3 w - - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create test position: %v", err)
 	}
 
-	config := ai.SearchConfig{MaxDepth: 2}
+	config := ai.SearchConfig{
+		MaxDepth:        2,
+		UseOpeningBook:  false, // Disable opening book for this test
+	}
 	result := engine.FindBestMove(ctx, b, moves.White, config)
 
 	// Should capture the queen (d2 to d4)
@@ -169,7 +172,7 @@ func TestMinimaxRecursiveSearch(t *testing.T) {
 	engine := NewMinimaxEngine()
 
 	ctx := context.Background()
-	b, err := board.FromFEN("8/8/8/8/3q4/8/3R4/8 w - - 0 1")
+	b, err := board.FromFEN("4k3/8/8/8/3q4/8/3R4/4K3 w - - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create test position: %v", err)
 	}
@@ -178,7 +181,10 @@ func TestMinimaxRecursiveSearch(t *testing.T) {
 	depths := []int{1, 2, 3}
 	
 	for _, depth := range depths {
-		config := ai.SearchConfig{MaxDepth: depth}
+		config := ai.SearchConfig{
+			MaxDepth:        depth,
+			UseOpeningBook:  false, // Disable opening book for this test
+		}
 		result := engine.FindBestMove(ctx, b, moves.White, config)
 		
 		if result.BestMove.From.File == -1 && result.BestMove.From.Rank == -1 {
@@ -195,7 +201,7 @@ func TestScoreConsistency(t *testing.T) {
 	engine := NewMinimaxEngine()
 
 	ctx := context.Background()
-	b, err := board.FromFEN("8/8/8/8/3q4/8/3R4/8 w - - 0 1")
+	b, err := board.FromFEN("4k3/8/8/8/3q4/8/3R4/4K3 w - - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create test position: %v", err)
 	}
@@ -228,7 +234,10 @@ func TestDepthTracking(t *testing.T) {
 	depths := []int{1, 2, 3}
 	
 	for _, maxDepth := range depths {
-		config := ai.SearchConfig{MaxDepth: maxDepth}
+		config := ai.SearchConfig{
+			MaxDepth:        maxDepth,
+			UseOpeningBook:  false, // Disable opening book for consistent testing
+		}
 		result := engine.FindBestMove(ctx, b, moves.White, config)
 		
 		if result.Stats.Depth <= 0 {

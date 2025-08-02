@@ -258,8 +258,8 @@ func TestGetMoveForcedCapture(t *testing.T) {
 	
 	player := NewComputerPlayer("Tactical Computer", engine, config)
 	
-	// Position where white can capture black queen with rook
-	b, err := board.FromFEN("8/8/8/8/3q4/8/3R4/8 w - - 0 1")
+	// Position where white can capture black queen with rook (White king on e1, Rook on d2, Black queen on d4, Black king on e8)
+	b, err := board.FromFEN("4k3/8/8/8/3q4/8/3R4/4K3 w - - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create tactical position: %v", err)
 	}

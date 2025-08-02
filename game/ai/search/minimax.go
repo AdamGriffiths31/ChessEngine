@@ -12,6 +12,11 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/game/openings"
 )
 
+const (
+	// MinEval represents the worst possible evaluation score
+	MinEval = ai.EvaluationScore(-1000000)
+)
+
 // MinimaxEngine implements a basic minimax search with opening book support
 type MinimaxEngine struct {
 	evaluator   ai.Evaluator
@@ -22,7 +27,7 @@ type MinimaxEngine struct {
 // NewMinimaxEngine creates a new minimax search engine
 func NewMinimaxEngine() *MinimaxEngine {
 	return &MinimaxEngine{
-		evaluator:   evaluation.NewMaterialEvaluator(),
+		evaluator:   evaluation.NewEvaluator(),
 		generator:   moves.NewGenerator(),
 		bookService: nil, // Will be initialized when needed based on config
 	}
@@ -141,7 +146,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		return result
 	}
 
-	bestScore := ai.EvaluationScore(-1000000)
+	bestScore := MinEval
 	var bestMove board.Move
 	bestMoveFound := false
 
@@ -153,11 +158,15 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
 			panic(err)
-			continue
 		}
 
-		// Search deeper
-		score := -m.minimaxWithDepthTracking(ctx, b, oppositePlayer(player), config.MaxDepth-1, config.MaxDepth, &result.Stats)
+		// Search deeper - minimax returns score from White's perspective
+		score := m.minimaxWithDepthTracking(ctx, b, oppositePlayer(player), config.MaxDepth-1, config.MaxDepth, &result.Stats)
+		
+		// If we're playing as Black, negate the score since we want moves that are bad for White
+		if player == moves.Black {
+			score = -score
+		}
 
 		// Unmake the move
 		b.UnmakeMove(undo)
@@ -204,16 +213,18 @@ func (m *MinimaxEngine) minimaxWithDepthTracking(ctx context.Context, b *board.B
 		stats.Depth = currentDepth
 	}
 
-	// Check for cancellation
+	// Check for cancellation more frequently
 	select {
 	case <-ctx.Done():
-		return 0
+		// Always return from White's perspective - minimax handles the negation
+		return m.evaluator.Evaluate(b)
 	default:
 	}
 
 	// Terminal node - evaluate position
 	if depth == 0 {
-		return m.evaluator.Evaluate(b, player)
+		// Always return from White's perspective - minimax handles the negation
+		return m.evaluator.Evaluate(b)
 	}
 
 	// Get all legal moves
@@ -228,7 +239,7 @@ func (m *MinimaxEngine) minimaxWithDepthTracking(ctx context.Context, b *board.B
 		return ai.DrawScore // Stalemate
 	}
 
-	bestScore := ai.EvaluationScore(-1000000)
+	bestScore := MinEval
 
 	// Try each move
 	for i := 0; i < legalMoves.Count; i++ {
@@ -237,8 +248,7 @@ func (m *MinimaxEngine) minimaxWithDepthTracking(ctx context.Context, b *board.B
 		// Make the move with undo information
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
-			panic("faield to undo nested move")
-			continue
+			panic("failed to undo nested move")
 		}
 
 		// Search deeper
