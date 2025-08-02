@@ -76,3 +76,52 @@ func BenchmarkBitboardGeneration(b *testing.B) {
 		ReleaseMoveList(moves)
 	}
 }
+
+// TestSpecificMoveValidation tests specific moves that should or shouldn't be legal
+func TestSpecificMoveValidation(t *testing.T) {
+	testCases := []struct {
+		name string
+		fen  string
+		move board.Move
+		shouldBeLegal bool
+		description string
+	}{
+		{
+			name: "b1d2_should_be_illegal",
+			fen:  "1r2kr2/2p1b2p/2Pp2pP/1p2pbP1/p2n4/P4p2/4nP2/RNB2RK1 w - - 5 27",
+			move: board.Move{
+				From: board.Square{File: 1, Rank: 0}, // b1
+				To:   board.Square{File: 3, Rank: 1}, // d2
+			},
+			shouldBeLegal: false,
+			description: "b1d2 should be illegal - White is in check and this move doesn't resolve it",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := board.FromFEN(tc.fen)
+			if err != nil {
+				t.Fatalf("Failed to parse FEN %s: %v", tc.fen, err)
+			}
+
+			gen := NewGenerator()
+			defer gen.Release()
+
+			moves := gen.GenerateAllMoves(b, White)
+			defer ReleaseMoveList(moves)
+
+			// Check if the move is in the generated move list
+			isLegal := moves.Contains(tc.move)
+
+			if isLegal != tc.shouldBeLegal {
+				t.Errorf("%s: move %v should be legal=%v but generator says legal=%v", 
+					tc.description, tc.move, tc.shouldBeLegal, isLegal)
+				
+				// Print the piece at the from square for debugging
+				piece := b.GetPiece(tc.move.From.File, tc.move.From.Rank)
+				t.Logf("Piece at %v: %v", tc.move.From, piece)
+			}
+		})
+	}
+}

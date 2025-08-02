@@ -117,10 +117,9 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			result.Stats.BookMoveUsed = true
 
 			if config.DebugMode {
-				fromSquare := string(rune('a'+bookMove.From.File)) + string(rune('1'+bookMove.From.Rank))
-				toSquare := string(rune('a'+bookMove.To.File)) + string(rune('1'+bookMove.To.Rank))
+				moveStr := bookMove.From.String() + bookMove.To.String()
 				result.Stats.DebugInfo = append(result.Stats.DebugInfo,
-					"✅ Opening book move selected: "+fromSquare+"-"+toSquare)
+					"✅ Opening book move selected: "+moveStr)
 			}
 			return result
 		}
@@ -137,52 +136,38 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		}
 	}
 
+	// Always use iterative deepening - it provides the same deterministic results
+	// for tests (no timeout) while handling time constraints gracefully in real games
+	return m.findBestMoveIterative(ctx, b, player, config, startTime, result)
+}
+
+// findBestMoveIterative implements iterative deepening search
+// This is now the only search algorithm - works for both timed and untimed searches
+func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig, startTime time.Time, result ai.SearchResult) ai.SearchResult {
 	// Get all legal moves
 	legalMoves := m.generator.GenerateAllMoves(b, player)
 	defer moves.ReleaseMoveList(legalMoves)
 
 	if legalMoves.Count == 0 {
 		// No legal moves - game over
+		result.Stats.Time = time.Since(startTime)
 		return result
 	}
 
-	bestScore := MinEval
 	var bestMove board.Move
+	bestScore := MinEval
 	bestMoveFound := false
 
-	// Try each move
-	for i := 0; i < legalMoves.Count; i++ {
-		move := legalMoves.Moves[i]
-
-		// Make the move with undo information
-		undo, err := b.MakeMoveWithUndo(move)
-		if err != nil {
-			panic(err)
-		}
-
-		// Search deeper - minimax returns score from White's perspective
-		score := m.minimaxWithDepthTracking(ctx, b, oppositePlayer(player), config.MaxDepth-1, config.MaxDepth, &result.Stats)
-		
-		// If we're playing as Black, negate the score since we want moves that are bad for White
-		if player == moves.Black {
-			score = -score
-		}
-
-		// Unmake the move
-		b.UnmakeMove(undo)
-
-		// Update best move if this is better
-		if score > bestScore {
-			bestScore = score
-			bestMove = move
-			bestMoveFound = true
-		}
-
-		// Check for cancellation
+	// Iterative deepening: search 1, 2, 3, ..., MaxDepth
+	for currentDepth := 1; currentDepth <= config.MaxDepth; currentDepth++ {
+		// Check for timeout before starting new depth
 		select {
 		case <-ctx.Done():
+			// Timeout - return best move found so far
 			if !bestMoveFound {
-				panic("NO MOVE FOUND")
+				// If no move found yet, use first legal move as fallback
+				bestMove = legalMoves.Moves[0]
+				bestScore = MinEval
 			}
 			result.BestMove = bestMove
 			result.Score = bestScore
@@ -190,16 +175,64 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			return result
 		default:
 		}
+
+		// Search all moves at current depth
+		currentBestScore := MinEval
+		var currentBestMove board.Move
+		currentBestFound := false
+
+		for i := 0; i < legalMoves.Count; i++ {
+			move := legalMoves.Moves[i]
+
+			// Make the move
+			undo, err := b.MakeMoveWithUndo(move)
+			if err != nil {
+				panic(err)
+			}
+
+			// Search at current depth
+			score := -m.minimaxWithDepthTracking(ctx, b, oppositePlayer(player), currentDepth-1, currentDepth, &result.Stats)
+
+			// Unmake the move
+			b.UnmakeMove(undo)
+
+			// Update best move for this depth
+			if score > currentBestScore {
+				currentBestScore = score
+				currentBestMove = move
+				currentBestFound = true
+			}
+		}
+
+		// Update overall best move if we found a better one at this depth
+		if currentBestFound && currentBestScore > bestScore {
+			bestScore = currentBestScore
+			bestMove = currentBestMove
+			bestMoveFound = true
+		}
+
+		// If no move found yet, use the result from this depth
+		if !bestMoveFound && currentBestFound {
+			bestScore = currentBestScore
+			bestMove = currentBestMove
+			bestMoveFound = true
+		}
+
+		// DEBUG: Log iterative deepening progress
+		if config.DebugMode && bestMoveFound {
+			result.Stats.DebugInfo = append(result.Stats.DebugInfo,
+				fmt.Sprintf("Depth %d: best=%s score=%d",
+					currentDepth, bestMove.From.String()+bestMove.To.String(), bestScore))
+		}
 	}
 
 	if !bestMoveFound {
-		panic("No move found!")
+		panic("No move found in iterative deepening!")
 	}
 
 	result.BestMove = bestMove
 	result.Score = bestScore
 	result.Stats.Time = time.Since(startTime)
-
 	return result
 }
 
@@ -216,15 +249,23 @@ func (m *MinimaxEngine) minimaxWithDepthTracking(ctx context.Context, b *board.B
 	// Check for cancellation more frequently
 	select {
 	case <-ctx.Done():
-		// Always return from White's perspective - minimax handles the negation
-		return m.evaluator.Evaluate(b)
+		// Convert evaluator's White perspective to current player's perspective
+		eval := m.evaluator.Evaluate(b)
+		if player == moves.Black {
+			eval = -eval // Black's perspective is opposite of White's
+		}
+		return eval
 	default:
 	}
 
 	// Terminal node - evaluate position
 	if depth == 0 {
-		// Always return from White's perspective - minimax handles the negation
-		return m.evaluator.Evaluate(b)
+		// Convert evaluator's White perspective to current player's perspective
+		eval := m.evaluator.Evaluate(b)
+		if player == moves.Black {
+			eval = -eval // Black's perspective is opposite of White's
+		}
+		return eval
 	}
 
 	// Get all legal moves

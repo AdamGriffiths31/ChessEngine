@@ -196,6 +196,71 @@ func TestMoveOrderingBias(t *testing.T) {
 	}
 }
 
+func TestE2E3HangingKnightFixed(t *testing.T) {
+	engine := NewMinimaxEngine()
+	
+	// Test the exact position from the UCI debug log where e2e3 hangs a knight
+	// Position: rnbqkb1r/pp4pp/2pp4/5pN1/2P1p1n1/PPNP4/4PPPP/R1BQKB1R w KQkq f6 0 8
+	b, err := board.FromFEN("rnbqkb1r/pp4pp/2pp4/5pN1/2P1p1n1/PPNP4/4PPPP/R1BQKB1R w KQkq f6 0 8")
+	if err != nil {
+		t.Fatalf("Failed to create position: %v", err)
+	}
+
+	// Test direct evaluation first
+	evaluator := evaluation.NewEvaluator()
+	directEval := evaluator.Evaluate(b)
+	
+	t.Logf("=== HANGING KNIGHT POSITION - ITERATIVE DEEPENING FIX ===")
+	t.Logf("FEN: rnbqkb1r/pp4pp/2pp4/5pN1/2P1p1n1/PPNP4/4PPPP/R1BQKB1R w KQkq f6 0 8")
+	t.Logf("Direct evaluation: %d", directEval)
+	
+	// Test 1: Fixed depth search (no timeout) for baseline
+	ctxNoTimeout := context.Background()
+	configFixed := ai.SearchConfig{
+		MaxDepth:       3,
+		UseOpeningBook: false,
+		DebugMode:      false,
+	}
+	resultFixed := engine.FindBestMove(ctxNoTimeout, b, moves.White, configFixed)
+	t.Logf("Fixed depth (3): move=%s%s score=%d nodes=%d", 
+		resultFixed.BestMove.From.String(), resultFixed.BestMove.To.String(), 
+		resultFixed.Score, resultFixed.Stats.NodesSearched)
+	
+	// Test 2: With reasonable timeout (should use iterative deepening)
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	defer cancel()
+	
+	config := ai.SearchConfig{
+		MaxDepth:       6,
+		UseOpeningBook: false,
+		DebugMode:      true,
+	}
+	
+	result := engine.FindBestMove(ctx, b, moves.White, config)
+
+	t.Logf("Iterative deepening (1s timeout): move=%s%s score=%d depth=%d nodes=%d time=%v", 
+		result.BestMove.From.String(), result.BestMove.To.String(), 
+		result.Score, result.Stats.Depth, result.Stats.NodesSearched,
+		result.Stats.Time)
+	
+	// Print iterative deepening progress
+	for _, info := range result.Stats.DebugInfo {
+		t.Logf("DEBUG: %s", info)
+	}
+	
+	moveStr := result.BestMove.From.String() + result.BestMove.To.String()
+	if moveStr == "e2e3" {
+		t.Errorf("🚨 FAILED: Engine still chose e2e3 - iterative deepening fix didn't work!")
+	} else {
+		t.Logf("✅ SUCCESS: Engine chose %s instead of e2e3 - hanging knight avoided!", moveStr)
+	}
+	
+	// Verify we actually used iterative deepening (should reach multiple depths)
+	if result.Stats.Depth < 2 {
+		t.Errorf("Expected iterative deepening to reach depth >= 2, got depth %d", result.Stats.Depth)
+	}
+}
+
 func TestUCIReplication(t *testing.T) {
 	engine := NewMinimaxEngine()
 	
@@ -241,5 +306,88 @@ func TestUCIReplication(t *testing.T) {
 		t.Logf("🚨 CONFIRMED: Engine still chooses a2a3 - bug NOT fixed!")
 	} else {
 		t.Logf("✅ Engine chose different move - potential improvement!")
+	}
+}
+
+func TestB1D2IllegalMovePosition(t *testing.T) {
+	engine := NewMinimaxEngine()
+	
+	// Test the position where b1d2 was incorrectly played
+	// White is in check and b1d2 doesn't resolve the check
+	b, err := board.FromFEN("1r2kr2/2p1b2p/2Pp2pP/1p2pbP1/p2n4/P4p2/4nP2/RNB2RK1 w - - 5 27")
+	if err != nil {
+		t.Fatalf("Failed to create debug position: %v", err)
+	}
+
+	// Test with 1 second search time
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	
+	config := ai.SearchConfig{
+		MaxDepth:       6,
+		UseOpeningBook: false,
+	}
+	
+	result := engine.FindBestMove(ctx, b, moves.White, config)
+
+	t.Logf("=== B1D2 ILLEGAL MOVE POSITION TEST ===")
+	t.Logf("FEN: 1r2kr2/2p1b2p/2Pp2pP/1p2pbP1/p2n4/P4p2/4nP2/RNB2RK1 w - - 5 27")
+	t.Logf("Best move: %s%s", result.BestMove.From.String(), result.BestMove.To.String())
+	t.Logf("Score: %d", result.Score)
+	t.Logf("Nodes searched: %d", result.Stats.NodesSearched)
+	t.Logf("Depth reached: %d", result.Stats.Depth)
+	t.Logf("Time taken: %v", result.Stats.Time)
+	
+	// Check that the engine doesn't suggest b1d2
+	moveStr := result.BestMove.From.String() + result.BestMove.To.String()
+	if moveStr == "b1d2" {
+		t.Errorf("🚨 ENGINE BUG: Suggested b1d2 which is illegal (doesn't resolve check)")
+	} else {
+		t.Logf("✅ Engine correctly avoided b1d2")
+	}
+	
+	// Verify that we get a valid move
+	if result.BestMove.From.File == -1 && result.BestMove.From.Rank == -1 {
+		t.Error("FindBestMove should return a valid move")
+	}
+	
+	// Check material balance manually
+	evaluator := evaluation.NewEvaluator()
+	directEval := evaluator.Evaluate(b)
+	t.Logf("Direct evaluation: %d", directEval)
+	
+	// Count material manually for debugging
+	whiteMaterial := 0
+	blackMaterial := 0
+	for rank := 0; rank < 8; rank++ {
+		for file := 0; file < 8; file++ {
+			piece := b.GetPiece(rank, file)
+			if piece != board.Empty {
+				if piece >= 'A' && piece <= 'Z' { // White piece
+					switch piece {
+					case board.WhitePawn: whiteMaterial += 100
+					case board.WhiteKnight: whiteMaterial += 320  
+					case board.WhiteBishop: whiteMaterial += 330
+					case board.WhiteRook: whiteMaterial += 500
+					case board.WhiteQueen: whiteMaterial += 900
+					}
+				} else { // Black piece
+					switch piece {
+					case board.BlackPawn: blackMaterial += 100
+					case board.BlackKnight: blackMaterial += 320
+					case board.BlackBishop: blackMaterial += 330  
+					case board.BlackRook: blackMaterial += 500
+					case board.BlackQueen: blackMaterial += 900
+					}
+				}
+			}
+		}
+	}
+	
+	materialBalance := whiteMaterial - blackMaterial
+	t.Logf("Material count - White: %d, Black: %d, Balance: %+d", whiteMaterial, blackMaterial, materialBalance)
+	
+	if directEval > 0 && materialBalance < -500 {
+		t.Errorf("🚨 EVALUATION BUG: Positive evaluation (%d) when White is significantly behind in material (%+d)", directEval, materialBalance)
 	}
 }
