@@ -1,0 +1,14 @@
+# ChessEngine Benchmark History
+
+This file tracks the performance of ChessEngine against various opponents over time.
+
+## Results Summary
+
+| Date | Opponent | Time Control | Games | Wins | Losses | Draws | Score | Notes |
+|------|----------|--------------|-------|------|--------|-------|-------|-------|
+| 2025-07-28 20:09 | Weak Stockfish | Bullet (2+2) | 3 | 0 | 3 | 0 | 0% | 0.0.0 |
+| 2025-08-03 14:01 | Weak Stockfish | Bullet (2+2) | 3 | 3 | 0 | 0 | 100% | Negamax Search + Basic Move tables + MVV-LVV |
+| 2025-08-03 14:55 | Weak Stockfish v2 | Bullet (2+2) | 3 | 0 | 3 | 0 | 0% | - |
+| 2025-08-03 15:32 | Weak Stockfish v2 | Bullet (2+2) | 3 | 0 | 1 | 2 | 33% | Added Killer Moves |
+| 2025-08-03 19:03 | Weak Stockfish v2 | Bullet (2+2) | 3 | 0 | 1 | 2 | 33% | Fix timing issue with move inc |
+| 2025-08-03 19:42 | Weak Stockfish v2 | Bullet (2+2) | 3 | 0 | 1 | 2 | 33% | Pawn eval upgrades |

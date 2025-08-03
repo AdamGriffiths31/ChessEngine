@@ -10,7 +10,7 @@ TOOLS_DIR="$(dirname "$SCRIPT_DIR")"
 ENGINE_DIR="$TOOLS_DIR"
 RESULTS_DIR="$TOOLS_DIR/results"
 ENGINES_JSON="$TOOLS_DIR/engines.json"
-BENCHMARK_LOG="$RESULTS_DIR/benchmark_history.md"
+BENCHMARK_LOG="$ENGINE_DIR/../history.md"
 
 # Ensure directories exist
 mkdir -p "$RESULTS_DIR"
