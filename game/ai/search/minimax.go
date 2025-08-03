@@ -163,9 +163,7 @@ func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Boar
 		// Check for timeout before starting new depth
 		select {
 		case <-ctx.Done():
-			// Timeout - return best move found so far
 			if !bestMoveFound {
-				// If no move found yet, use first legal move as fallback
 				bestMove = legalMoves.Moves[0]
 				bestScore = MinEval
 			}
@@ -176,7 +174,7 @@ func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Boar
 		default:
 		}
 
-		// Search all moves at current depth
+		// Search all moves at current depth with full alpha-beta window
 		currentBestScore := MinEval
 		var currentBestMove board.Move
 		currentBestFound := false
@@ -187,11 +185,12 @@ func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Boar
 			// Make the move
 			undo, err := b.MakeMoveWithUndo(move)
 			if err != nil {
-				panic(err)
+				continue
 			}
 
-			// Search at current depth
-			score := -m.negamaxWithDepthTracking(ctx, b, oppositePlayer(player), currentDepth-1, currentDepth, &result.Stats)
+			// Search at current depth with full window
+			// Note: We use -negamax, so we negate alpha and beta
+			score := -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), currentDepth-1, MinEval, -currentBestScore, currentDepth, &result.Stats)
 
 			// Unmake the move
 			b.UnmakeMove(undo)
@@ -204,15 +203,8 @@ func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Boar
 			}
 		}
 
-		// Update overall best move if we found a better one at this depth
-		if currentBestFound && currentBestScore > bestScore {
-			bestScore = currentBestScore
-			bestMove = currentBestMove
-			bestMoveFound = true
-		}
-
-		// If no move found yet, use the result from this depth
-		if !bestMoveFound && currentBestFound {
+		// Update overall best move if we found one at this depth
+		if currentBestFound {
 			bestScore = currentBestScore
 			bestMove = currentBestMove
 			bestMoveFound = true
@@ -227,7 +219,9 @@ func (m *MinimaxEngine) findBestMoveIterative(ctx context.Context, b *board.Boar
 	}
 
 	if !bestMoveFound {
-		panic("No move found in iterative deepening!")
+		// Fallback to first legal move
+		bestMove = legalMoves.Moves[0]
+		bestScore = 0
 	}
 
 	result.BestMove = bestMove
@@ -250,32 +244,42 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	default:
 	}
 
-	// Stand-pat evaluation - the evaluation of doing nothing
-	eval := m.evaluator.Evaluate(b)
-	if player == moves.Black {
-		eval = -eval
+	// Get in-check status
+	inCheck := m.generator.IsKingInCheck(b, player)
+
+	// Stand-pat evaluation - only if not in check
+	if !inCheck {
+		eval := m.evaluator.Evaluate(b)
+		if player == moves.Black {
+			eval = -eval
+		}
+
+		// Beta cutoff
+		if eval >= beta {
+			return beta
+		}
+
+		// Update alpha
+		if eval > alpha {
+			alpha = eval
+		}
 	}
 
-	// Beta cutoff - if our position is already too good, opponent won't allow it
-	if eval >= beta {
-		return beta
-	}
-
-	// Update alpha if stand-pat is better
-	if eval > alpha {
-		alpha = eval
-	}
-
-	// Generate only capture moves (and potentially checks)
+	// Generate all moves
 	legalMoves := m.generator.GenerateAllMoves(b, player)
 	defer moves.ReleaseMoveList(legalMoves)
 
-	// Try all captures
+	// If in check and no moves, it's checkmate
+	if inCheck && legalMoves.Count == 0 {
+		return -ai.MateScore + ai.EvaluationScore(1)
+	}
+
+	// Try captures (and all moves if in check)
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
 
-		// Only consider captures (and potentially checks)
-		if !move.IsCapture {
+		// Only search captures in quiescence (unless in check)
+		if !inCheck && !move.IsCapture {
 			continue
 		}
 
@@ -294,18 +298,18 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		// Update alpha
 		if score > alpha {
 			alpha = score
-		}
 
-		// Beta cutoff
-		if alpha >= beta {
-			return beta
+			// Beta cutoff
+			if alpha >= beta {
+				return beta
+			}
 		}
 	}
 
 	return alpha
 }
 
-func (m *MinimaxEngine) negamaxWithDepthTracking(ctx context.Context, b *board.Board, player moves.Player, depth int, originalMaxDepth int, stats *ai.SearchStats) ai.EvaluationScore {
+func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, stats *ai.SearchStats) ai.EvaluationScore {
 	stats.NodesSearched++
 
 	// Track the maximum depth reached
@@ -314,21 +318,21 @@ func (m *MinimaxEngine) negamaxWithDepthTracking(ctx context.Context, b *board.B
 		stats.Depth = currentDepth
 	}
 
-	// Check for cancellation more frequently
+	// Check for cancellation
 	select {
 	case <-ctx.Done():
 		eval := m.evaluator.Evaluate(b)
 		if player == moves.Black {
-			return -eval
+			eval = -eval
 		}
 		return eval
 	default:
 	}
 
-	// Terminal node - call quiescence search instead of direct evaluation
+	// Terminal node - call quiescence search with proper bounds
 	if depth == 0 {
 		// Enter quiescence search to resolve captures
-		return m.quiescence(ctx, b, player, MinEval, -MinEval, stats)
+		return m.quiescence(ctx, b, player, alpha, beta, stats)
 	}
 
 	// Get all legal moves
@@ -339,12 +343,13 @@ func (m *MinimaxEngine) negamaxWithDepthTracking(ctx context.Context, b *board.B
 		// No legal moves - check for checkmate or stalemate
 		if m.generator.IsKingInCheck(b, player) {
 			// Checkmate - return worst score for current player
-			return -ai.MateScore + ai.EvaluationScore(depth)
+			return -ai.MateScore + ai.EvaluationScore(currentDepth)
 		}
 		return ai.DrawScore // Stalemate
 	}
 
-	bestScore := MinEval
+	// Sort moves to improve alpha-beta efficiency (captures first)
+	m.orderMoves(legalMoves)
 
 	// Try each move
 	for i := 0; i < legalMoves.Count; i++ {
@@ -353,22 +358,45 @@ func (m *MinimaxEngine) negamaxWithDepthTracking(ctx context.Context, b *board.B
 		// Make the move with undo information
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
-			panic("failed to undo nested move")
+			continue
 		}
 
-		// Search deeper - negamax flips the score
-		score := -m.negamaxWithDepthTracking(ctx, b, oppositePlayer(player), depth-1, originalMaxDepth, stats)
+		// Search deeper with negamax and alpha-beta
+		score := -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), depth-1, -beta, -alpha, originalMaxDepth, stats)
 
 		// Unmake the move
 		b.UnmakeMove(undo)
 
-		// Update best score
-		if score > bestScore {
-			bestScore = score
+		// Update alpha (best score for current player)
+		if score > alpha {
+			alpha = score
+		}
+
+		// Beta cutoff - opponent won't allow this line
+		if alpha >= beta {
+			return beta
 		}
 	}
 
-	return bestScore
+	return alpha
+}
+
+// orderMoves sorts moves to improve alpha-beta efficiency
+func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList) {
+	// Simple move ordering: captures first, then quiet moves
+	// Better ordering would use MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
+	captureCount := 0
+	
+	// Partition captures to the front
+	for i := 0; i < moveList.Count; i++ {
+		if moveList.Moves[i].IsCapture {
+			if i != captureCount {
+				// Swap capture to front
+				moveList.Moves[i], moveList.Moves[captureCount] = moveList.Moves[captureCount], moveList.Moves[i]
+			}
+			captureCount++
+		}
+	}
 }
 
 // SetEvaluator sets the position evaluator
