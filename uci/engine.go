@@ -206,7 +206,7 @@ func (ue *UCIEngine) handlePosition(args []string) string {
 	for _, moveStr := range moveList {
 		move, err := ue.converter.FromUCI(moveStr, ue.engine.GetState().Board)
 		if err != nil {
-			ue.debugLogger.Fatalf("POSITION: Failed to convert UCI move - move: %s, board: %s, error: %v", 
+			ue.debugLogger.Fatalf("POSITION: Failed to convert UCI move - move: %s, board: %s, error: %v",
 				moveStr, ue.engine.GetCurrentFEN(), err)
 		}
 
@@ -377,8 +377,23 @@ func (ue *UCIEngine) calculateMoveTime(params SearchParams, player moves.Player,
 
 	maxTime := time.Duration(float64(baseTime)*timeFactor) + safeIncrement
 
-	// Ensure we don't use more than 1/3 of remaining time on any single move
-	maxSafeTime := timeLeft / 3
+	// With increment, we can be more aggressive since we get time back
+	// Without increment, be conservative to avoid time trouble
+	var maxSafeTime time.Duration
+	if increment > 0 {
+		// With increment: use up to 90% of increment + reasonable portion of base time
+		incrementPortion := increment * 9 / 10
+		baseTimePortion := timeLeft / 10 // Only use 10% of base time as safety
+		maxSafeTime = incrementPortion + baseTimePortion
+
+		if timeLeft < 5*time.Second {
+			maxSafeTime = increment * 8 / 10
+		}
+	} else {
+		// No increment: use conservative 1/3 of remaining time
+		maxSafeTime = timeLeft / 3
+	}
+
 	if maxTime > maxSafeTime {
 		maxTime = maxSafeTime
 	}

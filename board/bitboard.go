@@ -300,3 +300,69 @@ func ConvertFromBitboardColor(color BitboardColor) PieceColor {
 	}
 	return BlackColor
 }
+
+// GetFileForwardFill returns all squares ahead of the given pawns on the same files
+// For white pawns, "ahead" means towards rank 8 (north)
+// For black pawns, "ahead" means towards rank 1 (south)
+func GetFileForwardFill(pawns Bitboard, color BitboardColor) Bitboard {
+	var fill Bitboard
+	if color == BitboardWhite {
+		// White pawns advance north
+		temp := pawns.ShiftNorth()
+		for temp != 0 {
+			fill |= temp
+			temp = temp.ShiftNorth()
+		}
+	} else {
+		// Black pawns advance south
+		temp := pawns.ShiftSouth()
+		for temp != 0 {
+			fill |= temp
+			temp = temp.ShiftSouth()
+		}
+	}
+	return fill
+}
+
+// GetAdjacentFileForwardFill returns all squares ahead on adjacent files
+// Used to check if enemy pawns on adjacent files can capture advancing pawns
+func GetAdjacentFileForwardFill(pawns Bitboard, color BitboardColor) Bitboard {
+	// Get pawns on adjacent files (left and right)
+	leftFiles := pawns.ShiftWest()
+	rightFiles := pawns.ShiftEast()
+	adjacentPawns := leftFiles | rightFiles
+	
+	// Get forward fill for adjacent file pawns
+	return GetFileForwardFill(adjacentPawns, color)
+}
+
+// GetPassedPawns returns a bitboard of all passed pawns for the given color
+// A passed pawn has no enemy pawns that can stop it from promoting
+func GetPassedPawns(friendlyPawns, enemyPawns Bitboard, color BitboardColor) Bitboard {
+	// Get all squares that enemy pawns control ahead on same files
+	enemyFileControl := GetFileForwardFill(enemyPawns, OppositeBitboardColor(color))
+	
+	// Get all squares that enemy pawns control ahead on adjacent files
+	enemyAdjacentControl := GetAdjacentFileForwardFill(enemyPawns, OppositeBitboardColor(color))
+	
+	// Combined enemy control (squares enemy pawns can reach)
+	enemyControl := enemyFileControl | enemyAdjacentControl
+	
+	// Passed pawns are friendly pawns that are not blocked by enemy control
+	var passedPawns Bitboard
+	pawnList := friendlyPawns.BitList()
+	
+	for _, square := range pawnList {
+		squareBit := Bitboard(1) << square
+		
+		// Get forward fill for this specific pawn
+		pawnForwardFill := GetFileForwardFill(squareBit, color)
+		
+		// If this pawn's forward path doesn't intersect enemy control, it's passed
+		if (pawnForwardFill & enemyControl) == 0 {
+			passedPawns |= squareBit
+		}
+	}
+	
+	return passedPawns
+}

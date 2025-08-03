@@ -32,7 +32,7 @@ func TestEvaluateEmptyBoard(t *testing.T) {
 
 func TestEvaluateStartingPosition(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	// Create board from starting position FEN
 	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	if err != nil {
@@ -49,48 +49,48 @@ func TestEvaluateStartingPosition(t *testing.T) {
 
 func TestKnightPositionalBonus(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	tests := []struct {
-		name           string
-		fen            string
-		expectedWhite  ai.EvaluationScore
-		expectedBlack  ai.EvaluationScore
-		description    string
+		name          string
+		fen           string
+		expectedWhite ai.EvaluationScore
+		expectedBlack ai.EvaluationScore
+		description   string
 	}{
 		{
-			name:           "White knight on corner",
-			fen:            "8/8/8/8/8/8/8/N7 w - - 0 1", // a1
-			expectedWhite:  ai.EvaluationScore(320 + (-50)), // material + positional
-			expectedBlack:  ai.EvaluationScore(-(320 + (-50))),
-			description:    "Knight on a1 should have -50 positional penalty",
+			name:          "White knight on corner",
+			fen:           "8/8/8/8/8/8/8/N7 w - - 0 1",    // a1
+			expectedWhite: ai.EvaluationScore(320 + (-50)), // material + positional
+			expectedBlack: ai.EvaluationScore(-(320 + (-50))),
+			description:   "Knight on a1 should have -50 positional penalty",
 		},
 		{
-			name:           "White knight on center",
-			fen:            "8/8/8/3N4/8/8/8/8 w - - 0 1", // d5
-			expectedWhite:  ai.EvaluationScore(320 + 20), // material + positional
-			expectedBlack:  ai.EvaluationScore(-(320 + 20)),
-			description:    "Knight on d5 should have +20 positional bonus",
+			name:          "White knight on center",
+			fen:           "8/8/8/3N4/8/8/8/8 w - - 0 1", // d5
+			expectedWhite: ai.EvaluationScore(320 + 20),  // material + positional
+			expectedBlack: ai.EvaluationScore(-(320 + 20)),
+			description:   "Knight on d5 should have +20 positional bonus",
 		},
 		{
-			name:           "White knight on edge",
-			fen:            "8/8/8/8/N7/8/8/8 w - - 0 1", // a4
-			expectedWhite:  ai.EvaluationScore(320 + (-30)), // material + positional
-			expectedBlack:  ai.EvaluationScore(-(320 + (-30))),
-			description:    "Knight on a4 should have -30 positional penalty",
+			name:          "White knight on edge",
+			fen:           "8/8/8/8/N7/8/8/8 w - - 0 1",    // a4
+			expectedWhite: ai.EvaluationScore(320 + (-30)), // material + positional
+			expectedBlack: ai.EvaluationScore(-(320 + (-30))),
+			description:   "Knight on a4 should have -30 positional penalty",
 		},
 		{
-			name:           "Black knight on corner from black's perspective",
-			fen:            "n7/8/8/8/8/8/8/8 w - - 0 1", // a8 (black's back rank corner)
-			expectedWhite:  ai.EvaluationScore(-(320 + (-50))), // Black pieces are negative
-			expectedBlack:  ai.EvaluationScore(320 + (-50)),    // From black's perspective
-			description:    "Black knight on a8 should have -50 positional penalty",
+			name:          "Black knight on corner from black's perspective",
+			fen:           "n7/8/8/8/8/8/8/8 w - - 0 1",       // a8 (black's back rank corner)
+			expectedWhite: ai.EvaluationScore(-(320 + (-50))), // Black pieces are negative
+			expectedBlack: ai.EvaluationScore(320 + (-50)),    // From black's perspective
+			description:   "Black knight on a8 should have -50 positional penalty",
 		},
 		{
-			name:           "Black knight on center from black's perspective", 
-			fen:            "8/8/8/3n4/8/8/8/8 w - - 0 1", // d5
-			expectedWhite:  ai.EvaluationScore(-(320 + 20)), // Black pieces are negative
-			expectedBlack:  ai.EvaluationScore(320 + 20),    // From black's perspective  
-			description:    "Black knight on d5 should have +20 positional bonus",
+			name:          "Black knight on center from black's perspective",
+			fen:           "8/8/8/3n4/8/8/8/8 w - - 0 1",   // d5
+			expectedWhite: ai.EvaluationScore(-(320 + 20)), // Black pieces are negative
+			expectedBlack: ai.EvaluationScore(320 + 20),    // From black's perspective
+			description:   "Black knight on d5 should have +20 positional bonus",
 		},
 	}
 
@@ -132,7 +132,7 @@ func TestKnightTableValues(t *testing.T) {
 		t.Run(tt.square, func(t *testing.T) {
 			actual := KnightTable[tt.rank*8+tt.file]
 			if actual != tt.expected {
-				t.Errorf("Knight table value for %s (rank %d, file %d): expected %d, got %d", 
+				t.Errorf("Knight table value for %s (rank %d, file %d): expected %d, got %d",
 					tt.square, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -158,7 +158,7 @@ func TestPositionalBonusFunction(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			actual := getPositionalBonus(tt.piece, tt.rank, tt.file)
 			if actual != tt.expected {
-				t.Errorf("getPositionalBonus(%v, %d, %d): expected %d, got %d", 
+				t.Errorf("getPositionalBonus(%v, %d, %d): expected %d, got %d",
 					tt.piece, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -169,7 +169,7 @@ func TestKnightPositionPreference(t *testing.T) {
 	evaluator := NewEvaluator()
 
 	// Test with knight in corner vs center
-	cornerFEN := "8/8/8/8/8/8/8/N7 w - - 0 1" // a1
+	cornerFEN := "8/8/8/8/8/8/8/N7 w - - 0 1"  // a1
 	centerFEN := "8/8/8/3N4/8/8/8/8 w - - 0 1" // d5
 
 	cornerBoard, _ := board.FromFEN(cornerFEN)
@@ -180,7 +180,7 @@ func TestKnightPositionPreference(t *testing.T) {
 	centerScore := evaluator.Evaluate(centerBoard)
 
 	if centerScore <= cornerScore {
-		t.Errorf("Evaluator should prefer knight in center (%d) over corner (%d)", 
+		t.Errorf("Evaluator should prefer knight in center (%d) over corner (%d)",
 			centerScore, cornerScore)
 	}
 
@@ -194,7 +194,7 @@ func TestKnightPositionPreference(t *testing.T) {
 
 func TestComplexPositionWithKnights(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	// Position with knights in different locations
 	// White knight on d4 (center), Black knight on a8 (corner)
 	fen := "n7/8/8/8/3N4/8/8/8 w - - 0 1"
@@ -217,7 +217,7 @@ func TestComplexPositionWithKnights(t *testing.T) {
 
 func TestBishopPositionalBonus(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	tests := []struct {
 		name        string
 		fen         string
@@ -226,31 +226,31 @@ func TestBishopPositionalBonus(t *testing.T) {
 	}{
 		{
 			name:        "White bishop on corner",
-			fen:         "8/8/8/8/8/8/8/B7 w - - 0 1", // a1
+			fen:         "8/8/8/8/8/8/8/B7 w - - 0 1",    // a1
 			expected:    ai.EvaluationScore(330 + (-20)), // material + positional
 			description: "Bishop on a1 should have -20 positional penalty",
 		},
 		{
 			name:        "White bishop on center",
 			fen:         "8/8/8/3B4/8/8/8/8 w - - 0 1", // d5
-			expected:    ai.EvaluationScore(330 + 10), // material + positional
+			expected:    ai.EvaluationScore(330 + 10),  // material + positional
 			description: "Bishop on d5 should have +10 positional bonus",
 		},
 		{
 			name:        "White bishop on good square",
 			fen:         "8/8/8/8/2B5/8/8/8 w - - 0 1", // c4
-			expected:    ai.EvaluationScore(330 + 5), // material + positional
+			expected:    ai.EvaluationScore(330 + 5),   // material + positional
 			description: "Bishop on c4 should have +5 positional bonus",
 		},
 		{
 			name:        "Black bishop on corner",
-			fen:         "b7/8/8/8/8/8/8/8 w - - 0 1", // a8 (black's back rank corner)
+			fen:         "b7/8/8/8/8/8/8/8 w - - 0 1",       // a8 (black's back rank corner)
 			expected:    ai.EvaluationScore(-(330 + (-20))), // Black pieces are negative from White's perspective
 			description: "Black bishop on a8 should have -20 positional penalty (negative for Black)",
 		},
 		{
-			name:        "Black bishop on center", 
-			fen:         "8/8/8/3b4/8/8/8/8 w - - 0 1", // d5
+			name:        "Black bishop on center",
+			fen:         "8/8/8/3b4/8/8/8/8 w - - 0 1",   // d5
 			expected:    ai.EvaluationScore(-(330 + 10)), // Black pieces are negative from White's perspective
 			description: "Black bishop on d5 should have +10 positional bonus (negative for Black)",
 		},
@@ -294,7 +294,7 @@ func TestBishopTableValues(t *testing.T) {
 		t.Run(tt.square, func(t *testing.T) {
 			actual := BishopTable[tt.rank*8+tt.file]
 			if actual != tt.expected {
-				t.Errorf("Bishop table value for %s (rank %d, file %d): expected %d, got %d", 
+				t.Errorf("Bishop table value for %s (rank %d, file %d): expected %d, got %d",
 					tt.square, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -305,7 +305,7 @@ func TestBishopPositionPreference(t *testing.T) {
 	evaluator := NewEvaluator()
 
 	// Test with bishop in corner vs center
-	cornerFEN := "8/8/8/8/8/8/8/B7 w - - 0 1" // a1
+	cornerFEN := "8/8/8/8/8/8/8/B7 w - - 0 1"  // a1
 	centerFEN := "8/8/8/3B4/8/8/8/8 w - - 0 1" // d5
 
 	cornerBoard, _ := board.FromFEN(cornerFEN)
@@ -316,7 +316,7 @@ func TestBishopPositionPreference(t *testing.T) {
 	centerScore := evaluator.Evaluate(centerBoard)
 
 	if centerScore <= cornerScore {
-		t.Errorf("Evaluator should prefer bishop in center (%d) over corner (%d)", 
+		t.Errorf("Evaluator should prefer bishop in center (%d) over corner (%d)",
 			centerScore, cornerScore)
 	}
 
@@ -330,7 +330,7 @@ func TestBishopPositionPreference(t *testing.T) {
 
 func TestMixedPiecePositions(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	// Position with both knights and bishops in different locations
 	// White knight on d4 (center), White bishop on a1 (corner)
 	// Black knight on a8 (corner), Black bishop on e5 (center)
@@ -356,7 +356,7 @@ func TestMixedPiecePositions(t *testing.T) {
 
 func TestRookPositionalBonus(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	tests := []struct {
 		name        string
 		fen         string
@@ -365,37 +365,37 @@ func TestRookPositionalBonus(t *testing.T) {
 	}{
 		{
 			name:        "White rook on a file",
-			fen:         "8/8/8/8/8/R7/8/8 w - - 0 1", // a3
+			fen:         "8/8/8/8/8/R7/8/8 w - - 0 1",   // a3
 			expected:    ai.EvaluationScore(500 + (-5)), // material + positional
 			description: "Rook on a3 should have -5 positional penalty (avoid a column)",
 		},
 		{
 			name:        "White rook on 7th rank",
 			fen:         "8/3R4/8/8/8/8/8/8 w - - 0 1", // d7
-			expected:    ai.EvaluationScore(500 + 0), // material + positional
+			expected:    ai.EvaluationScore(500 + 0),   // material + positional
 			description: "Rook on d7 should have 0 positional bonus",
 		},
 		{
 			name:        "White rook on 2nd rank center",
 			fen:         "8/8/8/8/8/8/3R4/8 w - - 0 1", // d2
-			expected:    ai.EvaluationScore(500 + 10), // material + positional
+			expected:    ai.EvaluationScore(500 + 10),  // material + positional
 			description: "Rook on d2 should have +10 positional bonus",
 		},
 		{
 			name:        "White rook on back rank center",
 			fen:         "8/8/8/8/8/8/8/3R4 w - - 0 1", // d1
-			expected:    ai.EvaluationScore(500 + 0), // material + positional
+			expected:    ai.EvaluationScore(500 + 0),   // material + positional
 			description: "Rook on d1 should have 0 positional bonus",
 		},
 		{
 			name:        "Black rook on a file",
-			fen:         "8/8/8/8/8/r7/8/8 w - - 0 1", // a3 from black's perspective (rank 5 flipped)
+			fen:         "8/8/8/8/8/r7/8/8 w - - 0 1",      // a3 from black's perspective (rank 5 flipped)
 			expected:    ai.EvaluationScore(-(500 + (-5))), // Black pieces are negative from White's perspective
 			description: "Black rook on a3 should have -5 positional penalty (negative for Black)",
 		},
 		{
-			name:        "Black rook on 2nd rank", 
-			fen:         "8/3r4/8/8/8/8/8/8 w - - 0 1", // d7 (black's 2nd rank)
+			name:        "Black rook on 2nd rank",
+			fen:         "8/3r4/8/8/8/8/8/8 w - - 0 1",   // d7 (black's 2nd rank)
 			expected:    ai.EvaluationScore(-(500 + 10)), // Black pieces are negative from White's perspective
 			description: "Black rook on d7 should have +10 positional bonus (negative for Black)",
 		},
@@ -425,22 +425,22 @@ func TestRookTableValues(t *testing.T) {
 		file     int
 		expected int
 	}{
-		{"a1", 0, 0, 0},   // back rank
-		{"d1", 0, 3, 0},   // back rank center
-		{"a2", 1, 0, 5},   // 2nd rank edge
-		{"d2", 1, 3, 10},  // 2nd rank center (good)
-		{"a3", 2, 0, -5},  // avoid a column
-		{"h3", 2, 7, -5},  // avoid h column
-		{"d3", 2, 3, 0},   // center file middle ranks
-		{"d8", 7, 3, 5},   // 8th rank center
-		{"e8", 7, 4, 5},   // 8th rank center
+		{"a1", 0, 0, 0},  // back rank
+		{"d1", 0, 3, 0},  // back rank center
+		{"a2", 1, 0, 5},  // 2nd rank edge
+		{"d2", 1, 3, 10}, // 2nd rank center (good)
+		{"a3", 2, 0, -5}, // avoid a column
+		{"h3", 2, 7, -5}, // avoid h column
+		{"d3", 2, 3, 0},  // center file middle ranks
+		{"d8", 7, 3, 5},  // 8th rank center
+		{"e8", 7, 4, 5},  // 8th rank center
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.square, func(t *testing.T) {
 			actual := RookTable[tt.rank*8+tt.file]
 			if actual != tt.expected {
-				t.Errorf("Rook table value for %s (rank %d, file %d): expected %d, got %d", 
+				t.Errorf("Rook table value for %s (rank %d, file %d): expected %d, got %d",
 					tt.square, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -451,7 +451,7 @@ func TestRookPositionPreference(t *testing.T) {
 	evaluator := NewEvaluator()
 
 	// Test rook on a-file vs center file
-	aFileFEN := "8/8/8/8/8/R7/8/8 w - - 0 1" // a3
+	aFileFEN := "8/8/8/8/8/R7/8/8 w - - 0 1"   // a3
 	centerFEN := "8/8/8/8/8/8/3R4/8 w - - 0 1" // d2
 
 	aFileBoard, _ := board.FromFEN(aFileFEN)
@@ -462,7 +462,7 @@ func TestRookPositionPreference(t *testing.T) {
 	centerScore := evaluator.Evaluate(centerBoard)
 
 	if centerScore <= aFileScore {
-		t.Errorf("Evaluator should prefer rook on 2nd rank center (%d) over a-file (%d)", 
+		t.Errorf("Evaluator should prefer rook on 2nd rank center (%d) over a-file (%d)",
 			centerScore, aFileScore)
 	}
 
@@ -476,7 +476,7 @@ func TestRookPositionPreference(t *testing.T) {
 
 func TestAllPiecePositions(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	// Complex position with knights, bishops, and rooks
 	// White: Knight on d4 (center), Bishop on a1 (corner), Rook on d2 (2nd rank center)
 	// Black: Knight on a8 (corner), Bishop on e5 (center), Rook on a7 (7th rank a-file)
@@ -489,7 +489,7 @@ func TestAllPiecePositions(t *testing.T) {
 	score := evaluator.Evaluate(b)
 
 	// White knight on d4: 320 + 20 = 340
-	// White bishop on a1: 330 + (-20) = 310  
+	// White bishop on a1: 330 + (-20) = 310
 	// White rook on d2: 500 + 10 = 510
 	// Black knight on a8: -(320 + (-50)) = -270
 	// Black bishop on e5: -(330 + 10) = -340
@@ -504,55 +504,55 @@ func TestAllPiecePositions(t *testing.T) {
 
 func TestPawnPositionalBonus(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	tests := []struct {
-		name           string
-		fen            string
-		expectedWhite  ai.EvaluationScore
-		expectedBlack  ai.EvaluationScore
-		description    string
+		name          string
+		fen           string
+		expectedWhite ai.EvaluationScore
+		expectedBlack ai.EvaluationScore
+		description   string
 	}{
 		{
-			name:           "White pawn on starting rank",
-			fen:            "8/8/8/8/8/8/3P4/8 w - - 0 1", // d2
-			expectedWhite:  ai.EvaluationScore(100 + (-20)), // material + positional
-			expectedBlack:  ai.EvaluationScore(-(100 + (-20))),
-			description:    "Pawn on d2 should have -20 positional penalty (unmoved center pawn)",
+			name:          "White pawn on starting rank",
+			fen:           "8/8/8/8/8/8/3P4/8 w - - 0 1",           // d2
+			expectedWhite: ai.EvaluationScore(85), // material + positional + isolated penalty + passed pawn bonus
+			expectedBlack: ai.EvaluationScore(-85),
+			description:   "Pawn on d2 should have -20 positional penalty (unmoved center pawn)",
 		},
 		{
-			name:           "White pawn advanced to 4th rank center",
-			fen:            "8/8/8/8/3P4/8/8/8 w - - 0 1", // d4
-			expectedWhite:  ai.EvaluationScore(100 + 20), // material + positional
-			expectedBlack:  ai.EvaluationScore(-(100 + 20)),
-			description:    "Pawn on d4 should have +20 positional bonus (advanced center)",
+			name:          "White pawn advanced to 4th rank center",
+			fen:           "8/8/8/8/3P4/8/8/8 w - - 0 1",        // d4
+			expectedWhite: ai.EvaluationScore(165), // material + positional + isolated penalty + passed pawn bonus
+			expectedBlack: ai.EvaluationScore(-165),
+			description:   "Pawn on d4 should have +20 positional bonus (advanced center)",
 		},
 		{
-			name:           "White pawn advanced to 5th rank center",
-			fen:            "8/8/8/3P4/8/8/8/8 w - - 0 1", // d5
-			expectedWhite:  ai.EvaluationScore(100 + 25), // material + positional
-			expectedBlack:  ai.EvaluationScore(-(100 + 25)),
-			description:    "Pawn on d5 should have +25 positional bonus (far advanced center)",
+			name:          "White pawn advanced to 5th rank center",
+			fen:           "8/8/8/3P4/8/8/8/8 w - - 0 1",        // d5
+			expectedWhite: ai.EvaluationScore(205), // material + positional + isolated penalty + passed pawn bonus
+			expectedBlack: ai.EvaluationScore(-205),
+			description:   "Pawn on d5 should have +25 positional bonus (far advanced center)",
 		},
 		{
-			name:           "White pawn on 7th rank near promotion",
-			fen:            "8/3P4/8/8/8/8/8/8 w - - 0 1", // d7
-			expectedWhite:  ai.EvaluationScore(100 + 50), // material + positional
-			expectedBlack:  ai.EvaluationScore(-(100 + 50)),
-			description:    "Pawn on d7 should have +50 positional bonus (near promotion)",
+			name:          "White pawn on 7th rank near promotion",
+			fen:           "8/3P4/8/8/8/8/8/8 w - - 0 1",        // d7
+			expectedWhite: ai.EvaluationScore(330), // material + positional + isolated penalty + passed pawn bonus
+			expectedBlack: ai.EvaluationScore(-330),
+			description:   "Pawn on d7 should have +50 positional bonus (near promotion)",
 		},
 		{
-			name:           "Black pawn on starting rank from black's perspective",
-			fen:            "8/3p4/8/8/8/8/8/8 w - - 0 1", // d7 (black's starting rank)
-			expectedWhite:  ai.EvaluationScore(-(100 + (-20))), // Black pieces are negative, penalty becomes positive
-			expectedBlack:  ai.EvaluationScore(100 + (-20)),    // From black's perspective  
-			description:    "Black pawn on d7 should have -20 positional penalty (unmoved center pawn)",
+			name:          "Black pawn on starting rank from black's perspective",
+			fen:           "8/3p4/8/8/8/8/8/8 w - - 0 1",              // d7 (black's starting rank)
+			expectedWhite: ai.EvaluationScore(-85), // Black pieces are negative
+			expectedBlack: ai.EvaluationScore(85),    // From black's perspective
+			description:   "Black pawn on d7 should have -20 positional penalty (unmoved center pawn)",
 		},
 		{
-			name:           "Black pawn advanced to 4th rank from black's perspective", 
-			fen:            "8/8/8/8/3p4/8/8/8 w - - 0 1", // d4 (black's 4th rank from their perspective)
-			expectedWhite:  ai.EvaluationScore(-(100 + 25)), // Black pieces are negative
-			expectedBlack:  ai.EvaluationScore(100 + 25),    // From black's perspective  
-			description:    "Black pawn on d4 should have +25 positional bonus (advanced from black's perspective)",
+			name:          "Black pawn advanced to 4th rank from black's perspective",
+			fen:           "8/8/8/8/3p4/8/8/8 w - - 0 1",           // d4 (black's 4th rank from their perspective)
+			expectedWhite: ai.EvaluationScore(-205), // Black pieces are negative
+			expectedBlack: ai.EvaluationScore(205),    // From black's perspective
+			description:   "Black pawn on d4 should have +25 positional bonus (advanced from black's perspective)",
 		},
 	}
 
@@ -600,7 +600,7 @@ func TestPawnTableValues(t *testing.T) {
 		t.Run(tt.square, func(t *testing.T) {
 			actual := PawnTable[tt.rank*8+tt.file]
 			if actual != tt.expected {
-				t.Errorf("Pawn table value for %s (rank %d, file %d): expected %d, got %d", 
+				t.Errorf("Pawn table value for %s (rank %d, file %d): expected %d, got %d",
 					tt.square, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -612,7 +612,7 @@ func TestPawnPositionPreference(t *testing.T) {
 
 	// Test pawn on starting position vs advanced center
 	startingFEN := "8/8/8/8/8/8/3P4/8 w - - 0 1" // d2
-	advancedFEN := "8/8/8/8/3P4/8/8/8 w - - 0 1"  // d4
+	advancedFEN := "8/8/8/8/3P4/8/8/8 w - - 0 1" // d4
 
 	startingBoard, _ := board.FromFEN(startingFEN)
 	advancedBoard, _ := board.FromFEN(advancedFEN)
@@ -622,12 +622,12 @@ func TestPawnPositionPreference(t *testing.T) {
 	advancedScore := evaluator.Evaluate(advancedBoard)
 
 	if advancedScore <= startingScore {
-		t.Errorf("Evaluator should prefer advanced pawn (%d) over starting rank (%d)", 
+		t.Errorf("Evaluator should prefer advanced pawn (%d) over starting rank (%d)",
 			advancedScore, startingScore)
 	}
 
-	// The difference should be exactly the positional bonus difference
-	expectedDiff := 20 - (-20) // advanced bonus - starting penalty = 40
+	// The difference now includes positional bonus and passed pawn bonus differences
+	expectedDiff := 80 // Difference includes positional + passed pawn bonus changes
 	actualDiff := int(advancedScore - startingScore)
 	if actualDiff != expectedDiff {
 		t.Errorf("Expected positional difference of %d, got %d", expectedDiff, actualDiff)
@@ -638,8 +638,8 @@ func TestAdvancedPawnPreference(t *testing.T) {
 	evaluator := NewEvaluator()
 
 	// Test advanced pawn vs near-promotion position
-	advancedFEN := "8/8/8/3P4/8/8/8/8 w - - 0 1" // d5 (+25)
-	nearPromotionFEN := "8/3P4/8/8/8/8/8/8 w - - 0 1"   // d7 (+50)
+	advancedFEN := "8/8/8/3P4/8/8/8/8 w - - 0 1"      // d5 (+25)
+	nearPromotionFEN := "8/3P4/8/8/8/8/8/8 w - - 0 1" // d7 (+50)
 
 	advancedBoard, _ := board.FromFEN(advancedFEN)
 	nearPromotionBoard, _ := board.FromFEN(nearPromotionFEN)
@@ -649,12 +649,12 @@ func TestAdvancedPawnPreference(t *testing.T) {
 	nearPromotionScore := evaluator.Evaluate(nearPromotionBoard)
 
 	if nearPromotionScore <= advancedScore {
-		t.Errorf("Evaluator should prefer near-promotion pawn (%d) over mid-advanced (%d)", 
+		t.Errorf("Evaluator should prefer near-promotion pawn (%d) over mid-advanced (%d)",
 			nearPromotionScore, advancedScore)
 	}
 
-	// The difference should be exactly the positional bonus difference
-	expectedDiff := 50 - 25 // d7 near-promotion bonus - d5 bonus = 25
+	// The difference now includes positional bonus and passed pawn bonus differences  
+	expectedDiff := 125 // Difference includes positional + passed pawn bonus changes
 	actualDiff := int(nearPromotionScore - advancedScore)
 	if actualDiff != expectedDiff {
 		t.Errorf("Expected positional difference of %d, got %d", expectedDiff, actualDiff)
@@ -663,7 +663,7 @@ func TestAdvancedPawnPreference(t *testing.T) {
 
 func TestQueenPositionalBonus(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	tests := []struct {
 		name        string
 		fen         string
@@ -672,31 +672,31 @@ func TestQueenPositionalBonus(t *testing.T) {
 	}{
 		{
 			name:        "White queen on corner",
-			fen:         "8/8/8/8/8/8/8/Q7 w - - 0 1", // a1
+			fen:         "8/8/8/8/8/8/8/Q7 w - - 0 1",    // a1
 			expected:    ai.EvaluationScore(900 + (-20)), // material + positional
 			description: "Queen on a1 should have -20 positional penalty",
 		},
 		{
 			name:        "White queen on center",
 			fen:         "8/8/8/3Q4/8/8/8/8 w - - 0 1", // d5
-			expected:    ai.EvaluationScore(900 + 5), // material + positional
+			expected:    ai.EvaluationScore(900 + 5),   // material + positional
 			description: "Queen on d5 should have +5 positional bonus",
 		},
 		{
 			name:        "White queen on good square",
 			fen:         "8/8/8/8/3Q4/8/8/8 w - - 0 1", // d4
-			expected:    ai.EvaluationScore(900 + 5), // material + positional
+			expected:    ai.EvaluationScore(900 + 5),   // material + positional
 			description: "Queen on d4 should have +5 positional bonus",
 		},
 		{
 			name:        "Black queen on corner",
-			fen:         "q7/8/8/8/8/8/8/8 w - - 0 1", // a8 (black's back rank corner)
+			fen:         "q7/8/8/8/8/8/8/8 w - - 0 1",       // a8 (black's back rank corner)
 			expected:    ai.EvaluationScore(-(900 + (-20))), // Black pieces are negative from White's perspective
 			description: "Black queen on a8 should have -20 positional penalty (negative for Black)",
 		},
 		{
-			name:        "Black queen on center", 
-			fen:         "8/8/8/3q4/8/8/8/8 w - - 0 1", // d5
+			name:        "Black queen on center",
+			fen:         "8/8/8/3q4/8/8/8/8 w - - 0 1",  // d5
 			expected:    ai.EvaluationScore(-(900 + 5)), // Black pieces are negative from White's perspective
 			description: "Black queen on d5 should have +5 positional bonus (negative for Black)",
 		},
@@ -742,7 +742,7 @@ func TestQueenTableValues(t *testing.T) {
 		t.Run(tt.square, func(t *testing.T) {
 			actual := QueenTable[tt.rank*8+tt.file]
 			if actual != tt.expected {
-				t.Errorf("Queen table value for %s (rank %d, file %d): expected %d, got %d", 
+				t.Errorf("Queen table value for %s (rank %d, file %d): expected %d, got %d",
 					tt.square, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -753,7 +753,7 @@ func TestQueenPositionPreference(t *testing.T) {
 	evaluator := NewEvaluator()
 
 	// Test with queen in corner vs center
-	cornerFEN := "8/8/8/8/8/8/8/Q7 w - - 0 1" // a1
+	cornerFEN := "8/8/8/8/8/8/8/Q7 w - - 0 1"  // a1
 	centerFEN := "8/8/8/3Q4/8/8/8/8 w - - 0 1" // d5
 
 	cornerBoard, _ := board.FromFEN(cornerFEN)
@@ -764,7 +764,7 @@ func TestQueenPositionPreference(t *testing.T) {
 	centerScore := evaluator.Evaluate(centerBoard)
 
 	if centerScore <= cornerScore {
-		t.Errorf("Evaluator should prefer queen in center (%d) over corner (%d)", 
+		t.Errorf("Evaluator should prefer queen in center (%d) over corner (%d)",
 			centerScore, cornerScore)
 	}
 
@@ -793,7 +793,7 @@ func TestQueenPositionalBonusFunction(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			actual := getPositionalBonus(tt.piece, tt.rank, tt.file)
 			if actual != tt.expected {
-				t.Errorf("getPositionalBonus(%v, %d, %d): expected %d, got %d", 
+				t.Errorf("getPositionalBonus(%v, %d, %d): expected %d, got %d",
 					tt.piece, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -802,7 +802,7 @@ func TestQueenPositionalBonusFunction(t *testing.T) {
 
 func TestKingPositionalBonus(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	tests := []struct {
 		name        string
 		fen         string
@@ -811,7 +811,7 @@ func TestKingPositionalBonus(t *testing.T) {
 	}{
 		{
 			name:        "White king on back rank corner",
-			fen:         "8/8/8/8/8/8/8/K7 w - - 0 1", // a1
+			fen:         "8/8/8/8/8/8/8/K7 w - - 0 1",  // a1
 			expected:    ai.EvaluationScore(0 + (-30)), // material + positional
 			description: "King on a1 should have -30 positional penalty",
 		},
@@ -830,24 +830,24 @@ func TestKingPositionalBonus(t *testing.T) {
 		{
 			name:        "White king on 8th rank edge (advanced)",
 			fen:         "K7/8/8/8/8/8/8/8 w - - 0 1", // a8
-			expected:    ai.EvaluationScore(0 + 20), // material + positional
+			expected:    ai.EvaluationScore(0 + 20),   // material + positional
 			description: "King on a8 should have +20 positional bonus",
 		},
 		{
 			name:        "Black king on back rank corner",
-			fen:         "k7/8/8/8/8/8/8/8 w - - 0 1", // a8 (black's back rank corner)
+			fen:         "k7/8/8/8/8/8/8/8 w - - 0 1",     // a8 (black's back rank corner)
 			expected:    ai.EvaluationScore(-(0 + (-30))), // Black pieces are negative from White's perspective
 			description: "Black king on a8 should have -30 positional penalty (negative for Black)",
 		},
 		{
-			name:        "Black king on back rank normal position", 
-			fen:         "6k1/8/8/8/8/8/8/8 w - - 0 1", // g8
+			name:        "Black king on back rank normal position",
+			fen:         "6k1/8/8/8/8/8/8/8 w - - 0 1",    // g8
 			expected:    ai.EvaluationScore(-(0 + (-40))), // Black pieces are negative from White's perspective
 			description: "Black king on g8 should have -40 positional penalty (negative for Black)",
 		},
 		{
-			name:        "Black king on center", 
-			fen:         "8/8/8/8/3k4/8/8/8 w - - 0 1", // d4 (from black's perspective = d5)
+			name:        "Black king on center",
+			fen:         "8/8/8/8/3k4/8/8/8 w - - 0 1",    // d4 (from black's perspective = d5)
 			expected:    ai.EvaluationScore(-(0 + (-40))), // Black pieces are negative from White's perspective
 			description: "Black king on d4 should have -40 positional penalty (negative for Black)",
 		},
@@ -895,7 +895,7 @@ func TestKingTableValues(t *testing.T) {
 		t.Run(tt.square, func(t *testing.T) {
 			actual := KingTable[tt.rank*8+tt.file]
 			if actual != tt.expected {
-				t.Errorf("King table value for %s (rank %d, file %d): expected %d, got %d", 
+				t.Errorf("King table value for %s (rank %d, file %d): expected %d, got %d",
 					tt.square, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -906,7 +906,7 @@ func TestKingPositionPreference(t *testing.T) {
 	evaluator := NewEvaluator()
 
 	// Test with king in center vs advanced position
-	centerFEN := "8/8/8/8/3K4/8/8/8 w - - 0 1" // d4 (exposed)
+	centerFEN := "8/8/8/8/3K4/8/8/8 w - - 0 1"   // d4 (exposed)
 	advancedFEN := "6K1/8/8/8/8/8/8/8 w - - 0 1" // g8 (advanced)
 
 	centerBoard, _ := board.FromFEN(centerFEN)
@@ -917,7 +917,7 @@ func TestKingPositionPreference(t *testing.T) {
 	advancedScore := evaluator.Evaluate(advancedBoard)
 
 	if advancedScore <= centerScore {
-		t.Errorf("Evaluator should prefer advanced king (%d) over exposed center (%d)", 
+		t.Errorf("Evaluator should prefer advanced king (%d) over exposed center (%d)",
 			advancedScore, centerScore)
 	}
 
@@ -941,7 +941,7 @@ func TestKingPositionalBonusFunction(t *testing.T) {
 		{board.WhiteKing, 3, 3, -50}, // d4 center
 		{board.WhiteKing, 7, 6, 30},  // g8 advanced
 		{board.BlackKing, 7, 0, 30},  // a8 (corner penalty, negated for black)
-		{board.BlackKing, 7, 6, 40}, // g8 (back rank penalty -40, negated for black = +40)
+		{board.BlackKing, 7, 6, 40},  // g8 (back rank penalty -40, negated for black = +40)
 		{board.BlackKing, 4, 3, 50},  // d5 from black's perspective (center penalty, negated for black)
 	}
 
@@ -949,7 +949,7 @@ func TestKingPositionalBonusFunction(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			actual := getPositionalBonus(tt.piece, tt.rank, tt.file)
 			if actual != tt.expected {
-				t.Errorf("getPositionalBonus(%v, %d, %d): expected %d, got %d", 
+				t.Errorf("getPositionalBonus(%v, %d, %d): expected %d, got %d",
 					tt.piece, tt.rank, tt.file, tt.expected, actual)
 			}
 		})
@@ -962,7 +962,7 @@ func TestKingSafetyPreference(t *testing.T) {
 	// Test king safety: corner vs edge vs center
 	cornerFEN := "8/8/8/8/8/8/8/K7 w - - 0 1"  // a1 (-30)
 	edgeFEN := "8/8/8/8/8/K7/8/8 w - - 0 1"    // a3 (-30)
-	centerFEN := "8/8/8/8/3K4/8/8/8 w - - 0 1"  // d4 (-50)
+	centerFEN := "8/8/8/8/3K4/8/8/8 w - - 0 1" // d4 (-50)
 
 	cornerBoard, _ := board.FromFEN(cornerFEN)
 	edgeBoard, _ := board.FromFEN(edgeFEN)
@@ -983,7 +983,7 @@ func TestKingSafetyPreference(t *testing.T) {
 
 func TestCompleteEvaluationWithAllPieces(t *testing.T) {
 	evaluator := NewEvaluator()
-	
+
 	// Complex position with all piece types
 	// White: Knight on d4 (+20), Bishop on a1 (-20), Rook on d2 (+10), Pawn on e4 (+25)
 	// Black: Knight on a8 (-50), Bishop on e5 (+10), Rook on a7 (+5), Pawn on d5 (+20)
@@ -997,20 +997,116 @@ func TestCompleteEvaluationWithAllPieces(t *testing.T) {
 
 	// White pieces:
 	// Knight on d4: 320 + 20 = 340
-	// Bishop on a1: 330 + (-20) = 310  
+	// Bishop on a1: 330 + (-20) = 310
 	// Rook on d2: 500 + 10 = 510
 	// Pawn on e4: 100 + 20 = 120
-	// 
+	//
 	// Black pieces:
 	// Knight on a8: -(320 + (-50)) = -270
 	// Bishop on e5: -(330 + 10) = -340
 	// Rook on a7: -(500 + (-5)) = -505 (a7 = rank 6, flipped to rank 1 = +5, negated = -5)
 	// Pawn on d5: -(100 + (-20)) = -120 (d5 = rank 4, flipped to rank 3 = +20, negated = -20)
-	// 
+	//
 	// Total for white: 340 + 310 + 510 + 120 - 270 - 340 - 505 - 120 = 45
 	expectedWhiteScore := ai.EvaluationScore(45)
 
 	if score != expectedWhiteScore {
 		t.Errorf("Expected white score %d, got %d", expectedWhiteScore, score)
+	}
+}
+
+func TestDoubledPawnPenalty(t *testing.T) {
+	evaluator := NewEvaluator()
+
+	tests := []struct {
+		name          string
+		fen           string
+		expectedWhite ai.EvaluationScore
+		description   string
+	}{
+		{
+			name:          "White doubled pawns on d-file",
+			fen:           "8/8/8/3P4/8/8/3P4/8 w - - 0 1", // Two white pawns on d2 and d5
+			expectedWhite: ai.EvaluationScore(275),         // Now includes passed pawn bonuses for isolated pawns
+			description:   "Two white pawns on same file should get doubled pawn penalty",
+		},
+		{
+			name:          "Black doubled pawns on e-file",
+			fen:           "8/4p3/8/8/4p3/8/8/8 w - - 0 1", // Two black pawns on e7 and e4
+			expectedWhite: ai.EvaluationScore(-275),        // Black pieces negative of white equivalent
+			description:   "Two black pawns on same file should get doubled pawn penalty",
+		},
+		{
+			name:          "White tripled pawns on c-file",
+			fen:           "8/8/2P5/8/2P5/8/2P5/8 w - - 0 1", // Three white pawns on c2, c4, c6
+			expectedWhite: ai.EvaluationScore(475),           // Now includes passed pawn bonuses for isolated pawns
+			description:   "Three white pawns on same file should get two doubled pawn penalties",
+		},
+		{
+			name:          "Black tripled pawns on c-file",
+			fen:           "8/2p5/8/2p5/8/2p5/8/8 w - - 0 1", // Three black pawns on c7, c5, c3
+			expectedWhite: ai.EvaluationScore(-475),          // Black pieces negative of white equivalent
+			description:   "Three black pawns on same file should get two doubled pawn penalties",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatalf("Failed to create board from FEN %s: %v", tt.fen, err)
+			}
+
+			score := evaluator.Evaluate(b)
+
+			if score != tt.expectedWhite {
+				t.Errorf("%s: Expected score %d, got %d", tt.description, tt.expectedWhite, score)
+			}
+		})
+	}
+}
+
+func TestPassedPawnBonus(t *testing.T) {
+	evaluator := NewEvaluator()
+
+	tests := []struct {
+		name          string
+		fen           string
+		expectedWhite ai.EvaluationScore
+		description   string
+	}{
+		{
+			name:          "White passed pawn on d4",
+			fen:           "8/8/8/8/3P4/8/8/8 w - - 0 1", // Single white pawn on d4, no enemy pawns
+			expectedWhite: ai.EvaluationScore(165),
+			description:   "Isolated white pawn with clear path should get passed pawn bonus",
+		},
+		{
+			name:          "White pawn blocked by black pawn",
+			fen:           "8/8/3p4/8/3P4/8/8/8 w - - 0 1", // White pawn on d4 blocked by black pawn on d6
+			expectedWhite: ai.EvaluationScore(20),
+			description:   "White pawn blocked by enemy pawn should not get passed pawn bonus",
+		},
+		{
+			name:          "Black passed pawn on e5",
+			fen:           "8/8/8/4p3/8/8/8/8 w - - 0 1", // Single black pawn on e5, no white pawns
+			expectedWhite: ai.EvaluationScore(-165),
+			description:   "Black passed pawn should get bonus (negative from white perspective)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatalf("Failed to create board from FEN %s: %v", tt.fen, err)
+			}
+
+			score := evaluator.Evaluate(b)
+
+			if score != tt.expectedWhite {
+				t.Errorf("%s: Expected score %d, got %d", tt.description, tt.expectedWhite, score)
+			}
+		})
 	}
 }

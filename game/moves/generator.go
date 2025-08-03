@@ -86,6 +86,10 @@ func (g *Generator) isSquareUnderAttack(b *board.Board, square board.Square, pla
 // findKing finds the king's position for the given player using cache.
 // Returns nil if no king is found (which indicates an invalid board state).
 func (g *Generator) findKing(b *board.Board, player Player) *board.Square {
+	// TODO: Temporarily disable cache to debug cache corruption issues
+	// Always do fresh search by forcing cache invalidation
+	g.kingCacheValid = false
+	
 	// Initialize cache if not valid
 	if !g.kingCacheValid {
 		g.initializeKingCache(b)
