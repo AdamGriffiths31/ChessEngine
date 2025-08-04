@@ -106,19 +106,6 @@ func evaluateOpenFiles(rookSquare int, friendlyPawns, enemyPawns board.Bitboard)
 	return 0
 }
 
-// Helper function to get file mask if not available
-func getFileMask(file int) board.Bitboard {
-	if file < 0 || file > 7 {
-		return 0
-	}
-
-	var mask board.Bitboard
-	for rank := 0; rank < 8; rank++ {
-		mask = mask.SetBit(board.FileRankToSquare(file, rank))
-	}
-	return mask
-}
-
 // evaluateSeventhRank checks if rook is on 7th rank with enemy king on 8th
 func evaluateSeventhRank(rookSquare int, enemyKing board.Bitboard, color board.BitboardColor) int {
 	_, rank := board.SquareToFileRank(rookSquare)
@@ -272,19 +259,6 @@ func evaluateRookMobility(b *board.Board, square int, color board.BitboardColor)
 	score += verticalMobility // Extra point per vertical move
 
 	return score
-}
-
-// Helper function to get rank mask if not available
-func getRankMask(rank int) board.Bitboard {
-	if rank < 0 || rank > 7 {
-		return 0
-	}
-
-	var mask board.Bitboard
-	for file := 0; file < 8; file++ {
-		mask = mask.SetBit(board.FileRankToSquare(file, rank))
-	}
-	return mask
 }
 
 // evaluateRookTrappedByKing checks if rook is trapped by own king

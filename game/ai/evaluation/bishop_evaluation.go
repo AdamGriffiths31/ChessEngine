@@ -116,7 +116,7 @@ func evaluateBishopFeatures(b *board.Board, bishops board.Bitboard, color board.
 
 		// Evaluate individual bishop features
 		score += evaluateBadBishop(b, square, friendlyPawns, color)
-		score += evaluateLongDiagonalControl(b, square, color)
+		score += evaluateLongDiagonalControl(b, square)
 		score += evaluateBishopMobility(b, square, color)
 		score += evaluateXRayAttacks(b, square, color)
 	}
@@ -194,7 +194,7 @@ var (
 )
 
 // evaluateLongDiagonalControl evaluates control of long diagonals
-func evaluateLongDiagonalControl(b *board.Board, bishopSquare int, color board.BitboardColor) int {
+func evaluateLongDiagonalControl(b *board.Board, bishopSquare int) int {
 	// Get bishop attacks
 	attacks := board.GetBishopAttacks(bishopSquare, b.AllPieces)
 

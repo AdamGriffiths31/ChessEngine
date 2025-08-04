@@ -153,7 +153,7 @@ func TestLongDiagonalControl(t *testing.T) {
 
 			bishopSquare, _ := whiteBishops.PopLSB()
 
-			score := evaluateLongDiagonalControl(b, bishopSquare, board.BitboardWhite)
+			score := evaluateLongDiagonalControl(b, bishopSquare)
 			if score != tt.expected {
 				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, score)
 			}

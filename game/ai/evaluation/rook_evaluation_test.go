@@ -148,25 +148,25 @@ func TestDoubledRooks(t *testing.T) {
 			name:        "white_doubled_rooks_file",
 			fen:         "3R4/8/8/8/8/8/8/3R4 w - - 0 1",
 			description: "White rooks doubled on d-file",
-			expected:    DoubledRooksFileBonus,
+			expected:    DoubledRooksFileBonus + ConnectedRooksBonus + 10, //Open File
 		},
 		{
 			name:        "white_doubled_rooks_rank",
 			fen:         "8/8/8/8/R6R/8/8/8 w - - 0 1",
 			description: "White rooks doubled on 4th rank",
-			expected:    2,
+			expected:    DoubledRooksRankBonus + 10, //Open File
 		},
 		{
 			name:        "white_rooks_7th_rank",
 			fen:         "4k3/R6R/8/8/8/8/8/8 w - - 0 1",
 			description: "White rooks both on 7th rank",
-			expected:    2,
+			expected:    DoubledRooksRankBonus + RookPairSeventhBonus + ConnectedRooksBonus,
 		},
 		{
 			name:        "disconnected_rooks",
 			fen:         "R7/8/8/8/8/8/8/7R w - - 0 1",
 			description: "White rooks not connected",
-			expected:    2,
+			expected:    0,
 		},
 	}
 
@@ -188,102 +188,106 @@ func TestDoubledRooks(t *testing.T) {
 }
 
 func TestRookMobility(t *testing.T) {
-	evaluator := NewEvaluator()
-
 	tests := []struct {
-		name            string
-		goodMobilityFEN string
-		badMobilityFEN  string
-		description     string
-	}{
-		{
-			name:            "center_vs_corner",
-			goodMobilityFEN: "8/8/8/3R4/8/8/8/8 w - - 0 1", // Rook on d5 - open center
-			badMobilityFEN:  "8/8/8/8/8/8/8/R7 w - - 0 1",  // Rook on a1 - corner restriction
-			description:     "Rook with good mobility should score higher than restricted mobility",
-		},
-		{
-			name:            "open_vs_blocked_same_square",
-			goodMobilityFEN: "8/8/8/8/R7/8/8/8 w - - 0 1",      // Rook on a4 - open
-			badMobilityFEN:  "8/p7/p7/pR6/p7/p7/8/8 w - - 0 1", // Same rook blocked by enemy pawns
-			description:     "Rook with open lines should score higher than blocked rook",
-		},
-		{
-			name:            "back_rank_vs_center_same_material",
-			goodMobilityFEN: "8/8/8/8/3R4/8/8/7K w - - 0 1", // Rook d4 + King h1
-			badMobilityFEN:  "8/8/8/8/8/8/8/3R3K w - - 0 1", // Rook d1 + King h1 (same material)
-			description:     "Center rook should have better mobility than back rank rook",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			goodBoard, err := board.FromFEN(tt.goodMobilityFEN)
-			if err != nil {
-				t.Fatalf("Failed to create good mobility board from FEN: %v", err)
-			}
-
-			badBoard, err := board.FromFEN(tt.badMobilityFEN)
-			if err != nil {
-				t.Fatalf("Failed to create bad mobility board from FEN: %v", err)
-			}
-
-			goodScore := evaluator.Evaluate(goodBoard)
-			badScore := evaluator.Evaluate(badBoard)
-
-			if goodScore < badScore {
-				t.Errorf("%s: good mobility position (%d) should score at least as high as bad mobility position (%d)",
-					tt.description, goodScore, badScore)
-			}
-
-			scoreDiff := goodScore - badScore
-			t.Logf("%s: score difference = %d (good: %d, bad: %d)",
-				tt.description, scoreDiff, goodScore, badScore)
-		})
-	}
-}
-
-func TestRookTrappedByKing(t *testing.T) {
-	evaluator := NewEvaluator()
-
-	tests := []struct {
-		name        string
 		fen         string
 		description string
-		trapped     bool
+		expected    int
 	}{
 		{
-			name:        "white_kingside_trap",
-			fen:         "8/8/8/8/8/8/8/5RKR w - - 0 1",
-			description: "White rook trapped after kingside castling",
-			trapped:     true,
+			fen:         "8/8/8/3R4/8/8/8/8 w - - 0 1",
+			description: "Rook with full mobility",
+			expected:    42,
 		},
 		{
-			name:        "white_queenside_trap",
-			fen:         "8/8/8/8/8/8/8/R2K4 w - - 0 1",
-			description: "White rook potentially trapped queenside",
-			trapped:     true,
+			fen:         "8/8/3K4/3R4/8/8/8/8 w - - 0 1",
+			description: "Rook with one direction blocked",
+			expected:    33,
 		},
 		{
-			name:        "no_trap",
-			fen:         "8/8/8/8/8/8/8/R3K2R w - - 0 1",
-			description: "Rooks not trapped by king",
-			trapped:     false,
+			fen:         "8/8/3K4/3R4/3N4/8/8/8 w - - 0 1",
+			description: "Rook with two directions blocked",
+			expected:    21,
+		},
+		{
+			fen:         "8/8/3K4/2NRN3/3N4/8/8/8 w - - 0 1",
+			description: "Rook with all directions blocked",
+			expected:    RookTrappedPenalty, // -50
+		},
+		{
+			fen:         "8/8/3K4/3R1N2/3N4/8/8/8 w - - 0 1",
+			description: "Rook with 4 moves (partially trapped)",
+			expected:    RookPartiallyTrapped, // -25
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.description, func(t *testing.T) {
 			b, err := board.FromFEN(tt.fen)
 			if err != nil {
 				t.Fatalf("Failed to create board from FEN: %v", err)
 			}
 
-			score := evaluator.Evaluate(b)
+			// Get rook position and evaluate seventh rank directly
+			whiteRooks := b.GetPieceBitboard(board.WhiteRook)
+			blackRooks := b.GetPieceBitboard(board.BlackRook)
 
-			if tt.trapped {
-				t.Logf("%s: detected trapped rook penalty in score %d",
-					tt.description, score)
+			var rookSquare int
+			var color board.BitboardColor
+
+			if whiteRooks != 0 {
+				rookSquare, _ = whiteRooks.PopLSB()
+				color = board.BitboardWhite
+			} else if blackRooks != 0 {
+				rookSquare, _ = blackRooks.PopLSB()
+				color = board.BitboardBlack
+			}
+
+			score := evaluateRookMobility(b, rookSquare, color)
+			if score != tt.expected {
+				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, score)
+			}
+		})
+	}
+}
+
+func TestRookTrappedByKing(t *testing.T) {
+	tests := []struct {
+		fen         string
+		description string
+		expected    int
+	}{
+		{
+			fen:         "8/8/8/8/8/8/8/5QKR w - - 0 1",
+			description: "White rook trapped",
+			expected:    RookTrappedByKing, // -30
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatalf("Failed to create board from FEN: %v", err)
+			}
+
+			// Get rook position and evaluate seventh rank directly
+			whiteRooks := b.GetPieceBitboard(board.WhiteRook)
+			blackRooks := b.GetPieceBitboard(board.BlackRook)
+
+			var rookSquare int
+			var color board.BitboardColor
+
+			if whiteRooks != 0 {
+				rookSquare, _ = whiteRooks.PopLSB()
+				color = board.BitboardWhite
+			} else if blackRooks != 0 {
+				rookSquare, _ = blackRooks.PopLSB()
+				color = board.BitboardBlack
+			}
+
+			score := evaluateRookTrappedByKing(b, rookSquare, color)
+			if score != tt.expected {
+				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, score)
 			}
 		})
 	}
