@@ -49,6 +49,15 @@ func (e *Evaluator) Evaluate(b *board.Board) ai.EvaluationScore {
 	// Add pawn structure evaluation
 	score += e.evaluatePawnStructure(b)
 
+	// Add knight-specific evaluation
+	score += evaluateKnights(b)
+
+	// Add bishop-specific evaluation
+	score += evaluateBishops(b)
+
+	// Add rook-specific evaluation
+	score += evaluateRooks(b)
+
 	return ai.EvaluationScore(score)
 }
 
@@ -93,25 +102,25 @@ func getPositionalBonus(piece board.Piece, rank, file int) int {
 // evaluatePawnStructure evaluates pawn structure and returns the score from White's perspective
 func (e *Evaluator) evaluatePawnStructure(b *board.Board) int {
 	score := 0
-	
+
 	// Get pawn bitboards
 	whitePawns := b.GetPieceBitboard(board.WhitePawn)
 	blackPawns := b.GetPieceBitboard(board.BlackPawn)
-	
+
 	// Penalize isolated pawns (pawns with no friendly pawns on adjacent files)
 	const isolatedPawnPenalty = 20
-	score -= countIsolatedPawns(whitePawns) * isolatedPawnPenalty  // White penalty
-	score += countIsolatedPawns(blackPawns) * isolatedPawnPenalty  // Black penalty
-	
+	score -= countIsolatedPawns(whitePawns) * isolatedPawnPenalty // White penalty
+	score += countIsolatedPawns(blackPawns) * isolatedPawnPenalty // Black penalty
+
 	// Penalize doubled pawns (multiple pawns on same file)
 	const doubledPawnPenalty = 15
-	score -= countDoubledPawns(whitePawns) * doubledPawnPenalty  // White penalty
-	score += countDoubledPawns(blackPawns) * doubledPawnPenalty  // Black penalty
-	
+	score -= countDoubledPawns(whitePawns) * doubledPawnPenalty // White penalty
+	score += countDoubledPawns(blackPawns) * doubledPawnPenalty // Black penalty
+
 	// Bonus for passed pawns (pawns with clear path to promotion)
-	score += evaluatePassedPawns(whitePawns, blackPawns, board.BitboardWhite)  // White bonus
-	score -= evaluatePassedPawns(blackPawns, whitePawns, board.BitboardBlack)  // Black bonus (subtracted since from white perspective)
-	
+	score += evaluatePassedPawns(whitePawns, blackPawns, board.BitboardWhite) // White bonus
+	score -= evaluatePassedPawns(blackPawns, whitePawns, board.BitboardBlack) // Black bonus (subtracted since from white perspective)
+
 	return score
 }
 
@@ -151,13 +160,13 @@ func evaluatePassedPawns(friendlyPawns, enemyPawns board.Bitboard, color board.B
 	if passedPawns == 0 {
 		return 0
 	}
-	
+
 	score := 0
 	pawnList := passedPawns.BitList()
-	
+
 	for _, square := range pawnList {
 		rank := square / 8
-		
+
 		// Calculate bonus based on how advanced the passed pawn is
 		var advancement int
 		if color == board.BitboardWhite {
@@ -165,14 +174,14 @@ func evaluatePassedPawns(friendlyPawns, enemyPawns board.Bitboard, color board.B
 		} else {
 			advancement = 7 - rank // For black, lower rank = more advanced
 		}
-		
+
 		// Progressive bonus: more advanced pawns get exponentially higher bonuses
 		// Base bonus of 20, with increasing rewards for advancement
 		const basePassedPawnBonus = 20
 		bonus := basePassedPawnBonus + (advancement * advancement * 5)
 		score += bonus
 	}
-	
+
 	return score
 }
 

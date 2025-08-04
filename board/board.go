@@ -67,6 +67,26 @@ type Board struct {
 	AllPieces   Bitboard // All occupied squares
 }
 
+// Define square color masks if not already available
+var (
+	LightSquares Bitboard
+	DarkSquares  Bitboard
+)
+
+func init() {
+	// Initialize light and dark square masks
+	for rank := 0; rank < 8; rank++ {
+		for file := 0; file < 8; file++ {
+			square := FileRankToSquare(file, rank)
+			if (file+rank)%2 == 0 {
+				DarkSquares = DarkSquares.SetBit(square)
+			} else {
+				LightSquares = LightSquares.SetBit(square)
+			}
+		}
+	}
+}
+
 func NewBoard() *Board {
 	board := &Board{
 		castlingRights:  "KQkq",

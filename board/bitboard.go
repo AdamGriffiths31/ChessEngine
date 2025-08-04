@@ -32,6 +32,12 @@ const (
 	A8, B8, C8, D8, E8, F8, G8, H8 = 56, 57, 58, 59, 60, 61, 62, 63
 )
 
+// Center square masks
+var (
+	CenterFiles = FileMask(3) | FileMask(4) // d and e files
+	CenterRanks = RankMask(3) | RankMask(4) // 4th and 5th ranks
+)
+
 // Core bitboard operations
 
 // SetBit sets the bit at the given square
