@@ -46,8 +46,8 @@ func (e *Evaluator) Evaluate(b *board.Board) ai.EvaluationScore {
 		}
 	}
 
-	// Add pawn structure evaluation
-	score += e.evaluatePawnStructure(b)
+	// Add pawn-specific evaluation
+	score += evaluatePawnStructure(b)
 
 	// Add knight-specific evaluation
 	score += evaluateKnights(b)
@@ -57,6 +57,9 @@ func (e *Evaluator) Evaluate(b *board.Board) ai.EvaluationScore {
 
 	// Add rook-specific evaluation
 	score += evaluateRooks(b)
+
+	// Add queen-specific evaluation
+	score += evaluateQueens(b)
 
 	return ai.EvaluationScore(score)
 }
@@ -100,7 +103,7 @@ func getPositionalBonus(piece board.Piece, rank, file int) int {
 }
 
 // evaluatePawnStructure evaluates pawn structure and returns the score from White's perspective
-func (e *Evaluator) evaluatePawnStructure(b *board.Board) int {
+func evaluatePawnStructure(b *board.Board) int {
 	score := 0
 
 	// Get pawn bitboards
