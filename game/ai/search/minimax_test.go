@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -732,4 +733,289 @@ func TestTranspositionTableMoveUsage(t *testing.T) {
 	}
 	
 	t.Logf("\n=== TRANSPOSITION TABLE TEST COMPLETE ===")
+}
+
+// TestDebugTop5MovesAtDepth6 is a debug test to find the top 5 moves at depth 6 for a specific position
+func TestDebugTop5MovesAtDepth6(t *testing.T) {
+	// Test position: "r7/ppk4p/5p2/6b1/4b1P1/8/P4K2/2q5 b - - 1 47"
+	testFEN := "r7/ppk4p/5p2/6b1/4b1P1/8/P4K2/2q5 b - - 1 47"
+	b, err := board.FromFEN(testFEN)
+	if err != nil {
+		t.Fatalf("Failed to create test position from FEN: %v", err)
+	}
+	
+	t.Logf("=== DEBUG TEST: Top 5 Moves at Depth 6 ===")
+	t.Logf("Position FEN: %s", testFEN)
+	t.Logf("Player to move: Black")
+	
+	// Import the moves package to generate legal moves
+	generator := moves.NewGenerator()
+	legalMoves := generator.GenerateAllMoves(b, moves.Black)
+	defer moves.ReleaseMoveList(legalMoves)
+	
+	t.Logf("Total legal moves: %d", legalMoves.Count)
+	
+	// Evaluate each move at depth 6
+	type MoveScore struct {
+		Move  board.Move
+		Score ai.EvaluationScore
+		Time  time.Duration
+		Nodes int64
+	}
+	
+	var moveScores []MoveScore
+	ctx := context.Background()
+	
+	t.Logf("\n=== EVALUATING ALL MOVES ===")
+	totalStartTime := time.Now()
+	
+	for i := 0; i < legalMoves.Count; i++ {
+		move := legalMoves.Moves[i]
+		
+		// Create a fresh engine for each move evaluation
+		engine := NewMinimaxEngine()
+		engine.SetTranspositionTableSize(64) // 64MB for deep search
+		
+		// Make the move
+		undo, err := b.MakeMoveWithUndo(move)
+		if err != nil {
+			t.Logf("Failed to make move %s%s: %v", move.From.String(), move.To.String(), err)
+			continue
+		}
+		
+		// Search from the opponent's perspective (depth 5 since we made one move)
+		moveStartTime := time.Now()
+		result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
+			MaxDepth:       5, // One less since we made a move
+			UseOpeningBook: false,
+			DebugMode:      false,
+		})
+		moveTime := time.Since(moveStartTime)
+		
+		// Unmake the move
+		b.UnmakeMove(undo)
+		
+		// Negate the score since we're looking from Black's perspective
+		score := -result.Score
+		
+		moveScores = append(moveScores, MoveScore{
+			Move:  move,
+			Score: score,
+			Time:  moveTime,
+			Nodes: result.Stats.NodesSearched,
+		})
+		
+		piece := b.GetPiece(move.From.Rank, move.From.File)
+		t.Logf("Move %2d: %s%s (piece: %v) -> Score: %8d, Time: %6s, Nodes: %8d",
+			i+1, move.From.String(), move.To.String(), piece, score, 
+			moveTime.Truncate(time.Millisecond), result.Stats.NodesSearched)
+	}
+	
+	totalTime := time.Since(totalStartTime)
+	
+	// Sort moves by score (best first for Black - highest scores)
+	sort.Slice(moveScores, func(i, j int) bool {
+		return moveScores[i].Score > moveScores[j].Score
+	})
+	
+	t.Logf("\n=== TOP 5 MOVES ===")
+	maxMoves := 5
+	if len(moveScores) < maxMoves {
+		maxMoves = len(moveScores)
+	}
+	
+	var totalNodes int64
+	for i := 0; i < maxMoves; i++ {
+		ms := moveScores[i]
+		piece := b.GetPiece(ms.Move.From.Rank, ms.Move.From.File)
+		totalNodes += ms.Nodes
+		
+		t.Logf("Rank %d: %s%s", i+1, ms.Move.From.String(), ms.Move.To.String())
+		t.Logf("         Piece: %v", piece)
+		t.Logf("         Score: %d", ms.Score)
+		t.Logf("         Time: %v", ms.Time.Truncate(time.Millisecond))
+		t.Logf("         Nodes: %d", ms.Nodes)
+		t.Logf("         Is Capture: %t", ms.Move.IsCapture)
+		if ms.Move.IsCapture {
+			t.Logf("         Captured: %v", ms.Move.Captured)
+		}
+		if ms.Move.Promotion != board.Empty {
+			t.Logf("         Promotion: %v", ms.Move.Promotion)
+		}
+		t.Logf("")
+	}
+	
+	t.Logf("=== SUMMARY ===")
+	t.Logf("Total evaluation time: %v", totalTime.Truncate(time.Millisecond))
+	t.Logf("Total nodes searched: %d", totalNodes)
+	t.Logf("Average nodes per move: %d", totalNodes/int64(len(moveScores)))
+	t.Logf("Best move: %s%s with score %d", 
+		moveScores[0].Move.From.String(), 
+		moveScores[0].Move.To.String(), 
+		moveScores[0].Score)
+	
+	t.Logf("\n=== DEBUG TEST COMPLETE ===")
+}
+
+// TestMateScoring verifies that mate in fewer moves gets higher scores
+func TestMateScoring(t *testing.T) {
+	engine := NewMinimaxEngine()
+	engine.SetTranspositionTableSize(16)
+	
+	// Test the specific position with g5h4 move
+	testFEN := "r7/ppk4p/5p2/6b1/4b1P1/8/P4K2/2q5 b - - 1 47"
+	b, err := board.FromFEN(testFEN)
+	if err != nil {
+		t.Fatalf("Failed to create test position: %v", err)
+	}
+	
+	t.Logf("=== MATE SCORING TEST ===")
+	t.Logf("Position: %s", testFEN)
+	t.Logf("MateScore constant: %d", ai.MateScore)
+	
+	// Test g5h4 specifically
+	move, err := board.ParseSimpleMove("g5h4")
+	if err != nil {
+		t.Fatalf("Failed to parse g5h4: %v", err)
+	}
+	
+	// Make the move
+	undo, err := b.MakeMoveWithUndo(move)
+	if err != nil {
+		t.Fatalf("Failed to make move g5h4: %v", err)
+	}
+	
+	t.Logf("After g5h4, evaluating White's response...")
+	
+	// Evaluate from White's perspective (should be mate in 1 if g5h4 is mate in 2)
+	ctx := context.Background()
+	result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
+		MaxDepth:       3,
+		UseOpeningBook: false,
+		DebugMode:      true,
+	})
+	
+	t.Logf("White's best response: %s%s", result.BestMove.From.String(), result.BestMove.To.String())
+	t.Logf("White's score: %d", result.Score)
+	t.Logf("Black's perspective (negated): %d", -result.Score)
+	
+	// Unmake the move
+	b.UnmakeMove(undo)
+	
+	// Now compare different moves to see scoring
+	testMoves := []string{"g5h4", "f6f5", "c1f4"}
+	
+	t.Logf("\n=== COMPARING MOVE SCORES ===")
+	for _, moveStr := range testMoves {
+		move, err := board.ParseSimpleMove(moveStr)
+		if err != nil {
+			t.Logf("Failed to parse %s: %v", moveStr, err)
+			continue
+		}
+		
+		undo, err := b.MakeMoveWithUndo(move)
+		if err != nil {
+			t.Logf("Failed to make move %s: %v", moveStr, err)
+			continue
+		}
+		
+		result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
+			MaxDepth:       3, 
+			UseOpeningBook: false,
+		})
+		
+		blackScore := -result.Score
+		t.Logf("%s: Black score = %d, White score = %d", moveStr, blackScore, result.Score)
+		
+		// Check if this is a mate score
+		if blackScore > ai.MateScore - 1000 {
+			mateDistance := ai.MateScore - blackScore
+			t.Logf("  -> Mate in %d for Black", mateDistance)
+		}
+		
+		b.UnmakeMove(undo)
+	}
+}
+
+// TestMateIn2Analysis specifically analyzes the mate in 2 moves g5h4 and c1f4
+func TestMateIn2Analysis(t *testing.T) {
+	engine := NewMinimaxEngine()
+	engine.SetTranspositionTableSize(32)
+	
+	testFEN := "r7/ppk4p/5p2/6b1/4b1P1/8/P4K2/2q5 b - - 1 47"
+	b, err := board.FromFEN(testFEN)
+	if err != nil {
+		t.Fatalf("Failed to create test position: %v", err)
+	}
+	
+	t.Logf("=== MATE IN 2 ANALYSIS ===")
+	t.Logf("Position: %s", testFEN)
+	
+	ctx := context.Background()
+	
+	// Test both moves at consistent depth
+	mateIn2Moves := []string{"g5h4", "c1f4"}
+	
+	for _, moveStr := range mateIn2Moves {
+		t.Logf("\n--- Analyzing %s ---", moveStr)
+		
+		move, err := board.ParseSimpleMove(moveStr)
+		if err != nil {
+			t.Fatalf("Failed to parse %s: %v", moveStr, err)
+		}
+		
+		// Make the move
+		undo, err := b.MakeMoveWithUndo(move)
+		if err != nil {
+			t.Fatalf("Failed to make move %s: %v", moveStr, err)
+		}
+		
+		// Search at different depths to see the mate
+		for depth := 1; depth <= 4; depth++ {
+			result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
+				MaxDepth:       depth,
+				UseOpeningBook: false,
+				DebugMode:      false,
+			})
+			
+			blackScore := -result.Score
+			t.Logf("  Depth %d: White's best = %s%s, Black score = %d", 
+				depth, result.BestMove.From.String(), result.BestMove.To.String(), blackScore)
+			
+			if blackScore > ai.MateScore - 100 {
+				mateDistance := ai.MateScore - blackScore
+				t.Logf("    -> This confirms mate in %d for Black", mateDistance)
+			}
+		}
+		
+		// Unmake the move
+		b.UnmakeMove(undo)
+	}
+	
+	t.Logf("\n=== DIRECT COMPARISON ===")
+	// Now compare them using the same search depth that was used in Top5 test
+	for _, moveStr := range mateIn2Moves {
+		move, err := board.ParseSimpleMove(moveStr)
+		if err != nil {
+			continue
+		}
+		
+		undo, err := b.MakeMoveWithUndo(move)
+		if err != nil {
+			continue
+		}
+		
+		result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
+			MaxDepth:       5, // Same depth as Top5 test
+			UseOpeningBook: false,
+			DebugMode:      false,
+		})
+		
+		blackScore := -result.Score
+		mateDistance := ai.MateScore - blackScore
+		t.Logf("%s: Score = %d (mate in %d), Nodes = %d", 
+			moveStr, blackScore, mateDistance, result.Stats.NodesSearched)
+		
+		b.UnmakeMove(undo)
+	}
 }

@@ -324,6 +324,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	if legalMoves.Count == 0 {
 		if inCheck {
 			// Checkmate - current player loses, return negative mate score
+			// In quiescence, we're at depth 0, so mate distance is 1
 			return -ai.MateScore + ai.EvaluationScore(1)
 		} else {
 			// Stalemate - return draw score
@@ -454,8 +455,7 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 		// No legal moves - check for checkmate or stalemate
 		if m.generator.IsKingInCheck(b, player) {
 			// Checkmate - current player loses, return negative mate score
-			// Shorter mates should have better scores (closer to -MateScore)
-			score := -ai.MateScore + ai.EvaluationScore(currentDepth)
+			score := -ai.MateScore + ai.EvaluationScore(originalMaxDepth-depth)
 			if m.useTranspositions && m.transpositionTable != nil {
 				m.transpositionTable.Store(hash, depth, score, EntryExact, board.Move{})
 			}
