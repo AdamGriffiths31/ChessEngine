@@ -250,7 +250,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 	return result
 }
 
-func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player moves.Player, alpha, beta ai.EvaluationScore, stats *ai.SearchStats) ai.EvaluationScore {
+func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player moves.Player, alpha, beta ai.EvaluationScore, depthFromRoot int, stats *ai.SearchStats) ai.EvaluationScore {
 	stats.NodesSearched++
 
 	// Check for cancellation
@@ -325,7 +325,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		if inCheck {
 			// Checkmate - current player loses, return negative mate score
 			// In quiescence, we're at depth 0, so mate distance is 1
-			return -ai.MateScore + ai.EvaluationScore(1)
+			return -ai.MateScore + ai.EvaluationScore(depthFromRoot)
 		} else {
 			// Stalemate - return draw score
 			return ai.DrawScore
@@ -348,7 +348,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		}
 
 		// Recursive quiescence search
-		score := -m.quiescence(ctx, b, oppositePlayer(player), -beta, -alpha, stats)
+		score := -m.quiescence(ctx, b, oppositePlayer(player), -beta, -alpha, depthFromRoot+1, stats)
 
 		// Unmake the move
 		b.UnmakeMove(undo)
@@ -437,7 +437,7 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	// Terminal node - call quiescence search with proper bounds
 	if depth == 0 {
 		// Enter quiescence search to resolve captures
-		score := m.quiescence(ctx, b, player, alpha, beta, stats)
+		score := m.quiescence(ctx, b, player, alpha, beta, originalMaxDepth-depth, stats)
 
 		// Store in transposition table
 		if m.useTranspositions && m.transpositionTable != nil {

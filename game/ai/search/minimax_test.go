@@ -385,19 +385,19 @@ func abs(x int) int {
 // TestPVMoveOrdering proves that PV (Principal Variation) move ordering works correctly
 func TestPVMoveOrdering(t *testing.T) {
 	engine := NewMinimaxEngine()
-	
+
 	// Enable transposition table for PV move ordering
 	engine.SetTranspositionTableSize(16) // 16MB should be sufficient for test
-	
+
 	// Use a position where the best move is likely a quiet positional move, not a capture
 	// This position is after: 1.e4 e6 2.d4 d5 3.Nd2 - a common opening
 	b, err := board.FromFEN("rnbqk1nr/ppppbppp/4p3/8/2PP4/8/PP1NPPPP/R1BQKBNR w KQkq - 3 4")
 	if err != nil {
 		t.Fatalf("Failed to create test position: %v", err)
 	}
-	
+
 	ctx := context.Background()
-	
+
 	// Phase 1: Establish PV move by searching to depth 3
 	t.Logf("=== PHASE 1: Establishing PV move ===")
 	config1 := ai.SearchConfig{
@@ -407,55 +407,55 @@ func TestPVMoveOrdering(t *testing.T) {
 	}
 	result1 := engine.FindBestMove(ctx, b, moves.White, config1)
 	expectedPVMove := result1.BestMove
-	
+
 	t.Logf("Depth 3 search completed:")
 	t.Logf("  Best move: %s%s", expectedPVMove.From.String(), expectedPVMove.To.String())
 	t.Logf("  Score: %d", result1.Score)
 	t.Logf("  Nodes: %d", result1.Stats.NodesSearched)
 	t.Logf("  Move is capture: %t", expectedPVMove.IsCapture)
-	
+
 	// Verify we have a valid move
 	if expectedPVMove.From.File == -1 && expectedPVMove.From.Rank == -1 {
 		t.Fatal("Phase 1 should return a valid move")
 	}
-	
+
 	// Phase 2: Test PV usage by searching to depth 4
 	t.Logf("\n=== PHASE 2: Testing PV move usage ===")
-	
+
 	// Clear TT stats before depth-4 search to see fresh stats
 	engine.GetTranspositionTableStats() // This will reset the counters
-	
+
 	// Add a small pause to let TT settle (shouldn't be needed, but let's test)
 	// time.Sleep(10 * time.Millisecond)
-	
+
 	// Enable debug tracking to monitor move ordering
 	engine.SetDebugMoveOrdering(true)
 	defer engine.SetDebugMoveOrdering(false)
-	
+
 	config2 := ai.SearchConfig{
 		MaxDepth:       4,
-		UseOpeningBook: false, 
+		UseOpeningBook: false,
 		DebugMode:      true,
 	}
 	result2 := engine.FindBestMove(ctx, b, moves.White, config2)
-	
+
 	// Debug: Check TT statistics
 	if hits, misses, collisions, hitRate := engine.GetTranspositionTableStats(); hits+misses > 0 {
 		t.Logf("TT Stats: hits=%d, misses=%d, collisions=%d, hit_rate=%.1f%%", hits, misses, collisions, hitRate)
 	}
-	
+
 	t.Logf("Depth 4 search completed:")
 	t.Logf("  Best move: %s%s", result2.BestMove.From.String(), result2.BestMove.To.String())
 	t.Logf("  Score: %d", result2.Score)
 	t.Logf("  Nodes: %d", result2.Stats.NodesSearched)
-	
+
 	// Get the last move ordering (this will be from the depth-4 iteration)
 	lastMoveOrder := engine.GetLastMoveOrder()
-	
+
 	if len(lastMoveOrder) == 0 {
 		t.Fatal("Should have captured move ordering")
 	}
-	
+
 	t.Logf("  Move ordering in depth-4 iteration:")
 	for i, move := range lastMoveOrder {
 		if i >= 5 { // Only show first 5 moves
@@ -463,12 +463,18 @@ func TestPVMoveOrdering(t *testing.T) {
 			break
 		}
 		isPV := (move.From == expectedPVMove.From && move.To == expectedPVMove.To)
-		t.Logf("    %d: %s%s%s", i+1, move.From.String(), move.To.String(), 
-				func() string { if isPV { return " (PV MOVE)" } else { return "" } }())
+		t.Logf("    %d: %s%s%s", i+1, move.From.String(), move.To.String(),
+			func() string {
+				if isPV {
+					return " (PV MOVE)"
+				} else {
+					return ""
+				}
+			}())
 	}
-	
+
 	// Key Assertions: Prove PV is working
-	
+
 	// 1. PV move should be tried FIRST in the depth-4 iteration
 	firstMove := lastMoveOrder[0]
 	if firstMove.From != expectedPVMove.From || firstMove.To != expectedPVMove.To {
@@ -478,17 +484,17 @@ func TestPVMoveOrdering(t *testing.T) {
 	} else {
 		t.Logf("✅ SUCCESS: PV move was tried first!")
 	}
-	
+
 	// 2. Same move should remain best (consistency check)
 	if result2.BestMove.From != expectedPVMove.From || result2.BestMove.To != expectedPVMove.To {
 		t.Logf("⚠️  WARNING: Best move changed from depth 3 to depth 4")
 		t.Logf("  Depth 3 best: %s%s", expectedPVMove.From.String(), expectedPVMove.To.String())
-		t.Logf("  Depth 4 best: %s%s", result2.BestMove.From.String(), result2.BestMove.To.String()) 
+		t.Logf("  Depth 4 best: %s%s", result2.BestMove.From.String(), result2.BestMove.To.String())
 		t.Logf("  This could be normal if there are multiple equally good moves")
 	} else {
 		t.Logf("✅ SUCCESS: Best move remained consistent across depths!")
 	}
-	
+
 	// 3. Search should be more efficient due to PV ordering (fewer nodes)
 	// This is a relative check - PV should help pruning
 	if result2.Stats.NodesSearched > 0 {
@@ -496,14 +502,14 @@ func TestPVMoveOrdering(t *testing.T) {
 		// Note: We can't easily compare "before/after PV" since PV is integral to the search
 		// But we can verify the mechanism is working by checking move ordering
 	}
-	
+
 	// 4. Verify the PV move is not a trivial capture (proves ordering benefit)
 	if !expectedPVMove.IsCapture {
 		t.Logf("✅ SUCCESS: PV move is a quiet move (not capture) - proves ordering is working beyond MVV-LVA")
 	} else {
 		t.Logf("ℹ️  INFO: PV move is a capture - still valid test but less decisive")
 	}
-	
+
 	t.Logf("\n=== PV MOVE ORDERING TEST COMPLETE ===")
 }
 
@@ -521,29 +527,29 @@ func verifyTTEntry(t *testing.T, engine *MinimaxEngine, b *board.Board, expected
 	if !engine.useTranspositions || engine.transpositionTable == nil {
 		t.Fatal("Transposition table not enabled")
 	}
-	
+
 	hash := engine.zobrist.HashPosition(b)
 	entry, found := engine.transpositionTable.Probe(hash)
-	
+
 	if !found {
 		t.Logf("TT entry not found for position")
 		return false
 	}
-	
+
 	if entry.Depth != expectedDepth {
 		t.Errorf("Expected TT depth %d, got %d", expectedDepth, entry.Depth)
 		return false
 	}
-	
+
 	if entry.BestMove.From != expectedMove.From || entry.BestMove.To != expectedMove.To {
-		t.Errorf("Expected TT move %s%s, got %s%s", 
+		t.Errorf("Expected TT move %s%s, got %s%s",
 			expectedMove.From.String(), expectedMove.To.String(),
 			entry.BestMove.From.String(), entry.BestMove.To.String())
 		return false
 	}
-	
-	t.Logf("✅ TT entry verified: move=%s%s, depth=%d, score=%d, type=%d", 
-		entry.BestMove.From.String(), entry.BestMove.To.String(), 
+
+	t.Logf("✅ TT entry verified: move=%s%s, depth=%d, score=%d, type=%d",
+		entry.BestMove.From.String(), entry.BestMove.To.String(),
 		entry.Depth, entry.Score, entry.Type)
 	return true
 }
@@ -551,32 +557,32 @@ func verifyTTEntry(t *testing.T, engine *MinimaxEngine, b *board.Board, expected
 func countNodesWithoutTT(t *testing.T, b *board.Board, player moves.Player, depth int) (bestMove board.Move, nodeCount int64) {
 	engine := NewMinimaxEngine()
 	// Explicitly disable TT by not setting table size
-	
+
 	config := ai.SearchConfig{
 		MaxDepth:       depth,
 		UseOpeningBook: false,
 		DebugMode:      false,
 	}
-	
+
 	ctx := context.Background()
 	result := engine.FindBestMove(ctx, b, player, config)
-	
+
 	return result.BestMove, result.Stats.NodesSearched
 }
 
 func countNodesWithTT(t *testing.T, b *board.Board, player moves.Player, depth int) (bestMove board.Move, nodeCount int64, hitRate float64) {
 	engine := NewMinimaxEngine()
 	engine.SetTranspositionTableSize(16) // 16MB TT
-	
+
 	config := ai.SearchConfig{
 		MaxDepth:       depth,
 		UseOpeningBook: false,
 		DebugMode:      false,
 	}
-	
+
 	ctx := context.Background()
 	result := engine.FindBestMove(ctx, b, player, config)
-	
+
 	_, _, _, hitRate = engine.GetTranspositionTableStats()
 	return result.BestMove, result.Stats.NodesSearched, hitRate
 }
@@ -584,44 +590,44 @@ func countNodesWithTT(t *testing.T, b *board.Board, player moves.Player, depth i
 // TestTranspositionTableMoveUsage provides comprehensive testing of TT functionality
 func TestTranspositionTableMoveUsage(t *testing.T) {
 	t.Logf("=== COMPREHENSIVE TRANSPOSITION TABLE TEST ===")
-	
+
 	// Test position: A tactical position with a clear best move
 	// This is from a famous puzzle where Re1+ is the winning move
 	testFEN := "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"
 	testBoard := createTestPosition(t, testFEN)
-	
+
 	// === TEST 1: Basic TT Storage and Retrieval ===
 	t.Logf("\n--- TEST 1: Basic TT Storage and Retrieval ---")
-	
+
 	engine1 := NewMinimaxEngine()
 	engine1.SetTranspositionTableSize(16) // 16MB
-	
+
 	config1 := ai.SearchConfig{
 		MaxDepth:       3,
 		UseOpeningBook: false,
 		DebugMode:      false,
 	}
-	
+
 	ctx := context.Background()
 	result1 := engine1.FindBestMove(ctx, testBoard, moves.White, config1)
-	
-	t.Logf("Search result: move=%s%s, score=%d, nodes=%d", 
+
+	t.Logf("Search result: move=%s%s, score=%d, nodes=%d",
 		result1.BestMove.From.String(), result1.BestMove.To.String(),
 		result1.Score, result1.Stats.NodesSearched)
-	
+
 	// Verify TT entry was stored correctly
 	if verifyTTEntry(t, engine1, testBoard, result1.BestMove, 3) {
 		t.Logf("✅ TEST 1 PASSED: TT storage and retrieval working")
 	} else {
 		t.Errorf("❌ TEST 1 FAILED: TT storage or retrieval not working")
 	}
-	
+
 	// === TEST 2: TT Move Ordering Priority ===
 	t.Logf("\n--- TEST 2: TT Move Ordering Priority ---")
-	
+
 	engine2 := NewMinimaxEngine()
 	engine2.SetTranspositionTableSize(16)
-	
+
 	// First search to establish TT entry
 	config2a := ai.SearchConfig{
 		MaxDepth:       2,
@@ -630,10 +636,10 @@ func TestTranspositionTableMoveUsage(t *testing.T) {
 	}
 	result2a := engine2.FindBestMove(ctx, testBoard, moves.White, config2a)
 	ttMove := result2a.BestMove
-	
-	t.Logf("Established TT move from depth-2 search: %s%s", 
+
+	t.Logf("Established TT move from depth-2 search: %s%s",
 		ttMove.From.String(), ttMove.To.String())
-	
+
 	// Second search with move ordering debug enabled
 	engine2.SetDebugMoveOrdering(true)
 	config2b := ai.SearchConfig{
@@ -642,96 +648,96 @@ func TestTranspositionTableMoveUsage(t *testing.T) {
 		DebugMode:      true,
 	}
 	_ = engine2.FindBestMove(ctx, testBoard, moves.White, config2b)
-	
+
 	// Check if TT move was tried first
 	moveOrder := engine2.GetLastMoveOrder()
 	if len(moveOrder) > 0 {
 		firstMove := moveOrder[0]
 		if firstMove.From == ttMove.From && firstMove.To == ttMove.To {
-			t.Logf("✅ TEST 2 PASSED: TT move %s%s was tried first in depth-3 search", 
+			t.Logf("✅ TEST 2 PASSED: TT move %s%s was tried first in depth-3 search",
 				ttMove.From.String(), ttMove.To.String())
 		} else {
-			t.Errorf("❌ TEST 2 FAILED: TT move %s%s was not first, got %s%s", 
+			t.Errorf("❌ TEST 2 FAILED: TT move %s%s was not first, got %s%s",
 				ttMove.From.String(), ttMove.To.String(),
 				firstMove.From.String(), firstMove.To.String())
 		}
 	} else {
 		t.Errorf("❌ TEST 2 FAILED: No move ordering captured")
 	}
-	
+
 	// === TEST 3: Search Performance with TT ===
 	t.Logf("\n--- TEST 3: Search Performance Comparison ---")
-	
+
 	// Search without TT
 	moveWithoutTT, nodesWithoutTT := countNodesWithoutTT(t, testBoard, moves.White, 4)
-	
-	// Search with TT  
+
+	// Search with TT
 	moveWithTT, nodesWithTT, hitRate := countNodesWithTT(t, testBoard, moves.White, 4)
-	
-	t.Logf("Without TT: move=%s%s, nodes=%d", 
+
+	t.Logf("Without TT: move=%s%s, nodes=%d",
 		moveWithoutTT.From.String(), moveWithoutTT.To.String(), nodesWithoutTT)
-	t.Logf("With TT:    move=%s%s, nodes=%d, hit_rate=%.1f%%", 
+	t.Logf("With TT:    move=%s%s, nodes=%d, hit_rate=%.1f%%",
 		moveWithTT.From.String(), moveWithTT.To.String(), nodesWithTT, hitRate)
-	
+
 	nodeReduction := float64(nodesWithoutTT-nodesWithTT) / float64(nodesWithoutTT) * 100
 	t.Logf("Node reduction: %.1f%%", nodeReduction)
-	
+
 	if nodesWithTT < nodesWithoutTT && hitRate > 5.0 {
-		t.Logf("✅ TEST 3 PASSED: TT improved search efficiency (%.1f%% fewer nodes, %.1f%% hit rate)", 
+		t.Logf("✅ TEST 3 PASSED: TT improved search efficiency (%.1f%% fewer nodes, %.1f%% hit rate)",
 			nodeReduction, hitRate)
 	} else {
 		t.Errorf("❌ TEST 3 FAILED: TT did not improve efficiency sufficiently")
 	}
-	
+
 	// === TEST 4: Cross-Search TT Persistence ===
 	t.Logf("\n--- TEST 4: Cross-Search TT Persistence ---")
-	
+
 	engine4 := NewMinimaxEngine()
 	engine4.SetTranspositionTableSize(16)
-	
+
 	// Search position A to depth 3
 	result4a := engine4.FindBestMove(ctx, testBoard, moves.White, ai.SearchConfig{
 		MaxDepth: 3, UseOpeningBook: false, DebugMode: false,
 	})
-	
+
 	// Create and search a different position B
 	positionB := createTestPosition(t, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
 	engine4.FindBestMove(ctx, positionB, moves.Black, ai.SearchConfig{
 		MaxDepth: 3, UseOpeningBook: false, DebugMode: false,
 	})
-	
+
 	// Search position A again - should use TT from first search
 	engine4.SetDebugMoveOrdering(true)
 	_ = engine4.FindBestMove(ctx, testBoard, moves.White, ai.SearchConfig{
 		MaxDepth: 4, UseOpeningBook: false, DebugMode: true,
 	})
-	
+
 	// Verify TT move from first search is still available
 	moveOrder4 := engine4.GetLastMoveOrder()
 	if len(moveOrder4) > 0 {
 		firstMove4 := moveOrder4[0]
 		if firstMove4.From == result4a.BestMove.From && firstMove4.To == result4a.BestMove.To {
-			t.Logf("✅ TEST 4 PASSED: TT persisted across searches - first move %s%s matches previous best", 
+			t.Logf("✅ TEST 4 PASSED: TT persisted across searches - first move %s%s matches previous best",
 				firstMove4.From.String(), firstMove4.To.String())
 		} else {
 			t.Logf("ℹ️  TEST 4 INFO: TT move changed (expected with deeper search)")
-			t.Logf("   Previous best: %s%s, Current first: %s%s", 
+			t.Logf("   Previous best: %s%s, Current first: %s%s",
 				result4a.BestMove.From.String(), result4a.BestMove.To.String(),
 				firstMove4.From.String(), firstMove4.To.String())
 		}
 	}
-	
+
 	// Final verification: Check TT statistics
 	hits, misses, collisions, finalHitRate := engine4.GetTranspositionTableStats()
-	t.Logf("Final TT stats: hits=%d, misses=%d, collisions=%d, hit_rate=%.1f%%", 
+	t.Logf("Final TT stats: hits=%d, misses=%d, collisions=%d, hit_rate=%.1f%%",
 		hits, misses, collisions, finalHitRate)
-	
+
 	if hits > 0 && finalHitRate > 5.0 {
 		t.Logf("✅ TEST 4 PASSED: TT cross-search persistence working (%.1f%% hit rate)", finalHitRate)
 	} else {
 		t.Errorf("❌ TEST 4 FAILED: TT cross-search persistence not working effectively")
 	}
-	
+
 	t.Logf("\n=== TRANSPOSITION TABLE TEST COMPLETE ===")
 }
 
@@ -743,18 +749,18 @@ func TestDebugTop5MovesAtDepth6(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test position from FEN: %v", err)
 	}
-	
+
 	t.Logf("=== DEBUG TEST: Top 5 Moves at Depth 6 ===")
 	t.Logf("Position FEN: %s", testFEN)
 	t.Logf("Player to move: Black")
-	
+
 	// Import the moves package to generate legal moves
 	generator := moves.NewGenerator()
 	legalMoves := generator.GenerateAllMoves(b, moves.Black)
 	defer moves.ReleaseMoveList(legalMoves)
-	
+
 	t.Logf("Total legal moves: %d", legalMoves.Count)
-	
+
 	// Evaluate each move at depth 6
 	type MoveScore struct {
 		Move  board.Move
@@ -762,27 +768,27 @@ func TestDebugTop5MovesAtDepth6(t *testing.T) {
 		Time  time.Duration
 		Nodes int64
 	}
-	
+
 	var moveScores []MoveScore
 	ctx := context.Background()
-	
+
 	t.Logf("\n=== EVALUATING ALL MOVES ===")
 	totalStartTime := time.Now()
-	
+
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
-		
+
 		// Create a fresh engine for each move evaluation
 		engine := NewMinimaxEngine()
 		engine.SetTranspositionTableSize(64) // 64MB for deep search
-		
+
 		// Make the move
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
 			t.Logf("Failed to make move %s%s: %v", move.From.String(), move.To.String(), err)
 			continue
 		}
-		
+
 		// Search from the opponent's perspective (depth 5 since we made one move)
 		moveStartTime := time.Now()
 		result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
@@ -791,45 +797,45 @@ func TestDebugTop5MovesAtDepth6(t *testing.T) {
 			DebugMode:      false,
 		})
 		moveTime := time.Since(moveStartTime)
-		
+
 		// Unmake the move
 		b.UnmakeMove(undo)
-		
+
 		// Negate the score since we're looking from Black's perspective
 		score := -result.Score
-		
+
 		moveScores = append(moveScores, MoveScore{
 			Move:  move,
 			Score: score,
 			Time:  moveTime,
 			Nodes: result.Stats.NodesSearched,
 		})
-		
+
 		piece := b.GetPiece(move.From.Rank, move.From.File)
 		t.Logf("Move %2d: %s%s (piece: %v) -> Score: %8d, Time: %6s, Nodes: %8d",
-			i+1, move.From.String(), move.To.String(), piece, score, 
+			i+1, move.From.String(), move.To.String(), piece, score,
 			moveTime.Truncate(time.Millisecond), result.Stats.NodesSearched)
 	}
-	
+
 	totalTime := time.Since(totalStartTime)
-	
+
 	// Sort moves by score (best first for Black - highest scores)
 	sort.Slice(moveScores, func(i, j int) bool {
 		return moveScores[i].Score > moveScores[j].Score
 	})
-	
+
 	t.Logf("\n=== TOP 5 MOVES ===")
 	maxMoves := 5
 	if len(moveScores) < maxMoves {
 		maxMoves = len(moveScores)
 	}
-	
+
 	var totalNodes int64
 	for i := 0; i < maxMoves; i++ {
 		ms := moveScores[i]
 		piece := b.GetPiece(ms.Move.From.Rank, ms.Move.From.File)
 		totalNodes += ms.Nodes
-		
+
 		t.Logf("Rank %d: %s%s", i+1, ms.Move.From.String(), ms.Move.To.String())
 		t.Logf("         Piece: %v", piece)
 		t.Logf("         Score: %d", ms.Score)
@@ -844,178 +850,15 @@ func TestDebugTop5MovesAtDepth6(t *testing.T) {
 		}
 		t.Logf("")
 	}
-	
+
 	t.Logf("=== SUMMARY ===")
 	t.Logf("Total evaluation time: %v", totalTime.Truncate(time.Millisecond))
 	t.Logf("Total nodes searched: %d", totalNodes)
 	t.Logf("Average nodes per move: %d", totalNodes/int64(len(moveScores)))
-	t.Logf("Best move: %s%s with score %d", 
-		moveScores[0].Move.From.String(), 
-		moveScores[0].Move.To.String(), 
+	t.Logf("Best move: %s%s with score %d",
+		moveScores[0].Move.From.String(),
+		moveScores[0].Move.To.String(),
 		moveScores[0].Score)
-	
+
 	t.Logf("\n=== DEBUG TEST COMPLETE ===")
-}
-
-// TestMateScoring verifies that mate in fewer moves gets higher scores
-func TestMateScoring(t *testing.T) {
-	engine := NewMinimaxEngine()
-	engine.SetTranspositionTableSize(16)
-	
-	// Test the specific position with g5h4 move
-	testFEN := "r7/ppk4p/5p2/6b1/4b1P1/8/P4K2/2q5 b - - 1 47"
-	b, err := board.FromFEN(testFEN)
-	if err != nil {
-		t.Fatalf("Failed to create test position: %v", err)
-	}
-	
-	t.Logf("=== MATE SCORING TEST ===")
-	t.Logf("Position: %s", testFEN)
-	t.Logf("MateScore constant: %d", ai.MateScore)
-	
-	// Test g5h4 specifically
-	move, err := board.ParseSimpleMove("g5h4")
-	if err != nil {
-		t.Fatalf("Failed to parse g5h4: %v", err)
-	}
-	
-	// Make the move
-	undo, err := b.MakeMoveWithUndo(move)
-	if err != nil {
-		t.Fatalf("Failed to make move g5h4: %v", err)
-	}
-	
-	t.Logf("After g5h4, evaluating White's response...")
-	
-	// Evaluate from White's perspective (should be mate in 1 if g5h4 is mate in 2)
-	ctx := context.Background()
-	result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
-		MaxDepth:       3,
-		UseOpeningBook: false,
-		DebugMode:      true,
-	})
-	
-	t.Logf("White's best response: %s%s", result.BestMove.From.String(), result.BestMove.To.String())
-	t.Logf("White's score: %d", result.Score)
-	t.Logf("Black's perspective (negated): %d", -result.Score)
-	
-	// Unmake the move
-	b.UnmakeMove(undo)
-	
-	// Now compare different moves to see scoring
-	testMoves := []string{"g5h4", "f6f5", "c1f4"}
-	
-	t.Logf("\n=== COMPARING MOVE SCORES ===")
-	for _, moveStr := range testMoves {
-		move, err := board.ParseSimpleMove(moveStr)
-		if err != nil {
-			t.Logf("Failed to parse %s: %v", moveStr, err)
-			continue
-		}
-		
-		undo, err := b.MakeMoveWithUndo(move)
-		if err != nil {
-			t.Logf("Failed to make move %s: %v", moveStr, err)
-			continue
-		}
-		
-		result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
-			MaxDepth:       3, 
-			UseOpeningBook: false,
-		})
-		
-		blackScore := -result.Score
-		t.Logf("%s: Black score = %d, White score = %d", moveStr, blackScore, result.Score)
-		
-		// Check if this is a mate score
-		if blackScore > ai.MateScore - 1000 {
-			mateDistance := ai.MateScore - blackScore
-			t.Logf("  -> Mate in %d for Black", mateDistance)
-		}
-		
-		b.UnmakeMove(undo)
-	}
-}
-
-// TestMateIn2Analysis specifically analyzes the mate in 2 moves g5h4 and c1f4
-func TestMateIn2Analysis(t *testing.T) {
-	engine := NewMinimaxEngine()
-	engine.SetTranspositionTableSize(32)
-	
-	testFEN := "r7/ppk4p/5p2/6b1/4b1P1/8/P4K2/2q5 b - - 1 47"
-	b, err := board.FromFEN(testFEN)
-	if err != nil {
-		t.Fatalf("Failed to create test position: %v", err)
-	}
-	
-	t.Logf("=== MATE IN 2 ANALYSIS ===")
-	t.Logf("Position: %s", testFEN)
-	
-	ctx := context.Background()
-	
-	// Test both moves at consistent depth
-	mateIn2Moves := []string{"g5h4", "c1f4"}
-	
-	for _, moveStr := range mateIn2Moves {
-		t.Logf("\n--- Analyzing %s ---", moveStr)
-		
-		move, err := board.ParseSimpleMove(moveStr)
-		if err != nil {
-			t.Fatalf("Failed to parse %s: %v", moveStr, err)
-		}
-		
-		// Make the move
-		undo, err := b.MakeMoveWithUndo(move)
-		if err != nil {
-			t.Fatalf("Failed to make move %s: %v", moveStr, err)
-		}
-		
-		// Search at different depths to see the mate
-		for depth := 1; depth <= 4; depth++ {
-			result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
-				MaxDepth:       depth,
-				UseOpeningBook: false,
-				DebugMode:      false,
-			})
-			
-			blackScore := -result.Score
-			t.Logf("  Depth %d: White's best = %s%s, Black score = %d", 
-				depth, result.BestMove.From.String(), result.BestMove.To.String(), blackScore)
-			
-			if blackScore > ai.MateScore - 100 {
-				mateDistance := ai.MateScore - blackScore
-				t.Logf("    -> This confirms mate in %d for Black", mateDistance)
-			}
-		}
-		
-		// Unmake the move
-		b.UnmakeMove(undo)
-	}
-	
-	t.Logf("\n=== DIRECT COMPARISON ===")
-	// Now compare them using the same search depth that was used in Top5 test
-	for _, moveStr := range mateIn2Moves {
-		move, err := board.ParseSimpleMove(moveStr)
-		if err != nil {
-			continue
-		}
-		
-		undo, err := b.MakeMoveWithUndo(move)
-		if err != nil {
-			continue
-		}
-		
-		result := engine.FindBestMove(ctx, b, moves.White, ai.SearchConfig{
-			MaxDepth:       5, // Same depth as Top5 test
-			UseOpeningBook: false,
-			DebugMode:      false,
-		})
-		
-		blackScore := -result.Score
-		mateDistance := ai.MateScore - blackScore
-		t.Logf("%s: Score = %d (mate in %d), Nodes = %d", 
-			moveStr, blackScore, mateDistance, result.Stats.NodesSearched)
-		
-		b.UnmakeMove(undo)
-	}
 }
