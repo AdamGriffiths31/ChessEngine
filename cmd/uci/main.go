@@ -10,3 +10,4 @@ func main() {
 	engine := uci.NewUCIEngine()
 	engine.Run(os.Stdin, os.Stdout)
 }
+

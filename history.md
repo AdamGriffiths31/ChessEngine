@@ -15,3 +15,4 @@ This file tracks the performance of ChessEngine against various opponents over t
 | 2025-08-04 17:15 | Weak Stockfish v2 | Bullet (2+2) | 3 | 0 | 2 | 1 | 16% | Bishop & Knight eval |
 | 2025-08-04 20:14 | Weak Stockfish v2 | Bullet (2+2) | 3 | 1 | 0 | 2 | 66% | Queen eval updates |
 | 2025-08-05 17:11 | Weak Stockfish v2 | Bullet (2+2) | 3 | 2 | 1 | 0 | 66% | TT added |
+| 2025-08-05 20:03 | Weak Stockfish v2 | Bullet (2+2) | 3 | 1 | 1 | 1 | 50% | Mate score correction |
