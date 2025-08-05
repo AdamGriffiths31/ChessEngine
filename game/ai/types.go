@@ -50,7 +50,7 @@ type EvaluationScore int32
 
 const (
 	// Special scores
-	MateScore    EvaluationScore = 100000
+	MateScore    EvaluationScore = 10000000
 	DrawScore    EvaluationScore = 0
 	UnknownScore EvaluationScore = -1000000
 )

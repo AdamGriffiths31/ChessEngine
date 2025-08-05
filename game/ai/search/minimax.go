@@ -2,7 +2,6 @@ package search
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
@@ -27,19 +26,26 @@ type MinimaxEngine struct {
 	bookService *openings.BookLookupService
 	// killerTable stores killer moves indexed by [depth][slot] (2 killers per depth)
 	killerTable [MaxKillerDepth][2]board.Move
-	// previousBestMove stores the PV move from the last completed iteration
-	previousBestMove board.Move
 	// debugMoveOrdering tracks move ordering for testing (only used in tests)
 	debugMoveOrdering bool
 	debugMoveOrder    []board.Move
+	// transposition table for caching search results
+	transpositionTable *TranspositionTable
+	// zobrist hash for position keys
+	zobrist *openings.ZobristHash
+	// useTranspositions controls whether transposition table is used
+	useTranspositions bool
 }
 
 // NewMinimaxEngine creates a new minimax search engine
 func NewMinimaxEngine() *MinimaxEngine {
 	return &MinimaxEngine{
-		evaluator:   evaluation.NewEvaluator(),
-		generator:   moves.NewGenerator(),
-		bookService: nil, // Will be initialized when needed based on config
+		evaluator:          evaluation.NewEvaluator(),
+		generator:          moves.NewGenerator(),
+		bookService:        nil, // Will be initialized when needed based on config
+		transpositionTable: nil, // Will be initialized when configured
+		zobrist:            openings.GetPolyglotHash(),
+		useTranspositions:  false, // Disabled by default
 	}
 }
 
@@ -78,14 +84,6 @@ func (m *MinimaxEngine) initializeBookService(config ai.SearchConfig) error {
 
 	m.bookService = service
 
-	// Debug: Log successful book loading
-	if config.DebugMode {
-		loadedBooks := service.GetLoadedBooks()
-		for _, info := range loadedBooks {
-			println("📚 Loaded opening book:", info.Filename, "with", info.EntryCount, "entries")
-		}
-	}
-
 	return nil
 }
 
@@ -99,9 +97,6 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 	if config.UseOpeningBook {
 		if err := m.initializeBookService(config); err != nil {
 			// Continue without opening book if initialization fails
-			if config.DebugMode {
-				println("Warning: Failed to initialize opening book:", err.Error())
-			}
 		}
 	}
 
@@ -117,6 +112,11 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 
 	startTime := time.Now()
 
+	// Increment transposition table age at start of new search
+	if m.useTranspositions && m.transpositionTable != nil {
+		m.transpositionTable.IncrementAge()
+	}
+
 	// Generate all legal moves
 	legalMoves := m.generator.GenerateAllMoves(b, player)
 	defer moves.ReleaseMoveList(legalMoves)
@@ -131,8 +131,21 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		return result
 	}
 
+	// Check transposition table for best move to help with initial move ordering
+	var rootTTMove board.Move
+	if m.useTranspositions && m.transpositionTable != nil {
+		hash := m.zobrist.HashPosition(b)
+		if entry, found := m.transpositionTable.Probe(hash); found {
+			rootTTMove = entry.BestMove
+			// Debug logging for tests
+			if m.debugMoveOrdering {
+				// This will be visible in test logs when debug is enabled
+			}
+		}
+	}
+
 	// Sort moves for better alpha-beta performance
-	m.orderMoves(legalMoves, 0)
+	m.orderMoves(legalMoves, 0, rootTTMove)
 
 	// Variables to store the best result from the last completed depth
 	lastCompletedBestMove := legalMoves.Moves[0] // Start with first legal move
@@ -151,25 +164,75 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		default:
 		}
 
-		// Search at current depth
-		depthResult := m.searchAtDepth(ctx, b, player, currentDepth, legalMoves, config)
+		// Search at current depth using root-level alpha-beta
+		bestScore := ai.EvaluationScore(-ai.MateScore - 1)
+		bestMove := legalMoves.Moves[0]
+		alpha := ai.EvaluationScore(-ai.MateScore - 1)
+		beta := ai.EvaluationScore(ai.MateScore + 1)
+		var searchStats ai.SearchStats
+		completed := false
 
-		// Check if the search was completed or interrupted by timeout
-		if depthResult.completed {
-			// This depth completed successfully - save the results
-			lastCompletedBestMove = depthResult.bestMove
-			lastCompletedScore = depthResult.bestScore
-			result.Stats.Depth = currentDepth
-			result.Stats.NodesSearched = depthResult.nodesSearched
+		// Try each move at this depth
+		for i := 0; i < legalMoves.Count; i++ {
+			move := legalMoves.Moves[i]
 
-			// Store PV move for next iteration (only if depth > 1 to ensure it's validated)
-			if currentDepth > 1 {
-				m.previousBestMove = depthResult.bestMove
+			// Check for timeout before each move
+			select {
+			case <-ctx.Done():
+				completed = false
+				goto searchComplete
+			default:
 			}
 
-			// Copy debug info from the last completed depth
-			if config.DebugMode {
-				result.Stats.DebugInfo = depthResult.debugInfo
+			// Make the move
+			undo, err := b.MakeMoveWithUndo(move)
+			if err != nil {
+				continue
+			}
+
+			// Search with negamax
+			var moveStats ai.SearchStats
+			score := -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, &moveStats)
+
+			// Unmake the move
+			b.UnmakeMove(undo)
+
+			// Add to total stats
+			searchStats.NodesSearched += moveStats.NodesSearched
+
+			// Check for timeout after search
+			select {
+			case <-ctx.Done():
+				completed = false
+				goto searchComplete
+			default:
+			}
+
+			// Update best move if this is better
+			if score > bestScore {
+				bestScore = score
+				bestMove = move
+
+				// Update alpha for next iteration
+				if score > alpha {
+					alpha = score
+				}
+			}
+		}
+		completed = true
+
+	searchComplete:
+		if completed {
+			// This depth completed successfully - save the results
+			lastCompletedBestMove = bestMove
+			lastCompletedScore = bestScore
+			result.Stats.Depth = currentDepth
+			result.Stats.NodesSearched = searchStats.NodesSearched
+
+			// Store root position result in transposition table
+			if m.useTranspositions && m.transpositionTable != nil {
+				hash := m.zobrist.HashPosition(b)
+				m.transpositionTable.Store(hash, currentDepth, bestScore, EntryExact, bestMove)
 			}
 		} else {
 			// This depth was interrupted by timeout - return last completed results
@@ -187,117 +250,6 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 	return result
 }
 
-// depthSearchResult holds results from searching at a specific depth
-type depthSearchResult struct {
-	bestMove      board.Move
-	bestScore     ai.EvaluationScore
-	completed     bool
-	nodesSearched int64
-	debugInfo     []string
-}
-
-// searchAtDepth searches at a specific depth and returns whether it completed
-func (m *MinimaxEngine) searchAtDepth(ctx context.Context, b *board.Board, player moves.Player, depth int, legalMoves *moves.MoveList, config ai.SearchConfig) depthSearchResult {
-	bestScore := ai.EvaluationScore(-ai.MateScore - 1)
-	bestMove := legalMoves.Moves[0] // Default to first move
-	var debugInfo []string
-	var nodesSearched int64
-
-	// Initial alpha-beta bounds
-	alpha := ai.EvaluationScore(-ai.MateScore - 1)
-	beta := ai.EvaluationScore(ai.MateScore + 1)
-
-	// Try each move at this depth
-	for i := 0; i < legalMoves.Count; i++ {
-		move := legalMoves.Moves[i]
-
-		// Check for timeout before each move
-		select {
-		case <-ctx.Done():
-			// Timeout occurred - return incomplete result
-			return depthSearchResult{
-				bestMove:      bestMove,
-				bestScore:     bestScore,
-				completed:     false,
-				nodesSearched: nodesSearched,
-				debugInfo:     debugInfo,
-			}
-		default:
-		}
-
-		// Make the move
-		undo, err := b.MakeMoveWithUndo(move)
-		if err != nil {
-			continue
-		}
-
-		// Create a stats tracker for this search
-		var moveStats ai.SearchStats
-
-		// Search with negamax
-		var score ai.EvaluationScore
-		if depth > 0 {
-			// Use negamax with negated bounds
-			score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player),
-				depth-1, -beta, -alpha, depth, &moveStats)
-		} else {
-			// Depth 0 - just evaluate
-			eval := m.evaluator.Evaluate(b)
-			if player == moves.Black {
-				eval = -eval
-			}
-			score = eval
-			moveStats.NodesSearched = 1
-		}
-
-		// Unmake the move
-		b.UnmakeMove(undo)
-
-		// Add nodes from this move's search
-		nodesSearched += moveStats.NodesSearched
-
-		// Check for timeout after search
-		select {
-		case <-ctx.Done():
-			// Timeout occurred during search - return incomplete result
-			return depthSearchResult{
-				bestMove:      bestMove,
-				bestScore:     bestScore,
-				completed:     false,
-				nodesSearched: nodesSearched,
-				debugInfo:     debugInfo,
-			}
-		default:
-		}
-
-		// Update best move if this is better
-		if score > bestScore {
-			bestScore = score
-			bestMove = move
-
-			// Update alpha for next iteration
-			if score > alpha {
-				alpha = score
-			}
-		}
-
-		// Add debug info if enabled
-		if config.DebugMode && i < 10 {
-			debugInfo = append(debugInfo, fmt.Sprintf("Move %s%s: score=%d",
-				move.From.String(), move.To.String(), score))
-		}
-	}
-
-	// All moves at this depth completed successfully
-	return depthSearchResult{
-		bestMove:      bestMove,
-		bestScore:     bestScore,
-		completed:     true,
-		nodesSearched: nodesSearched,
-		debugInfo:     debugInfo,
-	}
-}
-
 func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player moves.Player, alpha, beta ai.EvaluationScore, stats *ai.SearchStats) ai.EvaluationScore {
 	stats.NodesSearched++
 
@@ -312,8 +264,39 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	default:
 	}
 
+	// Transposition table lookup for quiescence
+	hash := m.zobrist.HashPosition(b)
+	if m.useTranspositions && m.transpositionTable != nil {
+		if entry, found := m.transpositionTable.Probe(hash); found {
+			// For quiescence, we're less strict about depth requirements
+			if entry.Depth >= 0 { // Accept any non-negative depth
+				switch entry.Type {
+				case EntryExact:
+					return entry.Score
+				case EntryLowerBound:
+					if entry.Score >= beta {
+						return entry.Score
+					}
+					if entry.Score > alpha {
+						alpha = entry.Score
+					}
+				case EntryUpperBound:
+					if entry.Score <= alpha {
+						return entry.Score
+					}
+					if entry.Score < beta {
+						beta = entry.Score
+					}
+				}
+			}
+		}
+	}
+
 	// Get in-check status
 	inCheck := m.generator.IsKingInCheck(b, player)
+
+	// Store original alpha for TT entry type determination
+	originalAlpha := alpha
 
 	// Stand-pat evaluation - only if not in check
 	if !inCheck {
@@ -340,8 +323,8 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	// Check for terminal positions (checkmate or stalemate)
 	if legalMoves.Count == 0 {
 		if inCheck {
-			// Checkmate - shorter mates should have worse scores
-			return -ai.MateScore - ai.EvaluationScore(1)
+			// Checkmate - current player loses, return negative mate score
+			return -ai.MateScore + ai.EvaluationScore(1)
 		} else {
 			// Stalemate - return draw score
 			return ai.DrawScore
@@ -380,6 +363,17 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		}
 	}
 
+	// Store result in transposition table
+	if m.useTranspositions && m.transpositionTable != nil {
+		entryType := EntryExact
+		if alpha <= originalAlpha {
+			entryType = EntryUpperBound
+		} else if alpha >= beta {
+			entryType = EntryLowerBound
+		}
+		m.transpositionTable.Store(hash, 0, alpha, entryType, board.Move{})
+	}
+
 	return alpha
 }
 
@@ -403,10 +397,53 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	default:
 	}
 
+	// Transposition table lookup
+	var ttMove board.Move
+	hash := m.zobrist.HashPosition(b)
+
+	if m.useTranspositions && m.transpositionTable != nil {
+		if entry, found := m.transpositionTable.Probe(hash); found {
+			// Use TT move for move ordering even if we can't use the score
+			ttMove = entry.BestMove
+
+			// Check if we can use the stored score
+			if entry.Depth >= depth {
+				switch entry.Type {
+				case EntryExact:
+					// Exact score - we can return immediately
+					return entry.Score
+				case EntryLowerBound:
+					// Fail high (beta cutoff was found)
+					if entry.Score >= beta {
+						return entry.Score
+					}
+					if entry.Score > alpha {
+						alpha = entry.Score
+					}
+				case EntryUpperBound:
+					// Fail low
+					if entry.Score <= alpha {
+						return entry.Score
+					}
+					if entry.Score < beta {
+						beta = entry.Score
+					}
+				}
+			}
+		}
+	}
+
 	// Terminal node - call quiescence search with proper bounds
 	if depth == 0 {
 		// Enter quiescence search to resolve captures
-		return m.quiescence(ctx, b, player, alpha, beta, stats)
+		score := m.quiescence(ctx, b, player, alpha, beta, stats)
+
+		// Store in transposition table
+		if m.useTranspositions && m.transpositionTable != nil {
+			m.transpositionTable.Store(hash, 0, score, EntryExact, board.Move{})
+		}
+
+		return score
 	}
 
 	// Get all legal moves
@@ -416,15 +453,28 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	if legalMoves.Count == 0 {
 		// No legal moves - check for checkmate or stalemate
 		if m.generator.IsKingInCheck(b, player) {
-			// Checkmate - return worst score for current player
-			// Shorter mates should have worse scores (closer to -MateScore)
-			return -ai.MateScore - ai.EvaluationScore(currentDepth)
+			// Checkmate - current player loses, return negative mate score
+			// Shorter mates should have better scores (closer to -MateScore)
+			score := -ai.MateScore + ai.EvaluationScore(currentDepth)
+			if m.useTranspositions && m.transpositionTable != nil {
+				m.transpositionTable.Store(hash, depth, score, EntryExact, board.Move{})
+			}
+			return score
 		}
-		return ai.DrawScore // Stalemate
+		// Stalemate
+		if m.useTranspositions && m.transpositionTable != nil {
+			m.transpositionTable.Store(hash, depth, ai.DrawScore, EntryExact, board.Move{})
+		}
+		return ai.DrawScore
 	}
 
-	// Sort moves to improve alpha-beta efficiency (captures first)
-	m.orderMoves(legalMoves, currentDepth)
+	// Sort moves to improve alpha-beta efficiency (captures first, with TT move prioritized)
+	m.orderMoves(legalMoves, currentDepth, ttMove)
+
+	// Search moves
+	bestScore := ai.EvaluationScore(-ai.MateScore - 1)
+	bestMove := board.Move{}
+	entryType := EntryUpperBound // Assume fail-low initially
 
 	// Try each move
 	for i := 0; i < legalMoves.Count; i++ {
@@ -442,22 +492,40 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 		// Unmake the move
 		b.UnmakeMove(undo)
 
+		// Update best score
+		if score > bestScore {
+			bestScore = score
+			bestMove = move
+		}
+
 		// Update alpha (best score for current player)
 		if score > alpha {
 			alpha = score
-		}
+			entryType = EntryExact // We have an exact score
 
-		// Beta cutoff - opponent won't allow this line
-		if alpha >= beta {
-			// Store killer move if it's not a capture
-			if !move.IsCapture && currentDepth >= 0 && currentDepth < MaxKillerDepth {
-				m.storeKiller(move, currentDepth)
+			// Beta cutoff - opponent won't allow this line
+			if alpha >= beta {
+				// Store killer move if it's not a capture
+				if !move.IsCapture && currentDepth >= 0 && currentDepth < MaxKillerDepth {
+					m.storeKiller(move, currentDepth)
+				}
+
+				// Store in transposition table
+				if m.useTranspositions && m.transpositionTable != nil {
+					m.transpositionTable.Store(hash, depth, beta, EntryLowerBound, move)
+				}
+
+				return beta
 			}
-			return beta
 		}
 	}
 
-	return alpha
+	// Store result in transposition table
+	if m.useTranspositions && m.transpositionTable != nil {
+		m.transpositionTable.Store(hash, depth, bestScore, entryType, bestMove)
+	}
+
+	return bestScore
 }
 
 // getMVVLVAScore calculates the MVV-LVA score for a capture move
@@ -483,8 +551,8 @@ func (m *MinimaxEngine) getMVVLVAScore(move board.Move) int {
 	return victimValue*10 - attackerValue
 }
 
-// orderMoves sorts moves to improve alpha-beta efficiency using PV, MVV-LVA and killer moves
-func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList, depth int) {
+// orderMoves sorts moves to improve alpha-beta efficiency using TT move, MVV-LVA and killer moves
+func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList, depth int, ttMove board.Move) {
 	// Create slice of move indices with their scores
 	type moveScore struct {
 		index int
@@ -495,16 +563,16 @@ func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList, depth int) {
 	for i := 0; i < moveList.Count; i++ {
 		move := moveList.Moves[i]
 		var score int
-		if m.isPVMove(move) {
-			// PV move gets highest priority
-			score = 2000000
-			// Debug: log when PV move is detected (only in debug mode)
+
+		// TT move gets absolute highest priority
+		if ttMove.From.File != -1 && ttMove.From.Rank != -1 &&
+			move.From == ttMove.From && move.To == ttMove.To {
+			score = 3000000 // Highest priority
 		} else if move.IsCapture {
-			// Use MVV-LVA score for captures (second highest priority)
+			// Captures get second priority with MVV-LVA scoring
 			score = 1000000 + m.getMVVLVAScore(move)
 		} else if m.isKillerMove(move, depth) {
-			// Killer moves get high priority (between captures and other moves)
-			// Differentiate between first and second killer
+			// Killer moves get third priority
 			if depth >= 0 && depth < MaxKillerDepth &&
 				move.From == m.killerTable[depth][0].From && move.To == m.killerTable[depth][0].To {
 				score = 500000 // First killer
@@ -512,7 +580,7 @@ func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList, depth int) {
 				score = 490000 // Second killer
 			}
 		} else {
-			// Non-captures get lower priority
+			// Non-captures get lowest priority
 			score = 0
 		}
 		scores[i] = moveScore{index: i, score: score}
@@ -523,12 +591,22 @@ func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList, depth int) {
 		return scores[i].score > scores[j].score
 	})
 
-	// Reorder moves based on sorted scores
-	originalMoves := make([]board.Move, moveList.Count)
-	copy(originalMoves, moveList.Moves[:moveList.Count])
-
+	// Reorder moves in-place using the sorted indices
 	for i := 0; i < moveList.Count; i++ {
-		moveList.Moves[i] = originalMoves[scores[i].index]
+		// Find where the i-th best move currently is
+		targetIndex := scores[i].index
+		if targetIndex != i {
+			// Swap moves and update indices
+			moveList.Moves[i], moveList.Moves[targetIndex] = moveList.Moves[targetIndex], moveList.Moves[i]
+
+			// Update the index tracking for the swapped move
+			for j := i + 1; j < moveList.Count; j++ {
+				if scores[j].index == i {
+					scores[j].index = targetIndex
+					break
+				}
+			}
+		}
 	}
 
 	// Debug: capture move ordering if enabled (only for the root level, depth 0)
@@ -543,6 +621,32 @@ func (m *MinimaxEngine) SetEvaluator(eval ai.Evaluator) {
 	m.evaluator = eval
 }
 
+// SetTranspositionTableSize initializes the transposition table with the given size in MB
+func (m *MinimaxEngine) SetTranspositionTableSize(sizeMB int) {
+	if sizeMB <= 0 {
+		m.transpositionTable = nil
+		m.useTranspositions = false
+		return
+	}
+	m.transpositionTable = NewTranspositionTable(sizeMB)
+	m.useTranspositions = true
+}
+
+// SetTranspositionTableEnabled enables or disables transposition table usage
+func (m *MinimaxEngine) SetTranspositionTableEnabled(enabled bool) {
+	if m.transpositionTable != nil {
+		m.useTranspositions = enabled
+	}
+}
+
+// GetTranspositionTableStats returns transposition table statistics if available
+func (m *MinimaxEngine) GetTranspositionTableStats() (hits, misses, collisions uint64, hitRate float64) {
+	if m.transpositionTable != nil {
+		return m.transpositionTable.GetStats()
+	}
+	return 0, 0, 0, 0
+}
+
 // GetName returns the engine name
 func (m *MinimaxEngine) GetName() string {
 	return "Minimax Engine"
@@ -550,12 +654,14 @@ func (m *MinimaxEngine) GetName() string {
 
 // ClearSearchState clears transient search state between different positions
 func (m *MinimaxEngine) ClearSearchState() {
-	// Clear PV move from previous search
-	m.previousBestMove = board.Move{}
 	// Clear killer moves
 	for i := 0; i < MaxKillerDepth; i++ {
 		m.killerTable[i][0] = board.Move{}
 		m.killerTable[i][1] = board.Move{}
+	}
+	// Clear transposition table if enabled
+	if m.useTranspositions && m.transpositionTable != nil {
+		m.transpositionTable.Clear()
 	}
 }
 
@@ -597,17 +703,6 @@ func (m *MinimaxEngine) storeKiller(move board.Move, depth int) {
 	// Shift existing killers and store new one in first slot
 	m.killerTable[depth][1] = m.killerTable[depth][0]
 	m.killerTable[depth][0] = move
-}
-
-// isPVMove checks if a move is the principal variation move from the previous iteration
-func (m *MinimaxEngine) isPVMove(move board.Move) bool {
-	// Check for invalid move markers (used to indicate no valid PV move)
-	if m.previousBestMove.From.File == -1 || m.previousBestMove.From.Rank == -1 {
-		return false // Invalid PV move stored
-	}
-
-	// Check if this move matches the stored PV move (From and To squares)
-	return move.From == m.previousBestMove.From && move.To == m.previousBestMove.To
 }
 
 // oppositePlayer returns the opposite player

@@ -39,9 +39,13 @@ func NewUCIEngine() *UCIEngine {
 	// Create debug logger
 	debugLogger := createDebugLogger()
 
+	// Create minimax engine with transposition table enabled by default for UCI
+	minimaxEngine := search.NewMinimaxEngine()
+	minimaxEngine.SetTranspositionTableSize(128) // Default 128MB TT for UCI mode
+
 	engine := &UCIEngine{
 		engine:      game.NewEngine(),
-		aiEngine:    search.NewMinimaxEngine(),
+		aiEngine:    minimaxEngine,
 		converter:   NewMoveConverter(),
 		protocol:    NewProtocolHandler(),
 		options:     make(map[string]string),
@@ -301,9 +305,26 @@ func (ue *UCIEngine) handleGo(args []string) {
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
 	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI)
 
-	ue.debugLogger.Printf("AI chose move: %s (%s) (From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d score=%d depth=%d nodes=%d book=%t time=%.3fs/%.3fs)",
+	// Get transposition table statistics if available
+	var ttStatsStr string
+	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
+		hits, misses, collisions, hitRate := minimaxEngine.GetTranspositionTableStats()
+		ttStatsStr = fmt.Sprintf("TT: %d hits, %d misses, %d collisions, %.1f%% hit rate", 
+			hits, misses, collisions, hitRate)
+	}
+
+	ue.debugLogger.Printf("AI chose move: %s (%s) (From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d score=%d depth=%d nodes=%d book=%t time=%.3fs/%.3fs) %s",
 		bestMoveUCI, formattedBestMove, result.BestMove.From.String(), result.BestMove.To.String(),
-		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.BookMoveUsed, searchDuration.Seconds(), config.MaxTime.Seconds())
+		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.BookMoveUsed, searchDuration.Seconds(), config.MaxTime.Seconds(), ttStatsStr)
+
+	// Print TT stats to UCI output as info string (visible to GUI)
+	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
+		hits, misses, collisions, hitRate := minimaxEngine.GetTranspositionTableStats()
+		if hits > 0 || misses > 0 {
+			fmt.Fprintf(ue.output, "info string TT: %d hits, %d misses, %d collisions, %.1f%% hit rate\n", 
+				hits, misses, collisions, hitRate)
+		}
+	}
 
 	fmt.Fprintf(ue.output, "%s\n", formattedBestMove)
 	ue.searching = false
@@ -326,6 +347,20 @@ func (ue *UCIEngine) handleSetOption(args []string) string {
 	}
 
 	ue.options[name] = value
+
+	// Handle specific options
+	switch name {
+	case "Hash":
+		// Parse hash table size in MB
+		var hashSizeMB int
+		if _, err := fmt.Sscanf(value, "%d", &hashSizeMB); err == nil && hashSizeMB > 0 {
+			if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
+				minimaxEngine.SetTranspositionTableSize(hashSizeMB)
+				ue.debugLogger.Printf("Set transposition table size to %d MB", hashSizeMB)
+			}
+		}
+	}
+
 	return ""
 }
 
@@ -334,6 +369,12 @@ func (ue *UCIEngine) handleNewGame() string {
 	ue.debugLogger.Println("NEWGAME: Resetting engine...")
 	ue.engine.Reset()
 	ue.moveNumber = 0
+
+	// Clear transposition table for new game
+	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
+		minimaxEngine.ClearSearchState()
+		ue.debugLogger.Println("NEWGAME: Cleared transposition table")
+	}
 
 	return ""
 }
