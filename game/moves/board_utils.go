@@ -191,8 +191,6 @@ func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
 		b.SetFullMoveNumber(b.GetFullMoveNumber() + 1)
 	}
 	
-	// Update king cache if a king moved
-	g.updateKingCache(move)
 }
 
 // removeCastlingRights removes specific castling rights from the string

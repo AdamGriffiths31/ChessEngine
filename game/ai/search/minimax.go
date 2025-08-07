@@ -95,9 +95,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 
 	// Initialize book service if needed
 	if config.UseOpeningBook {
-		if err := m.initializeBookService(config); err != nil {
-			// Continue without opening book if initialization fails
-		}
+		m.initializeBookService(config)
 	}
 
 	if config.UseOpeningBook && m.bookService != nil {
@@ -137,10 +135,6 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		hash := m.zobrist.HashPosition(b)
 		if entry, found := m.transpositionTable.Probe(hash); found {
 			rootTTMove = entry.BestMove
-			// Debug logging for tests
-			if m.debugMoveOrdering {
-				// This will be visible in test logs when debug is enabled
-			}
 		}
 	}
 
@@ -164,13 +158,30 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		default:
 		}
 
-		// Search at current depth using root-level alpha-beta
+		// Search at current depth using aspiration windows
 		bestScore := ai.EvaluationScore(-ai.MateScore - 1)
 		bestMove := legalMoves.Moves[0]
-		alpha := ai.EvaluationScore(-ai.MateScore - 1)
-		beta := ai.EvaluationScore(ai.MateScore + 1)
+		var alpha, beta ai.EvaluationScore
 		var searchStats ai.SearchStats
 		completed := false
+
+		// Set up aspiration windows - use full window for depth 1, narrow window for depth 2+
+		var originalAlpha, originalBeta ai.EvaluationScore
+		if currentDepth == 1 {
+			// First depth - use full window since we have no previous score
+			alpha = ai.EvaluationScore(-ai.MateScore - 1)
+			beta = ai.EvaluationScore(ai.MateScore + 1)
+		} else {
+			// Use narrow aspiration window around previous score
+			alpha = lastCompletedScore - 50
+			beta = lastCompletedScore + 50
+		}
+		originalAlpha = alpha
+		originalBeta = beta
+
+	aspirationSearch:
+		// Reset search stats for each aspiration window attempt
+		searchStats = ai.SearchStats{}
 
 		// Try each move at this depth
 		for i := 0; i < legalMoves.Count; i++ {
@@ -220,6 +231,18 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			}
 		}
 		completed = true
+
+		// Check for aspiration window failure and re-search if needed
+		if currentDepth > 1 && (bestScore <= originalAlpha || bestScore >= originalBeta) {
+			// Aspiration window failed - re-search with full window
+			alpha = ai.EvaluationScore(-ai.MateScore - 1)
+			beta = ai.EvaluationScore(ai.MateScore + 1)
+			originalAlpha = alpha
+			originalBeta = beta
+			bestScore = ai.EvaluationScore(-ai.MateScore - 1)
+			completed = false
+			goto aspirationSearch
+		}
 
 	searchComplete:
 		if completed {

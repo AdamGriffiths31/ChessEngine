@@ -35,3 +35,6 @@ tools/engines.json
 # Temporary files
 *.tmp
 *.log
+
+# Test data - large EPD files
+testdata/
