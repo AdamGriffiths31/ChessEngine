@@ -66,7 +66,7 @@ func TestCalculateScore(t *testing.T) {
 			}
 			
 			engine.moveToReturn = tt.engineMove
-			score := scorer.calculateScore(position, tt.engineMove, moveToString(tt.engineMove))
+			score := scorer.calculateScore(position, tt.engineMove, moveToString(tt.engineMove), moveToString(tt.engineMove))
 			
 			if score != tt.expectedScore {
 				t.Errorf("Expected score %d, got %d", tt.expectedScore, score)

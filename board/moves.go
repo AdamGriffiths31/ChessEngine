@@ -29,6 +29,18 @@ type MoveUndo struct {
 	SideToMove      string
 }
 
+// NullMove represents a "pass turn" move used for null move pruning
+var NullMove = Move{
+	From:        Square{File: -1, Rank: -1},
+	To:          Square{File: -1, Rank: -1},
+	Piece:       Empty,
+	Captured:    Empty,
+	Promotion:   Empty,
+	IsCapture:   false,
+	IsCastling:  false,
+	IsEnPassant: false,
+}
+
 func ParseSquare(notation string) (Square, error) {
 	if len(notation) != 2 {
 		return Square{}, errors.New("invalid square notation: must be 2 characters")
@@ -84,6 +96,48 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 	// Make the move
 	err := b.MakeMove(move)
 	return undo, err
+}
+
+// MakeNullMove makes a null move (passes the turn) and returns undo information
+func (b *Board) MakeNullMove() MoveUndo {
+	// Store current state for undo
+	undo := MoveUndo{
+		Move:            NullMove,
+		CapturedPiece:   Empty,
+		CastlingRights:  b.castlingRights,
+		EnPassantTarget: b.enPassantTarget,
+		HalfMoveClock:   b.halfMoveClock,
+		FullMoveNumber:  b.fullMoveNumber,
+		SideToMove:      b.sideToMove,
+	}
+
+	// Switch side to move
+	if b.sideToMove == "w" {
+		b.sideToMove = "b"
+	} else {
+		b.sideToMove = "w"
+		b.fullMoveNumber++
+	}
+
+	// Increment half move clock (null moves don't reset 50-move rule)
+	b.halfMoveClock++
+
+	// Clear en passant target (opportunity expires when turn passes)
+	b.enPassantTarget = nil
+
+	// Castling rights remain unchanged (no pieces moved)
+
+	return undo
+}
+
+// UnmakeNullMove reverses a null move using the stored undo information
+func (b *Board) UnmakeNullMove(undo MoveUndo) {
+	// Restore all board state (no pieces to move since it was a null move)
+	b.castlingRights = undo.CastlingRights
+	b.enPassantTarget = undo.EnPassantTarget
+	b.halfMoveClock = undo.HalfMoveClock
+	b.fullMoveNumber = undo.FullMoveNumber
+	b.sideToMove = undo.SideToMove
 }
 
 func (b *Board) MakeMove(move Move) error {

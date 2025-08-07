@@ -600,3 +600,143 @@ func BenchmarkUnmakeMove(b *testing.B) {
 		board.UnmakeMove(undo)
 	}
 }
+
+func TestNullMove(t *testing.T) {
+	// Test null move make/unmake with various positions
+	tests := []struct {
+		name        string
+		setupFEN    string
+		description string
+	}{
+		{
+			name:        "Starting position white to move",
+			setupFEN:    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			description: "Null move from starting position should switch to black",
+		},
+		{
+			name:        "Starting position black to move", 
+			setupFEN:    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 5 10",
+			description: "Null move from black should switch to white and increment full moves",
+		},
+		{
+			name:        "Position with en passant target",
+			setupFEN:    "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
+			description: "Null move should clear en passant target",
+		},
+		{
+			name:        "Position with all castling rights",
+			setupFEN:    "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 15 20",
+			description: "Null move should preserve castling rights",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			board, err := FromFEN(test.setupFEN)
+			if err != nil {
+				t.Fatalf("Failed to create board from FEN: %v", err)
+			}
+
+			// Store original state
+			origSideToMove := board.sideToMove
+			origCastling := board.castlingRights
+			origEnPassant := board.enPassantTarget
+			origHalfMove := board.halfMoveClock
+			origFullMove := board.fullMoveNumber
+
+			// Make null move
+			undo := board.MakeNullMove()
+
+			// Verify the null move changed what it should
+			if origSideToMove == "w" {
+				if board.sideToMove != "b" {
+					t.Errorf("Expected side to move to change from w to b")
+				}
+				if board.fullMoveNumber != origFullMove {
+					t.Errorf("Expected full move number to stay %d when white makes null move, got %d", 
+						origFullMove, board.fullMoveNumber)
+				}
+			} else {
+				if board.sideToMove != "w" {
+					t.Errorf("Expected side to move to change from b to w")
+				}
+				if board.fullMoveNumber != origFullMove+1 {
+					t.Errorf("Expected full move number to increment from %d to %d when black makes null move, got %d", 
+						origFullMove, origFullMove+1, board.fullMoveNumber)
+				}
+			}
+
+			// Half move clock should increment
+			if board.halfMoveClock != origHalfMove+1 {
+				t.Errorf("Expected half move clock to increment from %d to %d, got %d", 
+					origHalfMove, origHalfMove+1, board.halfMoveClock)
+			}
+
+			// En passant target should be cleared
+			if board.enPassantTarget != nil {
+				t.Errorf("Expected en passant target to be cleared, got %v", board.enPassantTarget)
+			}
+
+			// Castling rights should be preserved
+			if board.castlingRights != origCastling {
+				t.Errorf("Expected castling rights to be preserved as %q, got %q", 
+					origCastling, board.castlingRights)
+			}
+
+			// Unmake null move
+			board.UnmakeNullMove(undo)
+
+			// Verify everything is restored
+			if board.sideToMove != origSideToMove {
+				t.Errorf("Expected side to move to be restored to %q, got %q", 
+					origSideToMove, board.sideToMove)
+			}
+			if board.castlingRights != origCastling {
+				t.Errorf("Expected castling rights to be restored to %q, got %q", 
+					origCastling, board.castlingRights)
+			}
+			if (board.enPassantTarget == nil) != (origEnPassant == nil) {
+				t.Errorf("Expected en passant target restoration mismatch")
+			}
+			if board.enPassantTarget != nil && origEnPassant != nil {
+				if *board.enPassantTarget != *origEnPassant {
+					t.Errorf("Expected en passant target to be restored to %v, got %v", 
+						*origEnPassant, *board.enPassantTarget)
+				}
+			}
+			if board.halfMoveClock != origHalfMove {
+				t.Errorf("Expected half move clock to be restored to %d, got %d", 
+					origHalfMove, board.halfMoveClock)
+			}
+			if board.fullMoveNumber != origFullMove {
+				t.Errorf("Expected full move number to be restored to %d, got %d", 
+					origFullMove, board.fullMoveNumber)
+			}
+
+			// Verify board position unchanged (all pieces should be in same place)
+			finalFEN := board.ToFEN()
+			if finalFEN != test.setupFEN {
+				t.Errorf("Expected board to be fully restored to original FEN %q, got %q", 
+					test.setupFEN, finalFEN)
+			}
+		})
+	}
+}
+
+func TestNullMoveConstant(t *testing.T) {
+	// Test that the NullMove constant has expected properties
+	if NullMove.From.File != -1 || NullMove.From.Rank != -1 {
+		t.Errorf("Expected NullMove.From to be (-1, -1), got (%d, %d)", 
+			NullMove.From.File, NullMove.From.Rank)
+	}
+	if NullMove.To.File != -1 || NullMove.To.Rank != -1 {
+		t.Errorf("Expected NullMove.To to be (-1, -1), got (%d, %d)", 
+			NullMove.To.File, NullMove.To.Rank)
+	}
+	if NullMove.Piece != Empty {
+		t.Errorf("Expected NullMove.Piece to be Empty, got %v", NullMove.Piece)
+	}
+	if NullMove.IsCapture || NullMove.IsCastling || NullMove.IsEnPassant {
+		t.Errorf("Expected all NullMove flags to be false")
+	}
+}

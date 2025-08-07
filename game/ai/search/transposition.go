@@ -11,11 +11,8 @@ import (
 type EntryType uint8
 
 const (
-	// Exact score (true minimax value)
 	EntryExact EntryType = iota
-	// Lower bound (fail-high, beta cutoff)
 	EntryLowerBound
-	// Upper bound (fail-low)
 	EntryUpperBound
 )
 
@@ -66,12 +63,10 @@ func (tt *TranspositionTable) Clear() {
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
 
-	// Reset table
 	for i := range tt.table {
 		tt.table[i] = TranspositionEntry{}
 	}
 
-	// Reset statistics
 	tt.hits = 0
 	tt.misses = 0
 	tt.collisions = 0
@@ -85,11 +80,9 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
 
-	// Get table index using hash
 	index := hash & tt.mask
 	entry := &tt.table[index]
 
-	// Check for collision
 	if entry.Hash != 0 && entry.Hash != hash {
 		tt.collisions++
 	}
@@ -124,7 +117,6 @@ func (tt *TranspositionTable) Probe(hash uint64) (*TranspositionEntry, bool) {
 
 	if entry.Hash == hash {
 		tt.hits++
-		// Return a copy to avoid race conditions
 		entryCopy := *entry
 		return &entryCopy, true
 	}

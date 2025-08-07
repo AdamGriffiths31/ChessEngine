@@ -188,11 +188,6 @@ func isPawnBlocked(b *board.Board, pawnSquare int, color board.BitboardColor) bo
 	return !b.IsSquareEmptyBitboard(targetSquare)
 }
 
-var (
-	CenterFiles = board.FileMask(3) | board.FileMask(4) // d and e files
-	CenterRanks = board.RankMask(3) | board.RankMask(4) // 4th and 5th ranks
-)
-
 // evaluateLongDiagonalControl evaluates control of long diagonals
 func evaluateLongDiagonalControl(b *board.Board, bishopSquare int) int {
 	// Get bishop attacks

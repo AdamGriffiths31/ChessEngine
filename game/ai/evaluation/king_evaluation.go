@@ -1,6 +1,10 @@
 package evaluation
 
-import "github.com/AdamGriffiths31/ChessEngine/board"
+import (
+	"strings"
+
+	"github.com/AdamGriffiths31/ChessEngine/board"
+)
 
 // Pawn shelter evaluation constants
 const (
@@ -172,8 +176,8 @@ func evaluateCastlingRights(b *board.Board, color board.BitboardColor) int {
 	}
 
 	// Count available castling rights
-	hasKingside := contains(castlingRights, kingsideRight)
-	hasQueenside := contains(castlingRights, queensideRight)
+	hasKingside := strings.Contains(castlingRights, kingsideRight)
+	hasQueenside := strings.Contains(castlingRights, queensideRight)
 
 	if hasKingside && hasQueenside {
 		// Bonus for having both castling rights available
@@ -225,23 +229,4 @@ func hasKingCastled(b *board.Board, color board.BitboardColor) bool {
 	return false
 }
 
-// contains checks if a string contains a substring
-func contains(s, substr string) bool {
-	for i := 0; i < len(s); i++ {
-		if i+len(substr) > len(s) {
-			break
-		}
-		match := true
-		for j := 0; j < len(substr); j++ {
-			if s[i+j] != substr[j] {
-				match = false
-				break
-			}
-		}
-		if match {
-			return true
-		}
-	}
-	return false
-}
 

@@ -29,6 +29,9 @@ type SearchConfig struct {
 	BookFiles         []string
 	BookSelectMode    BookSelectionMode
 	BookWeightThreshold uint16
+	
+	// Search enhancement options
+	UseNullMove bool
 }
 
 // BookSelectionMode defines how to select moves from opening books
