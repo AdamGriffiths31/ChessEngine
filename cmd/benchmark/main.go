@@ -62,7 +62,7 @@ var standardPositions = []BenchmarkPosition{
 func main() {
 	// Command line flags
 	depth := flag.Int("depth", 5, "Search depth for benchmarking")
-	ttSize := flag.Int("ttsize", 64, "Transposition table size in MB")
+	ttSize := flag.Int("ttsize", 256, "Transposition table size in MB")
 	customPos := flag.String("fen", "", "Custom position FEN (optional)")
 	timeout := flag.Int("timeout", 30, "Search timeout in seconds")
 	flag.Parse()

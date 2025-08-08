@@ -47,6 +47,132 @@ func NewMinimaxEngine() *MinimaxEngine {
 	}
 }
 
+// GetHashDelta implements the board.HashUpdater interface
+// Calculates the zobrist hash delta for a move from old state to new state
+func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState board.BoardState) uint64 {
+	var hashDelta uint64
+
+	// Always flip side to move
+	hashDelta ^= m.zobrist.GetSideKey()
+
+	// Handle piece movement (remove from source, add to destination)
+	fromSquare := move.From.Rank*8 + move.From.File
+	toSquare := move.To.Rank*8 + move.To.File
+
+	// Remove piece from source square
+	if move.Piece != board.Empty {
+		pieceIndex := m.zobrist.GetPieceIndex(move.Piece)
+		hashDelta ^= m.zobrist.GetPieceKey(fromSquare, pieceIndex)
+	}
+
+	// Add piece to destination square (or promotion piece)
+	var destPiece board.Piece
+	if move.Promotion != board.Empty && move.Promotion != 0 {
+		destPiece = move.Promotion
+	} else {
+		destPiece = move.Piece
+	}
+	if destPiece != board.Empty {
+		pieceIndex := m.zobrist.GetPieceIndex(destPiece)
+		hashDelta ^= m.zobrist.GetPieceKey(toSquare, pieceIndex)
+	}
+
+	// Handle captured piece
+	if move.IsCapture && move.Captured != board.Empty {
+		capturedPieceIndex := m.zobrist.GetPieceIndex(move.Captured)
+		if move.IsEnPassant {
+			// En passant capture is on a different square
+			var captureRank int
+			if move.Piece == board.WhitePawn {
+				captureRank = 4 // Black pawn on rank 5
+			} else {
+				captureRank = 3 // White pawn on rank 4
+			}
+			captureSquare := captureRank*8 + move.To.File
+			hashDelta ^= m.zobrist.GetPieceKey(captureSquare, capturedPieceIndex)
+		} else {
+			hashDelta ^= m.zobrist.GetPieceKey(toSquare, capturedPieceIndex)
+		}
+	}
+
+	// Handle castling rook movement
+	if move.IsCastling {
+		var rookFrom, rookTo int
+		switch move.To.File {
+		case 6: // King-side castling
+			rookFrom = move.From.Rank*8 + 7
+			rookTo = move.From.Rank*8 + 5
+		case 2: // Queen-side castling
+			rookFrom = move.From.Rank*8 + 0
+			rookTo = move.From.Rank*8 + 3
+		}
+		
+		// Remove rook from original square, add to new square
+		var rook board.Piece
+		if move.From.Rank == 0 {
+			rook = board.BlackRook
+		} else {
+			rook = board.WhiteRook
+		}
+		rookIndex := m.zobrist.GetPieceIndex(rook)
+		hashDelta ^= m.zobrist.GetPieceKey(rookFrom, rookIndex)
+		hashDelta ^= m.zobrist.GetPieceKey(rookTo, rookIndex)
+	}
+
+	// Handle castling rights changes
+	if oldState.CastlingRights != b.GetCastlingRights() {
+		oldRights := m.zobrist.GetCastlingKey(oldState.CastlingRights)
+		newRights := m.zobrist.GetCastlingKey(b.GetCastlingRights())
+		hashDelta ^= oldRights ^ newRights
+	}
+
+	// Handle en passant target changes
+	// Only include en passant in hash if there are adjacent pawns that can capture
+	if (oldState.EnPassantTarget == nil) != (b.GetEnPassantTarget() == nil) ||
+		(oldState.EnPassantTarget != nil && b.GetEnPassantTarget() != nil &&
+			oldState.EnPassantTarget.File != b.GetEnPassantTarget().File) {
+		
+		if oldState.EnPassantTarget != nil && m.hasAdjacentCapturingPawn(b, oldState.EnPassantTarget, oldState.SideToMove) {
+			hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantTarget.File)
+		}
+		if b.GetEnPassantTarget() != nil && m.hasAdjacentCapturingPawn(b, b.GetEnPassantTarget(), b.GetSideToMove()) {
+			hashDelta ^= m.zobrist.GetEnPassantKey(b.GetEnPassantTarget().File)
+		}
+	}
+
+	return hashDelta
+}
+
+// hasAdjacentCapturingPawn checks if there's a pawn adjacent to the en passant target that can capture
+// This implements the same logic as the full HashPosition function
+func (m *MinimaxEngine) hasAdjacentCapturingPawn(b *board.Board, epTarget *board.Square, sideToMove string) bool {
+	// Determine the rank where the capturing pawn should be and what piece to look for
+	var pawnRank int
+	var pawnPiece board.Piece
+	
+	if sideToMove == "b" { // Black to move, so white pawn moved and black can capture
+		pawnRank = 4 // Black pawn should be on rank 5 (0-indexed rank 4)
+		pawnPiece = board.BlackPawn
+	} else { // White to move, so black pawn moved and white can capture  
+		pawnRank = 3 // White pawn should be on rank 4 (0-indexed rank 3)
+		pawnPiece = board.WhitePawn
+	}
+	
+	epFile := epTarget.File
+	
+	// Check adjacent files for capturing pawn
+	for _, df := range []int{-1, 1} {
+		adjFile := epFile + df
+		if adjFile >= 0 && adjFile < 8 {
+			if b.GetPiece(pawnRank, adjFile) == pawnPiece {
+				return true
+			}
+		}
+	}
+	
+	return false
+}
+
 // initializeBookService initializes the opening book service based on configuration
 func (m *MinimaxEngine) initializeBookService(config ai.SearchConfig) error {
 	if !config.UseOpeningBook || len(config.BookFiles) == 0 {
@@ -105,6 +231,10 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		}
 	}
 
+	// Initialize incremental hashing for the board
+	b.SetHashUpdater(m)
+	b.InitializeHashFromPosition(m.zobrist.HashPosition)
+
 	startTime := time.Now()
 
 	if m.transpositionTable != nil {
@@ -130,7 +260,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 
 	var rootTTMove board.Move
 	if m.transpositionTable != nil {
-		hash := m.zobrist.HashPosition(b)
+		hash := b.GetHash()
 		if entry, found := m.transpositionTable.Probe(hash); found {
 			rootTTMove = entry.BestMove
 		}
@@ -153,76 +283,106 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 
 		bestScore := ai.EvaluationScore(-ai.MateScore - 1)
 		bestMove := legalMoves.Moves[0]
-		var alpha, beta ai.EvaluationScore
 		var searchStats ai.SearchStats
-		completed := false
+		var completed bool
 
-		var originalAlpha, originalBeta ai.EvaluationScore
-		if currentDepth == 1 {
-			alpha = ai.EvaluationScore(-ai.MateScore - 1)
-			beta = ai.EvaluationScore(ai.MateScore + 1)
-		} else {
-			alpha = lastCompletedScore - 50
-			beta = lastCompletedScore + 50
-		}
-		originalAlpha = alpha
-		originalBeta = beta
-
-	aspirationSearch:
-		searchStats = ai.SearchStats{}
-
-		for i := 0; i < legalMoves.Count; i++ {
-			move := legalMoves.Moves[i]
-
-			select {
-			case <-ctx.Done():
-				completed = false
-				goto searchComplete
-			default:
-			}
-
-			undo, err := b.MakeMoveWithUndo(move)
-			if err != nil {
-				continue
-			}
-
-			var moveStats ai.SearchStats
-			score := -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &moveStats)
-
-			b.UnmakeMove(undo)
-
-			searchStats.NodesSearched += moveStats.NodesSearched
-
-			select {
-			case <-ctx.Done():
-				completed = false
-				goto searchComplete
-			default:
-			}
-
-			if score > bestScore {
-				bestScore = score
-				bestMove = move
-
-				if score > alpha {
-					alpha = score
+		// Progressive aspiration window implementation
+		var windowSize ai.EvaluationScore = 100 // Start with wider window (±100)
+		var maxRetries = 3
+		
+		for retry := 0; retry <= maxRetries && !completed; retry++ {
+			var alpha, beta ai.EvaluationScore
+			
+			// Set initial window based on depth and retry count
+			if currentDepth == 1 {
+				// Full window for first depth
+				alpha = ai.EvaluationScore(-ai.MateScore - 1)
+				beta = ai.EvaluationScore(ai.MateScore + 1)
+			} else if retry == 0 {
+				// Initial aspiration window - adaptive sizing
+				adaptiveWindow := m.calculateAdaptiveWindow(currentDepth, windowSize)
+				alpha = lastCompletedScore - adaptiveWindow
+				beta = lastCompletedScore + adaptiveWindow
+			} else {
+				// Progressive window widening on retries
+				switch retry {
+				case 1:
+					windowSize = 150 // Widen to ±150
+					alpha = lastCompletedScore - windowSize
+					beta = lastCompletedScore + windowSize
+				case 2:
+					windowSize = 300 // Widen to ±300
+					alpha = lastCompletedScore - windowSize
+					beta = lastCompletedScore + windowSize
+				default:
+					// Full window as last resort
+					alpha = ai.EvaluationScore(-ai.MateScore - 1)
+					beta = ai.EvaluationScore(ai.MateScore + 1)
 				}
 			}
-		}
-		completed = true
-
-		if currentDepth > 1 && (bestScore <= originalAlpha || bestScore >= originalBeta) {
-			// Aspiration window failed - re-search with full window
-			alpha = ai.EvaluationScore(-ai.MateScore - 1)
-			beta = ai.EvaluationScore(ai.MateScore + 1)
-			originalAlpha = alpha
-			originalBeta = beta
+			
+			originalAlpha := alpha
+			originalBeta := beta
+			searchStats = ai.SearchStats{}
 			bestScore = ai.EvaluationScore(-ai.MateScore - 1)
-			completed = false
-			goto aspirationSearch
+
+			// Search all moves with current window
+			searchCancelled := false
+			for i := 0; i < legalMoves.Count && !searchCancelled; i++ {
+				move := legalMoves.Moves[i]
+
+				select {
+				case <-ctx.Done():
+					searchCancelled = true
+					break
+				default:
+				}
+
+				undo, err := b.MakeMoveWithUndo(move)
+				if err != nil {
+					continue
+				}
+
+				var moveStats ai.SearchStats
+				score := -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &moveStats)
+
+				b.UnmakeMove(undo)
+
+				searchStats.NodesSearched += moveStats.NodesSearched
+
+				select {
+				case <-ctx.Done():
+					searchCancelled = true
+					break
+				default:
+				}
+
+				if score > bestScore {
+					bestScore = score
+					bestMove = move
+
+					if score > alpha {
+						alpha = score
+					}
+				}
+			}
+			
+			// Check if search was cancelled
+			if searchCancelled {
+				completed = false
+				break
+			}
+			
+			// Check if aspiration window failed and we need to retry
+			if currentDepth > 1 && retry < maxRetries && (bestScore <= originalAlpha || bestScore >= originalBeta) {
+				// Window failed, continue to next retry iteration
+				continue
+			} else {
+				// Search completed successfully or no more retries
+				completed = true
+			}
 		}
 
-	searchComplete:
 		if completed {
 			lastCompletedBestMove = bestMove
 			lastCompletedScore = bestScore
@@ -230,7 +390,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			result.Stats.NodesSearched = searchStats.NodesSearched
 
 			if m.transpositionTable != nil {
-				hash := m.zobrist.HashPosition(b)
+				hash := b.GetHash()
 				m.transpositionTable.Store(hash, currentDepth, bestScore, EntryExact, bestMove)
 			}
 		} else {
@@ -260,7 +420,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	default:
 	}
 
-	hash := m.zobrist.HashPosition(b)
+	hash := b.GetHash()
 	if m.transpositionTable != nil {
 		if entry, found := m.transpositionTable.Probe(hash); found {
 			if entry.Depth >= 0 {
@@ -372,7 +532,7 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	}
 
 	var ttMove board.Move
-	hash := m.zobrist.HashPosition(b)
+	hash := b.GetHash()
 
 	if m.transpositionTable != nil {
 		if entry, found := m.transpositionTable.Probe(hash); found {
@@ -683,6 +843,26 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 		return 0
 	}
 	return m.historyTable.GetHistoryScore(move)
+}
+
+// calculateAdaptiveWindow determines the appropriate aspiration window size
+// based on search depth and position characteristics
+func (m *MinimaxEngine) calculateAdaptiveWindow(depth int, baseWindow ai.EvaluationScore) ai.EvaluationScore {
+	// Start with base window and adjust based on depth
+	adaptiveWindow := baseWindow
+	
+	// Increase window size for deeper searches as they tend to be more volatile
+	if depth >= 6 {
+		adaptiveWindow += ai.EvaluationScore(depth * 10)
+	}
+	
+	// Cap the maximum window size to prevent excessive re-searches
+	maxWindow := ai.EvaluationScore(200)
+	if adaptiveWindow > maxWindow {
+		adaptiveWindow = maxWindow
+	}
+	
+	return adaptiveWindow
 }
 
 // oppositePlayer returns the opposite player

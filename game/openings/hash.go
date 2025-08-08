@@ -138,3 +138,41 @@ func (zh *ZobristHash) HashMove(move board.Move) uint64 {
 		(uint64(move.To.Rank) << 9) |
 		(uint64(move.Promotion) << 12)
 }
+
+// GetSideKey returns the zobrist key for side to move
+func (zh *ZobristHash) GetSideKey() uint64 {
+	return zh.sideKey
+}
+
+// GetPieceKey returns the zobrist key for a piece at a given square
+func (zh *ZobristHash) GetPieceKey(square int, pieceIndex int) uint64 {
+	return zh.pieceKeys[square][pieceIndex]
+}
+
+// GetPieceIndex returns the piece index for zobrist hashing
+func (zh *ZobristHash) GetPieceIndex(piece board.Piece) int {
+	return zh.getPieceIndex(piece)
+}
+
+// GetCastlingKey returns the zobrist key for castling rights
+func (zh *ZobristHash) GetCastlingKey(castlingRights string) uint64 {
+	castlingIndex := 0
+	for _, right := range castlingRights {
+		switch right {
+		case 'K':
+			castlingIndex |= 1
+		case 'Q':
+			castlingIndex |= 2
+		case 'k':
+			castlingIndex |= 4
+		case 'q':
+			castlingIndex |= 8
+		}
+	}
+	return zh.castleKeys[castlingIndex]
+}
+
+// GetEnPassantKey returns the zobrist key for en passant file
+func (zh *ZobristHash) GetEnPassantKey(file int) uint64 {
+	return zh.enPassantKeys[file]
+}

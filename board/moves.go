@@ -93,8 +93,21 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 		SideToMove:      b.sideToMove,
 	}
 
+	// Push current hash to history for undo
+	b.PushHash()
+
+	// Capture old state for incremental hash update
+	oldState := b.GetCurrentBoardState()
+
 	// Make the move
 	err := b.MakeMove(move)
+
+	// Update hash incrementally if hash updater is available
+	if b.hashUpdater != nil && err == nil {
+		hashDelta := b.hashUpdater.GetHashDelta(b, move, oldState)
+		b.UpdateHash(hashDelta)
+	}
+
 	return undo, err
 }
 
@@ -434,6 +447,9 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
 	b.sideToMove = undo.SideToMove
+
+	// Restore hash from history
+	b.PopHash()
 }
 
 // undoCastling reverses the rook movement in castling

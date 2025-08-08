@@ -60,6 +60,11 @@ type Board struct {
 	WhitePieces Bitboard // All white pieces
 	BlackPieces Bitboard // All black pieces
 	AllPieces   Bitboard // All occupied squares
+
+	// Zobrist hash for incremental updates
+	currentHash uint64
+	hashHistory []uint64 // Stack for unmake operations
+	hashUpdater HashUpdater // For incremental hash updates
 }
 
 // Define square color masks if not already available
@@ -99,7 +104,71 @@ func NewBoard() *Board {
 	board.BlackPieces = 0
 	board.AllPieces = 0
 
+	// Initialize hash fields
+	board.currentHash = 0
+	board.hashHistory = make([]uint64, 0)
+
 	return board
+}
+
+// GetHash returns the current zobrist hash of the board
+func (b *Board) GetHash() uint64 {
+	return b.currentHash
+}
+
+// SetHash sets the current zobrist hash (for initialization)
+func (b *Board) SetHash(hash uint64) {
+	b.currentHash = hash
+}
+
+// UpdateHash updates the hash incrementally by XORing with the given value
+func (b *Board) UpdateHash(delta uint64) {
+	b.currentHash ^= delta
+}
+
+// PushHash saves the current hash to history for unmake operations
+func (b *Board) PushHash() {
+	b.hashHistory = append(b.hashHistory, b.currentHash)
+}
+
+// PopHash restores the hash from history during unmake operations
+func (b *Board) PopHash() {
+	if len(b.hashHistory) > 0 {
+		b.currentHash = b.hashHistory[len(b.hashHistory)-1]
+		b.hashHistory = b.hashHistory[:len(b.hashHistory)-1]
+	}
+}
+
+// InitializeHashFromPosition initializes the board's hash using an external hash calculator
+// This should be called once when the board is set up to establish the baseline hash
+func (b *Board) InitializeHashFromPosition(hashFunc func(*Board) uint64) {
+	b.currentHash = hashFunc(b)
+}
+
+// HashUpdater interface for providing zobrist key updates
+type HashUpdater interface {
+	GetHashDelta(b *Board, move Move, oldState BoardState) uint64
+}
+
+// BoardState captures the board state before a move for hash calculation
+type BoardState struct {
+	CastlingRights  string
+	EnPassantTarget *Square
+	SideToMove      string
+}
+
+// SetHashUpdater sets the hash updater for incremental updates
+func (b *Board) SetHashUpdater(updater HashUpdater) {
+	b.hashUpdater = updater
+}
+
+// GetCurrentBoardState returns the current board state for hash calculations
+func (b *Board) GetCurrentBoardState() BoardState {
+	return BoardState{
+		CastlingRights:  b.castlingRights,
+		EnPassantTarget: b.enPassantTarget,
+		SideToMove:      b.sideToMove,
+	}
 }
 
 // Bitboard helper functions

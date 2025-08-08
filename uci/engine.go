@@ -41,7 +41,7 @@ func NewUCIEngine() *UCIEngine {
 
 	// Create minimax engine with transposition table enabled by default for UCI
 	minimaxEngine := search.NewMinimaxEngine()
-	minimaxEngine.SetTranspositionTableSize(128) // Default 128MB TT for UCI mode
+	minimaxEngine.SetTranspositionTableSize(256) // Default 256MB TT for UCI mode
 
 	engine := &UCIEngine{
 		engine:      game.NewEngine(),
