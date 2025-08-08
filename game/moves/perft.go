@@ -43,10 +43,12 @@ func PerftWithGenerator(b *board.Board, depth int, player Player, generator *Gen
 	// Performance optimization: if depth is 1, just return move count
 	if depth == 1 {
 		moves := generator.GenerateAllMoves(b, player)
+		defer ReleaseMoveList(moves)
 		return int64(moves.Count)
 	}
 
 	moves := generator.GenerateAllMoves(b, player)
+	defer ReleaseMoveList(moves)
 
 	var nodeCount int64
 	

@@ -168,6 +168,7 @@ func (e *Engine) LoadFromFEN(fen string) error {
 }
 
 // GetLegalMoves returns all legal moves for the current player
+// IMPORTANT: Caller must call moves.ReleaseMoveList() when done with the returned MoveList
 func (e *Engine) GetLegalMoves() *moves.MoveList {
 	return e.generator.GenerateAllMoves(e.state.Board, moves.Player(e.GetCurrentPlayer()))
 }
@@ -187,6 +188,7 @@ func (e *Engine) ValidateMove(move board.Move) bool {
 
 		// Log legal moves for comparison
 		legalMoves := e.GetLegalMoves()
+		defer moves.ReleaseMoveList(legalMoves)
 		e.logger.Printf("Legal moves available (%d total):", legalMoves.Count)
 		for i := 0; i < legalMoves.Count; i++ {
 			legalMove := legalMoves.Moves[i]

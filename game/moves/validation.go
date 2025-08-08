@@ -19,6 +19,7 @@ func NewValidator() *Validator {
 // ValidateMove checks if a move is legal for the current position
 func (v *Validator) ValidateMove(b *board.Board, move board.Move, player Player) bool {
 	legalMoves := v.generator.GenerateAllMoves(b, player)
+	defer ReleaseMoveList(legalMoves)
 	return legalMoves.Contains(move)
 }
 
@@ -29,6 +30,7 @@ func IsMoveLegal(b *board.Board, move board.Move, player Player) bool {
 }
 
 // GetLegalMoves returns all legal moves for the current position
+// IMPORTANT: Caller must call ReleaseMoveList() when done with the returned MoveList
 func GetLegalMoves(b *board.Board, player Player) *MoveList {
 	generator := NewGenerator()
 	return generator.GenerateAllMoves(b, player)

@@ -4,52 +4,53 @@ import (
 	"testing"
 )
 
-func TestPieceLists(t *testing.T) {
+func TestBitboardPieces(t *testing.T) {
 	board := NewBoard()
 	
 	// Add a white pawn
 	board.SetPiece(1, 4, WhitePawn) // e2
 	
-	pawns := board.GetPieceList(WhitePawn)
-	if len(pawns) != 1 {
-		t.Errorf("Expected 1 white pawn, got %d", len(pawns))
+	// Check piece count using bitboard
+	count := board.getPieceCountFromBitboard(WhitePawn)
+	if count != 1 {
+		t.Errorf("Expected 1 white pawn, got %d", count)
 	}
 	
-	if pawns[0].File != 4 || pawns[0].Rank != 1 {
+	// Check piece position using bitboard
+	square := FileRankToSquare(4, 1)
+	if !board.PieceBitboards[WhitePawnIndex].HasBit(square) {
 		t.Error("White pawn not at expected position")
-	}
-	
-	// Check piece count
-	if board.GetPieceCount(WhitePawn) != 1 {
-		t.Errorf("Expected 1 white pawn count, got %d", board.GetPieceCount(WhitePawn))
 	}
 	
 	// Move the pawn
 	board.SetPiece(1, 4, Empty)
 	board.SetPiece(3, 4, WhitePawn) // e4
 	
-	pawns = board.GetPieceList(WhitePawn)
-	if len(pawns) != 1 {
-		t.Errorf("Expected 1 white pawn after move, got %d", len(pawns))
+	// Check piece count unchanged
+	count = board.getPieceCountFromBitboard(WhitePawn)
+	if count != 1 {
+		t.Errorf("Expected 1 white pawn after move, got %d", count)
 	}
 	
-	if pawns[0].File != 4 || pawns[0].Rank != 3 {
+	// Check piece at new position
+	newSquare := FileRankToSquare(4, 3)
+	if !board.PieceBitboards[WhitePawnIndex].HasBit(newSquare) {
 		t.Error("White pawn not at expected position after move")
 	}
 	
-	// Check piece count unchanged
-	if board.GetPieceCount(WhitePawn) != 1 {
-		t.Errorf("Expected 1 white pawn count after move, got %d", board.GetPieceCount(WhitePawn))
+	// Check piece not at old position
+	if board.PieceBitboards[WhitePawnIndex].HasBit(square) {
+		t.Error("White pawn still at old position after move")
 	}
 }
 
-func TestPieceListsFromFEN(t *testing.T) {
+func TestBitboardFromFEN(t *testing.T) {
 	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to parse FEN: %v", err)
 	}
 	
-	// Check piece counts
+	// Check piece counts using bitboards
 	testCases := []struct {
 		piece    Piece
 		expected int
@@ -69,32 +70,26 @@ func TestPieceListsFromFEN(t *testing.T) {
 	}
 	
 	for _, tc := range testCases {
-		count := board.GetPieceCount(tc.piece)
+		count := board.getPieceCountFromBitboard(tc.piece)
 		if count != tc.expected {
 			t.Errorf("Expected %d %c pieces, got %d", tc.expected, tc.piece, count)
-		}
-		
-		// Verify the piece list matches the count
-		list := board.GetPieceList(tc.piece)
-		if len(list) != tc.expected {
-			t.Errorf("Expected %d %c pieces in list, got %d", tc.expected, tc.piece, len(list))
 		}
 	}
 }
 
-func TestPieceListsCapture(t *testing.T) {
+func TestBitboardCapture(t *testing.T) {
 	board := NewBoard()
 	
 	// Set up a simple position with a white pawn and black piece to capture
 	board.SetPiece(4, 4, WhitePawn) // e5
 	board.SetPiece(5, 5, BlackKnight) // f6
 	
-	// Check initial counts
-	if board.GetPieceCount(WhitePawn) != 1 {
-		t.Errorf("Expected 1 white pawn, got %d", board.GetPieceCount(WhitePawn))
+	// Check initial counts using bitboards
+	if board.getPieceCountFromBitboard(WhitePawn) != 1 {
+		t.Errorf("Expected 1 white pawn, got %d", board.getPieceCountFromBitboard(WhitePawn))
 	}
-	if board.GetPieceCount(BlackKnight) != 1 {
-		t.Errorf("Expected 1 black knight, got %d", board.GetPieceCount(BlackKnight))
+	if board.getPieceCountFromBitboard(BlackKnight) != 1 {
+		t.Errorf("Expected 1 black knight, got %d", board.getPieceCountFromBitboard(BlackKnight))
 	}
 	
 	// Simulate capture: white pawn takes black knight
@@ -102,26 +97,25 @@ func TestPieceListsCapture(t *testing.T) {
 	board.SetPiece(4, 4, Empty)     // Remove pawn from original square
 	
 	// Check counts after capture
-	if board.GetPieceCount(WhitePawn) != 1 {
-		t.Errorf("Expected 1 white pawn after capture, got %d", board.GetPieceCount(WhitePawn))
+	if board.getPieceCountFromBitboard(WhitePawn) != 1 {
+		t.Errorf("Expected 1 white pawn after capture, got %d", board.getPieceCountFromBitboard(WhitePawn))
 	}
-	if board.GetPieceCount(BlackKnight) != 0 {
-		t.Errorf("Expected 0 black knights after capture, got %d", board.GetPieceCount(BlackKnight))
+	if board.getPieceCountFromBitboard(BlackKnight) != 0 {
+		t.Errorf("Expected 0 black knights after capture, got %d", board.getPieceCountFromBitboard(BlackKnight))
 	}
 	
-	// Verify piece lists
-	pawns := board.GetPieceList(WhitePawn)
-	if len(pawns) != 1 || pawns[0].File != 5 || pawns[0].Rank != 5 {
+	// Verify piece positions using bitboards
+	captureSquare := FileRankToSquare(5, 5)
+	if !board.PieceBitboards[WhitePawnIndex].HasBit(captureSquare) {
 		t.Error("White pawn not at expected position after capture")
 	}
 	
-	knights := board.GetPieceList(BlackKnight)
-	if len(knights) != 0 {
-		t.Error("Black knight list should be empty after capture")
+	if board.PieceBitboards[BlackKnightIndex].PopCount() != 0 {
+		t.Error("Black knight bitboard should be empty after capture")
 	}
 }
 
-func TestPieceListsMultiplePieces(t *testing.T) {
+func TestBitboardMultiplePieces(t *testing.T) {
 	board := NewBoard()
 	
 	// Add multiple white pawns
@@ -133,33 +127,21 @@ func TestPieceListsMultiplePieces(t *testing.T) {
 		board.SetPiece(pos.rank, pos.file, WhitePawn)
 	}
 	
-	// Check count
-	if board.GetPieceCount(WhitePawn) != 8 {
-		t.Errorf("Expected 8 white pawns, got %d", board.GetPieceCount(WhitePawn))
+	// Check count using bitboard
+	if board.getPieceCountFromBitboard(WhitePawn) != 8 {
+		t.Errorf("Expected 8 white pawns, got %d", board.getPieceCountFromBitboard(WhitePawn))
 	}
 	
-	// Check list
-	pawns := board.GetPieceList(WhitePawn)
-	if len(pawns) != 8 {
-		t.Errorf("Expected 8 pawns in list, got %d", len(pawns))
-	}
-	
-	// Verify all positions are tracked
+	// Verify all positions are tracked in bitboard
 	for _, expectedPos := range positions {
-		found := false
-		for _, actualPos := range pawns {
-			if actualPos.Rank == expectedPos.rank && actualPos.File == expectedPos.file {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Pawn at rank %d, file %d not found in piece list", expectedPos.rank, expectedPos.file)
+		square := FileRankToSquare(expectedPos.file, expectedPos.rank)
+		if !board.PieceBitboards[WhitePawnIndex].HasBit(square) {
+			t.Errorf("Pawn at rank %d, file %d not found in bitboard", expectedPos.rank, expectedPos.file)
 		}
 	}
 }
 
-func TestPieceListsRemoval(t *testing.T) {
+func TestBitboardRemoval(t *testing.T) {
 	board := NewBoard()
 	
 	// Add multiple pieces
@@ -168,29 +150,35 @@ func TestPieceListsRemoval(t *testing.T) {
 	board.SetPiece(7, 0, BlackRook)
 	board.SetPiece(7, 7, BlackRook)
 	
-	// Check initial state
-	if board.GetPieceCount(WhiteRook) != 2 {
-		t.Errorf("Expected 2 white rooks, got %d", board.GetPieceCount(WhiteRook))
+	// Check initial state using bitboards
+	if board.getPieceCountFromBitboard(WhiteRook) != 2 {
+		t.Errorf("Expected 2 white rooks, got %d", board.getPieceCountFromBitboard(WhiteRook))
 	}
-	if board.GetPieceCount(BlackRook) != 2 {
-		t.Errorf("Expected 2 black rooks, got %d", board.GetPieceCount(BlackRook))
+	if board.getPieceCountFromBitboard(BlackRook) != 2 {
+		t.Errorf("Expected 2 black rooks, got %d", board.getPieceCountFromBitboard(BlackRook))
 	}
 	
 	// Remove one white rook
 	board.SetPiece(0, 0, Empty)
 	
-	if board.GetPieceCount(WhiteRook) != 1 {
-		t.Errorf("Expected 1 white rook after removal, got %d", board.GetPieceCount(WhiteRook))
+	if board.getPieceCountFromBitboard(WhiteRook) != 1 {
+		t.Errorf("Expected 1 white rook after removal, got %d", board.getPieceCountFromBitboard(WhiteRook))
 	}
 	
 	// Verify remaining white rook is at correct position
-	whiteRooks := board.GetPieceList(WhiteRook)
-	if len(whiteRooks) != 1 || whiteRooks[0].File != 7 || whiteRooks[0].Rank != 0 {
+	remainingSquare := FileRankToSquare(7, 0)
+	if !board.PieceBitboards[WhiteRookIndex].HasBit(remainingSquare) {
 		t.Error("Remaining white rook not at expected position")
 	}
 	
+	// Verify removed rook is not in bitboard
+	removedSquare := FileRankToSquare(0, 0)
+	if board.PieceBitboards[WhiteRookIndex].HasBit(removedSquare) {
+		t.Error("Removed white rook still in bitboard")
+	}
+	
 	// Black rooks should be unchanged
-	if board.GetPieceCount(BlackRook) != 2 {
-		t.Errorf("Expected 2 black rooks unchanged, got %d", board.GetPieceCount(BlackRook))
+	if board.getPieceCountFromBitboard(BlackRook) != 2 {
+		t.Errorf("Expected 2 black rooks unchanged, got %d", board.getPieceCountFromBitboard(BlackRook))
 	}
 }

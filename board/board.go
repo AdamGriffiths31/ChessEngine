@@ -47,16 +47,11 @@ type Square struct {
 }
 
 type Board struct {
-	squares         [8][8]Piece
 	castlingRights  string  // KQkq format
 	enPassantTarget *Square // nil if no en passant
 	halfMoveClock   int
 	fullMoveNumber  int
 	sideToMove      string // "w" or "b"
-
-	// Piece lists for fast lookup
-	pieceLists map[Piece][]Square // Track positions of each piece type
-	pieceCount map[Piece]int      // Count of each piece type
 
 	// Bitboard representation (12 piece types)
 	PieceBitboards [12]Bitboard // [WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing, BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing]
@@ -94,26 +89,6 @@ func NewBoard() *Board {
 		halfMoveClock:   0,
 		fullMoveNumber:  1,
 		sideToMove:      "w",
-		pieceLists:      make(map[Piece][]Square),
-		pieceCount:      make(map[Piece]int),
-	}
-
-	// Initialize piece lists for all piece types
-	pieces := []Piece{
-		WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing,
-		BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing,
-	}
-
-	for _, piece := range pieces {
-		board.pieceLists[piece] = make([]Square, 0, 16) // Max 16 of any piece type
-		board.pieceCount[piece] = 0
-	}
-
-	// Initialize array representation
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
-			board.squares[rank][file] = Empty
-		}
 	}
 
 	// Initialize bitboards (all empty)
@@ -161,6 +136,38 @@ func PieceToBitboardIndex(piece Piece) int {
 	}
 }
 
+// BitboardIndexToPiece converts a bitboard index back to a piece type
+func BitboardIndexToPiece(index int) Piece {
+	switch index {
+	case WhitePawnIndex:
+		return WhitePawn
+	case WhiteRookIndex:
+		return WhiteRook
+	case WhiteKnightIndex:
+		return WhiteKnight
+	case WhiteBishopIndex:
+		return WhiteBishop
+	case WhiteQueenIndex:
+		return WhiteQueen
+	case WhiteKingIndex:
+		return WhiteKing
+	case BlackPawnIndex:
+		return BlackPawn
+	case BlackRookIndex:
+		return BlackRook
+	case BlackKnightIndex:
+		return BlackKnight
+	case BlackBishopIndex:
+		return BlackBishop
+	case BlackQueenIndex:
+		return BlackQueen
+	case BlackKingIndex:
+		return BlackKing
+	default:
+		return Empty
+	}
+}
+
 // GetPieceBitboard returns the bitboard for a specific piece type
 func (b *Board) GetPieceBitboard(piece Piece) Bitboard {
 	index := PieceToBitboardIndex(piece)
@@ -203,10 +210,17 @@ func (b *Board) setPieceBitboard(rank, file int, piece Piece) {
 	index := PieceToBitboardIndex(piece)
 
 	if index != -1 {
+		squareBit := Bitboard(1) << square
 		b.PieceBitboards[index] = b.PieceBitboards[index].SetBit(square)
-	}
 
-	b.updateBitboards()
+		// Incrementally update derived bitboards
+		if IsWhitePiece(piece) {
+			b.WhitePieces |= squareBit
+		} else {
+			b.BlackPieces |= squareBit
+		}
+		b.AllPieces |= squareBit
+	}
 }
 
 // removePieceBitboard removes a piece from the bitboards
@@ -215,39 +229,50 @@ func (b *Board) removePieceBitboard(rank, file int, piece Piece) {
 	index := PieceToBitboardIndex(piece)
 
 	if index != -1 {
+		squareBit := Bitboard(1) << square
 		b.PieceBitboards[index] = b.PieceBitboards[index].ClearBit(square)
-	}
 
-	b.updateBitboards()
+		// Incrementally update derived bitboards
+		if IsWhitePiece(piece) {
+			b.WhitePieces &= ^squareBit
+		} else {
+			b.BlackPieces &= ^squareBit
+		}
+		b.AllPieces &= ^squareBit
+	}
 }
 
 func (b *Board) GetPiece(rank, file int) Piece {
-	if rank < 0 || rank > 7 || file < 0 || file > 7 {
-		fmt.Printf("Invalid square: %d,%d\n", rank, file)
+	square := FileRankToSquare(file, rank)
+
+	// Quick check if square is empty
+	if !b.AllPieces.HasBit(square) {
 		return Empty
 	}
-	return b.squares[rank][file]
+
+	// Check each piece bitboard to find which piece is on this square
+	for i, bitboard := range b.PieceBitboards {
+		if bitboard.HasBit(square) {
+			return BitboardIndexToPiece(i)
+		}
+	}
+
+	// Should never reach here if bitboards are consistent
+	panic("no piece found")
 }
 
 func (b *Board) SetPiece(rank, file int, piece Piece) {
-	if rank >= 0 && rank <= 7 && file >= 0 && file <= 7 {
-		square := Square{File: file, Rank: rank}
-		oldPiece := b.squares[rank][file]
+	// Get old piece using bitboards
+	oldPiece := b.GetPiece(rank, file)
 
-		// Remove old piece from bitboards
-		if oldPiece != Empty {
-			b.removePieceBitboard(rank, file, oldPiece)
-			b.removePieceFromList(oldPiece, square)
-		}
+	// Remove old piece from bitboards
+	if oldPiece != Empty {
+		b.removePieceBitboard(rank, file, oldPiece)
+	}
 
-		// Update array representation
-		b.squares[rank][file] = piece
-
-		// Add new piece to bitboards and lists
-		if piece != Empty {
-			b.setPieceBitboard(rank, file, piece)
-			b.addPieceToList(piece, square)
-		}
+	// Add new piece to bitboards
+	if piece != Empty {
+		b.setPieceBitboard(rank, file, piece)
 	}
 }
 
@@ -335,35 +360,7 @@ func FromFEN(fen string) (*Board, error) {
 		}
 	}
 
-	// Generate bitboards from the array representation
-	board.generateBitboardsFromArray()
-
 	return board, nil
-}
-
-// generateBitboardsFromArray populates bitboards from the current array representation
-func (b *Board) generateBitboardsFromArray() {
-	// Clear all bitboards
-	for i := 0; i < 12; i++ {
-		b.PieceBitboards[i] = 0
-	}
-
-	// Scan the board and set appropriate bitboard bits
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
-			piece := b.squares[rank][file]
-			if piece != Empty {
-				square := FileRankToSquare(file, rank)
-				index := PieceToBitboardIndex(piece)
-				if index != -1 {
-					b.PieceBitboards[index] = b.PieceBitboards[index].SetBit(square)
-				}
-			}
-		}
-	}
-
-	// Update derived bitboards
-	b.updateBitboards()
 }
 
 func isValidPiece(piece Piece) bool {
@@ -380,45 +377,13 @@ func isValidPiece(piece Piece) bool {
 	return false
 }
 
-// addPieceToList adds a piece to the piece list
-func (b *Board) addPieceToList(piece Piece, square Square) {
-	if piece == Empty {
-		return
+// getPieceCountFromBitboard returns the count of a specific piece type using bitboards
+func (b *Board) getPieceCountFromBitboard(piece Piece) int {
+	index := PieceToBitboardIndex(piece)
+	if index == -1 {
+		return 0
 	}
-
-	b.pieceLists[piece] = append(b.pieceLists[piece], square)
-	b.pieceCount[piece]++
-
-}
-
-// removePieceFromList removes a piece from the piece list
-func (b *Board) removePieceFromList(piece Piece, square Square) {
-	if piece == Empty {
-		return
-	}
-
-	list := b.pieceLists[piece]
-
-	for i, sq := range list {
-		if sq.File == square.File && sq.Rank == square.Rank {
-			// Remove by swapping with last element
-			list[i] = list[len(list)-1]
-			b.pieceLists[piece] = list[:len(list)-1]
-			b.pieceCount[piece]--
-			break
-		}
-	}
-
-}
-
-// GetPieceList returns all squares containing a specific piece type
-func (b *Board) GetPieceList(piece Piece) []Square {
-	return b.pieceLists[piece]
-}
-
-// GetPieceCount returns the count of a specific piece type
-func (b *Board) GetPieceCount(piece Piece) int {
-	return b.pieceCount[piece]
+	return b.PieceBitboards[index].PopCount()
 }
 
 // Getter methods for board state
@@ -463,7 +428,7 @@ func (b *Board) DebugPieceCounts(label string) {
 
 	for _, piece := range pieces {
 		actual := actualCounts[piece]
-		tracked := b.GetPieceCount(piece)
+		tracked := b.getPieceCountFromBitboard(piece)
 		name := getPieceName(piece)
 
 		if actual != tracked {
@@ -554,7 +519,7 @@ func (b *Board) validateBoardConsistency() bool {
 
 	for _, piece := range pieces {
 		actual := actualCounts[piece]
-		tracked := b.GetPieceCount(piece)
+		tracked := b.getPieceCountFromBitboard(piece)
 
 		if actual != tracked {
 			fmt.Printf("Validation failed: %c has actual=%d, tracked=%d\n", piece, actual, tracked)

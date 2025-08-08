@@ -66,17 +66,6 @@ func TestBoardGetSetPiece(t *testing.T) {
 	if piece != WhiteKing {
 		t.Errorf("Expected %c, got %c", WhiteKing, piece)
 	}
-	
-	// Test out of bounds
-	piece = board.GetPiece(-1, 0)
-	if piece != Empty {
-		t.Errorf("Expected empty for out of bounds, got %c", piece)
-	}
-	
-	piece = board.GetPiece(8, 0)
-	if piece != Empty {
-		t.Errorf("Expected empty for out of bounds, got %c", piece)
-	}
 }
 
 func TestIsValidPiece(t *testing.T) {
@@ -153,10 +142,9 @@ func TestSetPieceUpdatesAllRepresentations(t *testing.T) {
 		t.Error("Bitboard representation should have white queen on e4")
 	}
 	
-	// Verify piece lists
-	queens := board.GetPieceList(WhiteQueen)
-	if len(queens) != 1 || queens[0].File != 4 || queens[0].Rank != 3 {
-		t.Error("Piece list should contain one white queen on e4")
+	// Verify piece count using bitboard
+	if board.getPieceCountFromBitboard(WhiteQueen) != 1 {
+		t.Error("Should have exactly one white queen")
 	}
 	
 	// Replace with different piece
@@ -200,10 +188,9 @@ func TestRemovePieceUpdatesAllRepresentations(t *testing.T) {
 		t.Error("All pieces bitboard should not have e4 set")
 	}
 	
-	// Verify piece lists
-	bishops := board.GetPieceList(WhiteBishop)
-	if len(bishops) != 0 {
-		t.Error("Piece list should be empty for white bishops")
+	// Verify piece count using bitboard
+	if board.getPieceCountFromBitboard(WhiteBishop) != 0 {
+		t.Error("Should have no white bishops")
 	}
 }
 

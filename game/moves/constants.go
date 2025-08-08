@@ -20,11 +20,11 @@ const (
 	KingStartFile = 4
 )
 
-// Move list capacity
+// Move list capacity - optimized for typical chess positions
 const (
-	InitialMoveListCapacity = 64
+	InitialMoveListCapacity = 64   // Initial capacity for new lists
 	MaxMoveListCapacity     = 512  // Pool capacity limit
-	PoolPreAllocCapacity    = 256  // Pre-allocation size for pool
+	PoolPreAllocCapacity    = 128  // Reduced from 256 - more realistic for typical positions
 )
 
 // Chess board dimensions for validation

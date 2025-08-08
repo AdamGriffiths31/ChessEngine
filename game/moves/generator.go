@@ -53,13 +53,6 @@ func (g *Generator) GenerateAllMoves(b *board.Board, player Player) *MoveList {
 // Uses optimized bitboard operations and attack detection for performance.
 // Returns false if board is nil or king is not found.
 func (g *Generator) IsKingInCheck(b *board.Board, player Player) bool {
-	return g.IsKingInCheckFast(b, player)
-}
-
-// IsKingInCheckFast is an optimized version for performance-critical operations.
-// Uses direct bitboard operations for maximum performance during move generation.
-// Returns false if no king is found on the board.
-func (g *Generator) IsKingInCheckFast(b *board.Board, player Player) bool {
 	kingSquare := g.findKing(b, player)
 	if kingSquare == nil {
 		return false // No king found

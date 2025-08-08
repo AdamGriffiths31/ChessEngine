@@ -28,15 +28,12 @@ const (
 // BitboardMoveGenerator provides high-performance move generation using bitboard operations
 // This implementation aims for 3-5x performance improvement over array-based generation
 type BitboardMoveGenerator struct {
-	// Reuse move list from pool for memory efficiency
-	tempMoveList *MoveList
+	// No fields needed - all operations use pooled MoveList objects
 }
 
 // NewBitboardMoveGenerator creates a new bitboard-based move generator
 func NewBitboardMoveGenerator() *BitboardMoveGenerator {
-	return &BitboardMoveGenerator{
-		tempMoveList: GetMoveList(),
-	}
+	return &BitboardMoveGenerator{}
 }
 
 // GenerateAllMovesBitboard generates all legal moves using bitboard operations
@@ -56,11 +53,10 @@ func (bmg *BitboardMoveGenerator) GenerateAllMovesBitboard(b *board.Board, playe
 	bmg.generateQueenMovesBitboard(b, player, moveList)
 	bmg.generateKingMovesBitboard(b, player, moveList)
 	
-	// Filter out illegal moves (moves that leave king in check)
-	filteredMoves := bmg.filterLegalMoves(b, player, moveList)
-	ReleaseMoveList(moveList)
+	// Filter out illegal moves in-place (moves that leave king in check)
+	bmg.filterLegalMovesInPlace(b, player, moveList)
 	
-	return filteredMoves
+	return moveList
 }
 
 // generatePawnMovesBitboard generates pawn moves using bitboard shifts and attack patterns
@@ -683,10 +679,9 @@ func (bmg *BitboardMoveGenerator) generateCastlingMovesBitboard(b *board.Board, 
 	}
 }
 
-// filterLegalMoves filters out moves that would leave the king in check
-func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player, moves *MoveList) *MoveList {
-	legalMoves := GetMoveList()
-	
+// filterLegalMovesInPlace filters out moves that would leave the king in check
+// Modifies the input MoveList in place instead of creating a new one
+func (bmg *BitboardMoveGenerator) filterLegalMovesInPlace(b *board.Board, player Player, moves *MoveList) {
 	// Determine our king piece and opponent's color
 	var ourKingPiece board.Piece
 	var opponentColor board.BitboardColor
@@ -698,8 +693,9 @@ func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player
 		opponentColor = board.BitboardWhite
 	}
 	
-	for i := 0; i < moves.Count; i++ {
-		move := moves.Moves[i]
+	writeIndex := 0
+	for readIndex := 0; readIndex < moves.Count; readIndex++ {
+		move := moves.Moves[readIndex]
 		
 		// Make the move using the board's MakeMove function
 		// This ensures proper bitboard updates
@@ -729,11 +725,14 @@ func (bmg *BitboardMoveGenerator) filterLegalMoves(b *board.Board, player Player
 		b.UnmakeMove(undo)
 		
 		if isLegal {
-			legalMoves.AddMove(move)
+			moves.Moves[writeIndex] = move
+			writeIndex++
 		}
 	}
 	
-	return legalMoves
+	// Update count and truncate slice
+	moves.Count = writeIndex
+	moves.Moves = moves.Moves[:writeIndex]
 }
 
 // Helper function to remove castling rights
@@ -757,10 +756,8 @@ func removeCastlingRights(rights, toRemove string) string {
 	return result
 }
 
-// Release releases the temporary move list back to the pool
+// Release is no longer needed as we don't store any MoveList objects
+// All MoveList objects are managed through the pool in each method
 func (bmg *BitboardMoveGenerator) Release() {
-	if bmg.tempMoveList != nil {
-		ReleaseMoveList(bmg.tempMoveList)
-		bmg.tempMoveList = nil
-	}
+	// No-op: no longer storing MoveList objects in the struct
 }

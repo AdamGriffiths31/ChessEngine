@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/AdamGriffiths31/ChessEngine/game"
+	"github.com/AdamGriffiths31/ChessEngine/game/moves"
 	"github.com/AdamGriffiths31/ChessEngine/ui"
 )
 
@@ -102,6 +103,7 @@ func (mm *ManualMode) handleSpecialCommand(command string) error {
 		
 	case "MOVES":
 		moveList := mm.engine.GetLegalMoves()
+		defer moves.ReleaseMoveList(moveList)
 		playerName := mm.engine.GetCurrentPlayer().String()
 		mm.prompter.ShowMoves(moveList, playerName)
 		return nil
