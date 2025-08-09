@@ -101,6 +101,17 @@ func (h *HistoryTable) Age() {
 	}
 }
 
+// GetMaxScore returns the maximum history score currently in the table
+// Used for normalizing history scores for LMR reduction calculations
+func (h *HistoryTable) GetMaxScore() int32 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	
+	// Since we cap scores at MaxHistoryScore, we can simply return that
+	// This avoids scanning the entire table
+	return MaxHistoryScore
+}
+
 // squareToIndex converts a board square to an index (0-63)
 func squareToIndex(square board.Square) int {
 	return int(square.Rank*8 + square.File)

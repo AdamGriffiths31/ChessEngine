@@ -14,6 +14,11 @@ type SearchStats struct {
 	PrincipalVariation []board.Move
 	BookMoveUsed       bool     // True if move came from opening book
 	DebugInfo          []string // Debug messages (when DebugMode is enabled)
+	
+	// Late Move Reductions (LMR) statistics
+	LMRReductions   int64 // Number of moves reduced
+	LMRReSearches   int64 // Number of re-searches performed
+	LMRNodesSkipped int64 // Estimated nodes saved by LMR
 }
 
 // SearchConfig configures the search parameters
@@ -32,6 +37,12 @@ type SearchConfig struct {
 	
 	// Search enhancement options
 	UseNullMove bool
+	
+	// Late Move Reductions (LMR) configuration
+	UseLMR           bool    // Enable/disable LMR
+	LMRMinDepth      int     // Minimum depth to apply LMR (default: 3)
+	LMRMinMoves      int     // Number of moves to search at full depth (default: 4)
+	LMRReductionBase float64 // Base reduction amount (default: 0.75)
 }
 
 // BookSelectionMode defines how to select moves from opening books

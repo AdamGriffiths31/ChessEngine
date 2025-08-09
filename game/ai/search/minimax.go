@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"math"
 	"sort"
 	"time"
 
@@ -351,6 +352,11 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 				b.UnmakeMove(undo)
 
 				searchStats.NodesSearched += moveStats.NodesSearched
+				
+				// Accumulate LMR statistics from this move
+				searchStats.LMRReductions += moveStats.LMRReductions
+				searchStats.LMRReSearches += moveStats.LMRReSearches
+				searchStats.LMRNodesSkipped += moveStats.LMRNodesSkipped
 
 				select {
 				case <-ctx.Done():
@@ -390,6 +396,11 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			lastCompletedScore = bestScore
 			result.Stats.Depth = currentDepth
 			result.Stats.NodesSearched = searchStats.NodesSearched
+			
+			// Accumulate LMR statistics from this depth
+			result.Stats.LMRReductions += searchStats.LMRReductions
+			result.Stats.LMRReSearches += searchStats.LMRReSearches
+			result.Stats.LMRNodesSkipped += searchStats.LMRNodesSkipped
 
 			if m.transpositionTable != nil {
 				hash := b.GetHash()
@@ -651,6 +662,8 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	bestMove := board.Move{}
 	entryType := EntryUpperBound // Assume fail-low initially
 
+	inCheck := m.generator.IsKingInCheck(b, player)
+	
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
 
@@ -659,8 +672,88 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 			continue
 		}
 
-		// Search deeper with negamax and alpha-beta
-		score := -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), depth-1, -beta, -alpha, originalMaxDepth, config, stats)
+		var score ai.EvaluationScore
+		
+		// Calculate LMR reduction if applicable
+		reduction := 0
+		if config.UseLMR {
+			// Debug: check all conditions
+			depthOk := depth >= config.LMRMinDepth
+			movesOk := i >= config.LMRMinMoves
+			notInCheck := !inCheck
+			notCapture := !move.IsCapture
+			notPromotion := move.Promotion == board.Empty
+			notKiller := !m.isKillerMove(move, currentDepth)
+			
+			
+			if depthOk && movesOk && notInCheck && notCapture && notPromotion && notKiller {
+			
+			// Check if move gives check (we need to calculate this after making the move)
+			givesCheck := m.generator.IsKingInCheck(b, oppositePlayer(player))
+			
+			
+			if !givesCheck {
+				// Calculate reduction using logarithmic formula
+				reduction = int(config.LMRReductionBase + 
+					math.Log(float64(depth))*math.Log(float64(i+1))/2.25)
+				
+				
+				// Clamp reduction to reasonable bounds
+				// Make sure we don't reduce past depth 0 (leave at least depth 1)
+				maxReduction := depth - 2
+				if maxReduction < 1 {
+					reduction = 0 // Don't reduce at all if we can't reduce safely
+				} else {
+					if reduction > maxReduction {
+						reduction = maxReduction
+					}
+					if reduction < 1 {
+						reduction = 1
+					}
+				}
+				
+				
+				// Adjust reduction based on history score if available
+				if m.historyTable != nil {
+					historyScore := m.getHistoryScore(move)
+					maxHistory := m.historyTable.GetMaxScore()
+					if maxHistory > 0 {
+						// Reduce less for moves with good history scores
+						historyFactor := float64(historyScore) / float64(maxHistory)
+						reduction = int(float64(reduction) * (1.5 - historyFactor))
+						if reduction < 1 {
+							reduction = 1
+						}
+					}
+				}
+			}
+			}
+		}
+		
+		if reduction > 0 {
+			// Track LMR statistics
+			stats.LMRReductions++
+			
+			// Initial reduced-depth search
+			score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), 
+				depth-1-reduction, -beta, -alpha, originalMaxDepth, config, stats)
+			
+			// Re-search conditions: if the reduced search failed high (score > alpha)
+			if score > alpha {
+				// Move was better than expected, re-search at full depth
+				stats.LMRReSearches++
+				score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), 
+					depth-1, -beta, -alpha, originalMaxDepth, config, stats)
+			} else {
+				// Estimate nodes saved (very rough approximation)
+				nodesSaved := int64(math.Pow(3, float64(reduction))) // Rough branching factor estimate
+				stats.LMRNodesSkipped += nodesSaved
+			}
+		} else {
+			// Search at full depth
+			score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), 
+				depth-1, -beta, -alpha, originalMaxDepth, config, stats)
+		}
 
 		// Unmake the move
 		b.UnmakeMove(undo)
