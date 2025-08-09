@@ -7,8 +7,6 @@ package board
 // Uses bitboard operations for maximum performance
 func (b *Board) IsSquareAttackedByColor(square int, color BitboardColor) bool {
 	// Ensure tables are initialized
-	InitializeTables()
-	InitializeMagicBitboards()
 	
 	if square < 0 || square > 63 {
 		return false
@@ -128,8 +126,6 @@ func (b *Board) GetAttackersToSquare(square int, color BitboardColor) Bitboard {
 	}
 	
 	// Ensure tables are initialized
-	InitializeTables()
-	InitializeMagicBitboards()
 	
 	occupancy := b.AllPieces
 	
@@ -218,8 +214,6 @@ func (b *Board) GetPieceAttacks(piece Piece, square int) Bitboard {
 	}
 	
 	// Ensure tables are initialized
-	InitializeTables()
-	InitializeMagicBitboards()
 	
 	occupancy := b.AllPieces
 	
@@ -248,8 +242,6 @@ func (b *Board) GetAllAttackedSquares(color BitboardColor) Bitboard {
 	var attacks Bitboard
 	
 	// Ensure tables are initialized
-	InitializeTables()
-	InitializeMagicBitboards()
 	
 	occupancy := b.AllPieces
 	

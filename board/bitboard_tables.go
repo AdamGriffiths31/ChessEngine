@@ -1,6 +1,5 @@
 package board
 
-import "sync"
 
 // Precomputed attack tables for chess pieces
 var (
@@ -31,26 +30,19 @@ var (
 	BetweenTable  [64][64]Bitboard // Squares between two squares (exclusive)
 	LineTable     [64][64]Bitboard // All squares on the line between two squares (inclusive)
 	
-	// Initialization flags
-	tablesInitialized bool
-	initMutex         sync.Once
 )
 
-// InitializeTables initializes all precomputed attack tables
-// This should be called once before using any attack generation functions
-func InitializeTables() {
-	initMutex.Do(func() {
-		initializeFilesAndRanks()
-		initializeDiagonals()
-		initializeKnightAttacks()
-		initializeKingAttacks()
-		initializePawnAttacks()
-		initializePawnPushes()
-		initializeDistanceTable()
-		initializeBetweenTable()
-		initializeLineTable()
-		tablesInitialized = true
-	})
+// init automatically initializes attack tables when the package is loaded
+func init() {
+	initializeFilesAndRanks()
+	initializeDiagonals()
+	initializeKnightAttacks()
+	initializeKingAttacks()
+	initializePawnAttacks()
+	initializePawnPushes()
+	initializeDistanceTable()
+	initializeBetweenTable()
+	initializeLineTable()
 }
 
 // initializeFilesAndRanks initializes file and rank masks
@@ -321,9 +313,6 @@ func abs(x int) int {
 
 // GetKnightAttacks returns the knight attack pattern for a given square
 func GetKnightAttacks(square int) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -332,9 +321,6 @@ func GetKnightAttacks(square int) Bitboard {
 
 // GetKingAttacks returns the king attack pattern for a given square
 func GetKingAttacks(square int) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -343,9 +329,6 @@ func GetKingAttacks(square int) Bitboard {
 
 // GetPawnAttacks returns the pawn attack pattern for a given square and color
 func GetPawnAttacks(square int, color BitboardColor) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -358,9 +341,6 @@ func GetPawnAttacks(square int, color BitboardColor) Bitboard {
 
 // GetPawnPushes returns the pawn push pattern for a given square and color
 func GetPawnPushes(square int, color BitboardColor) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -373,9 +353,6 @@ func GetPawnPushes(square int, color BitboardColor) Bitboard {
 
 // GetPawnDoublePushes returns the pawn double push pattern for a given square and color
 func GetPawnDoublePushes(square int, color BitboardColor) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -388,9 +365,6 @@ func GetPawnDoublePushes(square int, color BitboardColor) Bitboard {
 
 // GetDistance returns the Manhattan distance between two squares
 func GetDistance(sq1, sq2 int) int {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if sq1 < 0 || sq1 > 63 || sq2 < 0 || sq2 > 63 {
 		return -1
 	}
@@ -399,9 +373,6 @@ func GetDistance(sq1, sq2 int) int {
 
 // GetBetween returns the squares between two squares (exclusive)
 func GetBetween(sq1, sq2 int) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if sq1 < 0 || sq1 > 63 || sq2 < 0 || sq2 > 63 {
 		return 0
 	}
@@ -410,9 +381,6 @@ func GetBetween(sq1, sq2 int) Bitboard {
 
 // GetLine returns all squares on the line between two squares (inclusive)
 func GetLine(sq1, sq2 int) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if sq1 < 0 || sq1 > 63 || sq2 < 0 || sq2 > 63 {
 		return 0
 	}
@@ -421,9 +389,6 @@ func GetLine(sq1, sq2 int) Bitboard {
 
 // GetDiagonalMask returns the diagonal mask for a given square
 func GetDiagonalMask(square int) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -435,9 +400,6 @@ func GetDiagonalMask(square int) Bitboard {
 
 // GetAntiDiagonalMask returns the anti-diagonal mask for a given square
 func GetAntiDiagonalMask(square int) Bitboard {
-	if !tablesInitialized {
-		InitializeTables()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -447,14 +409,3 @@ func GetAntiDiagonalMask(square int) Bitboard {
 	return AntiDiagonalMasks[diagIndex]
 }
 
-// IsTablesInitialized returns whether the attack tables have been initialized
-func IsTablesInitialized() bool {
-	return tablesInitialized
-}
-
-// ResetTablesForTesting resets the initialization state for testing purposes
-// This should only be used in tests
-func ResetTablesForTesting() {
-	tablesInitialized = false
-	initMutex = sync.Once{}
-}

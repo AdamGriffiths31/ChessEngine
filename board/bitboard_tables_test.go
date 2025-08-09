@@ -5,22 +5,17 @@ import (
 )
 
 func TestTablesInitialization(t *testing.T) {
-	// Reset for testing
-	ResetTablesForTesting()
-	
-	if IsTablesInitialized() {
-		t.Error("Tables should not be initialized initially")
+	// Attack tables are automatically initialized at package load time
+	// Test that they have non-zero values
+	if FileMasks[0] == 0 {
+		t.Error("FileMasks should be initialized")
 	}
-	
-	InitializeTables()
-	
-	if !IsTablesInitialized() {
-		t.Error("Tables should be initialized after calling InitializeTables()")
+	if KnightAttacks[0] == 0 {
+		t.Error("KnightAttacks should be initialized")  
 	}
 }
 
 func TestKnightAttackPatterns(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		square   int
@@ -62,7 +57,6 @@ func TestKnightAttackPatterns(t *testing.T) {
 }
 
 func TestKingAttackPatterns(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		square   int
@@ -104,7 +98,6 @@ func TestKingAttackPatterns(t *testing.T) {
 }
 
 func TestPawnAttackPatterns(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		square   int
@@ -163,7 +156,6 @@ func TestPawnAttackPatterns(t *testing.T) {
 }
 
 func TestPawnPushPatterns(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		square   int
@@ -217,7 +209,6 @@ func TestPawnPushPatterns(t *testing.T) {
 }
 
 func TestPawnDoublePushPatterns(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		square   int
@@ -266,7 +257,6 @@ func TestPawnDoublePushPatterns(t *testing.T) {
 }
 
 func TestDistanceCalculation(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		sq1      int
@@ -300,7 +290,6 @@ func TestDistanceCalculation(t *testing.T) {
 }
 
 func TestBetweenSquares(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		sq1      int
@@ -336,7 +325,6 @@ func TestBetweenSquares(t *testing.T) {
 }
 
 func TestLineSquares(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		sq1      int
@@ -369,7 +357,6 @@ func TestLineSquares(t *testing.T) {
 }
 
 func TestDiagonalMasks(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		square   int
@@ -409,7 +396,6 @@ func TestDiagonalMasks(t *testing.T) {
 }
 
 func TestAntiDiagonalMasks(t *testing.T) {
-	InitializeTables()
 	
 	testCases := []struct {
 		square       int
@@ -449,7 +435,6 @@ func TestAntiDiagonalMasks(t *testing.T) {
 }
 
 func TestInvalidInputs(t *testing.T) {
-	InitializeTables()
 	
 	// Test invalid square indices
 	invalidSquares := []int{-1, 64, 100}
@@ -483,7 +468,6 @@ func colorString(color BitboardColor) string {
 
 // Benchmark tests
 func BenchmarkKnightAttacks(b *testing.B) {
-	InitializeTables()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GetKnightAttacks(E4)
@@ -491,7 +475,6 @@ func BenchmarkKnightAttacks(b *testing.B) {
 }
 
 func BenchmarkKingAttacks(b *testing.B) {
-	InitializeTables()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GetKingAttacks(E4)
@@ -499,7 +482,6 @@ func BenchmarkKingAttacks(b *testing.B) {
 }
 
 func BenchmarkPawnAttacks(b *testing.B) {
-	InitializeTables()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GetPawnAttacks(E4, BitboardWhite)
@@ -507,7 +489,6 @@ func BenchmarkPawnAttacks(b *testing.B) {
 }
 
 func BenchmarkDistance(b *testing.B) {
-	InitializeTables()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GetDistance(A1, H8)
@@ -515,7 +496,6 @@ func BenchmarkDistance(b *testing.B) {
 }
 
 func BenchmarkBetween(b *testing.B) {
-	InitializeTables()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GetBetween(A1, H8)

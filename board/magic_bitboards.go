@@ -1,8 +1,5 @@
 package board
 
-import (
-	"sync"
-)
 
 // Magic bitboard implementation for sliding pieces (rooks, bishops, queens)
 
@@ -27,9 +24,6 @@ var (
 	RookRelevantBits   [64]int
 	BishopRelevantBits [64]int
 
-	// Magic initialization
-	magicsInitialized bool
-	magicInitMutex    sync.Once
 )
 
 // Pre-computed magic numbers
@@ -55,14 +49,11 @@ var bishopMagicNumbers = [64]uint64{
 	0x90200046800, 0x90200046800, 0x420208080100, 0x420208080100, 0x82001002001080, 0x82001002001080, 0xa00080410004100, 0xa00080410004100,
 }
 
-// InitializeMagicBitboards initializes all magic bitboard tables
-func InitializeMagicBitboards() {
-	magicInitMutex.Do(func() {
-		initializeRelevantOccupancy()
-		initializeRookMagics()
-		initializeBishopMagics()
-		magicsInitialized = true
-	})
+// init automatically initializes magic bitboard tables when the package is loaded
+func init() {
+	initializeRelevantOccupancy()
+	initializeRookMagics()
+	initializeBishopMagics()
 }
 
 // initializeRelevantOccupancy calculates relevant occupancy bits for each square
@@ -305,9 +296,6 @@ func bishopAttacksOnTheFly(square int, occupancy Bitboard) Bitboard {
 
 // GetRookAttacks returns rook attacks for a given square and occupancy
 func GetRookAttacks(square int, occupancy Bitboard) Bitboard {
-	if !magicsInitialized {
-		InitializeMagicBitboards()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -327,9 +315,6 @@ func GetRookAttacks(square int, occupancy Bitboard) Bitboard {
 
 // GetBishopAttacks returns bishop attacks for a given square and occupancy
 func GetBishopAttacks(square int, occupancy Bitboard) Bitboard {
-	if !magicsInitialized {
-		InitializeMagicBitboards()
-	}
 	if square < 0 || square > 63 {
 		return 0
 	}
@@ -352,14 +337,3 @@ func GetQueenAttacks(square int, occupancy Bitboard) Bitboard {
 	return GetRookAttacks(square, occupancy) | GetBishopAttacks(square, occupancy)
 }
 
-// IsMagicsInitialized returns whether magic bitboards have been initialized
-func IsMagicsInitialized() bool {
-	return magicsInitialized
-}
-
-// ResetMagicsForTesting resets the magic initialization state for testing purposes
-// This should only be used in tests
-func ResetMagicsForTesting() {
-	magicsInitialized = false
-	magicInitMutex = sync.Once{}
-}

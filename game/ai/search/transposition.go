@@ -20,7 +20,7 @@ const (
 type TranspositionEntry struct {
 	Hash     uint64             // Zobrist hash of the position
 	Depth    int                // Search depth
-	Score    ai.EvaluationScore // Score at this position
+	Score    ai.EvaluationScore // Score at this position  
 	Type     EntryType          // Type of entry (exact, lower, upper)
 	BestMove board.Move         // Best move found (if any)
 	Age      uint32             // Age counter for replacement

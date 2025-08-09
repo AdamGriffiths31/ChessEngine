@@ -5,19 +5,7 @@ import (
 )
 
 func TestMagicBitboardsInitialization(t *testing.T) {
-	// Reset for testing
-	ResetMagicsForTesting()
-	
-	if IsMagicsInitialized() {
-		t.Error("Magic bitboards should not be initialized initially")
-	}
-	
-	InitializeMagicBitboards()
-	
-	if !IsMagicsInitialized() {
-		t.Error("Magic bitboards should be initialized after calling InitializeMagicBitboards()")
-	}
-	
+	// Magic bitboards are automatically initialized at package load time
 	// Check that attack tables have been allocated
 	if len(RookAttacks) == 0 {
 		t.Error("RookAttacks table should be allocated")
@@ -28,7 +16,6 @@ func TestMagicBitboardsInitialization(t *testing.T) {
 }
 
 func TestRookAttacksEmptyBoard(t *testing.T) {
-	InitializeMagicBitboards()
 	
 	testCases := []struct {
 		square   int
@@ -83,7 +70,6 @@ func TestRookAttacksEmptyBoard(t *testing.T) {
 }
 
 func TestBishopAttacksEmptyBoard(t *testing.T) {
-	InitializeMagicBitboards()
 	
 	testCases := []struct {
 		square   int
@@ -143,7 +129,6 @@ func TestBishopAttacksEmptyBoard(t *testing.T) {
 }
 
 func TestQueenAttacksEmptyBoard(t *testing.T) {
-	InitializeMagicBitboards()
 	
 	square := E4
 	var emptyBoard Bitboard = 0
@@ -177,7 +162,6 @@ func TestQueenAttacksEmptyBoard(t *testing.T) {
 }
 
 func TestRookAttacksWithOccupancy(t *testing.T) {
-	InitializeMagicBitboards()
 	
 	// Test rook on e4 with pieces blocking some squares
 	square := E4
@@ -234,7 +218,6 @@ func TestRookAttacksWithOccupancy(t *testing.T) {
 }
 
 func TestBishopAttacksWithOccupancy(t *testing.T) {
-	InitializeMagicBitboards()
 	
 	// Test bishop on e4 with pieces blocking some squares
 	square := E4
@@ -285,7 +268,6 @@ func TestBishopAttacksWithOccupancy(t *testing.T) {
 }
 
 func TestSlidingPieceAttacksConsistency(t *testing.T) {
-	InitializeMagicBitboards()
 	
 	// Test that magic bitboard results are consistent with on-the-fly calculation
 	// for various occupancy patterns
@@ -323,7 +305,6 @@ func TestSlidingPieceAttacksConsistency(t *testing.T) {
 }
 
 func TestInvalidSquareInputs(t *testing.T) {
-	InitializeMagicBitboards()
 	
 	invalidSquares := []int{-1, 64, 100}
 	occupancy := Bitboard(0x123456789ABCDEF0)
@@ -384,7 +365,6 @@ func TestRelevantOccupancyMasks(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkRookAttacks(b *testing.B) {
-	InitializeMagicBitboards()
 	occupancy := Bitboard(0x123456789ABCDEF0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -393,7 +373,6 @@ func BenchmarkRookAttacks(b *testing.B) {
 }
 
 func BenchmarkBishopAttacks(b *testing.B) {
-	InitializeMagicBitboards()
 	occupancy := Bitboard(0x123456789ABCDEF0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -402,7 +381,6 @@ func BenchmarkBishopAttacks(b *testing.B) {
 }
 
 func BenchmarkQueenAttacks(b *testing.B) {
-	InitializeMagicBitboards()
 	occupancy := Bitboard(0x123456789ABCDEF0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
