@@ -12,3 +12,4 @@ This file tracks the STS (Strategic Test Suite) performance of ChessEngine over 
 | 2025-08-08 17:48 | da2d8d1 | STS1-6 (6 files) | 60 | 225 | 600 | 37% | 2029 | 16 | 999 | 5s | 5s | 300s | 103.4K | 5.0 | depth=999, timeout=5s, 10 per file, 6 files |
 | 2025-08-08 17:58 | 27d7965 | STS1-6 (6 files) | 60 | 258 | 600 | 43% | 2034 | 19 | 999 | 5s | 5s | 301s | 136.7K | 4.9 | depth=999, timeout=5s, 10 per file, 6 files |
 | 2025-08-09 17:36 | 6da1189 | STS1-6 (6 files) | 60 | 276 | 600 | 46% | 2036 | 21 | 999 | 5s | 5s | 301s | 194.2K | 5.2 | depth=999, timeout=5s, 10 per file, 6 files |
+| 2025-08-09 20:43 | 96cfa7d | STS1-6 (6 files) | 60 | 267 | 600 | 44% | 2035 | 20 | 999 | 5s | 5s | 301s | 186.1K | 6.3 | depth=999, timeout=5s, 10 per file, 6 files |

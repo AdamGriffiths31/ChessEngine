@@ -22,7 +22,7 @@ const (
 )
 
 // MinimaxEngine implements negamax search with alpha-beta pruning, transposition table,
-// history heuristic, null move pruning, and opening book support
+// history heuristic, null move pruning, SEE-based move ordering, and opening book support
 type MinimaxEngine struct {
 	evaluator          ai.Evaluator
 	generator          *moves.Generator
@@ -33,6 +33,7 @@ type MinimaxEngine struct {
 	transpositionTable *TranspositionTable
 	zobrist            *openings.ZobristHash
 	historyTable       *HistoryTable
+	seeCalculator      *evaluation.SEECalculator
 }
 
 // NewMinimaxEngine creates a new minimax search engine
@@ -44,6 +45,7 @@ func NewMinimaxEngine() *MinimaxEngine {
 		transpositionTable: nil,
 		zobrist:            openings.GetPolyglotHash(),
 		historyTable:       NewHistoryTable(),
+		seeCalculator:      evaluation.NewSEECalculator(),
 	}
 }
 
@@ -266,7 +268,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		}
 	}
 
-	m.orderMoves(legalMoves, 0, rootTTMove)
+	m.orderMoves(b, legalMoves, 0, rootTTMove)
 
 	lastCompletedBestMove := legalMoves.Moves[0]
 	lastCompletedScore := ai.EvaluationScore(0)
@@ -449,12 +451,13 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	inCheck := m.generator.IsKingInCheck(b, player)
 	originalAlpha := alpha
 
-	if !inCheck {
-		eval := m.evaluator.Evaluate(b)
-		if player == moves.Black {
-			eval = -eval
-		}
+	// Always calculate eval for delta pruning
+	eval := m.evaluator.Evaluate(b)
+	if player == moves.Black {
+		eval = -eval
+	}
 
+	if !inCheck {
 		if eval >= beta {
 			return beta
 		}
@@ -478,8 +481,31 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
 
+		// Only consider captures when not in check
 		if !inCheck && !move.IsCapture {
 			continue
+		}
+
+		// Use SEE to prune bad captures (Delta pruning enhancement)
+		if !inCheck && move.IsCapture {
+			seeValue := m.seeCalculator.SEE(b, move)
+			
+			// Prune clearly losing captures unless they might create threats
+			// Allow slightly negative SEE in case of tactical complications
+			if seeValue < -100 {
+				continue
+			}
+			
+			// Delta pruning: if the capture value + position eval + margin still fails low, skip it
+			capturedValue := evaluation.PieceValues[move.Captured]
+			if capturedValue < 0 {
+				capturedValue = -capturedValue
+			}
+			
+			// If standing pat + captured piece value + SEE + margin still <= alpha, prune
+			if eval+ai.EvaluationScore(capturedValue)+ai.EvaluationScore(seeValue)+200 <= alpha {
+				continue
+			}
 		}
 
 		undo, err := b.MakeMoveWithUndo(move)
@@ -614,7 +640,7 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	}
 
 	// Sort moves to improve alpha-beta efficiency (TT move, captures, killers, history)
-	m.orderMoves(legalMoves, currentDepth, ttMove)
+	m.orderMoves(b, legalMoves, currentDepth, ttMove)
 
 	// Search moves
 	bestScore := ai.EvaluationScore(-ai.MateScore - 1)
@@ -672,28 +698,30 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	return bestScore
 }
 
-// getMVVLVAScore calculates the MVV-LVA score for a capture move
+// getCaptureScore calculates the capture score using SEE for accurate evaluation
 // Higher scores indicate more valuable captures (better moves to try first)
-func (m *MinimaxEngine) getMVVLVAScore(move board.Move) int {
+func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
 		return 0 // Non-captures get score 0
 	}
 
-	victimValue := evaluation.PieceValues[move.Captured]
-	if victimValue < 0 {
-		victimValue = -victimValue
+	// Use SEE to get the true value of the capture
+	seeValue := m.seeCalculator.SEE(b, move)
+	
+	// Convert SEE value to move ordering score
+	// Positive SEE values get high scores, negative get lower scores
+	// But we still want to try clearly losing captures (they might be tactical)
+	if seeValue >= 0 {
+		return 1000000 + seeValue // Good captures get priority
+	} else {
+		// Bad captures still get some priority over non-captures
+		// but lower than good captures
+		return 900000 + seeValue // This will be < 1000000 for negative SEE
 	}
-
-	attackerValue := evaluation.PieceValues[move.Piece]
-	if attackerValue < 0 {
-		attackerValue = -attackerValue
-	}
-
-	return victimValue*10 - attackerValue
 }
 
-// orderMoves sorts moves to improve alpha-beta efficiency using TT move, MVV-LVA, killer moves, and history heuristic
-func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList, depth int, ttMove board.Move) {
+// orderMoves sorts moves to improve alpha-beta efficiency using TT move, SEE-based scoring, killer moves, and history heuristic
+func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, depth int, ttMove board.Move) {
 	// Create slice of move indices with their scores
 	type moveScore struct {
 		index int
@@ -709,7 +737,7 @@ func (m *MinimaxEngine) orderMoves(moveList *moves.MoveList, depth int, ttMove b
 			move.From == ttMove.From && move.To == ttMove.To {
 			score = 3000000
 		} else if move.IsCapture {
-			score = 1000000 + m.getMVVLVAScore(move)
+			score = m.getCaptureScore(b, move)
 		} else if m.isKillerMove(move, depth) {
 			if depth >= 0 && depth < MaxKillerDepth &&
 				move.From == m.killerTable[depth][0].From && move.To == m.killerTable[depth][0].To {

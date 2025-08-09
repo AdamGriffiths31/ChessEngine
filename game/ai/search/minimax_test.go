@@ -68,7 +68,7 @@ func TestHistoryHeuristicMoveOrdering(t *testing.T) {
 	defer moves.ReleaseMoveList(legalMoves)
 
 	// Order moves using the engine's method
-	engine.orderMoves(legalMoves, 0, board.Move{})
+	engine.orderMoves(b, legalMoves, 0, board.Move{})
 
 	// Get the ordered moves for debugging
 	orderedMoves := engine.GetLastMoveOrder()
