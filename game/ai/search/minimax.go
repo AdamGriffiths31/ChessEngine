@@ -486,13 +486,17 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 			continue
 		}
 
-		// Use SEE to prune bad captures (Delta pruning enhancement)
+		// Use SEE to prune bad captures with depth-based thresholds
 		if !inCheck && move.IsCapture {
 			seeValue := m.seeCalculator.SEE(b, move)
 			
-			// Prune clearly losing captures unless they might create threats
-			// Allow slightly negative SEE in case of tactical complications
-			if seeValue < -100 {
+			// More aggressive pruning based on search depth
+			pruneThreshold := -50
+			if depthFromRoot > 4 {
+				pruneThreshold = -20  // Prune more aggressively deeper in search
+			}
+			
+			if seeValue < pruneThreshold {
 				continue
 			}
 			
@@ -700,6 +704,15 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 
 // getCaptureScore calculates the capture score using SEE for accurate evaluation
 // Higher scores indicate more valuable captures (better moves to try first)
+// Move ordering priorities:
+//   1. TT moves: 3,000,000+
+//   2. Good captures (SEE > 0): 1,000,000+
+//   3. Equal exchanges (SEE = 0): 900,000
+//   4. Killer moves: 500,000
+//   5. Good history moves: up to ~50,000
+//   6. Slightly bad captures (SEE >= -100): 100,000+
+//   7. Terrible captures (SEE < -100): 50,000+
+//   8. Quiet moves: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
 		return 0 // Non-captures get score 0
@@ -708,15 +721,30 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	// Use SEE to get the true value of the capture
 	seeValue := m.seeCalculator.SEE(b, move)
 	
-	// Convert SEE value to move ordering score
-	// Positive SEE values get high scores, negative get lower scores
-	// But we still want to try clearly losing captures (they might be tactical)
-	if seeValue >= 0 {
-		return 1000000 + seeValue // Good captures get priority
+	// Get victim value for MVV-LVA tiebreaker
+	victimValue := evaluation.PieceValues[move.Captured]
+	if victimValue < 0 {
+		victimValue = -victimValue
+	}
+	
+	// Convert SEE value to move ordering score with proper tactical priorities
+	// Use MVV-LVA as tiebreaker when SEE values are equal
+	if seeValue > 0 {
+		// Good captures: highest priority after TT moves
+		// Add small victim value bonus for tiebreaking (max victim = 900, so this won't change category)
+		return 1000000 + seeValue + (victimValue / 100)
+	} else if seeValue == 0 {
+		// Equal exchanges: high priority, above killers
+		// MVV-LVA tiebreaker: prefer capturing more valuable pieces
+		return 900000 + (victimValue / 10)
+	} else if seeValue >= -100 {
+		// Slightly bad captures: below killers but above history
+		// Still might be tactical (pins, discoveries, etc.)
+		return 100000 + seeValue + 100 + (victimValue / 100) // Ensures positive score
 	} else {
-		// Bad captures still get some priority over non-captures
-		// but lower than good captures
-		return 900000 + seeValue // This will be < 1000000 for negative SEE
+		// Terrible captures: below history but above quiet moves
+		// Could be sacrifices leading to mate or forcing sequences
+		return 25000 + seeValue + 1000 + (victimValue / 100) // Ensures positive score, below history
 	}
 }
 
