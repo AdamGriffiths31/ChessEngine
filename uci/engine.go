@@ -184,7 +184,6 @@ func (ue *UCIEngine) handleUCI() string {
 	options := []string{
 		ue.protocol.FormatOption("Hash", "spin", "128"),
 		ue.protocol.FormatOption("Threads", "spin", "1"),
-		ue.protocol.FormatOption("MaxDepth", "spin", "6"),
 	}
 
 	return response + "\n" + strings.Join(options, "\n")
@@ -244,16 +243,17 @@ func (ue *UCIEngine) handleGo(args []string) {
 	ue.searching = true
 	ue.stopChannel = make(chan struct{})
 
-	// Configure search parameters
+	// Configure search parameters with all optimizations enabled by default
 	config := ai.SearchConfig{
-		MaxDepth:            6,               // Default depth
+		MaxDepth:            999,             // No depth limit (use time-based)
 		MaxTime:             5 * time.Second, // Default time
 		DebugMode:           false,
-		UseAlphaBeta:        false,
 		UseOpeningBook:      true,
-		BookFiles:           []string{"/home/adam/Documents/git/ChessEngine/game/openings/testdata/performance.bin"},
+		BookFiles:           []string{"game/openings/testdata/performance.bin"},
 		BookSelectMode:      ai.BookSelectWeightedRandom,
 		BookWeightThreshold: 1,
+		LMRMinDepth:         999,             // LMR temporarily disabled - re-enable later after more testing
+		LMRMinMoves:         3,               // Will be used when LMR is re-enabled
 	}
 
 	// Apply search parameters
@@ -317,12 +317,14 @@ func (ue *UCIEngine) handleGo(args []string) {
 		bestMoveUCI, formattedBestMove, result.BestMove.From.String(), result.BestMove.To.String(),
 		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.BookMoveUsed, searchDuration.Seconds(), config.MaxTime.Seconds(), ttStatsStr)
 
-	// Print TT stats to UCI output as info string (visible to GUI)
-	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
-		hits, misses, collisions, hitRate := minimaxEngine.GetTranspositionTableStats()
-		if hits > 0 || misses > 0 {
-			fmt.Fprintf(ue.output, "info string TT: %d hits, %d misses, %d collisions, %.1f%% hit rate\n", 
-				hits, misses, collisions, hitRate)
+	// Only print TT stats periodically to avoid spam (every 10 moves)
+	if ue.moveNumber%10 == 0 {
+		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
+			hits, misses, collisions, hitRate := minimaxEngine.GetTranspositionTableStats()
+			if hits > 0 || misses > 0 {
+				fmt.Fprintf(ue.output, "info string TT: %d hits, %d misses, %d collisions, %.1f%% hit rate\n", 
+					hits, misses, collisions, hitRate)
+			}
 		}
 	}
 

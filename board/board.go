@@ -148,6 +148,7 @@ func (b *Board) InitializeHashFromPosition(hashFunc func(*Board) uint64) {
 // HashUpdater interface for providing zobrist key updates
 type HashUpdater interface {
 	GetHashDelta(b *Board, move Move, oldState BoardState) uint64
+	GetNullMoveDelta() uint64 // Get hash delta for null move (just flip side-to-move)
 }
 
 // BoardState captures the board state before a move for hash calculation

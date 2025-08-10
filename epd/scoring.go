@@ -7,6 +7,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/game/ai"
+	"github.com/AdamGriffiths31/ChessEngine/game/ai/search"
 	"github.com/AdamGriffiths31/ChessEngine/game/moves"
 )
 
@@ -36,6 +37,7 @@ type STSScorer struct {
 	engine  ai.Engine
 	config  ai.SearchConfig
 	verbose bool
+	clearTT bool // Whether to clear transposition table between positions
 }
 
 // NewSTSScorer creates a new STS scorer with the given engine and search configuration
@@ -44,6 +46,17 @@ func NewSTSScorer(engine ai.Engine, config ai.SearchConfig, verbose bool) *STSSc
 		engine:  engine,
 		config:  config,
 		verbose: verbose,
+		clearTT: false,
+	}
+}
+
+// NewSTSScorerWithTTClear creates a new STS scorer with TT clearing option
+func NewSTSScorerWithTTClear(engine ai.Engine, config ai.SearchConfig, verbose bool, clearTT bool) *STSScorer {
+	return &STSScorer{
+		engine:  engine,
+		config:  config,
+		verbose: verbose,
+		clearTT: clearTT,
 	}
 }
 
@@ -226,6 +239,13 @@ func (scorer *STSScorer) ScoreSuite(ctx context.Context, positions []*EPDPositio
 	totalTime := time.Duration(0)
 	
 	for i, position := range positions {
+		// Clear transposition table before each position if requested
+		if scorer.clearTT {
+			if minimaxEngine, ok := scorer.engine.(*search.MinimaxEngine); ok {
+				minimaxEngine.ClearSearchState()
+			}
+		}
+		
 		result := scorer.ScorePosition(ctx, position)
 		results = append(results, result)
 		totalScore += result.Score

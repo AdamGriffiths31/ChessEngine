@@ -26,7 +26,6 @@ func TestLMRBasicFunctionality(t *testing.T) {
 	config := ai.SearchConfig{
 		MaxDepth:         3,
 		MaxTime:          time.Second * 5,
-		UseAlphaBeta:     true,
 		UseLMR:           true,
 		LMRMinDepth:      2,
 		LMRMinMoves:      1, // Lower threshold for testing
@@ -138,7 +137,6 @@ func TestLMRDoesNotReduceImportantMoves(t *testing.T) {
 	config := ai.SearchConfig{
 		MaxDepth:         4,
 		MaxTime:          time.Second * 5,
-		UseAlphaBeta:     true,
 		UseLMR:           true,
 		LMRMinDepth:      2,
 		LMRMinMoves:      1,
@@ -172,7 +170,6 @@ func TestLMRWithDifferentConfigurations(t *testing.T) {
 	baseConfig := ai.SearchConfig{
 		MaxDepth:     3,
 		MaxTime:      time.Second * 5,
-		UseAlphaBeta: true,
 		UseLMR:       true,
 	}
 	
@@ -227,7 +224,6 @@ func TestLMRReSearchConditions(t *testing.T) {
 	config := ai.SearchConfig{
 		MaxDepth:         4,
 		MaxTime:          time.Second * 10,
-		UseAlphaBeta:     true,
 		UseLMR:           true,
 		LMRMinDepth:      2,
 		LMRMinMoves:      2,
@@ -260,7 +256,6 @@ func TestLMRStatisticsTracking(t *testing.T) {
 	config := ai.SearchConfig{
 		MaxDepth:         3,
 		MaxTime:          time.Second * 5,
-		UseAlphaBeta:     true,
 		UseLMR:           true,
 		LMRMinDepth:      2,
 		LMRMinMoves:      2,
@@ -305,7 +300,6 @@ func TestLMRInteractionWithOtherFeatures(t *testing.T) {
 	config := ai.SearchConfig{
 		MaxDepth:         4,
 		MaxTime:          time.Second * 10,
-		UseAlphaBeta:     true,
 		UseNullMove:      true, // Enable null move pruning
 		UseLMR:           true,
 		LMRMinDepth:      2,

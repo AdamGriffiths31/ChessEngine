@@ -32,7 +32,6 @@ func TestMinimaxEngineWithOpeningBook(t *testing.T) {
 	configWithoutBook := ai.SearchConfig{
 		MaxDepth:            3,
 		MaxTime:             time.Second,
-		UseAlphaBeta:        true,
 		UseOpeningBook:      false,
 		DebugMode:           true,
 	}
@@ -51,7 +50,6 @@ func TestMinimaxEngineWithOpeningBook(t *testing.T) {
 	configWithBook := ai.SearchConfig{
 		MaxDepth:            3,
 		MaxTime:             time.Second,
-		UseAlphaBeta:        true,
 		UseOpeningBook:      true,
 		BookFiles:           []string{bookPath},
 		BookSelectMode:      ai.BookSelectWeightedRandom,

@@ -25,7 +25,6 @@ func BenchmarkLMRvsNoLMR(b *testing.B) {
 	baseConfig := ai.SearchConfig{
 		MaxDepth:         5,
 		MaxTime:          time.Second * 30,
-		UseAlphaBeta:     true,
 		UseNullMove:      true,
 	}
 	
@@ -74,7 +73,6 @@ func BenchmarkLMRConfigurations(b *testing.B) {
 	baseConfig := ai.SearchConfig{
 		MaxDepth:     4,
 		MaxTime:      time.Second * 10,
-		UseAlphaBeta: true,
 		UseLMR:       true,
 	}
 	
@@ -124,7 +122,6 @@ func BenchmarkLMRNodeReduction(b *testing.B) {
 	config := ai.SearchConfig{
 		MaxDepth:         4,
 		MaxTime:          time.Second * 15,
-		UseAlphaBeta:     true,
 		UseNullMove:      true,
 		UseLMR:           true,
 		LMRMinDepth:      2,
@@ -194,7 +191,6 @@ func BenchmarkLMRDepthEffect(b *testing.B) {
 	
 	baseConfig := ai.SearchConfig{
 		MaxTime:          time.Second * 20,
-		UseAlphaBeta:     true,
 		UseNullMove:      true,
 		UseLMR:           true,
 		LMRMinDepth:      2,

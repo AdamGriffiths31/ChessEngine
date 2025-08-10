@@ -45,7 +45,6 @@ func TestComputerPlayerOpeningBook(t *testing.T) {
 	config := SearchConfig{
 		MaxDepth:     3,
 		MaxTime:      time.Second,
-		UseAlphaBeta: true,
 		DebugMode:    false,
 	}
 	
@@ -116,7 +115,6 @@ func TestComputerPlayerBookWithStats(t *testing.T) {
 	config := SearchConfig{
 		MaxDepth:     2,
 		MaxTime:      500 * time.Millisecond,
-		UseAlphaBeta: true,
 		DebugMode:    true,
 	}
 	

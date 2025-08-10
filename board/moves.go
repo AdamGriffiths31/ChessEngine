@@ -27,6 +27,7 @@ type MoveUndo struct {
 	HalfMoveClock   int
 	FullMoveNumber  int
 	SideToMove      string
+	Hash            uint64 // Store hash for undo operations
 }
 
 // NullMove represents a "pass turn" move used for null move pruning
@@ -91,6 +92,7 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 		HalfMoveClock:   b.halfMoveClock,
 		FullMoveNumber:  b.fullMoveNumber,
 		SideToMove:      b.sideToMove,
+		Hash:            b.GetHash(), // Store current hash for undo
 	}
 
 	// Push current hash to history for undo
@@ -122,6 +124,7 @@ func (b *Board) MakeNullMove() MoveUndo {
 		HalfMoveClock:   b.halfMoveClock,
 		FullMoveNumber:  b.fullMoveNumber,
 		SideToMove:      b.sideToMove,
+		Hash:            b.GetHash(), // Store current hash for undo
 	}
 
 	// Switch side to move
@@ -139,6 +142,12 @@ func (b *Board) MakeNullMove() MoveUndo {
 	b.enPassantTarget = nil
 
 	// Castling rights remain unchanged (no pieces moved)
+	
+	// Update hash for null move - flip side to move bit
+	if b.hashUpdater != nil {
+		sideKey := b.hashUpdater.GetNullMoveDelta()
+		b.UpdateHash(sideKey)
+	}
 
 	return undo
 }
@@ -151,6 +160,9 @@ func (b *Board) UnmakeNullMove(undo MoveUndo) {
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
 	b.sideToMove = undo.SideToMove
+	
+	// Restore the original hash
+	b.SetHash(undo.Hash)
 }
 
 func (b *Board) MakeMove(move Move) error {

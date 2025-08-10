@@ -29,12 +29,16 @@ func main() {
 	epdFile := flag.String("file", defaultSTSFile, "Path to EPD file")
 	maxPositions := flag.Int("max", 0, "Maximum number of positions to test (0 = all)")
 	verbose := flag.Bool("verbose", false, "Show detailed results for each position")
+	ttSize := flag.Int("ttsize", 256, "Transposition table size in MB")
+	clearTT := flag.Bool("clear-tt", true, "Clear transposition table between positions (recommended for EPD benchmarks)")
 	flag.Parse()
 
 	fmt.Printf("STS (Strategic Test Suite) Benchmark\n")
 	fmt.Printf("====================================\n")
 	fmt.Printf("Search Depth: %d\n", *depth)
 	fmt.Printf("Timeout per position: %d seconds\n", *timeout)
+	fmt.Printf("Transposition Table: %d MB\n", *ttSize)
+	fmt.Printf("Clear TT between positions: %v\n", *clearTT)
 	if *maxPositions > 0 {
 		fmt.Printf("Max positions: %d\n", *maxPositions)
 	}
@@ -66,17 +70,22 @@ func main() {
 	engine := search.NewMinimaxEngine()
 	evaluator := evaluation.NewEvaluator()
 	engine.SetEvaluator(evaluator)
+	
+	// Enable transposition table if size specified
+	if *ttSize > 0 {
+		engine.SetTranspositionTableSize(*ttSize)
+		fmt.Printf("Initialized transposition table: %d MB\n", *ttSize)
+	}
 
 	// Configure search
 	searchConfig := ai.SearchConfig{
 		MaxDepth:     *depth,
 		MaxTime:      time.Duration(*timeout) * time.Second,
-		UseAlphaBeta: true,
 		DebugMode:    false,
 	}
 
 	// Create STS scorer
-	scorer := epd.NewSTSScorer(engine, searchConfig, *verbose)
+	scorer := epd.NewSTSScorerWithTTClear(engine, searchConfig, *verbose, *clearTT)
 
 	fmt.Printf("\nRunning STS benchmark...\n")
 	fmt.Printf("------------------------\n")

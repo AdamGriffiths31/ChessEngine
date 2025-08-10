@@ -3,7 +3,6 @@ package search
 import (
 	"context"
 	"math"
-	"sort"
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
@@ -22,6 +21,20 @@ const (
 	MateDistanceThreshold = 1000
 )
 
+// LMRTable is a pre-calculated reduction table for Late Move Reductions
+// Indexed by [depth][moveCount] to get reduction amount
+var LMRTable [16][64]int
+
+func init() {
+	for depth := 1; depth < 16; depth++ {
+		for moveCount := 1; moveCount < 64; moveCount++ {
+			// More aggressive LMR reduction - changed from /2.0 to /1.8
+			// This provides stronger pruning while maintaining search quality
+			LMRTable[depth][moveCount] = int(math.Log(float64(depth))*math.Log(float64(moveCount))/1.8)
+		}
+	}
+}
+
 // MinimaxEngine implements negamax search with alpha-beta pruning, transposition table,
 // history heuristic, null move pruning, SEE-based move ordering, and opening book support
 type MinimaxEngine struct {
@@ -35,6 +48,13 @@ type MinimaxEngine struct {
 	zobrist            *openings.ZobristHash
 	historyTable       *HistoryTable
 	seeCalculator      *evaluation.SEECalculator
+	moveOrderBuffer    []moveScore // Pre-allocated buffer for move ordering
+}
+
+// moveScore holds move index and score for ordering
+type moveScore struct {
+	index int
+	score int
 }
 
 // NewMinimaxEngine creates a new minimax search engine
@@ -47,6 +67,7 @@ func NewMinimaxEngine() *MinimaxEngine {
 		zobrist:            openings.GetPolyglotHash(),
 		historyTable:       NewHistoryTable(),
 		seeCalculator:      evaluation.NewSEECalculator(),
+		moveOrderBuffer:    make([]moveScore, 256), // Pre-allocate for max expected moves
 	}
 }
 
@@ -109,7 +130,7 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 			rookFrom = move.From.Rank*8 + 0
 			rookTo = move.From.Rank*8 + 3
 		}
-		
+
 		// Remove rook from original square, add to new square
 		var rook board.Piece
 		if move.From.Rank == 0 {
@@ -134,7 +155,7 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 	if (oldState.EnPassantTarget == nil) != (b.GetEnPassantTarget() == nil) ||
 		(oldState.EnPassantTarget != nil && b.GetEnPassantTarget() != nil &&
 			oldState.EnPassantTarget.File != b.GetEnPassantTarget().File) {
-		
+
 		if oldState.EnPassantTarget != nil && m.hasAdjacentCapturingPawn(b, oldState.EnPassantTarget, oldState.SideToMove) {
 			hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantTarget.File)
 		}
@@ -146,23 +167,28 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 	return hashDelta
 }
 
+// GetNullMoveDelta returns the hash delta for a null move (flip side to move)
+func (m *MinimaxEngine) GetNullMoveDelta() uint64 {
+	return m.zobrist.GetSideKey()
+}
+
 // hasAdjacentCapturingPawn checks if there's a pawn adjacent to the en passant target that can capture
 // This implements the same logic as the full HashPosition function
 func (m *MinimaxEngine) hasAdjacentCapturingPawn(b *board.Board, epTarget *board.Square, sideToMove string) bool {
 	// Determine the rank where the capturing pawn should be and what piece to look for
 	var pawnRank int
 	var pawnPiece board.Piece
-	
+
 	if sideToMove == "b" { // Black to move, so white pawn moved and black can capture
 		pawnRank = 4 // Black pawn should be on rank 5 (0-indexed rank 4)
 		pawnPiece = board.BlackPawn
-	} else { // White to move, so black pawn moved and white can capture  
+	} else { // White to move, so black pawn moved and white can capture
 		pawnRank = 3 // White pawn should be on rank 4 (0-indexed rank 3)
 		pawnPiece = board.WhitePawn
 	}
-	
+
 	epFile := epTarget.File
-	
+
 	// Check adjacent files for capturing pawn
 	for _, df := range []int{-1, 1} {
 		adjFile := epFile + df
@@ -172,7 +198,7 @@ func (m *MinimaxEngine) hasAdjacentCapturingPawn(b *board.Board, epTarget *board
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -280,6 +306,8 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			result.BestMove = lastCompletedBestMove
 			result.Score = lastCompletedScore
 			result.Stats.Time = time.Since(startTime)
+			
+			
 			return result
 		default:
 		}
@@ -292,10 +320,10 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		// Progressive aspiration window implementation
 		var windowSize ai.EvaluationScore = 100 // Start with wider window (±100)
 		var maxRetries = 3
-		
+
 		for retry := 0; retry <= maxRetries && !completed; retry++ {
 			var alpha, beta ai.EvaluationScore
-			
+
 			// Set initial window based on depth and retry count
 			if currentDepth == 1 {
 				// Full window for first depth
@@ -323,7 +351,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 					beta = ai.EvaluationScore(ai.MateScore + 1)
 				}
 			}
-			
+
 			originalAlpha := alpha
 			originalBeta := beta
 			searchStats = ai.SearchStats{}
@@ -337,7 +365,6 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 				select {
 				case <-ctx.Done():
 					searchCancelled = true
-					break
 				default:
 				}
 
@@ -352,7 +379,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 				b.UnmakeMove(undo)
 
 				searchStats.NodesSearched += moveStats.NodesSearched
-				
+
 				// Accumulate LMR statistics from this move
 				searchStats.LMRReductions += moveStats.LMRReductions
 				searchStats.LMRReSearches += moveStats.LMRReSearches
@@ -361,7 +388,6 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 				select {
 				case <-ctx.Done():
 					searchCancelled = true
-					break
 				default:
 				}
 
@@ -374,13 +400,13 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 					}
 				}
 			}
-			
+
 			// Check if search was cancelled
 			if searchCancelled {
 				completed = false
 				break
 			}
-			
+
 			// Check if aspiration window failed and we need to retry
 			if currentDepth > 1 && retry < maxRetries && (bestScore <= originalAlpha || bestScore >= originalBeta) {
 				// Window failed, continue to next retry iteration
@@ -396,7 +422,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			lastCompletedScore = bestScore
 			result.Stats.Depth = currentDepth
 			result.Stats.NodesSearched = searchStats.NodesSearched
-			
+
 			// Accumulate LMR statistics from this depth
 			result.Stats.LMRReductions += searchStats.LMRReductions
 			result.Stats.LMRReSearches += searchStats.LMRReSearches
@@ -410,6 +436,8 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 			result.BestMove = lastCompletedBestMove
 			result.Score = lastCompletedScore
 			result.Stats.Time = time.Since(startTime)
+			
+			
 			return result
 		}
 	}
@@ -417,6 +445,8 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 	result.BestMove = lastCompletedBestMove
 	result.Score = lastCompletedScore
 	result.Stats.Time = time.Since(startTime)
+	
+	
 	return result
 }
 
@@ -500,23 +530,23 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		// Use SEE to prune bad captures with depth-based thresholds
 		if !inCheck && move.IsCapture {
 			seeValue := m.seeCalculator.SEE(b, move)
-			
+
 			// More aggressive pruning based on search depth
 			pruneThreshold := -50
 			if depthFromRoot > 4 {
-				pruneThreshold = -20  // Prune more aggressively deeper in search
+				pruneThreshold = -20 // Prune more aggressively deeper in search
 			}
-			
+
 			if seeValue < pruneThreshold {
 				continue
 			}
-			
+
 			// Delta pruning: if the capture value + position eval + margin still fails low, skip it
 			capturedValue := evaluation.PieceValues[move.Captured]
 			if capturedValue < 0 {
 				capturedValue = -capturedValue
 			}
-			
+
 			// If standing pat + captured piece value + SEE + margin still <= alpha, prune
 			if eval+ai.EvaluationScore(capturedValue)+ai.EvaluationScore(seeValue)+200 <= alpha {
 				continue
@@ -572,6 +602,12 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	default:
 	}
 
+	// Check extension - extend search when in check
+	inCheck := m.generator.IsKingInCheck(b, player)
+	if inCheck && depth < originalMaxDepth {
+		depth++
+	}
+
 	var ttMove board.Move
 	hash := b.GetHash()
 
@@ -602,9 +638,15 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 		}
 	}
 
-	if config.UseNullMove && depth >= 3 && beta < ai.MateScore-MateDistanceThreshold && beta > -ai.MateScore+MateDistanceThreshold {
-		inCheck := m.generator.IsKingInCheck(b, player)
+	// Null move pruning with static evaluation check
+	staticEval := m.evaluator.Evaluate(b)
+	if !config.DisableNullMove && depth >= 3 && 
+		staticEval >= beta && 
+		beta < ai.MateScore-MateDistanceThreshold && 
+		beta > -ai.MateScore+MateDistanceThreshold {
 		if !inCheck {
+			stats.NullMoves++
+			
 			nullReduction := 2
 			if depth >= 6 {
 				nullReduction = 3
@@ -620,6 +662,7 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 			// If null move score >= beta, position is too good for opponent
 			if nullScore >= beta {
 				if nullScore < ai.MateScore-MateDistanceThreshold {
+					stats.NullCutoffs++
 					return beta
 				}
 			}
@@ -661,9 +704,8 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 	bestScore := ai.EvaluationScore(-ai.MateScore - 1)
 	bestMove := board.Move{}
 	entryType := EntryUpperBound // Assume fail-low initially
+	moveCount := 0
 
-	inCheck := m.generator.IsKingInCheck(b, player)
-	
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
 
@@ -672,86 +714,47 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 			continue
 		}
 
+		moveCount++
 		var score ai.EvaluationScore
-		
+
 		// Calculate LMR reduction if applicable
 		reduction := 0
-		if config.UseLMR {
-			// Debug: check all conditions
-			depthOk := depth >= config.LMRMinDepth
-			movesOk := i >= config.LMRMinMoves
-			notInCheck := !inCheck
-			notCapture := !move.IsCapture
-			notPromotion := move.Promotion == board.Empty
-			notKiller := !m.isKillerMove(move, currentDepth)
-			
-			
-			if depthOk && movesOk && notInCheck && notCapture && notPromotion && notKiller {
-			
-			// Check if move gives check (we need to calculate this after making the move)
-			givesCheck := m.generator.IsKingInCheck(b, oppositePlayer(player))
-			
-			
-			if !givesCheck {
-				// Calculate reduction using logarithmic formula
-				reduction = int(config.LMRReductionBase + 
-					math.Log(float64(depth))*math.Log(float64(i+1))/2.25)
-				
-				
-				// Clamp reduction to reasonable bounds
-				// Make sure we don't reduce past depth 0 (leave at least depth 1)
-				maxReduction := depth - 2
-				if maxReduction < 1 {
-					reduction = 0 // Don't reduce at all if we can't reduce safely
-				} else {
-					if reduction > maxReduction {
-						reduction = maxReduction
-					}
-					if reduction < 1 {
-						reduction = 1
-					}
-				}
-				
-				
-				// Adjust reduction based on history score if available
-				if m.historyTable != nil {
-					historyScore := m.getHistoryScore(move)
-					maxHistory := m.historyTable.GetMaxScore()
-					if maxHistory > 0 {
-						// Reduce less for moves with good history scores
-						historyFactor := float64(historyScore) / float64(maxHistory)
-						reduction = int(float64(reduction) * (1.5 - historyFactor))
-						if reduction < 1 {
-							reduction = 1
-						}
-					}
-				}
-			}
+		// LMR conditions based on established chess engine practices
+		// Note: moveGivesCheck condition removed due to performance overhead
+		if depth >= config.LMRMinDepth &&
+			moveCount > config.LMRMinMoves &&
+			!inCheck &&                              // Not responding to check
+			!move.IsCapture &&                       // Not a capture
+			move.Promotion == board.Empty &&         // Not a promotion  
+			!m.isKillerMove(move, currentDepth) {    // Not a killer move
+
+			// Look up reduction from pre-calculated table
+			reduction = LMRTable[min(depth, 15)][min(moveCount, 63)]
+
+			// Cap reduction to avoid dropping to negative depth
+			if reduction >= depth {
+				reduction = depth - 1
 			}
 		}
-		
+
 		if reduction > 0 {
 			// Track LMR statistics
 			stats.LMRReductions++
-			
-			// Initial reduced-depth search
-			score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), 
-				depth-1-reduction, -beta, -alpha, originalMaxDepth, config, stats)
-			
-			// Re-search conditions: if the reduced search failed high (score > alpha)
+
+			// Reduced-depth search with null window
+			score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player),
+				depth-1-reduction, -alpha-1, -alpha, originalMaxDepth, config, stats)
+
+			// Re-search at full depth if reduced search failed high (score > alpha)
 			if score > alpha {
-				// Move was better than expected, re-search at full depth
 				stats.LMRReSearches++
-				score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), 
+				// Use full window for re-search
+				score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player),
 					depth-1, -beta, -alpha, originalMaxDepth, config, stats)
-			} else {
-				// Estimate nodes saved (very rough approximation)
-				nodesSaved := int64(math.Pow(3, float64(reduction))) // Rough branching factor estimate
-				stats.LMRNodesSkipped += nodesSaved
 			}
 		} else {
-			// Search at full depth
-			score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player), 
+			// Search at full depth with full window
+			score = -m.negamaxWithAlphaBeta(ctx, b, oppositePlayer(player),
 				depth-1, -beta, -alpha, originalMaxDepth, config, stats)
 		}
 
@@ -798,14 +801,14 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 // getCaptureScore calculates the capture score using SEE for accurate evaluation
 // Higher scores indicate more valuable captures (better moves to try first)
 // Move ordering priorities:
-//   1. TT moves: 3,000,000+
-//   2. Good captures (SEE > 0): 1,000,000+
-//   3. Equal exchanges (SEE = 0): 900,000
-//   4. Killer moves: 500,000
-//   5. Good history moves: up to ~50,000
-//   6. Slightly bad captures (SEE >= -100): 100,000+
-//   7. Terrible captures (SEE < -100): 50,000+
-//   8. Quiet moves: 0
+//  1. TT moves: 3,000,000+
+//  2. Good captures (SEE > 0): 1,000,000+
+//  3. Equal exchanges (SEE = 0): 900,000
+//  4. Killer moves: 500,000
+//  5. Good history moves: up to ~50,000
+//  6. Slightly bad captures (SEE >= -100): 100,000+
+//  7. Terrible captures (SEE < -100): 50,000+
+//  8. Quiet moves: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
 		return 0 // Non-captures get score 0
@@ -813,13 +816,13 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 
 	// Use SEE to get the true value of the capture
 	seeValue := m.seeCalculator.SEE(b, move)
-	
+
 	// Get victim value for MVV-LVA tiebreaker
 	victimValue := evaluation.PieceValues[move.Captured]
 	if victimValue < 0 {
 		victimValue = -victimValue
 	}
-	
+
 	// Convert SEE value to move ordering score with proper tactical priorities
 	// Use MVV-LVA as tiebreaker when SEE values are equal
 	if seeValue > 0 {
@@ -843,13 +846,11 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 
 // orderMoves sorts moves to improve alpha-beta efficiency using TT move, SEE-based scoring, killer moves, and history heuristic
 func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, depth int, ttMove board.Move) {
-	// Create slice of move indices with their scores
-	type moveScore struct {
-		index int
-		score int
+	// Use pre-allocated buffer, resize if needed
+	if moveList.Count > len(m.moveOrderBuffer) {
+		m.moveOrderBuffer = make([]moveScore, moveList.Count*2) // Grow with some headroom
 	}
-
-	scores := make([]moveScore, moveList.Count)
+	scores := m.moveOrderBuffer[:moveList.Count]
 	for i := 0; i < moveList.Count; i++ {
 		move := moveList.Moves[i]
 		var score int
@@ -877,22 +878,21 @@ func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, dep
 		scores[i] = moveScore{index: i, score: score}
 	}
 
-	sort.Slice(scores, func(i, j int) bool {
-		return scores[i].score > scores[j].score
-	})
-
-	for i := 0; i < moveList.Count; i++ {
-		targetIndex := scores[i].index
-		if targetIndex != i {
-			moveList.Moves[i], moveList.Moves[targetIndex] = moveList.Moves[targetIndex], moveList.Moves[i]
-
-			for j := i + 1; j < moveList.Count; j++ {
-				if scores[j].index == i {
-					scores[j].index = targetIndex
-					break
-				}
-			}
+	// Sort moves by score using insertion sort (no allocations)
+	// Also swap the corresponding moves at the same time
+	for i := 1; i < moveList.Count; i++ {
+		j := i
+		tempScore := scores[j]
+		tempMove := moveList.Moves[j]
+		
+		for j > 0 && tempScore.score > scores[j-1].score {
+			scores[j] = scores[j-1]
+			moveList.Moves[j] = moveList.Moves[j-1]
+			j--
 		}
+		
+		scores[j] = tempScore
+		moveList.Moves[j] = tempMove
 	}
 
 	if m.debugMoveOrdering && depth == 0 {
@@ -927,6 +927,14 @@ func (m *MinimaxEngine) GetTranspositionTableStats() (hits, misses, collisions u
 		return m.transpositionTable.GetStats()
 	}
 	return 0, 0, 0, 0
+}
+
+// GetDetailedTranspositionTableStats returns detailed TT statistics including fill rate and average depth
+func (m *MinimaxEngine) GetDetailedTranspositionTableStats() (hits, misses, collisions, filled, averageDepth uint64, hitRate, fillRate float64) {
+	if m.transpositionTable != nil {
+		return m.transpositionTable.GetDetailedStats()
+	}
+	return 0, 0, 0, 0, 0, 0, 0
 }
 
 // GetName returns the engine name
@@ -999,20 +1007,24 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 func (m *MinimaxEngine) calculateAdaptiveWindow(depth int, baseWindow ai.EvaluationScore) ai.EvaluationScore {
 	// Start with base window and adjust based on depth
 	adaptiveWindow := baseWindow
-	
+
 	// Increase window size for deeper searches as they tend to be more volatile
 	if depth >= 6 {
 		adaptiveWindow += ai.EvaluationScore(depth * 10)
 	}
-	
+
 	// Cap the maximum window size to prevent excessive re-searches
 	maxWindow := ai.EvaluationScore(200)
 	if adaptiveWindow > maxWindow {
 		adaptiveWindow = maxWindow
 	}
-	
+
 	return adaptiveWindow
 }
+
+// moveGivesCheck removed - was causing significant performance overhead
+// The make/unmake approach was too expensive for the frequency of calls in LMR
+// Most engines handle checking moves through move ordering and killer moves instead
 
 // oppositePlayer returns the opposite player
 func oppositePlayer(player moves.Player) moves.Player {
@@ -1020,4 +1032,12 @@ func oppositePlayer(player moves.Player) moves.Player {
 		return moves.Black
 	}
 	return moves.White
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

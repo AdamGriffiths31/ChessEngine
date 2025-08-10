@@ -19,6 +19,10 @@ type SearchStats struct {
 	LMRReductions   int64 // Number of moves reduced
 	LMRReSearches   int64 // Number of re-searches performed
 	LMRNodesSkipped int64 // Estimated nodes saved by LMR
+	
+	// Null move pruning statistics  
+	NullMoves       int64 // Number of null move attempts
+	NullCutoffs     int64 // Number of successful null move cutoffs
 }
 
 // SearchConfig configures the search parameters
@@ -26,7 +30,6 @@ type SearchConfig struct {
 	MaxDepth     int
 	MaxTime      time.Duration
 	MaxNodes     int64
-	UseAlphaBeta bool
 	DebugMode    bool
 	
 	// Opening book configuration
@@ -35,14 +38,12 @@ type SearchConfig struct {
 	BookSelectMode    BookSelectionMode
 	BookWeightThreshold uint16
 	
-	// Search enhancement options
-	UseNullMove bool
-	
-	// Late Move Reductions (LMR) configuration
-	UseLMR           bool    // Enable/disable LMR
+	// Late Move Reductions (LMR) configuration - always enabled
 	LMRMinDepth      int     // Minimum depth to apply LMR (default: 3)
 	LMRMinMoves      int     // Number of moves to search at full depth (default: 4)
-	LMRReductionBase float64 // Base reduction amount (default: 0.75)
+	
+	// Null move pruning configuration
+	DisableNullMove  bool    // If true, disables null move pruning for comparison testing
 }
 
 // BookSelectionMode defines how to select moves from opening books
