@@ -186,7 +186,7 @@ func TestNullMovePruning(t *testing.T) {
 	// Test with null moves enabled
 	configWithNull := ai.SearchConfig{
 		MaxDepth:    4,
-		UseNullMove: true,
+		DisableNullMove: false,
 	}
 	
 	startTime := time.Now()
@@ -196,7 +196,7 @@ func TestNullMovePruning(t *testing.T) {
 	// Test with null moves disabled
 	configWithoutNull := ai.SearchConfig{
 		MaxDepth:    4,
-		UseNullMove: false,
+		DisableNullMove: true,
 	}
 	
 	startTime = time.Now()
@@ -243,7 +243,7 @@ func TestNullMoveInCheck(t *testing.T) {
 	ctx := context.Background()
 	config := ai.SearchConfig{
 		MaxDepth:    3,
-		UseNullMove: true,
+		DisableNullMove: false,
 	}
 	
 	// This should not crash or cause issues, even with null moves enabled
@@ -267,7 +267,7 @@ func TestNullMoveDeepSearch(t *testing.T) {
 	ctx := context.Background()
 	config := ai.SearchConfig{
 		MaxDepth:    4, // Deep enough to trigger adaptive null move reduction
-		UseNullMove: true,
+		DisableNullMove: false,
 	}
 	
 	result := engine.FindBestMove(ctx, b, moves.White, config)
@@ -296,7 +296,7 @@ func TestNullMoveWithTranspositionTable(t *testing.T) {
 	ctx := context.Background()
 	config := ai.SearchConfig{
 		MaxDepth:    4,
-		UseNullMove: true,
+		DisableNullMove: false,
 	}
 	
 	result := engine.FindBestMove(ctx, b, moves.White, config)

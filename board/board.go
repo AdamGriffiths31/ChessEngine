@@ -158,6 +158,17 @@ type BoardState struct {
 	SideToMove      string
 }
 
+// GetPawnHash returns a hash of only pawn positions for pawn structure caching
+func (b *Board) GetPawnHash() uint64 {
+	// Use bitboards for efficient pawn hash calculation
+	whitePawns := b.GetPieceBitboard(WhitePawn)
+	blackPawns := b.GetPieceBitboard(BlackPawn)
+	
+	// Simple but effective hash: combine white and black pawn bitboards
+	// Multiply by different primes to distinguish white vs black pawns
+	return uint64(whitePawns)*17 + uint64(blackPawns)*23
+}
+
 // SetHashUpdater sets the hash updater for incremental updates
 func (b *Board) SetHashUpdater(updater HashUpdater) {
 	b.hashUpdater = updater

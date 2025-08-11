@@ -1,89 +1,243 @@
 package evaluation
 
-import "github.com/AdamGriffiths31/ChessEngine/board"
+import (
+	"github.com/AdamGriffiths31/ChessEngine/board"
+)
 
-// evaluatePawnStructure evaluates pawn structure and returns the score from White's perspective
+// Pawn evaluation - streamlined for performance with focus on key factors
+//
+// Design Philosophy:
+// 1. Passed pawns are the dominant pawn factor (exponential bonus by rank)
+// 2. Pawn structure penalties (isolated, doubled, backward) are secondary
+// 3. Simple connected pawns bonus for pawn chains
+// 4. Pawn hash table for caching expensive pawn evaluations
+// 5. Eliminates complex calculations (pawn storms, candidate passed, weak squares)
+//
+// This approach focuses on the most impactful pawn features while using caching
+// to avoid recalculating identical pawn structures multiple times per search.
+
+// Pawn evaluation constants - only the essentials
+const (
+	// Structure penalties
+	IsolatedPawnPenalty = -15 // Pawn with no friendly pawns on adjacent files
+	DoubledPawnPenalty  = -10 // Extra pawns on the same file
+	BackwardPawnPenalty = -8  // Pawn that cannot advance safely
+
+	// Connected pawns bonus
+	ConnectedPawnBonus = 8 // Bonus for pawns protecting each other
+)
+
+// PassedPawnBonus provides exponential bonuses for passed pawns by rank
+// Index represents rank (0-7), values increase exponentially toward promotion
+var PassedPawnBonus = [8]int{0, 10, 15, 25, 40, 60, 90, 0}
+
+// PawnHashTable provides global caching for pawn evaluations
+// 16K entries = ~256KB of memory for significant speed improvement
+var PawnHashTable [16384]PawnHashEntry
+
+// evaluatePawnStructure performs cached pawn structure evaluation
+// Uses pawn hash table to avoid recalculating identical pawn structures
 func evaluatePawnStructure(b *board.Board) int {
-	score := 0
+	// Get pawn hash for this position
+	pawnHash := b.GetPawnHash()
+	hashIndex := pawnHash & 16383 // Modulo 16384
 
-	// Get pawn bitboards
+	// Check hash table for cached result
+	entry := &PawnHashTable[hashIndex]
+	if entry.hash == pawnHash {
+		return entry.score
+	}
+
+	// Calculate pawn evaluation
 	whitePawns := b.GetPieceBitboard(board.WhitePawn)
 	blackPawns := b.GetPieceBitboard(board.BlackPawn)
+	score := evaluatePawnsSimple(whitePawns, blackPawns)
 
-	// Penalize isolated pawns (pawns with no friendly pawns on adjacent files)
-	const isolatedPawnPenalty = 20
-	score -= countIsolatedPawns(whitePawns) * isolatedPawnPenalty // White penalty
-	score += countIsolatedPawns(blackPawns) * isolatedPawnPenalty // Black penalty
-
-	// Penalize doubled pawns (multiple pawns on same file)
-	const doubledPawnPenalty = 15
-	score -= countDoubledPawns(whitePawns) * doubledPawnPenalty // White penalty
-	score += countDoubledPawns(blackPawns) * doubledPawnPenalty // Black penalty
-
-	// Bonus for passed pawns (pawns with clear path to promotion)
-	score += evaluatePassedPawns(whitePawns, blackPawns, board.BitboardWhite) // White bonus
-	score -= evaluatePassedPawns(blackPawns, whitePawns, board.BitboardBlack) // Black bonus (subtracted since from white perspective)
+	// Cache the result
+	entry.hash = pawnHash
+	entry.score = score
 
 	return score
 }
 
-// countIsolatedPawns counts pawns that have no friendly pawns on adjacent files
-func countIsolatedPawns(pawns board.Bitboard) int {
-	isolated := 0
-	for file := 0; file < 8; file++ {
-		fileMask := board.FileMask(file)
-		if pawns&fileMask != 0 {
-			// Check adjacent files for supporting pawns
-			leftFile := fileMask.ShiftWest()
-			rightFile := fileMask.ShiftEast()
-			if pawns&(leftFile|rightFile) == 0 {
-				isolated += (pawns & fileMask).PopCount()
-			}
-		}
-	}
-	return isolated
+// evaluatePawnsSimple performs fast pawn evaluation for both colors
+// Returns positive values favoring White, negative favoring Black
+func evaluatePawnsSimple(whitePawns, blackPawns board.Bitboard) int {
+	score := 0
+
+	// Evaluate white pawns
+	score += evaluatePawnsByColor(whitePawns, blackPawns, true)
+
+	// Evaluate black pawns
+	score -= evaluatePawnsByColor(blackPawns, whitePawns, false)
+
+	return score
 }
 
-// countDoubledPawns counts pawns that have multiple pawns on the same file
-func countDoubledPawns(pawns board.Bitboard) int {
-	doubled := 0
-	for file := 0; file < 8; file++ {
-		fileMask := board.FileMask(file)
-		pawnsOnFile := (pawns & fileMask).PopCount()
-		if pawnsOnFile > 1 {
-			doubled += pawnsOnFile - 1 // Only count the extra pawns as penalties
-		}
-	}
-	return doubled
-}
-
-// evaluatePassedPawns calculates bonus points for passed pawns
-func evaluatePassedPawns(friendlyPawns, enemyPawns board.Bitboard, color board.BitboardColor) int {
-	passedPawns := board.GetPassedPawns(friendlyPawns, enemyPawns, color)
-	if passedPawns == 0 {
+// evaluatePawnsByColor performs streamlined pawn evaluation for one color
+// Focuses on the most impactful factors while avoiding expensive calculations
+//
+// Parameters:
+//   - friendlyPawns: bitboard containing all pawns of this color
+//   - enemyPawns: bitboard containing all enemy pawns
+//   - isWhite: true for white pawns, false for black pawns
+//
+// Returns: evaluation score for all pawns of the specified color
+func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool) int {
+	if friendlyPawns == 0 {
 		return 0
 	}
 
 	score := 0
-	pawnList := passedPawns.BitList()
 
-	for _, square := range pawnList {
+	// Pre-compute file masks for efficiency
+	var filePawns [8]int // Count of pawns per file
+
+	// First pass: count pawns per file and evaluate individual pawns
+	tempPawns := friendlyPawns
+	for tempPawns != 0 {
+		square, remaining := tempPawns.PopLSB()
+		tempPawns = remaining
+
+		file := square % 8
 		rank := square / 8
 
-		// Calculate bonus based on how advanced the passed pawn is
-		var advancement int
-		if color == board.BitboardWhite {
-			advancement = rank // For white, higher rank = more advanced
-		} else {
-			advancement = 7 - rank // For black, lower rank = more advanced
+		filePawns[file]++
+
+		// 1. PASSED PAWN CHECK (most important)
+		if isPassedPawn(square, enemyPawns, isWhite) {
+			if isWhite {
+				score += PassedPawnBonus[rank]
+			} else {
+				score += PassedPawnBonus[7-rank]
+			}
 		}
 
-		// Progressive bonus: more advanced pawns get exponentially higher bonuses
-		// Base bonus of 20, with increasing rewards for advancement
-		const basePassedPawnBonus = 20
-		bonus := basePassedPawnBonus + (advancement * advancement * 5)
-		score += bonus
+		// 2. ISOLATED PAWN CHECK
+		if isIsolatedPawn(friendlyPawns, file) {
+			score += IsolatedPawnPenalty
+		}
+
+		// 3. CONNECTED PAWNS BONUS
+		if isConnectedPawn(friendlyPawns, square) {
+			score += ConnectedPawnBonus
+		}
+	}
+
+	// 4. DOUBLED PAWNS (from file counts)
+	for file := 0; file < 8; file++ {
+		if filePawns[file] > 1 {
+			// Penalize each extra pawn
+			score += (filePawns[file] - 1) * DoubledPawnPenalty
+		}
 	}
 
 	return score
+}
+
+// isPassedPawn checks if a pawn is passed (no enemy pawns can stop it)
+func isPassedPawn(square int, enemyPawns board.Bitboard, isWhite bool) bool {
+	file := square % 8
+	rank := square / 8
+
+	// Check if enemy pawns can stop this pawn
+	if isWhite {
+		// For white pawn, check squares ahead
+		for r := rank + 1; r < 8; r++ {
+			// Check same file and adjacent files
+			for f := max(0, file-1); f <= min(7, file+1); f++ {
+				if hasPawnAt(enemyPawns, f, r) {
+					return false
+				}
+			}
+		}
+	} else {
+		// For black pawn, check squares behind (toward rank 0)
+		for r := rank - 1; r >= 0; r-- {
+			for f := max(0, file-1); f <= min(7, file+1); f++ {
+				if hasPawnAt(enemyPawns, f, r) {
+					return false
+				}
+			}
+		}
+	}
+
+	return true
+}
+
+// isIsolatedPawn checks if a pawn has no friendly pawns on adjacent files
+func isIsolatedPawn(friendlyPawns board.Bitboard, file int) bool {
+	// Check left file
+	if file > 0 && (friendlyPawns&board.FileMask(file-1)) != 0 {
+		return false
+	}
+
+	// Check right file
+	if file < 7 && (friendlyPawns&board.FileMask(file+1)) != 0 {
+		return false
+	}
+
+	return true
+}
+
+// isConnectedPawn checks if a pawn is protected by another friendly pawn
+func isConnectedPawn(friendlyPawns board.Bitboard, square int) bool {
+	file := square % 8
+	rank := square / 8
+
+	// Check diagonally behind for supporting pawns
+	// Left diagonal support
+	if file > 0 && rank > 0 {
+		supportSquare := (rank-1)*8 + (file - 1)
+		if friendlyPawns.HasBit(supportSquare) {
+			return true
+		}
+	}
+
+	// Right diagonal support
+	if file < 7 && rank > 0 {
+		supportSquare := (rank-1)*8 + (file + 1)
+		if friendlyPawns.HasBit(supportSquare) {
+			return true
+		}
+	}
+
+	// For black pawns, check diagonally forward
+	if file > 0 && rank < 7 {
+		supportSquare := (rank+1)*8 + (file - 1)
+		if friendlyPawns.HasBit(supportSquare) {
+			return true
+		}
+	}
+
+	if file < 7 && rank < 7 {
+		supportSquare := (rank+1)*8 + (file + 1)
+		if friendlyPawns.HasBit(supportSquare) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// hasPawnAt checks if a pawn exists at the specified file and rank
+func hasPawnAt(pawns board.Bitboard, file, rank int) bool {
+	square := rank*8 + file
+	return pawns.HasBit(square)
+}
+
+// max returns the maximum of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

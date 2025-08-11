@@ -4,64 +4,90 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/board"
 )
 
-// Bishop evaluation constants
+// Bishop evaluation - streamlined for performance with focus on key factors
+//
+// Design Philosophy:
+// 1. Bishop pair bonus is the dominant factor (especially in endgames)
+// 2. Bad bishop penalty for pawns on same-color squares
+// 3. Pre-computed mobility table for O(1) lookups
+// 4. Fianchetto position recognition for positional bonuses
+// 5. Eliminates expensive calculations (X-ray attacks, complex diagonal analysis)
+//
+// This approach trades some evaluation precision for significant speed improvements,
+// making it ideal for positions evaluated during lazy evaluation with early cutoffs.
+
+// Bishop evaluation constants - focused on high-impact factors
 const (
-	// Bishop pair bonus
-	BishopPairBonus = 50
+	// Bishop pair bonus - the most valuable bishop feature
+	BishopPairBonus = 50 // Having both light and dark squared bishops
 
-	// Bad bishop penalties (based on pawn obstruction)
-	BadBishopPenalty     = -15 // Per blocked center pawn
-	SemiBadBishopPenalty = -8  // Per blocked non-center pawn
+	// Mobility scoring unit
+	BishopMobilityUnit = 3 // Multiplier for mobility table values
 
-	// Long diagonal control
-	LongDiagonalControl    = 25 // Full control of long diagonal
-	PartialDiagonalControl = 15 // Partial control
+	// Bad bishop penalty - bishops blocked by own pawns
+	BadBishopPenalty = -8 // Penalty per own pawn on same color squares
 
-	// Color complex
-	ColorComplexDominance = 30 // Opponent missing bishop of that color
-
-	// X-ray bonus
-	XRayAttackBonus = 20 // X-ray to valuable piece
-	XRayThreatBonus = 10 // Potential x-ray
-
-	// Mobility (per square)
-	BishopMobilityUnit   = 3
-	BishopTrappedPenalty = -50 // Less than 3 moves
+	// Positional bonus for strong bishop placements
+	FianchettoBishopBonus = 10 // Bonus for bishops on fianchetto squares
 )
 
-// Long diagonal masks
-var (
-	LongDiagonalA1H8 board.Bitboard
-	LongDiagonalH1A8 board.Bitboard
-)
-
-// Initialize diagonal masks
-func init() {
-	// A1-H8 diagonal
-	for i := 0; i < 8; i++ {
-		LongDiagonalA1H8 = LongDiagonalA1H8.SetBit(board.FileRankToSquare(i, i))
-	}
-
-	// H1-A8 diagonal
-	for i := 0; i < 8; i++ {
-		LongDiagonalH1A8 = LongDiagonalH1A8.SetBit(board.FileRankToSquare(7-i, i))
-	}
+// BishopMobilityTable provides pre-computed mobility approximations for each square
+// Values reflect typical bishop mobility: center squares offer more diagonal access
+// than edges and corners. This avoids expensive move generation during evaluation.
+var BishopMobilityTable = [64]int{
+	// Rank 1: Limited mobility near board edges
+	7, 7, 7, 7, 7, 7, 7, 7,
+	// Rank 2: Slightly better mobility
+	7, 9, 9, 9, 9, 9, 9, 7,
+	// Rank 3: Good mobility toward center
+	7, 9, 11, 11, 11, 11, 9, 7,
+	// Rank 4-5: Maximum mobility in center
+	7, 9, 11, 13, 13, 11, 9, 7,
+	7, 9, 11, 13, 13, 11, 9, 7,
+	// Rank 6: Good mobility toward center
+	7, 9, 11, 11, 11, 11, 9, 7,
+	// Rank 7: Slightly better mobility
+	7, 9, 9, 9, 9, 9, 9, 7,
+	// Rank 8: Limited mobility near board edges
+	7, 7, 7, 7, 7, 7, 7, 7,
 }
 
-// evaluateBishopPairBonus calculates the bishop pair bonus for both sides
-func evaluateBishopPairBonus(b *board.Board) int {
-	// Get bishop bitboards
-	whiteLightBishops := b.GetPieceBitboard(board.WhiteBishop) & board.LightSquares
-	whiteDarkBishops := b.GetPieceBitboard(board.WhiteBishop) & board.DarkSquares
-	blackLightBishops := b.GetPieceBitboard(board.BlackBishop) & board.LightSquares
-	blackDarkBishops := b.GetPieceBitboard(board.BlackBishop) & board.DarkSquares
-
+// evaluateBishops performs fast bishop evaluation for both sides
+// Returns positive values favoring White, negative favoring Black
+func evaluateBishops(b *board.Board) int {
 	score := 0
 
-	// Bishop pair bonus
+	// Get bishop bitboards
+	whiteBishops := b.GetPieceBitboard(board.WhiteBishop)
+	blackBishops := b.GetPieceBitboard(board.BlackBishop)
+
+	// Bishop pair bonus (most important factor)
+	score += evaluateBishopPairBonus(whiteBishops, blackBishops)
+
+	// Individual bishop evaluation
+	score += evaluateBishopsSimple(b, whiteBishops, true)
+	score -= evaluateBishopsSimple(b, blackBishops, false)
+
+	return score
+}
+
+// evaluateBishopPairBonus calculates the bishop pair advantage
+// The bishop pair is one of the most important positional factors in chess,
+// especially valuable in open positions and endgames where both bishops
+// can coordinate to control key squares.
+func evaluateBishopPairBonus(whiteBishops, blackBishops board.Bitboard) int {
+	score := 0
+
+	// Award bonus if White has both light and dark squared bishops
+	whiteLightBishops := whiteBishops & board.LightSquares
+	whiteDarkBishops := whiteBishops & board.DarkSquares
 	if whiteLightBishops != 0 && whiteDarkBishops != 0 {
 		score += BishopPairBonus
 	}
+
+	// Award bonus if Black has both light and dark squared bishops
+	blackLightBishops := blackBishops & board.LightSquares
+	blackDarkBishops := blackBishops & board.DarkSquares
 	if blackLightBishops != 0 && blackDarkBishops != 0 {
 		score -= BishopPairBonus
 	}
@@ -69,310 +95,81 @@ func evaluateBishopPairBonus(b *board.Board) int {
 	return score
 }
 
-// evaluateBishops evaluates all bishop-specific features
-func evaluateBishops(b *board.Board) int {
-	score := 0
-
-	// Get bishop bitboards
-	whiteLightBishops := b.GetPieceBitboard(board.WhiteBishop) & board.LightSquares
-	whiteDarkBishops := b.GetPieceBitboard(board.WhiteBishop) & board.DarkSquares
-	blackLightBishops := b.GetPieceBitboard(board.BlackBishop) & board.LightSquares
-	blackDarkBishops := b.GetPieceBitboard(board.BlackBishop) & board.DarkSquares
-
-	// Bishop pair bonus
-	score += evaluateBishopPairBonus(b)
-
-	// Evaluate individual bishops
-	score += evaluateBishopFeatures(b, b.GetPieceBitboard(board.WhiteBishop), board.BitboardWhite)
-	score -= evaluateBishopFeatures(b, b.GetPieceBitboard(board.BlackBishop), board.BitboardBlack)
-
-	// Color complex evaluation
-	score += evaluateColorComplex(b, whiteLightBishops, whiteDarkBishops,
-		blackLightBishops, blackDarkBishops)
-
-	return score
-}
-
-// evaluateBishopFeatures evaluates features for bishops of one color
-func evaluateBishopFeatures(b *board.Board, bishops board.Bitboard, color board.BitboardColor) int {
+// evaluateBishopsSimple performs streamlined evaluation of bishops for one color
+// Focuses on the most impactful factors while avoiding expensive calculations
+//
+// Parameters:
+//   - b: current board position
+//   - bishops: bitboard containing all bishops of this color
+//   - isWhite: true for white bishops, false for black bishops
+//
+// Returns: evaluation score for all bishops of the specified color
+func evaluateBishopsSimple(b *board.Board, bishops board.Bitboard, isWhite bool) int {
 	if bishops == 0 {
 		return 0
 	}
 
 	score := 0
 
-	// Get relevant bitboards
-	var friendlyPawns board.Bitboard
-	if color == board.BitboardWhite {
-		friendlyPawns = b.GetPieceBitboard(board.WhitePawn)
+	// Cache own pawns bitboard for bad bishop evaluation
+	var ownPawns board.Bitboard
+	if isWhite {
+		ownPawns = b.GetPieceBitboard(board.WhitePawn)
 	} else {
-		friendlyPawns = b.GetPieceBitboard(board.BlackPawn)
+		ownPawns = b.GetPieceBitboard(board.BlackPawn)
 	}
 
-	// Process each bishop
+	// Evaluate each bishop individually
 	for bishops != 0 {
-		square, newBishops := bishops.PopLSB()
-		bishops = newBishops
+		square, remaining := bishops.PopLSB()
+		bishops = remaining
 
-		// Evaluate individual bishop features
-		score += evaluateBadBishop(b, square, friendlyPawns, color)
-		score += evaluateLongDiagonalControl(b, square)
-		score += evaluateBishopMobility(b, square, color)
-		score += evaluateXRayAttacks(b, square, color)
+		// 1. Mobility approximation using pre-computed table
+		score += BishopMobilityTable[square] * BishopMobilityUnit
+
+		// 2. Bad bishop penalty for pawn blockages
+		score += evaluateBadBishop(square, ownPawns)
+
+		// 3. Fianchetto positional bonus
+		score += evaluateFianchetto(square, isWhite)
 	}
 
 	return score
 }
 
-// evaluateBadBishop checks if bishop is blocked by own pawns
-func evaluateBadBishop(b *board.Board, bishopSquare int, friendlyPawns board.Bitboard, color board.BitboardColor) int {
-	// Determine bishop color (light or dark square)
-	bishopOnLightSquare := (bishopSquare % 2) == ((bishopSquare / 8) % 2)
+// evaluateBadBishop calculates penalty for bishops restricted by own pawns
+// A "bad bishop" is one where many own pawns occupy the same colored squares,
+// limiting the bishop's effectiveness and scope.
+func evaluateBadBishop(bishopSquare int, ownPawns board.Bitboard) int {
+	// Determine bishop's square color using coordinate parity
+	bishopOnLightSquare := ((bishopSquare/8 + bishopSquare%8) % 2) == 0
 
-	penalty := 0
-
-	// Check central pawns (more important)
-	centralPawns := friendlyPawns & board.CenterFiles & board.CenterRanks
-
-	// Count blocked central pawns on same color squares
-	for centralPawns != 0 {
-		pawnSquare, newPawns := centralPawns.PopLSB()
-		centralPawns = newPawns
-
-		pawnOnLightSquare := (pawnSquare % 2) == ((pawnSquare / 8) % 2)
-		if pawnOnLightSquare == bishopOnLightSquare {
-			// Check if pawn is blocked
-			if isPawnBlocked(b, pawnSquare, color) {
-				penalty += BadBishopPenalty
-			}
-		}
+	// Count own pawns on the same color squares as the bishop
+	var pawnsOnSameColor int
+	if bishopOnLightSquare {
+		pawnsOnSameColor = (ownPawns & board.LightSquares).PopCount()
+	} else {
+		pawnsOnSameColor = (ownPawns & board.DarkSquares).PopCount()
 	}
 
-	// Check non-central pawns (less important)
-	nonCentralPawns := friendlyPawns &^ (board.CenterFiles & board.CenterRanks)
-
-	for nonCentralPawns != 0 {
-		pawnSquare, newPawns := nonCentralPawns.PopLSB()
-		nonCentralPawns = newPawns
-
-		pawnOnLightSquare := (pawnSquare % 2) == ((pawnSquare / 8) % 2)
-		if pawnOnLightSquare == bishopOnLightSquare {
-			if isPawnBlocked(b, pawnSquare, color) {
-				penalty += SemiBadBishopPenalty
-			}
-		}
-	}
-
-	return penalty
+	// Apply penalty proportional to the number of blocking pawns
+	return pawnsOnSameColor * BadBishopPenalty
 }
 
-// isPawnBlocked checks if a pawn is blocked
-func isPawnBlocked(b *board.Board, pawnSquare int, color board.BitboardColor) bool {
-	file, rank := board.SquareToFileRank(pawnSquare)
-
-	// Check square in front of pawn
-	var targetRank int
-	if color == board.BitboardWhite {
-		targetRank = rank + 1
-		if targetRank > 7 {
-			return false
+// evaluateFianchetto provides bonus for bishops in fianchetto positions
+// Fianchettoed bishops on long diagonals (a1-h8 or h1-a8) are strategically
+// strong, controlling key central squares and providing king safety.
+func evaluateFianchetto(square int, isWhite bool) int {
+	if isWhite {
+		// White fianchetto squares: b2 (9) and g2 (14)
+		if square == 9 || square == 14 {
+			return FianchettoBishopBonus
 		}
 	} else {
-		targetRank = rank - 1
-		if targetRank < 0 {
-			return false
+		// Black fianchetto squares: b7 (49) and g7 (54)
+		if square == 49 || square == 54 {
+			return FianchettoBishopBonus
 		}
 	}
-
-	targetSquare := board.FileRankToSquare(file, targetRank)
-	return !b.IsSquareEmptyBitboard(targetSquare)
-}
-
-// evaluateLongDiagonalControl evaluates control of long diagonals
-func evaluateLongDiagonalControl(b *board.Board, bishopSquare int) int {
-	// Get bishop attacks
-	attacks := board.GetBishopAttacks(bishopSquare, b.AllPieces)
-
-	score := 0
-
-	// Check A1-H8 diagonal control
-	a1h8Control := attacks & LongDiagonalA1H8
-	if a1h8Control != 0 {
-		controlCount := a1h8Control.PopCount()
-		if controlCount >= 5 {
-			score += LongDiagonalControl
-		} else if controlCount >= 3 {
-			score += PartialDiagonalControl
-		}
-	}
-
-	// Check H1-A8 diagonal control
-	h1a8Control := attacks & LongDiagonalH1A8
-	if h1a8Control != 0 {
-		controlCount := h1a8Control.PopCount()
-		if controlCount >= 5 {
-			score += LongDiagonalControl
-		} else if controlCount >= 3 {
-			score += PartialDiagonalControl
-		}
-	}
-
-	// Extra bonus if bishop is actually on a long diagonal
-	bishopBit := board.Bitboard(1) << uint(bishopSquare)
-	if (bishopBit & (LongDiagonalA1H8 | LongDiagonalH1A8)) != 0 {
-		score += 5
-	}
-
-	return score
-}
-
-// evaluateColorComplex checks for color complex advantages
-func evaluateColorComplex(b *board.Board, whiteLightBishops, whiteDarkBishops,
-	blackLightBishops, blackDarkBishops board.Bitboard) int {
-
-	score := 0
-
-	// White has light-squared bishop, black doesn't
-	if whiteLightBishops != 0 && blackLightBishops == 0 {
-		score += evaluateColorDominance(b, board.LightSquares, board.BitboardWhite)
-	}
-
-	// White has dark-squared bishop, black doesn't
-	if whiteDarkBishops != 0 && blackDarkBishops == 0 {
-		score += evaluateColorDominance(b, board.DarkSquares, board.BitboardWhite)
-	}
-
-	// Black has light-squared bishop, white doesn't
-	if blackLightBishops != 0 && whiteLightBishops == 0 {
-		score -= evaluateColorDominance(b, board.LightSquares, board.BitboardBlack)
-	}
-
-	// Black has dark-squared bishop, white doesn't
-	if blackDarkBishops != 0 && whiteDarkBishops == 0 {
-		score -= evaluateColorDominance(b, board.DarkSquares, board.BitboardBlack)
-	}
-
-	return score
-}
-
-// evaluateColorDominance evaluates advantage on specific color squares
-func evaluateColorDominance(b *board.Board, colorMask board.Bitboard, dominantColor board.BitboardColor) int {
-	bonus := ColorComplexDominance
-
-	// Extra bonus if enemy has many pawns on that color
-	var enemyPawns board.Bitboard
-	if dominantColor == board.BitboardWhite {
-		enemyPawns = b.GetPieceBitboard(board.BlackPawn)
-	} else {
-		enemyPawns = b.GetPieceBitboard(board.WhitePawn)
-	}
-
-	enemyPawnsOnColor := (enemyPawns & colorMask).PopCount()
-	bonus += enemyPawnsOnColor * 3 // 3 points per enemy pawn on that color
-
-	return bonus
-}
-
-// evaluateXRayAttacks detects x-ray attacks through pieces
-func evaluateXRayAttacks(b *board.Board, bishopSquare int, color board.BitboardColor) int {
-	score := 0
-
-	// Get direct bishop attacks
-	directAttacks := board.GetBishopAttacks(bishopSquare, b.AllPieces)
-
-	// Get theoretical attacks if board was empty
-	emptyBoardAttacks := board.GetBishopAttacks(bishopSquare, 0)
-
-	// X-ray squares are those not directly attacked but on bishop rays
-	xraySquares := emptyBoardAttacks &^ directAttacks
-
-	// Check each x-ray square for valuable targets
-	enemyColor := board.OppositeBitboardColor(color)
-
-	for xraySquares != 0 {
-		xraySquare, newSquares := xraySquares.PopLSB()
-		xraySquares = newSquares
-
-		// Check if there's a valuable enemy piece on this square
-		piece := b.GetPieceOnSquare(xraySquare)
-		if piece != board.Empty {
-			pieceColor := getPieceColor(piece)
-			if pieceColor == enemyColor {
-				// Check if there's exactly one piece between bishop and target
-				between := board.GetBetween(bishopSquare, xraySquare)
-				blockers := between & b.AllPieces
-
-				if blockers.PopCount() == 1 {
-					// Valid x-ray
-					value := getXRayValue(piece)
-					score += value
-				}
-			}
-		}
-	}
-
-	return score
-}
-
-// getXRayValue returns the value of x-ray attack based on target piece
-func getXRayValue(targetPiece board.Piece) int {
-	switch targetPiece {
-	case board.BlackQueen, board.WhiteQueen:
-		return XRayAttackBonus + 10
-	case board.BlackRook, board.WhiteRook:
-		return XRayAttackBonus
-	case board.BlackKing, board.WhiteKing:
-		return XRayAttackBonus + 5
-	default:
-		return XRayThreatBonus
-	}
-}
-
-// getPieceColor helper function
-func getPieceColor(piece board.Piece) board.BitboardColor {
-	if piece >= 'A' && piece <= 'Z' {
-		return board.BitboardWhite
-	}
-	return board.BitboardBlack
-}
-
-// evaluateBishopMobility evaluates bishop mobility
-func evaluateBishopMobility(b *board.Board, square int, color board.BitboardColor) int {
-	// Get bishop attacks
-	attacks := board.GetBishopAttacks(square, b.AllPieces)
-
-	// Remove squares occupied by friendly pieces
-	friendlyPieces := b.GetColorBitboard(color)
-	validMoves := attacks &^ friendlyPieces
-
-	// Count mobility
-	mobility := validMoves.PopCount()
-
-	// Check if bishop is trapped
-	if mobility < 3 {
-		return BishopTrappedPenalty
-	}
-
-	// Base mobility bonus
-	score := mobility * BishopMobilityUnit
-
-	// Extra bonus for forward mobility
-	_, rank := board.SquareToFileRank(square)
-	var forwardMoves board.Bitboard
-
-	if color == board.BitboardWhite {
-		// Count moves to higher ranks
-		for r := rank + 1; r < 8; r++ {
-			forwardMoves |= validMoves & board.RankMask(r)
-		}
-	} else {
-		// Count moves to lower ranks
-		for r := 0; r < rank; r++ {
-			forwardMoves |= validMoves & board.RankMask(r)
-		}
-	}
-
-	score += forwardMoves.PopCount() * 2 // Extra 2 points per forward move
-
-	return score
+	return 0
 }
