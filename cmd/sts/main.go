@@ -77,11 +77,13 @@ func main() {
 		fmt.Printf("Initialized transposition table: %d MB\n", *ttSize)
 	}
 
-	// Configure search
+	// Configure search with LMR enabled
 	searchConfig := ai.SearchConfig{
 		MaxDepth:     *depth,
 		MaxTime:      time.Duration(*timeout) * time.Second,
 		DebugMode:    false,
+		LMRMinDepth:  3,  // Enable LMR at depth 3 and above
+		LMRMinMoves:  4,  // Start reductions after 4 moves
 	}
 
 	// Create STS scorer

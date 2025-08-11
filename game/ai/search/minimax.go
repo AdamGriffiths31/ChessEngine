@@ -719,21 +719,39 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 
 		// Calculate LMR reduction if applicable
 		reduction := 0
-		// LMR conditions based on established chess engine practices
-		// Note: moveGivesCheck condition removed due to performance overhead
+
+		// Only apply LMR if enabled and conditions are met
 		if depth >= config.LMRMinDepth &&
-			moveCount > config.LMRMinMoves &&
-			!inCheck &&                              // Not responding to check
-			!move.IsCapture &&                       // Not a capture
-			move.Promotion == board.Empty &&         // Not a promotion  
-			!m.isKillerMove(move, currentDepth) {    // Not a killer move
-
-			// Look up reduction from pre-calculated table
-			reduction = LMRTable[min(depth, 15)][min(moveCount, 63)]
-
-			// Cap reduction to avoid dropping to negative depth
-			if reduction >= depth {
-				reduction = depth - 1
+		   moveCount > config.LMRMinMoves &&
+		   !inCheck &&
+		   !move.IsCapture &&
+		   move.Promotion == board.Empty &&
+		   !m.isKillerMove(move, currentDepth) {
+			
+			// Check if move gives check (prevents reducing tactical moves)
+			givesCheck := m.moveGivesCheck(b, move)
+			
+			if !givesCheck {
+				// Safe to reduce this quiet move
+				reduction = LMRTable[min(depth, 15)][min(moveCount, 63)]
+				
+				// Adjust reduction based on history score
+				historyScore := m.getHistoryScore(move)
+				if historyScore > 2000 {
+					reduction = 0 // Don't reduce high history moves
+				} else if historyScore > 500 {
+					reduction = reduction * 2 / 3 // Reduce less
+				} else if historyScore < -500 {
+					reduction = reduction * 4 / 3 // Reduce more
+				}
+				
+				// Cap reduction
+				if reduction >= depth {
+					reduction = depth - 1
+				}
+				if reduction < 0 {
+					reduction = 0
+				}
 			}
 		}
 
@@ -1022,9 +1040,212 @@ func (m *MinimaxEngine) calculateAdaptiveWindow(depth int, baseWindow ai.Evaluat
 	return adaptiveWindow
 }
 
-// moveGivesCheck removed - was causing significant performance overhead
-// The make/unmake approach was too expensive for the frequency of calls in LMR
-// Most engines handle checking moves through move ordering and killer moves instead
+// moveGivesCheck uses direct bitboard calculation for check detection
+// This is the idiomatic approach used by strong engines like Stockfish
+func (m *MinimaxEngine) moveGivesCheck(b *board.Board, move board.Move) bool {
+	// Get piece type
+	piece := b.GetPiece(move.From.Rank, move.From.File)
+	if piece == board.Empty {
+		return false
+	}
+	
+	// Determine enemy king position
+	var enemyKingBB board.Bitboard
+	if piece < board.BlackPawn { // White piece
+		enemyKingBB = b.GetPieceBitboard(board.BlackKing)
+	} else { // Black piece
+		enemyKingBB = b.GetPieceBitboard(board.WhiteKing)
+	}
+	
+	if enemyKingBB == 0 {
+		return false
+	}
+	
+	kingSquare := enemyKingBB.LSB()
+	toSquare := move.To.Rank*8 + move.To.File
+	fromSquare := move.From.Rank*8 + move.From.File
+	
+	// 1. Direct check: Does the piece attack the king from its destination?
+	if m.isDirectCheck(b, piece, toSquare, kingSquare) {
+		return true
+	}
+	
+	// 2. Discovered check: Moving this piece might uncover an attack
+	if m.isDiscoveredCheck(b, fromSquare, toSquare, kingSquare, piece) {
+		return true
+	}
+	
+	// 3. Promotion check (special case)
+	if move.Promotion != board.Empty {
+		return m.isDirectCheck(b, move.Promotion, toSquare, kingSquare)
+	}
+	
+	// 4. En passant discovered check (rare but possible)
+	if move.IsEnPassant {
+		return m.isEnPassantCheck(b, move, kingSquare)
+	}
+	
+	return false
+}
+
+// isDirectCheck checks if a piece on a square directly attacks the king
+func (m *MinimaxEngine) isDirectCheck(b *board.Board, piece board.Piece, fromSquare, kingSquare int) bool {
+	switch piece {
+	case board.WhitePawn:
+		pawnAttacks := board.GetPawnAttacks(fromSquare, board.BitboardWhite)
+		return pawnAttacks.HasBit(kingSquare)
+	case board.BlackPawn:
+		pawnAttacks := board.GetPawnAttacks(fromSquare, board.BitboardBlack)
+		return pawnAttacks.HasBit(kingSquare)
+		
+	case board.WhiteKnight, board.BlackKnight:
+		return board.GetKnightAttacks(fromSquare).HasBit(kingSquare)
+		
+	case board.WhiteBishop, board.BlackBishop:
+		// Use magic bitboards with current board occupancy
+		return board.GetBishopAttacks(fromSquare, b.AllPieces).HasBit(kingSquare)
+		
+	case board.WhiteRook, board.BlackRook:
+		return board.GetRookAttacks(fromSquare, b.AllPieces).HasBit(kingSquare)
+		
+	case board.WhiteQueen, board.BlackQueen:
+		return board.GetQueenAttacks(fromSquare, b.AllPieces).HasBit(kingSquare)
+		
+	case board.WhiteKing, board.BlackKing:
+		return board.GetKingAttacks(fromSquare).HasBit(kingSquare)
+	}
+	
+	return false
+}
+
+// isDiscoveredCheck detects if moving a piece discovers a check
+func (m *MinimaxEngine) isDiscoveredCheck(b *board.Board, fromSquare, toSquare, kingSquare int, movingPiece board.Piece) bool {
+	// Quick rejection: if piece isn't between any of our sliders and enemy king, no discovered check
+	fromRank, fromFile := fromSquare/8, fromSquare%8
+	kingRank, kingFile := kingSquare/8, kingSquare%8
+	
+	// Check if on same line as king
+	onSameRank := fromRank == kingRank
+	onSameFile := fromFile == kingFile
+	onSameDiagonal := (fromRank-kingRank) == (fromFile-kingFile)
+	onSameAntiDiag := (fromRank-kingRank) == -(fromFile-kingFile)
+	
+	if !onSameRank && !onSameFile && !onSameDiagonal && !onSameAntiDiag {
+		return false // Can't discover check
+	}
+	
+	// Create occupancy with piece removed from source and placed at destination
+	occupancy := b.AllPieces.ClearBit(fromSquare).SetBit(toSquare)
+	
+	// Check our sliding pieces that could give discovered check
+	if movingPiece < board.BlackPawn { // White piece moving
+		if onSameRank || onSameFile {
+			// Check white rooks and queens
+			rooksQueens := b.GetPieceBitboard(board.WhiteRook) | b.GetPieceBitboard(board.WhiteQueen)
+			rooksQueens = rooksQueens.ClearBit(fromSquare) // Don't count moving piece
+			
+			for rooksQueens != 0 {
+				attackerSq := rooksQueens.LSB()
+				rooksQueens = rooksQueens.ClearBit(attackerSq)
+				
+				if board.GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
+					return true
+				}
+			}
+		}
+		
+		if onSameDiagonal || onSameAntiDiag {
+			// Check white bishops and queens
+			bishopsQueens := b.GetPieceBitboard(board.WhiteBishop) | b.GetPieceBitboard(board.WhiteQueen)
+			bishopsQueens = bishopsQueens.ClearBit(fromSquare)
+			
+			for bishopsQueens != 0 {
+				attackerSq := bishopsQueens.LSB()
+				bishopsQueens = bishopsQueens.ClearBit(attackerSq)
+				
+				if board.GetBishopAttacks(attackerSq, occupancy).HasBit(kingSquare) {
+					return true
+				}
+			}
+		}
+	} else { // Black piece moving
+		if onSameRank || onSameFile {
+			// Check black rooks and queens
+			rooksQueens := b.GetPieceBitboard(board.BlackRook) | b.GetPieceBitboard(board.BlackQueen)
+			rooksQueens = rooksQueens.ClearBit(fromSquare)
+			
+			for rooksQueens != 0 {
+				attackerSq := rooksQueens.LSB()
+				rooksQueens = rooksQueens.ClearBit(attackerSq)
+				
+				if board.GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
+					return true
+				}
+			}
+		}
+		
+		if onSameDiagonal || onSameAntiDiag {
+			// Check black bishops and queens
+			bishopsQueens := b.GetPieceBitboard(board.BlackBishop) | b.GetPieceBitboard(board.BlackQueen)
+			bishopsQueens = bishopsQueens.ClearBit(fromSquare)
+			
+			for bishopsQueens != 0 {
+				attackerSq := bishopsQueens.LSB()
+				bishopsQueens = bishopsQueens.ClearBit(attackerSq)
+				
+				if board.GetBishopAttacks(attackerSq, occupancy).HasBit(kingSquare) {
+					return true
+				}
+			}
+		}
+	}
+	
+	return false
+}
+
+// isEnPassantCheck checks if en passant capture discovers check
+func (m *MinimaxEngine) isEnPassantCheck(b *board.Board, move board.Move, kingSquare int) bool {
+	// En passant can discover check on the rank
+	fromSquare := move.From.Rank*8 + move.From.File
+	toSquare := move.To.Rank*8 + move.To.File
+	
+	// Calculate captured pawn square
+	capturedPawnSquare := toSquare
+	if move.From.Rank > move.To.Rank { // White capturing
+		capturedPawnSquare -= 8
+	} else { // Black capturing
+		capturedPawnSquare += 8
+	}
+	
+	// Create occupancy after en passant
+	occupancy := b.AllPieces.ClearBit(fromSquare).ClearBit(capturedPawnSquare).SetBit(toSquare)
+	
+	// Check if any rook/queen can now attack the king
+	piece := b.GetPiece(move.From.Rank, move.From.File)
+	if piece < board.BlackPawn { // White piece
+		rooksQueens := b.GetPieceBitboard(board.WhiteRook) | b.GetPieceBitboard(board.WhiteQueen)
+		for rooksQueens != 0 {
+			attackerSq := rooksQueens.LSB()
+			rooksQueens = rooksQueens.ClearBit(attackerSq)
+			
+			if board.GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
+				return true
+			}
+		}
+	} else { // Black piece
+		rooksQueens := b.GetPieceBitboard(board.BlackRook) | b.GetPieceBitboard(board.BlackQueen)
+		for rooksQueens != 0 {
+			attackerSq := rooksQueens.LSB()
+			rooksQueens = rooksQueens.ClearBit(attackerSq)
+			
+			if board.GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
+				return true
+			}
+		}
+	}
+	
+	return false
+}
 
 // oppositePlayer returns the opposite player
 func oppositePlayer(player moves.Player) moves.Player {

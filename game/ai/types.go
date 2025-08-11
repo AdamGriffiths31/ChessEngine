@@ -38,7 +38,7 @@ type SearchConfig struct {
 	BookSelectMode    BookSelectionMode
 	BookWeightThreshold uint16
 	
-	// Late Move Reductions (LMR) configuration - always enabled
+	// Late Move Reductions (LMR) configuration
 	LMRMinDepth      int     // Minimum depth to apply LMR (default: 3)
 	LMRMinMoves      int     // Number of moves to search at full depth (default: 4)
 	

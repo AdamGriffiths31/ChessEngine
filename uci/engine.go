@@ -252,8 +252,8 @@ func (ue *UCIEngine) handleGo(args []string) {
 		BookFiles:           []string{"game/openings/testdata/performance.bin"},
 		BookSelectMode:      ai.BookSelectWeightedRandom,
 		BookWeightThreshold: 1,
-		LMRMinDepth:         999,             // LMR temporarily disabled - re-enable later after more testing
-		LMRMinMoves:         3,               // Will be used when LMR is re-enabled
+		LMRMinDepth:         3,               // Enable LMR at depth 3 and above
+		LMRMinMoves:         4,               // Start reductions after 4 moves
 	}
 
 	// Apply search parameters
