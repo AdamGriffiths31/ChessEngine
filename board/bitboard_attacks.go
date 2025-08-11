@@ -72,32 +72,28 @@ func (b *Board) isSquareAttackedByKnights(square int, color BitboardColor) bool 
 func (b *Board) isSquareAttackedBySlidingPieces(square int, color BitboardColor) bool {
 	occupancy := b.AllPieces
 	
-	// Check rook attacks
-	rookAttacks := GetRookAttacks(square, occupancy)
-	var rookBitboard, queenBitboard Bitboard
-	if color == BitboardWhite {
-		rookBitboard = b.GetPieceBitboard(WhiteRook)
-		queenBitboard = b.GetPieceBitboard(WhiteQueen)
-	} else {
-		rookBitboard = b.GetPieceBitboard(BlackRook)
-		queenBitboard = b.GetPieceBitboard(BlackQueen)
-	}
-	
-	if (rookAttacks & (rookBitboard | queenBitboard)) != 0 {
-		return true
-	}
-	
-	// Check bishop attacks
+	// Use magic bitboards directly
 	bishopAttacks := GetBishopAttacks(square, occupancy)
-	var bishopBitboard Bitboard
-	if color == BitboardWhite {
-		bishopBitboard = b.GetPieceBitboard(WhiteBishop)
-	} else {
-		bishopBitboard = b.GetPieceBitboard(BlackBishop)
-	}
+	rookAttacks := GetRookAttacks(square, occupancy)
 	
-	if (bishopAttacks & (bishopBitboard | queenBitboard)) != 0 {
-		return true
+	if color == BitboardWhite {
+		// Check if any white bishops or queens are on bishop attack squares
+		if (bishopAttacks & (b.GetPieceBitboard(WhiteBishop) | b.GetPieceBitboard(WhiteQueen))) != 0 {
+			return true
+		}
+		// Check if any white rooks or queens are on rook attack squares
+		if (rookAttacks & (b.GetPieceBitboard(WhiteRook) | b.GetPieceBitboard(WhiteQueen))) != 0 {
+			return true
+		}
+	} else {
+		// Check if any black bishops or queens are on bishop attack squares
+		if (bishopAttacks & (b.GetPieceBitboard(BlackBishop) | b.GetPieceBitboard(BlackQueen))) != 0 {
+			return true
+		}
+		// Check if any black rooks or queens are on rook attack squares
+		if (rookAttacks & (b.GetPieceBitboard(BlackRook) | b.GetPieceBitboard(BlackQueen))) != 0 {
+			return true
+		}
 	}
 	
 	return false
@@ -150,25 +146,21 @@ func (b *Board) GetAttackersToSquare(square int, color BitboardColor) Bitboard {
 	}
 	attackers |= knightAttacks & knightBitboard
 	
-	// Sliding piece attackers
-	var rookBitboard, bishopBitboard, queenBitboard Bitboard
-	if color == BitboardWhite {
-		rookBitboard = b.GetPieceBitboard(WhiteRook)
-		bishopBitboard = b.GetPieceBitboard(WhiteBishop)
-		queenBitboard = b.GetPieceBitboard(WhiteQueen)
-	} else {
-		rookBitboard = b.GetPieceBitboard(BlackRook)
-		bishopBitboard = b.GetPieceBitboard(BlackBishop)
-		queenBitboard = b.GetPieceBitboard(BlackQueen)
-	}
-	
-	// Rook and queen attackers (horizontal/vertical)
+	// Sliding piece attackers - use magic bitboards directly
 	rookAttacks := GetRookAttacks(square, occupancy)
-	attackers |= rookAttacks & (rookBitboard | queenBitboard)
-	
-	// Bishop and queen attackers (diagonal)
 	bishopAttacks := GetBishopAttacks(square, occupancy)
-	attackers |= bishopAttacks & (bishopBitboard | queenBitboard)
+	
+	if color == BitboardWhite {
+		// Rook and queen attackers (horizontal/vertical)
+		attackers |= rookAttacks & (b.GetPieceBitboard(WhiteRook) | b.GetPieceBitboard(WhiteQueen))
+		// Bishop and queen attackers (diagonal)
+		attackers |= bishopAttacks & (b.GetPieceBitboard(WhiteBishop) | b.GetPieceBitboard(WhiteQueen))
+	} else {
+		// Rook and queen attackers (horizontal/vertical)
+		attackers |= rookAttacks & (b.GetPieceBitboard(BlackRook) | b.GetPieceBitboard(BlackQueen))
+		// Bishop and queen attackers (diagonal)
+		attackers |= bishopAttacks & (b.GetPieceBitboard(BlackBishop) | b.GetPieceBitboard(BlackQueen))
+	}
 	
 	// King attackers
 	kingAttacks := GetKingAttacks(square)

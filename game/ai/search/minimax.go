@@ -49,6 +49,7 @@ type MinimaxEngine struct {
 	historyTable       *HistoryTable
 	seeCalculator      *evaluation.SEECalculator
 	moveOrderBuffer    []moveScore // Pre-allocated buffer for move ordering
+	seeCache           map[uint64]int // Cache for SEE values, keyed by move hash
 }
 
 // moveScore holds move index and score for ordering
@@ -68,6 +69,7 @@ func NewMinimaxEngine() *MinimaxEngine {
 		historyTable:       NewHistoryTable(),
 		seeCalculator:      evaluation.NewSEECalculator(),
 		moveOrderBuffer:    make([]moveScore, 256), // Pre-allocate for max expected moves
+		seeCache:           make(map[uint64]int, 2048), // Pre-allocate with reasonable size
 	}
 }
 
@@ -244,6 +246,11 @@ func (m *MinimaxEngine) initializeBookService(config ai.SearchConfig) error {
 func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig) ai.SearchResult {
 	result := ai.SearchResult{
 		Stats: ai.SearchStats{},
+	}
+
+	// Clear SEE cache at start of search
+	for k := range m.seeCache {
+		delete(m.seeCache, k)
 	}
 
 	if config.UseOpeningBook {
@@ -827,13 +834,38 @@ func (m *MinimaxEngine) negamaxWithAlphaBeta(ctx context.Context, b *board.Board
 //  6. Slightly bad captures (SEE >= -100): 100,000+
 //  7. Terrible captures (SEE < -100): 50,000+
 //  8. Quiet moves: 0
+// getMoveHash generates a unique hash for a move for SEE caching
+func (m *MinimaxEngine) getMoveHash(move board.Move) uint64 {
+	hash := uint64(move.From.Rank) | 
+		(uint64(move.From.File) << 3) |
+		(uint64(move.To.Rank) << 6) |
+		(uint64(move.To.File) << 9) |
+		(uint64(move.Piece) << 12) |
+		(uint64(move.Captured) << 16)
+	if move.Promotion != board.Empty {
+		hash |= uint64(move.Promotion) << 20
+	}
+	if move.IsEnPassant {
+		hash |= 1 << 24
+	}
+	return hash
+}
+
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
 		return 0 // Non-captures get score 0
 	}
 
-	// Use SEE to get the true value of the capture
-	seeValue := m.seeCalculator.SEE(b, move)
+	// Check SEE cache first
+	moveHash := m.getMoveHash(move)
+	var seeValue int
+	if cachedValue, found := m.seeCache[moveHash]; found {
+		seeValue = cachedValue
+	} else {
+		// Use SEE to get the true value of the capture
+		seeValue = m.seeCalculator.SEE(b, move)
+		m.seeCache[moveHash] = seeValue
+	}
 
 	// Get victim value for MVV-LVA tiebreaker
 	victimValue := evaluation.PieceValues[move.Captured]

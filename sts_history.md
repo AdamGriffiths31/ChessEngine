@@ -25,3 +25,6 @@ This file tracks the STS (Strategic Test Suite) performance of ChessEngine over 
 | 2025-08-11 15:41 | 2ae8400 | STS1-6 (6 files) | 60 | 294 | 600 | 49% | 2039 | 23 | 999 | 5s | 5s | 301s | 362.2K | 9.7 | depth=999, timeout=5s, 10 per file, 6 files |
 | 2025-08-11 15:55 | 2ae8400 | STS1-6 (6 files) | 60 | 281 | 600 | 46% | 2036 | 21 | 999 | 5s | 5s | 301s | 401.4K | 9.8 | depth=999, timeout=5s, 10 per file, 6 files |
 | 2025-08-11 16:17 | 2ae8400 | STS1-6 (6 files) | 60 | 281 | 600 | 46% | 2036 | 21 | 999 | 5s | 5s | 301s | 401.4K | 9.8 | depth=999, timeout=5s, 10 per file, 6 files |
+| 2025-08-11 17:09 | 5e88f8a | STS1-6 (6 files) | 60 | 272 | 600 | 45% | 2036 | 20 | 999 | 5s | 5s | 300s | 401.5K | 9.8 | depth=999, timeout=5s, 10 per file, 6 files |
+| 2025-08-11 17:21 | 5e88f8a | STS1-6 (6 files) | 60 | 275 | 600 | 45% | 2036 | 19 | 999 | 5s | 5s | 301s | 494.4K | 9.9 | depth=999, timeout=5s, 10 per file, 6 files |
+| 2025-08-11 17:50 | 5e88f8a | STS1-6 (6 files) | 60 | 275 | 600 | 45% | 2036 | 19 | 999 | 5s | 5s | 301s | 494.2K | 9.9 | depth=999, timeout=5s, 10 per file, 6 files |

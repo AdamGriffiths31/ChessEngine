@@ -23,11 +23,6 @@ func (v *Validator) ValidateMove(b *board.Board, move board.Move, player Player)
 	return legalMoves.Contains(move)
 }
 
-// IsMoveLegal is a convenience function that checks if a move is legal
-func IsMoveLegal(b *board.Board, move board.Move, player Player) bool {
-	validator := NewValidator()
-	return validator.ValidateMove(b, move, player)
-}
 
 // GetLegalMoves returns all legal moves for the current position
 // IMPORTANT: Caller must call ReleaseMoveList() when done with the returned MoveList

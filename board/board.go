@@ -56,6 +56,9 @@ type Board struct {
 	// Bitboard representation (12 piece types)
 	PieceBitboards [12]Bitboard // [WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing, BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing]
 
+	// Mailbox representation for O(1) piece lookup
+	Mailbox [64]Piece // Direct piece lookup by square index
+
 	// Color bitboards (derived from piece bitboards)
 	WhitePieces Bitboard // All white pieces
 	BlackPieces Bitboard // All black pieces
@@ -103,6 +106,11 @@ func NewBoard() *Board {
 	board.WhitePieces = 0
 	board.BlackPieces = 0
 	board.AllPieces = 0
+
+	// Initialize mailbox (all empty)
+	for i := 0; i < 64; i++ {
+		board.Mailbox[i] = Empty
+	}
 
 	// Initialize hash fields
 	board.currentHash = 0
@@ -324,27 +332,22 @@ func (b *Board) removePieceBitboard(rank, file int, piece Piece) {
 }
 
 func (b *Board) GetPiece(rank, file int) Piece {
-	square := FileRankToSquare(file, rank)
-
-	// Quick check if square is empty
-	if !b.AllPieces.HasBit(square) {
+	if rank < 0 || rank > 7 || file < 0 || file > 7 {
 		return Empty
 	}
-
-	// Check each piece bitboard to find which piece is on this square
-	for i, bitboard := range b.PieceBitboards {
-		if bitboard.HasBit(square) {
-			return BitboardIndexToPiece(i)
-		}
-	}
-
-	// Should never reach here if bitboards are consistent
-	panic("no piece found")
+	
+	square := rank*8 + file
+	return b.Mailbox[square]
 }
 
 func (b *Board) SetPiece(rank, file int, piece Piece) {
-	// Get old piece using bitboards
-	oldPiece := b.GetPiece(rank, file)
+	square := rank*8 + file
+	
+	// Get old piece from mailbox
+	oldPiece := b.Mailbox[square]
+	
+	// Update mailbox
+	b.Mailbox[square] = piece
 
 	// Remove old piece from bitboards
 	if oldPiece != Empty {
