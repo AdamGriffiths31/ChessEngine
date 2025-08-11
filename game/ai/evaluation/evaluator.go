@@ -36,15 +36,24 @@ func NewEvaluator() *Evaluator {
 func (e *Evaluator) Evaluate(b *board.Board) ai.EvaluationScore {
 	score := 0
 
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
-			piece := b.GetPiece(rank, file)
-			if piece != board.Empty {
-				score += PieceValues[piece]
-				score += getPositionalBonus(piece, rank, file)
-			}
-		}
-	}
+	// Optimized: Use bitboard iteration instead of double board scanning
+	// This eliminates the expensive nested loops and GetPiece() calls
+	
+	// White pieces (positive contribution)
+	score += e.evaluatePiecesBitboard(b, board.WhitePawn, PawnTable, false)
+	score += e.evaluatePiecesBitboard(b, board.WhiteKnight, KnightTable, false)
+	score += e.evaluatePiecesBitboard(b, board.WhiteBishop, BishopTable, false)
+	score += e.evaluatePiecesBitboard(b, board.WhiteRook, RookTable, false)
+	score += e.evaluatePiecesBitboard(b, board.WhiteQueen, QueenTable, false)
+	score += e.evaluatePiecesBitboard(b, board.WhiteKing, KingTable, false)
+	
+	// Black pieces (negative contribution)
+	score -= e.evaluatePiecesBitboard(b, board.BlackPawn, PawnTable, true)
+	score -= e.evaluatePiecesBitboard(b, board.BlackKnight, KnightTable, true)
+	score -= e.evaluatePiecesBitboard(b, board.BlackBishop, BishopTable, true)
+	score -= e.evaluatePiecesBitboard(b, board.BlackRook, RookTable, true)
+	score -= e.evaluatePiecesBitboard(b, board.BlackQueen, QueenTable, true)
+	score -= e.evaluatePiecesBitboard(b, board.BlackKing, KingTable, true)
 
 	// Add pawn-specific evaluation
 	score += evaluatePawnStructure(b)
@@ -65,6 +74,41 @@ func (e *Evaluator) Evaluate(b *board.Board) ai.EvaluationScore {
 	score += evaluateKings(b)
 
 	return ai.EvaluationScore(score)
+}
+
+// evaluatePiecesBitboard efficiently evaluates material and positional value for a piece type
+// using bitboard iteration instead of scanning the entire board
+func (e *Evaluator) evaluatePiecesBitboard(b *board.Board, pieceType board.Piece, psTable [64]int, isBlack bool) int {
+	pieces := b.GetPieceBitboard(pieceType)
+	if pieces == 0 {
+		return 0 // Early exit if no pieces of this type
+	}
+	
+	score := 0
+	materialValue := PieceValues[pieceType]
+	
+	// Iterate over all pieces of this type using bitboard iteration
+	for pieces != 0 {
+		square, newPieces := pieces.PopLSB()
+		pieces = newPieces
+		
+		// Add material value
+		score += materialValue
+		
+		// Add positional bonus from piece-square table
+		if isBlack {
+			// Flip rank for black pieces (same logic as getPositionalBonus)
+			rank := square / 8
+			file := square % 8
+			flippedRank := 7 - rank
+			flippedSquare := flippedRank*8 + file
+			score += psTable[flippedSquare]
+		} else {
+			score += psTable[square]
+		}
+	}
+	
+	return score
 }
 
 // getPositionalBonus returns the positional bonus for a piece at the given position
