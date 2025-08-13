@@ -29,9 +29,7 @@ type PawnHashEntry struct {
 }
 
 // Evaluator evaluates positions based on material balance and piece-square tables
-type Evaluator struct {
-	pawnHashTable [16384]PawnHashEntry // 16K entries
-}
+type Evaluator struct {}
 
 // NewEvaluator creates a new evaluator
 func NewEvaluator() *Evaluator {
@@ -52,8 +50,8 @@ func (e *Evaluator) Evaluate(b *board.Board) ai.EvaluationScore {
 		return ai.EvaluationScore(score)
 	}
 
-	// Phase 2: Pawn structure (with caching)
-	pawnScore := e.evaluatePawnStructureWithCache(b)
+	// Phase 2: Pawn structure (uses global pawn hash table for caching)
+	pawnScore := evaluatePawnStructure(b)
 	score += pawnScore
 
 	// Phase 3: Expensive piece evaluations only if needed
@@ -137,28 +135,6 @@ func getPositionalBonus(piece board.Piece, rank, file int) int {
 	}
 }
 
-// evaluatePawnStructureWithCache evaluates pawn structure with hash table caching
-func (e *Evaluator) evaluatePawnStructureWithCache(b *board.Board) int {
-	// Create pawn-only hash
-	pawnHash := b.GetPawnHash() // Hash of just pawn positions
-	
-	// Check cache
-	index := pawnHash & 0x3FFF // 16K entries
-	entry := &e.pawnHashTable[index]
-	
-	if entry.hash == pawnHash {
-		return entry.score // Cache hit!
-	}
-	
-	// Cache miss - calculate
-	score := evaluatePawnStructure(b)
-	
-	// Store in cache
-	entry.hash = pawnHash
-	entry.score = score
-	
-	return score
-}
 
 // GetName returns the evaluator name
 func (e *Evaluator) GetName() string {

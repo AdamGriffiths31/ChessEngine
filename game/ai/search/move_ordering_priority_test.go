@@ -25,7 +25,9 @@ func TestMoveOrderingPriorities(t *testing.T) {
 		To:    board.Square{Rank: 2, File: 3}, // d3
 		Piece: board.WhiteQueen,
 	}
-	engine.killerTable[0][0] = killerMove
+	// Store killer move using the public API
+	threadState := engine.getThreadLocalState()
+	engine.storeKiller(killerMove, 0, threadState)
 
 	generator := moves.NewGenerator()
 	legalMoves := generator.GenerateAllMoves(b, moves.White)
@@ -55,7 +57,8 @@ func TestMoveOrderingPriorities(t *testing.T) {
 	}
 
 	// Calculate scores manually
-	terribleCaptureScore := engine.getCaptureScore(b, terribleCapture)
+	// threadState already available from above
+	terribleCaptureScore := engine.getCaptureScore(b, terribleCapture, threadState)
 	killerScore := 500000 // This is the hardcoded killer move score in orderMoves
 
 	seeValue := engine.seeCalculator.SEE(b, terribleCapture)
@@ -71,8 +74,8 @@ func TestMoveOrderingPriorities(t *testing.T) {
 		t.Logf("Expected: Killer moves should have higher priority than clearly losing captures")
 	}
 
-	// Order moves and check actual ordering
-	engine.orderMoves(b, legalMoves, 0, board.Move{})
+	// Order moves and check actual ordering  
+	engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
 	orderedMoves := engine.GetLastMoveOrder()
 
 	var capturePos, killerPos int = -1, -1
@@ -114,7 +117,8 @@ func TestMoveOrderingThresholds(t *testing.T) {
 
 	// Get the actual SEE value
 	actualSEE := engine.seeCalculator.SEE(b, testMove)
-	actualScore := engine.getCaptureScore(b, testMove)
+	threadState := engine.getThreadLocalState()
+	actualScore := engine.getCaptureScore(b, testMove, threadState)
 
 	t.Logf("Actual terrible capture:")
 	t.Logf("  SEE: %d", actualSEE)

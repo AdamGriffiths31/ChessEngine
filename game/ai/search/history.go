@@ -1,7 +1,7 @@
 package search
 
 import (
-	"sync"
+	"sync/atomic"
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
 )
@@ -13,11 +13,10 @@ const (
 )
 
 // HistoryTable tracks the success rate of moves based on from/to square combinations
-// Uses a butterfly table approach for better cache locality
+// Uses a butterfly table approach for better cache locality and atomic operations for thread safety
 type HistoryTable struct {
-	table [64][64]int32
-	mutex sync.RWMutex
-	age   uint32
+	table [64][64]atomic.Int32
+	age   atomic.Uint32
 }
 
 // NewHistoryTable creates a new history table
@@ -38,16 +37,19 @@ func (h *HistoryTable) UpdateHistory(move board.Move, depth int) {
 	from := squareToIndex(move.From)
 	to := squareToIndex(move.To)
 
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
 	// Add bonus based on depth - deeper searches give more bonus
 	bonus := HistoryBonus * int32(depth+1)
 
-	// Add the bonus but cap at maximum score
-	h.table[from][to] += bonus
-	if h.table[from][to] > MaxHistoryScore {
-		h.table[from][to] = MaxHistoryScore
+	// Atomically add the bonus with saturation to max value
+	for {
+		current := h.table[from][to].Load()
+		newValue := current + bonus
+		if newValue > MaxHistoryScore {
+			newValue = MaxHistoryScore
+		}
+		if h.table[from][to].CompareAndSwap(current, newValue) {
+			break
+		}
 	}
 }
 
@@ -64,38 +66,35 @@ func (h *HistoryTable) GetHistoryScore(move board.Move) int32 {
 	from := squareToIndex(move.From)
 	to := squareToIndex(move.To)
 
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-
-	return h.table[from][to]
+	return h.table[from][to].Load()
 }
 
 // Clear resets all history scores to zero
 func (h *HistoryTable) Clear() {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 64; j++ {
-			h.table[i][j] = 0
+			h.table[i][j].Store(0)
 		}
 	}
-	h.age = 0
+	h.age.Store(0)
 }
 
 // Age applies decay to all history scores to prevent them from growing too large
 // and to give more weight to recent patterns
 func (h *HistoryTable) Age() {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	h.age++
+	currentAge := h.age.Add(1)
 
 	// Apply decay every few ages to prevent scores from growing too large
-	if h.age%8 == 0 {
+	if currentAge%8 == 0 {
 		for i := 0; i < 64; i++ {
 			for j := 0; j < 64; j++ {
-				h.table[i][j] /= HistoryDecayFactor
+				for {
+					current := h.table[i][j].Load()
+					newValue := current / HistoryDecayFactor
+					if h.table[i][j].CompareAndSwap(current, newValue) {
+						break
+					}
+				}
 			}
 		}
 	}
@@ -104,9 +103,6 @@ func (h *HistoryTable) Age() {
 // GetMaxScore returns the maximum history score currently in the table
 // Used for normalizing history scores for LMR reduction calculations
 func (h *HistoryTable) GetMaxScore() int32 {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-	
 	// Since we cap scores at MaxHistoryScore, we can simply return that
 	// This avoids scanning the entire table
 	return MaxHistoryScore
@@ -116,4 +112,3 @@ func (h *HistoryTable) GetMaxScore() int32 {
 func squareToIndex(square board.Square) int {
 	return int(square.Rank*8 + square.File)
 }
-

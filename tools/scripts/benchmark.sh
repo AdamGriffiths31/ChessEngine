@@ -147,6 +147,61 @@ select_time_control() {
     done
 }
 
+# Select thread count for ChessEngine
+select_thread_count() {
+    echo -e "${YELLOW}ChessEngine thread count:${NC}"
+    echo "  1) Single-threaded (1 thread) - Strongest tactical play"
+    echo "  2) Light parallel (2 threads) - Good balance"
+    echo "  3) Medium parallel (4 threads) - Balanced speed/strength"
+    echo "  4) High parallel (8 threads) - Maximum speed"
+    echo "  5) Custom"
+    echo
+    
+    while true; do
+        echo -n "Select thread count (number): "
+        read thread_selection
+        
+        case $thread_selection in
+            1)
+                THREAD_COUNT=1
+                THREAD_DESC="1 thread"
+                break
+                ;;
+            2)
+                THREAD_COUNT=2
+                THREAD_DESC="2 threads"
+                break
+                ;;
+            3)
+                THREAD_COUNT=4
+                THREAD_DESC="4 threads"
+                break
+                ;;
+            4)
+                THREAD_COUNT=8
+                THREAD_DESC="8 threads"
+                break
+                ;;
+            5)
+                while true; do
+                    echo -n "Enter number of threads (1-32): "
+                    read THREAD_COUNT
+                    if [[ "$THREAD_COUNT" =~ ^[0-9]+$ ]] && [ "$THREAD_COUNT" -gt 0 ] && [ "$THREAD_COUNT" -le 32 ]; then
+                        THREAD_DESC="$THREAD_COUNT threads"
+                        break
+                    else
+                        echo -e "${RED}Please enter a number between 1 and 32.${NC}"
+                    fi
+                done
+                break
+                ;;
+            *)
+                echo -e "${RED}Invalid selection. Please enter a number between 1 and 5.${NC}"
+                ;;
+        esac
+    done
+}
+
 # Select number of games
 select_game_count() {
     echo -e "${YELLOW}Number of games:${NC}"
@@ -272,11 +327,12 @@ run_benchmark() {
     local pgn_file="$RESULTS_DIR/benchmark_${timestamp}.pgn"
     
     echo -e "${BLUE}=== Starting Benchmark ===${NC}"
-    echo "ChessEngine vs $OPPONENT"
+    echo "ChessEngine ($THREAD_DESC) vs $OPPONENT"
     echo "Time Control: $TC_DESC"
     echo "Games: $GAME_COUNT"
     echo "Results will be saved to: $pgn_file"
     echo "Debug logs will be monitored for illegal moves..."
+    echo "UCI debug logs will be saved to /tmp/chess/ for detailed analysis..."
     echo
     
     # Build ChessEngine
@@ -294,7 +350,7 @@ run_benchmark() {
     
     # Build and execute cutechess-cli command using eval for proper option handling
     local base_cmd="\"$TOOLS_DIR/engines/cutechess-cli\""
-    base_cmd="$base_cmd -engine cmd=\"$chess_cmd\" name=\"ChessEngine\" proto=uci"
+    base_cmd="$base_cmd -engine cmd=\"$chess_cmd\" name=\"ChessEngine\" proto=uci option.Threads=$THREAD_COUNT"
     base_cmd="$base_cmd -engine cmd=\"$opponent_cmd\" name=\"$OPPONENT\" proto=uci"
     
     # Add opponent options if they exist
@@ -332,8 +388,94 @@ run_benchmark() {
     # Check for illegal moves in the output
     check_for_illegal_moves "$cutechess_output_file" "$pgn_file" "$timestamp"
     
+    # Analyze game performance (especially for multi-threaded issues)
+    analyze_game_performance "$cutechess_output_file" "$pgn_file" "$timestamp"
+    
     # Analyze results
     analyze_results "$pgn_file" "$timestamp"
+}
+
+# Analyze game performance for threading and other issues
+analyze_game_performance() {
+    local cutechess_output="$1"
+    local pgn_file="$2" 
+    local timestamp="$3"
+    
+    echo -e "${YELLOW}Analyzing game performance...${NC}"
+    
+    # Find the most recent UCI debug log file
+    local uci_debug_log=""
+    uci_debug_log=$(ls -t /tmp/chess/uci_debug_* 2>/dev/null | head -1)
+    
+    if [ -n "$uci_debug_log" ] && [ -f "$uci_debug_log" ]; then
+        echo -e "${BLUE}=== Performance Analysis from UCI Debug Log ===${NC}"
+        echo "Debug log: $uci_debug_log"
+        echo
+        
+        # Count search depths achieved
+        echo "Search Depth Analysis:"
+        grep "AI chose move:" "$uci_debug_log" | sed 's/.*depth=\([0-9]*\).*/\1/' | sort -n | uniq -c | head -10
+        echo
+        
+        # Analyze time usage patterns
+        echo "Time Usage Analysis:"
+        echo "Moves using full allocated time (potential time trouble):"
+        grep "AI chose move:" "$uci_debug_log" | grep -E "time=[4-9]\.[0-9]/[5-9]\." | wc -l
+        echo
+        
+        # Check for transposition table performance
+        echo "Transposition Table Stats (last few moves):"
+        grep "TT:" "$uci_debug_log" | tail -5
+        echo
+        
+        # Look for thread-related messages or performance indicators
+        echo "Thread-related Performance Indicators:"
+        echo "Total AI moves made:"
+        grep -c "AI chose move:" "$uci_debug_log"
+        
+        # Check average nodes per second
+        echo "NPS Analysis (last 10 moves):"
+        grep "AI chose move:" "$uci_debug_log" | tail -10 | grep -o "nodes=[0-9]*" | sed 's/nodes=//' | {
+            total=0
+            count=0
+            while read nodes; do
+                total=$((total + nodes))
+                count=$((count + 1))
+            done
+            if [ $count -gt 0 ]; then
+                avg=$((total / count))
+                echo "Average nodes in last 10 moves: $avg"
+            fi
+        }
+        echo
+        
+        # Check for any error patterns
+        echo "Error/Warning Patterns:"
+        grep -i "error\|warning\|fail" "$uci_debug_log" | head -5
+        echo
+        
+    else
+        echo -e "${YELLOW}No UCI debug log found for performance analysis${NC}"
+    fi
+    
+    # Analyze PGN for move time patterns if available
+    if [ -f "$pgn_file" ]; then
+        echo -e "${BLUE}=== Game Outcome Analysis ===${NC}"
+        echo "Games by result:"
+        grep "Result" "$pgn_file" | sort | uniq -c
+        echo
+        
+        # Look for short games (potential blunders)
+        echo "Move count analysis:"
+        grep -E "^1\." "$pgn_file" | wc -w | while read move_count; do
+            if [ "$move_count" -lt 40 ]; then
+                echo "Short game detected: $move_count moves"
+            fi
+        done
+    fi
+    
+    echo -e "${GREEN}✅ Performance analysis complete${NC}"
+    echo
 }
 
 # Check for illegal moves and dump debug logs if found
@@ -544,8 +686,8 @@ This file tracks the performance of ChessEngine against various opponents over t
 
 ## Results Summary
 
-| Date | Opponent | Time Control | Games | Wins | Losses | Draws | Score | Notes |
-|------|----------|--------------|-------|------|--------|-------|-------|-------|
+| Date | Opponent | Time Control | Threads | Games | Wins | Losses | Draws | Score | Notes |
+|------|----------|--------------|---------|-------|------|--------|-------|-------|-------|
 EOF
     fi
     
@@ -560,7 +702,7 @@ EOF
     # Format time as HH:MM
     local time="${time_part:0:2}:${time_part:2:2}"
     
-    echo "| $date $time | $OPPONENT | $TC_DESC | $total | $wins | $losses | $draws | ${score}% | $NOTES |" >> "$BENCHMARK_LOG"
+    echo "| $date $time | $OPPONENT | $TC_DESC | $THREAD_DESC | $total | $wins | $losses | $draws | ${score}% | $NOTES |" >> "$BENCHMARK_LOG"
 }
 
 # Main execution
@@ -571,6 +713,10 @@ main() {
     
     select_time_control
     echo -e "${GREEN}Selected time control: $TC_DESC${NC}"
+    echo
+    
+    select_thread_count
+    echo -e "${GREEN}Selected threads: $THREAD_DESC${NC}"
     echo
     
     select_game_count
@@ -586,7 +732,7 @@ main() {
     echo
     
     echo -e "${YELLOW}Summary:${NC}"
-    echo "  ChessEngine vs $OPPONENT"
+    echo "  ChessEngine ($THREAD_DESC) vs $OPPONENT"
     echo "  Time Control: $TC_DESC"
     echo "  Games: $GAME_COUNT"
     echo "  Notes: $NOTES"

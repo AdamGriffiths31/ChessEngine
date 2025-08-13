@@ -72,8 +72,16 @@ func (scorer *STSScorer) ScorePosition(ctx context.Context, position *EPDPositio
 		defer cancel()
 	}
 	
+	// Determine the player to move from the board
+	var player moves.Player
+	if position.Board.GetSideToMove() == "w" {
+		player = moves.White
+	} else {
+		player = moves.Black
+	}
+	
 	// Find the best move using our engine
-	searchResult := scorer.engine.FindBestMove(searchCtx, position.Board, moves.White, scorer.config)
+	searchResult := scorer.engine.FindBestMove(searchCtx, position.Board, player, scorer.config)
 	
 	duration := time.Since(startTime)
 	

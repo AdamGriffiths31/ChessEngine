@@ -54,7 +54,8 @@ func TestMVVLVATiebreaker(t *testing.T) {
 							testCaptures = append(testCaptures, move)
 							
 							seeValue := engine.seeCalculator.SEE(b, move)
-							score := engine.getCaptureScore(b, move)
+							threadState := engine.getThreadLocalState()
+					score := engine.getCaptureScore(b, move, threadState)
 							victimValue := move.Captured
 							
 							t.Logf("  %s: SEE=%d, Score=%d, Victim=%s", 
@@ -70,7 +71,8 @@ func TestMVVLVATiebreaker(t *testing.T) {
 			}
 
 			// Order moves
-			engine.orderMoves(b, legalMoves, 0, board.Move{})
+			threadState := engine.getThreadLocalState()
+			engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
 			orderedMoves := engine.GetLastMoveOrder()
 
 			// Find positions of our test captures
@@ -142,8 +144,9 @@ func TestSEEWithMVVLVAScoring(t *testing.T) {
 
 	queenSEE := engine.seeCalculator.SEE(b, captureQueen)
 	rookSEE := engine.seeCalculator.SEE(b, captureRook)
-	queenScore := engine.getCaptureScore(b, captureQueen)
-	rookScore := engine.getCaptureScore(b, captureRook)
+	threadState := engine.getThreadLocalState()
+	queenScore := engine.getCaptureScore(b, captureQueen, threadState)
+	rookScore := engine.getCaptureScore(b, captureRook, threadState)
 
 	t.Logf("Qxd5 (capture queen): SEE=%d, Score=%d", queenSEE, queenScore)
 	t.Logf("Qxe5 (capture rook): SEE=%d, Score=%d", rookSEE, rookScore)

@@ -18,6 +18,12 @@ func NewMoveConverter() *MoveConverter {
 
 // ToUCI converts an internal Move to UCI notation (e.g., "e2e4", "e7e8q")
 func (mc *MoveConverter) ToUCI(move board.Move) string {
+	// Check for invalid/null moves (used when no legal moves available)
+	if move.From.File < 0 || move.From.File > 7 || move.From.Rank < 0 || move.From.Rank > 7 ||
+	   move.To.File < 0 || move.To.File > 7 || move.To.Rank < 0 || move.To.Rank > 7 {
+		return "0000" // UCI null move - signals no move available
+	}
+	
 	from := squareToUCI(move.From)
 	to := squareToUCI(move.To)
 	
@@ -168,6 +174,11 @@ func (mc *MoveConverter) FromUCIWithLogging(uciMove string, b *board.Board, logg
 
 // squareToUCI converts a Square to UCI notation (e.g., Square{0,0} -> "a1")
 func squareToUCI(square board.Square) string {
+	// Handle invalid squares (used for null moves)
+	if square.File < 0 || square.File > 7 || square.Rank < 0 || square.Rank > 7 {
+		return "0000" // UCI null move format
+	}
+	
 	file := rune('a' + square.File)
 	rank := rune('1' + square.Rank)
 	return string(file) + string(rank)

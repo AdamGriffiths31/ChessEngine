@@ -99,14 +99,14 @@ func TestLVAActualBehavior(t *testing.T) {
 		t.Logf("✅ Correctly selected pawn as least valuable attacker")
 	}
 	
-	// Second LVA call should return the queen (next least valuable)
+	// Second LVA call should return empty (no more attackers - queen doesn't attack e5)
 	secondAttacker := see.getLeastValuableAttacker(b, &whiteAttackers, "w", occupied)
 	t.Logf("Second attacker selected: %v at square %d", secondAttacker.piece, secondAttacker.square)
 	
-	if secondAttacker.piece != board.WhiteQueen {
-		t.Errorf("❌ Expected queen (next available), got %v", secondAttacker.piece)
+	if secondAttacker.piece != board.Empty {
+		t.Errorf("❌ Expected no more attackers (Empty), got %v", secondAttacker.piece)
 	} else {
-		t.Logf("✅ Correctly selected queen as next attacker")
+		t.Logf("✅ Correctly returned empty - queen doesn't attack e5, only defends pawn")
 	}
 	
 	// Third call should return empty (no more attackers)

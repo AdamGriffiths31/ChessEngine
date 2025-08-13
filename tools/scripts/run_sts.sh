@@ -20,6 +20,6 @@ echo "======================="
 # - Max 5 positions: Quick test run  
 # - Verbose: Show detailed results
 
-./bin/sts -depth 999 -timeout 30 -max 5 -verbose
+./bin/sts -depth 999 -timeout 5 -max 5 -verbose
 
 echo ""

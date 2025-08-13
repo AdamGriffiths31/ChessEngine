@@ -54,11 +54,11 @@ func (g *Generator) GenerateAllMoves(b *board.Board, player Player) *MoveList {
 // Returns false if board is nil or king is not found.
 func (g *Generator) IsKingInCheck(b *board.Board, player Player) bool {
 	kingSquare := g.findKing(b, player)
-	if kingSquare == nil {
+	if kingSquare.File == -1 {
 		return false // No king found
 	}
 
-	return g.isSquareUnderAttack(b, *kingSquare, player)
+	return g.isSquareUnderAttack(b, kingSquare, player)
 }
 
 // isSquareUnderAttack checks if a square is under attack by the enemy player.
@@ -68,8 +68,8 @@ func (g *Generator) isSquareUnderAttack(b *board.Board, square board.Square, pla
 }
 
 // findKing finds the king's position for the given player using bitboard lookup.
-// Returns nil if no king is found (which indicates an invalid board state).
-func (g *Generator) findKing(b *board.Board, player Player) *board.Square {
+// Returns a Square with File=-1 if no king is found (which indicates an invalid board state).
+func (g *Generator) findKing(b *board.Board, player Player) board.Square {
 	var kingPiece board.Piece
 	if player == White {
 		kingPiece = board.WhiteKing
@@ -79,16 +79,16 @@ func (g *Generator) findKing(b *board.Board, player Player) *board.Square {
 
 	kingBitboard := b.GetPieceBitboard(kingPiece)
 	if kingBitboard == 0 {
-		return nil // No king found
+		return board.Square{File: -1, Rank: -1} // No king found - sentinel value
 	}
 
 	squareIndex := kingBitboard.LSB()
 	if squareIndex == -1 {
-		return nil
+		return board.Square{File: -1, Rank: -1}
 	}
 
 	file, rank := board.SquareToFileRank(squareIndex)
-	return &board.Square{File: file, Rank: rank}
+	return board.Square{File: file, Rank: rank} // Return by value - no allocation!
 }
 
 // makeMove executes a move on the board and returns the move history.

@@ -1,7 +1,8 @@
 package search
 
 import (
-	"sync"
+	"sync/atomic"
+	"unsafe"
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/game/ai"
@@ -17,13 +18,13 @@ const (
 )
 
 // TranspositionEntry represents a single entry in the transposition table
+// Must be 32 bytes for atomic operations (fits in two 64-bit words)
 type TranspositionEntry struct {
-	Hash     uint64             // Zobrist hash of the position
-	Depth    int                // Search depth
+	Key      uint64             // Upper 32 bits of hash + packed data
+	Hash     uint32             // Lower 32 bits of zobrist hash
 	Score    ai.EvaluationScore // Score at this position  
-	Type     EntryType          // Type of entry (exact, lower, upper)
 	BestMove board.Move         // Best move found (if any)
-	Age      uint32             // Age counter for replacement
+	// Packed into Key: Depth (8 bits) + Type (2 bits) + Age (6 bits) + HashUpper (32 bits)
 }
 
 // TranspositionTable implements a hash table for storing search results
@@ -31,11 +32,10 @@ type TranspositionTable struct {
 	table      []TranspositionEntry
 	size       uint64
 	mask       uint64
-	mu         sync.RWMutex
-	hits       uint64
-	misses     uint64
-	collisions uint64
-	age        uint32
+	hits       atomic.Uint64  // Use atomic for thread-safe statistics
+	misses     atomic.Uint64  // Use atomic for thread-safe statistics
+	collisions atomic.Uint64  // Use atomic for thread-safe statistics
+	age        atomic.Uint32  // Use atomic for thread-safe age updates
 }
 
 // NewTranspositionTable creates a new transposition table with the given size in MB
@@ -54,96 +54,129 @@ func NewTranspositionTable(sizeMB int) *TranspositionTable {
 		table: make([]TranspositionEntry, size),
 		size:  size,
 		mask:  size - 1,
-		age:   0,
+		// age initialized to 0 automatically for atomic.Uint32
 	}
 }
 
 // Clear clears all entries in the transposition table
 func (tt *TranspositionTable) Clear() {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
-
 	for i := range tt.table {
+		atomic.StoreUint64((*uint64)(unsafe.Pointer(&tt.table[i].Key)), 0)
+		atomic.StoreUint32((*uint32)(unsafe.Pointer(&tt.table[i].Hash)), 0)
+		// Clear the entire entry
 		tt.table[i] = TranspositionEntry{}
 	}
 
-	tt.hits = 0
-	tt.misses = 0
-	tt.collisions = 0
-	tt.age = 0
+	tt.hits.Store(0)
+	tt.misses.Store(0)
+	tt.collisions.Store(0)
+	tt.age.Store(0)
 }
 
-// Store stores a position in the transposition table using improved replacement logic
+// packKey packs depth, type, age, and upper hash bits into a single uint64
+func packKey(hashUpper uint32, depth int, entryType EntryType, age uint32) uint64 {
+	return uint64(hashUpper)<<32 | uint64(depth&0xFF)<<24 | uint64(entryType&0x3)<<22 | uint64(age&0x3F)<<16
+}
+
+// unpackKey unpacks the key into its components
+func unpackKey(key uint64) (hashUpper uint32, depth int, entryType EntryType, age uint32) {
+	hashUpper = uint32(key >> 32)
+	depth = int((key >> 24) & 0xFF)
+	entryType = EntryType((key >> 22) & 0x3)
+	age = uint32((key >> 16) & 0x3F)
+	return
+}
+
+// Store stores a position in the transposition table using lock-free atomic operations
 func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationScore,
 	entryType EntryType, bestMove board.Move) {
 
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
-
 	index := hash & tt.mask
 	entry := &tt.table[index]
-
-	if entry.Hash != 0 && entry.Hash != hash {
-		tt.collisions++
-	}
-
-	// Always replace if:
-	// 1. Empty entry
-	// 2. Same position with deeper or equal depth search
-	if entry.Hash == 0 || (entry.Hash == hash && depth >= entry.Depth) {
-		entry.Hash = hash
-		entry.Depth = depth
-		entry.Score = score
-		entry.Type = entryType
-		entry.BestMove = bestMove
-		entry.Age = tt.age
-		return
-	}
-
-	// For different positions, use sophisticated replacement logic
-	if entry.Hash != hash {
-		// Calculate replacement score for existing entry (higher = more valuable)
-		existingScore := tt.calculateEntryValue(entry)
+	
+	hashUpper := uint32(hash >> 32)
+	hashLower := uint32(hash)
+	currentAge := tt.age.Load()
+	
+	// Create new packed key
+	newKey := packKey(hashUpper, depth, entryType, currentAge)
+	
+	for {
+		// Load current entry atomically
+		currentKey := atomic.LoadUint64((*uint64)(unsafe.Pointer(&entry.Key)))
+		currentHash := atomic.LoadUint32((*uint32)(unsafe.Pointer(&entry.Hash)))
 		
-		// Calculate replacement score for new entry
-		newScore := tt.calculateNewEntryValue(depth, entryType)
-		
-		// Replace if new entry is more valuable
-		if newScore > existingScore {
-			entry.Hash = hash
-			entry.Depth = depth
-			entry.Score = score
-			entry.Type = entryType
-			entry.BestMove = bestMove
-			entry.Age = tt.age
+		// Check if slot is empty
+		if currentKey == 0 {
+			// Try to claim empty slot
+			if atomic.CompareAndSwapUint64((*uint64)(unsafe.Pointer(&entry.Key)), 0, newKey) {
+				atomic.StoreUint32((*uint32)(unsafe.Pointer(&entry.Hash)), hashLower)
+				atomic.StoreInt64((*int64)(unsafe.Pointer(&entry.Score)), int64(score))
+				// Store bestMove as raw bytes - Move is a struct
+				*(*board.Move)(unsafe.Pointer(&entry.BestMove)) = bestMove
+				return
+			}
+			continue // Retry if someone else claimed it
 		}
+		
+		// Unpack current entry
+		curHashUpper, curDepth, _, curAge := unpackKey(currentKey)
+		curFullHash := uint64(curHashUpper)<<32 | uint64(currentHash)
+		
+		// Check for hash collision
+		if curFullHash != 0 && curFullHash != hash {
+			tt.collisions.Add(1)
+		}
+		
+		// Always replace if same position with deeper or equal search
+		if curFullHash == hash && depth >= curDepth {
+			if atomic.CompareAndSwapUint64((*uint64)(unsafe.Pointer(&entry.Key)), currentKey, newKey) {
+				atomic.StoreUint32((*uint32)(unsafe.Pointer(&entry.Hash)), hashLower)
+				atomic.StoreInt64((*int64)(unsafe.Pointer(&entry.Score)), int64(score))
+				// Store bestMove as raw bytes - Move is a struct
+				*(*board.Move)(unsafe.Pointer(&entry.BestMove)) = bestMove
+				return
+			}
+			continue // Retry if entry changed
+		}
+		
+		// For different positions, use replacement logic
+		if curFullHash != hash {
+			existingScore := tt.calculateEntryValueFromPacked(curDepth, curAge)
+			newScore := tt.calculateNewEntryValue(depth, entryType)
+			
+			// Replace if new entry is more valuable
+			if newScore > existingScore {
+				if atomic.CompareAndSwapUint64((*uint64)(unsafe.Pointer(&entry.Key)), currentKey, newKey) {
+					atomic.StoreUint32((*uint32)(unsafe.Pointer(&entry.Hash)), hashLower)
+					atomic.StoreInt64((*int64)(unsafe.Pointer(&entry.Score)), int64(score))
+					// Store bestMove as raw bytes - Move is a struct
+					*(*board.Move)(unsafe.Pointer(&entry.BestMove)) = bestMove
+					return
+				}
+				continue // Retry if entry changed
+			}
+		}
+		
+		// Entry not replaced, exit
+		return
 	}
 }
 
-// calculateEntryValue calculates the replacement value of an existing entry
-// Higher values mean the entry should be kept longer
-func (tt *TranspositionTable) calculateEntryValue(entry *TranspositionEntry) int {
+// calculateEntryValueFromPacked calculates replacement value from packed data
+func (tt *TranspositionTable) calculateEntryValueFromPacked(depth int, age uint32) int {
 	// Base value from depth (deeper searches are more valuable)
-	value := entry.Depth * 16
+	value := depth * 16
 	
 	// Age bonus (recent entries get bonus, very old entries get penalty)
-	ageDiff := int(tt.age - entry.Age)
+	currentAge := tt.age.Load()
+	ageDiff := int(currentAge - age)
 	if ageDiff <= 1 {
 		value += 32 // Recent entries get significant bonus
 	} else if ageDiff <= 3 {
 		value += 16 // Somewhat recent entries get moderate bonus
 	} else if ageDiff > 8 {
 		value -= ageDiff * 4 // Very old entries get significant penalty
-	}
-	
-	// Entry type bonus (exact values are most valuable)
-	switch entry.Type {
-	case EntryExact:
-		value += 8
-	case EntryLowerBound:
-		value += 4
-	case EntryUpperBound:
-		value += 2
 	}
 	
 	return value
@@ -167,39 +200,63 @@ func (tt *TranspositionTable) calculateNewEntryValue(depth int, entryType EntryT
 	return value
 }
 
-// Probe looks up a position in the transposition table
+// Probe looks up a position in the transposition table using lock-free operations
 func (tt *TranspositionTable) Probe(hash uint64) (*TranspositionEntry, bool) {
-	tt.mu.RLock()
-	defer tt.mu.RUnlock()
-
 	index := hash & tt.mask
 	entry := &tt.table[index]
-
-	if entry.Hash == hash {
-		tt.hits++
-		entryCopy := *entry
-		return &entryCopy, true
+	
+	// Load entry atomically
+	key := atomic.LoadUint64((*uint64)(unsafe.Pointer(&entry.Key)))
+	hashLower := atomic.LoadUint32((*uint32)(unsafe.Pointer(&entry.Hash)))
+	
+	if key == 0 {
+		tt.misses.Add(1)
+		return nil, false
 	}
-
-	tt.misses++
+	
+	// Reconstruct full hash
+	hashUpper, _, _, _ := unpackKey(key)
+	fullHash := uint64(hashUpper)<<32 | uint64(hashLower)
+	
+	if fullHash == hash {
+		tt.hits.Add(1)
+		// Return the existing entry directly - no allocation!
+		return entry, true
+	}
+	
+	tt.misses.Add(1)
 	return nil, false
+}
+
+// GetDepth extracts depth from a transposition entry
+func (entry *TranspositionEntry) GetDepth() int {
+	_, depth, _, _ := unpackKey(entry.Key)
+	return depth
+}
+
+// GetType extracts entry type from a transposition entry  
+func (entry *TranspositionEntry) GetType() EntryType {
+	_, _, entryType, _ := unpackKey(entry.Key)
+	return entryType
+}
+
+// GetAge extracts age from a transposition entry
+func (entry *TranspositionEntry) GetAge() uint32 {
+	_, _, _, age := unpackKey(entry.Key)
+	return age
 }
 
 // IncrementAge increments the age counter (call at start of each search)
 func (tt *TranspositionTable) IncrementAge() {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
-	tt.age++
+	tt.age.Add(1)  // Thread-safe atomic increment, no lock needed
 }
 
 // GetStats returns hit/miss statistics
 func (tt *TranspositionTable) GetStats() (hits, misses, collisions uint64, hitRate float64) {
-	tt.mu.RLock()
-	defer tt.mu.RUnlock()
-
-	hits = tt.hits
-	misses = tt.misses
-	collisions = tt.collisions
+	// No lock needed for atomic reads
+	hits = tt.hits.Load()
+	misses = tt.misses.Load()
+	collisions = tt.collisions.Load()
 
 	total := hits + misses
 	if total > 0 {
@@ -222,19 +279,18 @@ func (tt *TranspositionTable) GetMemoryUsage() int {
 
 // GetDetailedStats returns detailed statistics about table usage
 func (tt *TranspositionTable) GetDetailedStats() (hits, misses, collisions, filled, averageDepth uint64, hitRate, fillRate float64) {
-	tt.mu.RLock()
-	defer tt.mu.RUnlock()
-
-	hits = tt.hits
-	misses = tt.misses
-	collisions = tt.collisions
+	hits = tt.hits.Load()
+	misses = tt.misses.Load()
+	collisions = tt.collisions.Load()
 
 	// Calculate fill rate and average depth
 	var totalDepth uint64
 	for i := uint64(0); i < tt.size; i++ {
-		if tt.table[i].Hash != 0 {
+		key := atomic.LoadUint64((*uint64)(unsafe.Pointer(&tt.table[i].Key)))
+		if key != 0 {
 			filled++
-			totalDepth += uint64(tt.table[i].Depth)
+			_, depth, _, _ := unpackKey(key)
+			totalDepth += uint64(depth)
 		}
 	}
 

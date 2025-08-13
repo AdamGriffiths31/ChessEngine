@@ -30,8 +30,10 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 		To:    board.Square{Rank: 1, File: 4}, // e2
 		Piece: board.WhiteKing,
 	}
-	engine.killerTable[0][0] = killerMove1
-	engine.killerTable[0][1] = killerMove2
+	// Store killer moves using the public API
+	threadState := engine.getThreadLocalState()
+	engine.storeKiller(killerMove1, 0, threadState)
+	engine.storeKiller(killerMove2, 0, threadState)
 
 	// Simulate history table with some moves having good scores
 	historyMove1 := board.Move{
@@ -60,9 +62,9 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 			} else {
 				badCaptures = append(badCaptures, move)
 			}
-		} else if engine.isKillerMove(move, 0) {
+		} else if engine.isKillerMove(move, 0, threadState) {
 			killers = append(killers, move)
-		} else if engine.getHistoryScore(move) > 1000 {
+		} else if engine.getHistoryScore(move, threadState) > 1000 {
 			historyMoves = append(historyMoves, move)
 		} else {
 			quietMoves = append(quietMoves, move)
@@ -78,7 +80,8 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 	t.Logf("  Quiet moves: %d", len(quietMoves))
 
 	// Order the moves
-	engine.orderMoves(b, legalMoves, 0, board.Move{})
+	// threadState already available from above
+	engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
 	orderedMoves := engine.GetLastMoveOrder()
 
 	// Verify ordering by checking positions
@@ -97,7 +100,8 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 
 		if move.IsCapture {
 			seeValue := engine.seeCalculator.SEE(b, move)
-			score = engine.getCaptureScore(b, move)
+			threadState := engine.getThreadLocalState()
+			score = engine.getCaptureScore(b, move, threadState)
 			if seeValue > 0 {
 				category = "Good Capture"
 			} else if seeValue == 0 {
@@ -107,12 +111,12 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 			} else {
 				category = "Terrible Capture"
 			}
-		} else if engine.isKillerMove(move, 0) {
+		} else if engine.isKillerMove(move, 0, threadState) {
 			category = "Killer Move"
 			score = 500000
-		} else if engine.getHistoryScore(move) > 1000 {
+		} else if engine.getHistoryScore(move, threadState) > 1000 {
 			category = "History Move"
-			score = int(engine.getHistoryScore(move))
+			score = int(engine.getHistoryScore(move, threadState))
 		} else {
 			category = "Quiet Move"
 			score = 0
@@ -226,7 +230,8 @@ func TestSpecificTacticalScenarios(t *testing.T) {
 			
 			for _, capture := range terribleCaptures {
 				seeValue := engine.seeCalculator.SEE(b, capture)
-				score := engine.getCaptureScore(b, capture)
+				threadState := engine.getThreadLocalState()
+				score := engine.getCaptureScore(b, capture, threadState)
 				t.Logf("  %s%s (SEE: %d, Score: %d) - Still searched before quiet moves", 
 					boardSquareToString(capture.From), boardSquareToString(capture.To), 
 					seeValue, score)

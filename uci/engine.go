@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/game"
 	"github.com/AdamGriffiths31/ChessEngine/game/ai"
 	"github.com/AdamGriffiths31/ChessEngine/game/ai/search"
@@ -178,15 +179,16 @@ func (ue *UCIEngine) HandleCommand(input string) string {
 
 // handleUCI responds to the 'uci' command
 func (ue *UCIEngine) handleUCI() string {
-	response := ue.protocol.FormatUCIResponse("ChessEngine", "Adam Griffiths")
-
-	// Add engine options
-	options := []string{
-		ue.protocol.FormatOption("Hash", "spin", "128"),
-		ue.protocol.FormatOption("Threads", "spin", "1"),
+	// UCI protocol requires: id lines, then options, then uciok
+	response := []string{
+		"id name ChessEngine",
+		"id author Adam Griffiths",
+		"option name Hash type spin default 128 min 1 max 1024",
+		"option name Threads type spin default 1 min 1 max 32",
+		"uciok",
 	}
 
-	return response + "\n" + strings.Join(options, "\n")
+	return strings.Join(response, "\n")
 }
 
 // handleIsReady responds to the 'isready' command
@@ -243,6 +245,14 @@ func (ue *UCIEngine) handleGo(args []string) {
 	ue.searching = true
 	ue.stopChannel = make(chan struct{})
 
+	// Get thread count from options (default to 1)
+	threadCount := 1
+	if threadStr, exists := ue.options["Threads"]; exists {
+		if _, err := fmt.Sscanf(threadStr, "%d", &threadCount); err != nil || threadCount < 1 || threadCount > 32 {
+			threadCount = 1 // Fallback to default
+		}
+	}
+
 	// Configure search parameters with all optimizations enabled by default
 	config := ai.SearchConfig{
 		MaxDepth:            999,             // No depth limit (use time-based)
@@ -254,6 +264,7 @@ func (ue *UCIEngine) handleGo(args []string) {
 		BookWeightThreshold: 1,
 		LMRMinDepth:         3,               // Enable LMR at depth 3 and above
 		LMRMinMoves:         4,               // Start reductions after 4 moves
+		NumThreads:          threadCount,     // Use configured thread count
 	}
 
 	// Apply search parameters
@@ -293,10 +304,38 @@ func (ue *UCIEngine) handleGo(args []string) {
 	ue.debugLogger.Printf("Move %d search starting - Position: %s, Player: %v",
 		ue.moveNumber, ue.engine.GetCurrentFEN(), player)
 
-	// Search for best move
+	// Search for best move with panic recovery
 	searchStart := time.Now()
-	result := ue.aiEngine.FindBestMove(stopCtx, ue.engine.GetState().Board, player, config)
-	searchDuration := time.Since(searchStart)
+	var result ai.SearchResult
+	var searchDuration time.Duration
+	
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				ue.debugLogger.Printf("PANIC CAUGHT: Search panicked for move %d: %v", ue.moveNumber, r)
+				ue.debugLogger.Printf("PANIC CONTEXT: Position=%s, Player=%s, ThreadCount=%d", 
+					ue.engine.GetCurrentFEN(), player, config.NumThreads)
+				
+				// Create a fallback result with an invalid move to indicate failure
+				result = ai.SearchResult{
+					BestMove: board.Move{
+						From: board.Square{File: -1, Rank: -1},
+						To:   board.Square{File: -1, Rank: -1},
+					},
+					Score:    ai.EvaluationScore(-ai.MateScore),
+					Stats:    ai.SearchStats{},
+				}
+				searchDuration = time.Since(searchStart)
+				
+				// Re-panic to maintain original behavior if needed for debugging
+				// Comment this out if you want the engine to continue despite panics
+				panic(r)
+			}
+		}()
+		
+		result = ue.aiEngine.FindBestMove(stopCtx, ue.engine.GetState().Board, player, config)
+		searchDuration = time.Since(searchStart)
+	}()
 
 	if config.UseOpeningBook && result.Stats.BookMoveUsed {
 		ue.debugLogger.Printf("Book move used for move %d", ue.moveNumber)
@@ -360,6 +399,14 @@ func (ue *UCIEngine) handleSetOption(args []string) string {
 				minimaxEngine.SetTranspositionTableSize(hashSizeMB)
 				ue.debugLogger.Printf("Set transposition table size to %d MB", hashSizeMB)
 			}
+		}
+	case "Threads":
+		// Parse thread count
+		var threadCount int
+		if _, err := fmt.Sscanf(value, "%d", &threadCount); err == nil && threadCount > 0 && threadCount <= 32 {
+			ue.debugLogger.Printf("Set thread count to %d", threadCount)
+		} else {
+			ue.debugLogger.Printf("Invalid thread count: %s (must be 1-32)", value)
 		}
 	}
 

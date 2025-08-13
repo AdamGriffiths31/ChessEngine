@@ -37,8 +37,9 @@ func TestMVVLVATiebreakerSimple(t *testing.T) {
 	// Calculate SEE and scores
 	queenSEE := engine.seeCalculator.SEE(b, captureQueen)
 	rookSEE := engine.seeCalculator.SEE(b, captureRook)
-	queenScore := engine.getCaptureScore(b, captureQueen)
-	rookScore := engine.getCaptureScore(b, captureRook)
+	threadState := engine.getThreadLocalState()
+	queenScore := engine.getCaptureScore(b, captureQueen, threadState)
+	rookScore := engine.getCaptureScore(b, captureRook, threadState)
 
 	t.Logf("Rook captures queen (Rxd5): SEE=%d, Score=%d", queenSEE, queenScore)
 	t.Logf("Rook captures rook (Rxe5): SEE=%d, Score=%d", rookSEE, rookScore)
@@ -108,8 +109,9 @@ func TestMVVLVAInEqualExchanges(t *testing.T) {
 
 	queenSEE := engine.seeCalculator.SEE(b, queenTakesQueen)
 	rookSEE := engine.seeCalculator.SEE(b, rookTakesRook)
-	queenScore := engine.getCaptureScore(b, queenTakesQueen)
-	rookScore := engine.getCaptureScore(b, rookTakesRook)
+	threadState := engine.getThreadLocalState()
+	queenScore := engine.getCaptureScore(b, queenTakesQueen, threadState)
+	rookScore := engine.getCaptureScore(b, rookTakesRook, threadState)
 
 	t.Logf("Queen takes queen (Qxd5): SEE=%d, Score=%d", queenSEE, queenScore)
 	t.Logf("Rook takes rook (Rxe5): SEE=%d, Score=%d", rookSEE, rookScore)

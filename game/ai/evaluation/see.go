@@ -6,6 +6,7 @@ import (
 
 // SEECalculator implements Static Exchange Evaluation
 type SEECalculator struct {
+	gain [32]int // Reusable gain array to avoid allocations
 }
 
 // NewSEECalculator creates a new SEE calculator
@@ -22,15 +23,14 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 	}
 
 	target := move.To
-	gain := make([]int, 32) // Max possible depth of exchanges
 	depth := 0
 
 	// Initial capture value - use existing PieceValues
-	gain[depth] = see.getPieceValue(move.Captured)
+	see.gain[depth] = see.getPieceValue(move.Captured)
 	
 	// Handle en passant special case
 	if move.IsEnPassant {
-		gain[depth] = 100 // Pawn value
+		see.gain[depth] = 100 // Pawn value
 	}
 
 	// Get occupied squares bitboard using existing functionality
@@ -76,7 +76,7 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 		
 		// Standard SEE: gain[depth] = value_of_captured_piece - gain[depth-1]
 		// This works because we're alternating perspectives with the minimax
-		gain[depth] = capturedValue - gain[depth-1]
+		see.gain[depth] = capturedValue - see.gain[depth-1]
 		
 		// Remove the attacking piece
 		occupied = occupied.ClearBit(nextAttacker.square)
@@ -98,12 +98,12 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 		// SEE minimax: each player will choose the move that's best for them
 		// But this means the opponent will choose the move that's worst for us
 		// If -gain[depth] is worse for the initial side than gain[depth-1], the opponent will force it
-		if gain[depth-1] > -gain[depth] {
-			gain[depth-1] = -gain[depth]
+		if see.gain[depth-1] > -see.gain[depth] {
+			see.gain[depth-1] = -see.gain[depth]
 		}
 	}
 
-	return gain[0]
+	return see.gain[0]
 }
 
 // attacker represents a piece that can attack a square
@@ -127,7 +127,7 @@ func (see *SEECalculator) getLeastValuableAttacker(b *board.Board, attackers *bo
 			square, _ := attackingPieces.PopLSB()
 			
 			// Remove this attacker from the attackers bitboard
-			*attackers = attackers.ClearBit(square)
+			*attackers = (*attackers).ClearBit(square)
 			
 			return attacker{
 				piece:  pieceType,

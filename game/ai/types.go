@@ -44,6 +44,9 @@ type SearchConfig struct {
 	
 	// Null move pruning configuration
 	DisableNullMove  bool    // If true, disables null move pruning for comparison testing
+	
+	// Parallel search configuration
+	NumThreads       int     // Number of threads to use for parallel search (default: 1 for sequential)
 }
 
 // BookSelectionMode defines how to select moves from opening books
