@@ -38,3 +38,10 @@ tools/engines.json
 
 # Test data - large EPD files
 testdata/
+
+# Claude Code documentation
+CLAUDE.md
+
+# Configuration files
+*.yml
+*.yaml

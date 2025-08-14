@@ -59,7 +59,7 @@ func TestFromFEN_InvalidCases(t *testing.T) {
 
 func TestBoardGetSetPiece(t *testing.T) {
 	board := NewBoard()
-	
+
 	// Test setting and getting a piece
 	board.SetPiece(0, 0, WhiteKing)
 	piece := board.GetPiece(0, 0)
@@ -73,13 +73,13 @@ func TestIsValidPiece(t *testing.T) {
 		WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing,
 		BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing,
 	}
-	
+
 	for _, piece := range validPieces {
 		if !isValidPiece(piece) {
 			t.Errorf("Expected %c to be valid", piece)
 		}
 	}
-	
+
 	invalidPieces := []Piece{'x', 'Y', '1', '.', ' '}
 	for _, piece := range invalidPieces {
 		if isValidPiece(piece) {
@@ -92,12 +92,12 @@ func TestIsValidPiece(t *testing.T) {
 
 func TestBitboardSynchronization(t *testing.T) {
 	board := NewBoard()
-	
+
 	// Set some pieces and verify bitboards are updated
-	board.SetPiece(0, 0, WhiteRook)   // a1
-	board.SetPiece(7, 7, BlackKing)   // h8
-	board.SetPiece(3, 4, WhitePawn)   // e4
-	
+	board.SetPiece(0, 0, WhiteRook) // a1
+	board.SetPiece(7, 7, BlackKing) // h8
+	board.SetPiece(3, 4, WhitePawn) // e4
+
 	// Check that bitboards have the correct pieces set
 	if !board.GetPieceBitboard(WhiteRook).HasBit(FileRankToSquare(0, 0)) {
 		t.Error("White rook bitboard should have a1 set")
@@ -108,18 +108,18 @@ func TestBitboardSynchronization(t *testing.T) {
 	if !board.GetPieceBitboard(WhitePawn).HasBit(FileRankToSquare(4, 3)) {
 		t.Error("White pawn bitboard should have e4 set")
 	}
-	
+
 	// Check color bitboards
 	whitePieces := board.GetColorBitboard(BitboardWhite)
 	if !whitePieces.HasBit(FileRankToSquare(0, 0)) || !whitePieces.HasBit(FileRankToSquare(4, 3)) {
 		t.Error("White pieces bitboard should include white rook and pawn")
 	}
-	
+
 	blackPieces := board.GetColorBitboard(BitboardBlack)
 	if !blackPieces.HasBit(FileRankToSquare(7, 7)) {
 		t.Error("Black pieces bitboard should include black king")
 	}
-	
+
 	// Check all pieces bitboard
 	if board.AllPieces.PopCount() != 3 {
 		t.Errorf("All pieces bitboard should have 3 pieces, got %d", board.AllPieces.PopCount())
@@ -128,38 +128,38 @@ func TestBitboardSynchronization(t *testing.T) {
 
 func TestSetPieceUpdatesAllRepresentations(t *testing.T) {
 	board := NewBoard()
-	
+
 	// Set a piece
 	board.SetPiece(3, 4, WhiteQueen) // e4
-	
+
 	// Verify array representation
 	if board.GetPiece(3, 4) != WhiteQueen {
 		t.Error("Array representation should have white queen on e4")
 	}
-	
+
 	// Verify bitboard representation
 	if !board.GetPieceBitboard(WhiteQueen).HasBit(FileRankToSquare(4, 3)) {
 		t.Error("Bitboard representation should have white queen on e4")
 	}
-	
+
 	// Verify piece count using bitboard
 	if board.getPieceCountFromBitboard(WhiteQueen) != 1 {
 		t.Error("Should have exactly one white queen")
 	}
-	
+
 	// Replace with different piece
 	board.SetPiece(3, 4, BlackRook) // e4
-	
+
 	// Verify old piece is removed
 	if board.GetPieceBitboard(WhiteQueen).HasBit(FileRankToSquare(4, 3)) {
 		t.Error("White queen should be removed from bitboard")
 	}
-	
+
 	// Verify new piece is added
 	if !board.GetPieceBitboard(BlackRook).HasBit(FileRankToSquare(4, 3)) {
 		t.Error("Black rook should be added to bitboard")
 	}
-	
+
 	// Verify array representation
 	if board.GetPiece(3, 4) != BlackRook {
 		t.Error("Array representation should have black rook on e4")
@@ -168,26 +168,26 @@ func TestSetPieceUpdatesAllRepresentations(t *testing.T) {
 
 func TestRemovePieceUpdatesAllRepresentations(t *testing.T) {
 	board := NewBoard()
-	
+
 	// Set a piece then remove it
 	board.SetPiece(3, 4, WhiteBishop) // e4
 	board.SetPiece(3, 4, Empty)       // Remove piece
-	
+
 	// Verify array representation
 	if board.GetPiece(3, 4) != Empty {
 		t.Error("Array representation should be empty on e4")
 	}
-	
+
 	// Verify bitboard representation
 	if board.GetPieceBitboard(WhiteBishop).HasBit(FileRankToSquare(4, 3)) {
 		t.Error("Bitboard representation should not have white bishop on e4")
 	}
-	
+
 	// Verify all pieces bitboard
 	if board.AllPieces.HasBit(FileRankToSquare(4, 3)) {
 		t.Error("All pieces bitboard should not have e4 set")
 	}
-	
+
 	// Verify piece count using bitboard
 	if board.getPieceCountFromBitboard(WhiteBishop) != 0 {
 		t.Error("Should have no white bishops")
@@ -231,17 +231,17 @@ func TestFENToBitboards(t *testing.T) {
 			expected: false,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			board, err := FromFEN(tc.fen)
 			if err != nil {
 				t.Fatalf("Failed to parse FEN: %v", err)
 			}
-			
+
 			hasPiece := board.GetPieceBitboard(tc.piece).HasBit(tc.square)
 			if hasPiece != tc.expected {
-				t.Errorf("Expected piece %c on square %s to be %v, got %v", 
+				t.Errorf("Expected piece %c on square %s to be %v, got %v",
 					tc.piece, SquareToString(tc.square), tc.expected, hasPiece)
 			}
 		})
@@ -253,7 +253,7 @@ func TestStartingPositionBitboards(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to parse starting position FEN: %v", err)
 	}
-	
+
 	// Test piece counts
 	expectedCounts := map[Piece]int{
 		WhitePawn:   8,
@@ -269,14 +269,14 @@ func TestStartingPositionBitboards(t *testing.T) {
 		BlackQueen:  1,
 		BlackKing:   1,
 	}
-	
+
 	for piece, expectedCount := range expectedCounts {
 		actualCount := board.GetPieceBitboard(piece).PopCount()
 		if actualCount != expectedCount {
 			t.Errorf("Expected %d %c pieces, got %d", expectedCount, piece, actualCount)
 		}
 	}
-	
+
 	// Test color bitboards
 	if board.WhitePieces.PopCount() != 16 {
 		t.Errorf("Expected 16 white pieces, got %d", board.WhitePieces.PopCount())
@@ -287,13 +287,13 @@ func TestStartingPositionBitboards(t *testing.T) {
 	if board.AllPieces.PopCount() != 32 {
 		t.Errorf("Expected 32 total pieces, got %d", board.AllPieces.PopCount())
 	}
-	
+
 	// Test that white pieces occupy ranks 1-2
 	rank1and2 := RankMask(0) | RankMask(1)
 	if (board.WhitePieces & rank1and2) != board.WhitePieces {
 		t.Error("All white pieces should be on ranks 1-2")
 	}
-	
+
 	// Test that black pieces occupy ranks 7-8
 	rank7and8 := RankMask(6) | RankMask(7)
 	if (board.BlackPieces & rank7and8) != board.BlackPieces {
@@ -308,7 +308,7 @@ func TestComplexPositionBitboards(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to parse complex position FEN: %v", err)
 	}
-	
+
 	// Verify specific piece positions
 	testCases := []struct {
 		piece    Piece
@@ -328,12 +328,12 @@ func TestComplexPositionBitboards(t *testing.T) {
 		{WhitePawn, "e5", false}, // Should be empty
 		{BlackPawn, "d5", false}, // Should be empty
 	}
-	
+
 	for _, tc := range testCases {
 		square := StringToSquare(tc.square)
 		hasPiece := board.GetPieceBitboard(tc.piece).HasBit(square)
 		if hasPiece != tc.expected {
-			t.Errorf("Expected piece %c on %s to be %v, got %v", 
+			t.Errorf("Expected piece %c on %s to be %v, got %v",
 				tc.piece, tc.square, tc.expected, hasPiece)
 		}
 	}
@@ -341,7 +341,7 @@ func TestComplexPositionBitboards(t *testing.T) {
 
 func TestBitboardConsistency(t *testing.T) {
 	board := NewBoard()
-	
+
 	// Set up a random position
 	moves := []struct {
 		rank, file int
@@ -358,40 +358,40 @@ func TestBitboardConsistency(t *testing.T) {
 		{6, 1, BlackPawn},
 		{4, 4, BlackQueen},
 	}
-	
+
 	for _, move := range moves {
 		board.SetPiece(move.rank, move.file, move.piece)
 	}
-	
+
 	// Verify that derived bitboards match the sum of piece bitboards
 	var calculatedWhite, calculatedBlack Bitboard
-	
+
 	for i := WhitePawnIndex; i <= WhiteKingIndex; i++ {
 		calculatedWhite |= board.PieceBitboards[i]
 	}
-	
+
 	for i := BlackPawnIndex; i <= BlackKingIndex; i++ {
 		calculatedBlack |= board.PieceBitboards[i]
 	}
-	
+
 	if board.WhitePieces != calculatedWhite {
 		t.Error("White pieces bitboard doesn't match sum of white piece bitboards")
 	}
-	
+
 	if board.BlackPieces != calculatedBlack {
 		t.Error("Black pieces bitboard doesn't match sum of black piece bitboards")
 	}
-	
+
 	if board.AllPieces != (calculatedWhite | calculatedBlack) {
 		t.Error("All pieces bitboard doesn't match union of color bitboards")
 	}
-	
+
 	// Verify that array and bitboard representations are consistent
 	for rank := 0; rank < 8; rank++ {
 		for file := 0; file < 8; file++ {
 			square := FileRankToSquare(file, rank)
 			arrayPiece := board.GetPiece(rank, file)
-			
+
 			if arrayPiece == Empty {
 				// Should not be set in any piece bitboard
 				if board.AllPieces.HasBit(square) {
@@ -402,7 +402,7 @@ func TestBitboardConsistency(t *testing.T) {
 				if !board.GetPieceBitboard(arrayPiece).HasBit(square) {
 					t.Errorf("Square %s should have %c in bitboard", SquareToString(square), arrayPiece)
 				}
-				
+
 				// Should be set in all pieces bitboard
 				if !board.AllPieces.HasBit(square) {
 					t.Errorf("Square %s should be set in all pieces bitboard", SquareToString(square))
@@ -432,7 +432,7 @@ func TestPieceToBitboardIndex(t *testing.T) {
 		{Empty, -1},
 		{'x', -1}, // Invalid piece
 	}
-	
+
 	for _, tc := range testCases {
 		actualIndex := PieceToBitboardIndex(tc.piece)
 		if actualIndex != tc.expectedIndex {
@@ -457,7 +457,10 @@ func BenchmarkSetPieceWithBitboards(b *testing.B) {
 }
 
 func BenchmarkGetPieceBitboard(b *testing.B) {
-	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		b.Fatalf("Failed to create board from FEN: %v", err)
+	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = board.GetPieceBitboard(WhitePawn)
@@ -465,7 +468,10 @@ func BenchmarkGetPieceBitboard(b *testing.B) {
 }
 
 func BenchmarkGetColorBitboard(b *testing.B) {
-	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		b.Fatalf("Failed to create board from FEN: %v", err)
+	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = board.GetColorBitboard(BitboardWhite)

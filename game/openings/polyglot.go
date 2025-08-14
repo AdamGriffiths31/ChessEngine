@@ -1,3 +1,4 @@
+// Package openings provides Polyglot binary format opening book implementation.
 package openings
 
 import (
@@ -14,18 +15,25 @@ const (
 	// PolyglotEntrySize is the size of each entry in bytes
 	PolyglotEntrySize = 16
 
-	// Move encoding masks and shifts
-	ToSquareMask    = 0x003F // bits 0-5: destination square
-	FromSquareMask  = 0x0FC0 // bits 6-11: origin square
-	PromotionMask   = 0x7000 // bits 12-14: promotion piece
+	// ToSquareMask represents bits 0-5 for destination square in move encoding
+	ToSquareMask = 0x003F
+	// FromSquareMask represents bits 6-11 for origin square in move encoding
+	FromSquareMask = 0x0FC0
+	// PromotionMask represents bits 12-14 for promotion piece in move encoding
+	PromotionMask = 0x7000
+	// FromSquareShift is the right shift amount to extract origin square
 	FromSquareShift = 6
-	PromotionShift  = 12
+	// PromotionShift is the right shift amount to extract promotion piece
+	PromotionShift = 12
 
-	// Promotion piece values
+	// PromotionKnight represents knight promotion in polyglot format
 	PromotionKnight = 1
+	// PromotionBishop represents bishop promotion in polyglot format
 	PromotionBishop = 2
-	PromotionRook   = 3
-	PromotionQueen  = 4
+	// PromotionRook represents rook promotion in polyglot format
+	PromotionRook = 3
+	// PromotionQueen represents queen promotion in polyglot format
+	PromotionQueen = 4
 )
 
 // PolyglotBook implements the OpeningBook interface for Polyglot binary format
@@ -46,13 +54,14 @@ func NewPolyglotBook() *PolyglotBook {
 
 // LoadFromFile loads a Polyglot opening book from a binary file
 func (pb *PolyglotBook) LoadFromFile(filename string) error {
-	file, err := os.Open(filename)
+	file, err := os.Open(filename) // #nosec G304 - opening book files are trusted config
 	if err != nil {
 		return fmt.Errorf("failed to open book file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close() // Ignore error on close for read operation
+	}()
 
-	// Get file size
 	stat, err := file.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to get file info: %w", err)
@@ -66,11 +75,9 @@ func (pb *PolyglotBook) LoadFromFile(filename string) error {
 	entryCount := int(fileSize / PolyglotEntrySize)
 	entries := make([]PolyglotEntry, entryCount)
 
-	// Read all entries
 	for i := 0; i < entryCount; i++ {
 		var entry PolyglotEntry
 
-		// Read in big-endian format
 		if err := binary.Read(file, binary.BigEndian, &entry.Hash); err != nil {
 			return fmt.Errorf("failed to read hash at entry %d: %w", i, err)
 		}
@@ -87,7 +94,6 @@ func (pb *PolyglotBook) LoadFromFile(filename string) error {
 		entries[i] = entry
 	}
 
-	// Verify entries are sorted by hash (required for binary search)
 	if !sort.SliceIsSorted(entries, func(i, j int) bool {
 		return entries[i].Hash < entries[j].Hash
 	}) {
@@ -111,7 +117,6 @@ func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, err
 		return nil, ErrBookNotLoaded
 	}
 
-	// Find first entry with matching hash using binary search
 	startIdx := sort.Search(len(pb.entries), func(i int) bool {
 		return pb.entries[i].Hash >= hash
 	})
@@ -120,15 +125,13 @@ func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, err
 		return nil, ErrPositionNotFound
 	}
 
-	// Find all entries with the same hash
 	var bookMoves []BookMove
 	for i := startIdx; i < len(pb.entries) && pb.entries[i].Hash == hash; i++ {
 		entry := pb.entries[i]
 
-		// Decode the move
 		move, err := pb.decodeMove(entry.Move, b)
 		if err != nil {
-			continue // Skip invalid moves
+			continue
 		}
 
 		bookMove := BookMove{
@@ -159,24 +162,20 @@ func (pb *PolyglotBook) GetBookInfo() BookInfo {
 
 // decodeMove converts a 16-bit Polyglot move encoding to a board.Move
 func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, error) {
-	// Extract components
 	toSquare := int(encoded & ToSquareMask)
 	fromSquare := int((encoded & FromSquareMask) >> FromSquareShift)
 	promotionPiece := int((encoded & PromotionMask) >> PromotionShift)
 
-	// Convert square indices to board coordinates
 	fromFile := fromSquare % 8
 	fromRank := fromSquare / 8
 	toFile := toSquare % 8
 	toRank := toSquare / 8
 
-	// Get the piece being moved
 	movingPiece := b.GetPiece(fromRank, fromFile)
 	if movingPiece == board.Empty {
 		return board.Move{}, fmt.Errorf("no piece at from square %c%d", 'a'+fromFile, fromRank+1)
 	}
 
-	// Get any piece being captured
 	capturedPiece := b.GetPiece(toRank, toFile)
 
 	move := board.Move{
@@ -185,14 +184,13 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 		Piece:     movingPiece,
 		Captured:  capturedPiece,
 		IsCapture: capturedPiece != board.Empty,
-		Promotion: board.Empty, // Initialize to Empty instead of zero value
+		Promotion: board.Empty,
 	}
 
-	// Handle promotion
 	if promotionPiece > 0 {
 		switch promotionPiece {
 		case PromotionKnight:
-			move.Promotion = board.WhiteKnight // Will be corrected based on side
+			move.Promotion = board.WhiteKnight
 		case PromotionBishop:
 			move.Promotion = board.WhiteBishop
 		case PromotionRook:
@@ -210,16 +208,16 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 // WriteEntry writes a single entry to a writer (for creating test books)
 func WriteEntry(w io.Writer, entry PolyglotEntry) error {
 	if err := binary.Write(w, binary.BigEndian, entry.Hash); err != nil {
-		return err
+		return fmt.Errorf("failed to write hash: %w", err)
 	}
 	if err := binary.Write(w, binary.BigEndian, entry.Move); err != nil {
-		return err
+		return fmt.Errorf("failed to write move: %w", err)
 	}
 	if err := binary.Write(w, binary.BigEndian, entry.Weight); err != nil {
-		return err
+		return fmt.Errorf("failed to write weight: %w", err)
 	}
 	if err := binary.Write(w, binary.BigEndian, entry.Learn); err != nil {
-		return err
+		return fmt.Errorf("failed to write learn value: %w", err)
 	}
 	return nil
 }

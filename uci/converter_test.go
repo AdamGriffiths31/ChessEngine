@@ -253,10 +253,10 @@ func TestParseUCISquare(t *testing.T) {
 
 func TestParsePromotionPiece(t *testing.T) {
 	tests := []struct {
-		name         string
+		name          string
 		promotionChar byte
 		originalPiece board.Piece
-		expected     board.Piece
+		expected      board.Piece
 	}{
 		{
 			name:          "white pawn to queen",

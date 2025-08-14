@@ -6,7 +6,9 @@ import "github.com/AdamGriffiths31/ChessEngine/board"
 type Player int
 
 const (
+	// White represents the white player
 	White Player = iota
+	// Black represents the black player
 	Black
 )
 
@@ -25,15 +27,6 @@ type MoveList struct {
 	Count int
 }
 
-// NewMoveList creates a new empty move list with pre-allocated capacity.
-// Consider using GetMoveList() from the pool for better performance.
-func NewMoveList() *MoveList {
-	return &MoveList{
-		Moves: make([]board.Move, 0, InitialMoveListCapacity), // Pre-allocate for performance
-		Count: 0,
-	}
-}
-
 // AddMove adds a move to the list
 func (ml *MoveList) AddMove(move board.Move) {
 	ml.Moves = append(ml.Moves, move)
@@ -43,7 +36,7 @@ func (ml *MoveList) AddMove(move board.Move) {
 // Contains checks if the move list contains a specific move
 func (ml *MoveList) Contains(move board.Move) bool {
 	for _, m := range ml.Moves {
-		if MovesEqual(m, move) {
+		if Equal(m, move) {
 			return true
 		}
 	}
@@ -58,18 +51,18 @@ func (ml *MoveList) Clear() {
 
 // MoveHistory stores information needed to undo a move
 type MoveHistory struct {
-	Move             board.Move
-	CapturedPiece    board.Piece
-	CastlingRights   string
-	EnPassantTarget  *board.Square
-	HalfMoveClock    int
-	FullMoveNumber   int
-	WasEnPassant     bool
-	WasCastling      bool
+	Move            board.Move
+	CapturedPiece   board.Piece
+	CastlingRights  string
+	EnPassantTarget *board.Square
+	HalfMoveClock   int
+	FullMoveNumber  int
+	WasEnPassant    bool
+	WasCastling     bool
 }
 
-// MovesEqual compares two moves for equality
-func MovesEqual(a, b board.Move) bool {
+// Equal compares two moves for equality
+func Equal(a, b board.Move) bool {
 	return a.From.File == b.From.File &&
 		a.From.Rank == b.From.Rank &&
 		a.To.File == b.To.File &&

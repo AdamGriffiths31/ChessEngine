@@ -38,22 +38,21 @@ var PawnHashTable [16384]PawnHashEntry
 // evaluatePawnStructure performs cached pawn structure evaluation
 // Uses pawn hash table to avoid recalculating identical pawn structures
 func evaluatePawnStructure(b *board.Board) int {
-	// Get pawn hash for this position
+	if b == nil {
+		return 0
+	}
 	pawnHash := b.GetPawnHash()
-	hashIndex := pawnHash & 16383 // Modulo 16384
+	hashIndex := pawnHash & 16383
 
-	// Check hash table for cached result
 	entry := &PawnHashTable[hashIndex]
 	if entry.hash == pawnHash {
 		return entry.score
 	}
 
-	// Calculate pawn evaluation
 	whitePawns := b.GetPieceBitboard(board.WhitePawn)
 	blackPawns := b.GetPieceBitboard(board.BlackPawn)
 	score := evaluatePawnsSimple(whitePawns, blackPawns)
 
-	// Cache the result
 	entry.hash = pawnHash
 	entry.score = score
 
@@ -65,24 +64,14 @@ func evaluatePawnStructure(b *board.Board) int {
 func evaluatePawnsSimple(whitePawns, blackPawns board.Bitboard) int {
 	score := 0
 
-	// Evaluate white pawns
 	score += evaluatePawnsByColor(whitePawns, blackPawns, true)
 
-	// Evaluate black pawns
 	score -= evaluatePawnsByColor(blackPawns, whitePawns, false)
 
 	return score
 }
 
 // evaluatePawnsByColor performs streamlined pawn evaluation for one color
-// Focuses on the most impactful factors while avoiding expensive calculations
-//
-// Parameters:
-//   - friendlyPawns: bitboard containing all pawns of this color
-//   - enemyPawns: bitboard containing all enemy pawns
-//   - isWhite: true for white pawns, false for black pawns
-//
-// Returns: evaluation score for all pawns of the specified color
 func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool) int {
 	if friendlyPawns == 0 {
 		return 0
@@ -90,10 +79,8 @@ func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool
 
 	score := 0
 
-	// Pre-compute file masks for efficiency
-	var filePawns [8]int // Count of pawns per file
+	var filePawns [8]int
 
-	// First pass: count pawns per file and evaluate individual pawns
 	tempPawns := friendlyPawns
 	for tempPawns != 0 {
 		square, remaining := tempPawns.PopLSB()
@@ -104,7 +91,6 @@ func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool
 
 		filePawns[file]++
 
-		// 1. PASSED PAWN CHECK (most important)
 		if isPassedPawn(square, enemyPawns, isWhite) {
 			if isWhite {
 				score += PassedPawnBonus[rank]
@@ -113,21 +99,17 @@ func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool
 			}
 		}
 
-		// 2. ISOLATED PAWN CHECK
 		if isIsolatedPawn(friendlyPawns, file) {
 			score += IsolatedPawnPenalty
 		}
 
-		// 3. CONNECTED PAWNS BONUS
 		if isConnectedPawn(friendlyPawns, square) {
 			score += ConnectedPawnBonus
 		}
 	}
 
-	// 4. DOUBLED PAWNS (from file counts)
 	for file := 0; file < 8; file++ {
 		if filePawns[file] > 1 {
-			// Penalize each extra pawn
 			score += (filePawns[file] - 1) * DoubledPawnPenalty
 		}
 	}
@@ -140,11 +122,8 @@ func isPassedPawn(square int, enemyPawns board.Bitboard, isWhite bool) bool {
 	file := square % 8
 	rank := square / 8
 
-	// Check if enemy pawns can stop this pawn
 	if isWhite {
-		// For white pawn, check squares ahead
 		for r := rank + 1; r < 8; r++ {
-			// Check same file and adjacent files
 			for f := max(0, file-1); f <= min(7, file+1); f++ {
 				if hasPawnAt(enemyPawns, f, r) {
 					return false
@@ -152,7 +131,6 @@ func isPassedPawn(square int, enemyPawns board.Bitboard, isWhite bool) bool {
 			}
 		}
 	} else {
-		// For black pawn, check squares behind (toward rank 0)
 		for r := rank - 1; r >= 0; r-- {
 			for f := max(0, file-1); f <= min(7, file+1); f++ {
 				if hasPawnAt(enemyPawns, f, r) {
@@ -167,12 +145,10 @@ func isPassedPawn(square int, enemyPawns board.Bitboard, isWhite bool) bool {
 
 // isIsolatedPawn checks if a pawn has no friendly pawns on adjacent files
 func isIsolatedPawn(friendlyPawns board.Bitboard, file int) bool {
-	// Check left file
 	if file > 0 && (friendlyPawns&board.FileMask(file-1)) != 0 {
 		return false
 	}
 
-	// Check right file
 	if file < 7 && (friendlyPawns&board.FileMask(file+1)) != 0 {
 		return false
 	}
@@ -185,8 +161,6 @@ func isConnectedPawn(friendlyPawns board.Bitboard, square int) bool {
 	file := square % 8
 	rank := square / 8
 
-	// Check diagonally behind for supporting pawns
-	// Left diagonal support
 	if file > 0 && rank > 0 {
 		supportSquare := (rank-1)*8 + (file - 1)
 		if friendlyPawns.HasBit(supportSquare) {
@@ -194,7 +168,6 @@ func isConnectedPawn(friendlyPawns board.Bitboard, square int) bool {
 		}
 	}
 
-	// Right diagonal support
 	if file < 7 && rank > 0 {
 		supportSquare := (rank-1)*8 + (file + 1)
 		if friendlyPawns.HasBit(supportSquare) {
@@ -202,7 +175,6 @@ func isConnectedPawn(friendlyPawns board.Bitboard, square int) bool {
 		}
 	}
 
-	// For black pawns, check diagonally forward
 	if file > 0 && rank < 7 {
 		supportSquare := (rank+1)*8 + (file - 1)
 		if friendlyPawns.HasBit(supportSquare) {

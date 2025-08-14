@@ -203,7 +203,6 @@ func TestHashConsistency(t *testing.T) {
 	}
 }
 
-
 // TestCastlingRightsHashEffect tests that castling rights affect the hash
 func TestCastlingRightsHashEffect(t *testing.T) {
 	zobrist := GetPolyglotHash()

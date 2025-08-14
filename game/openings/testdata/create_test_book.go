@@ -48,16 +48,16 @@ func main() {
 			Learn:  0,
 		},
 	}
-	
+
 	// Create minimal test book
 	createTestBook("minimal.bin", testEntries)
-	
+
 	// Create empty book (for testing edge cases)
 	createTestBook("empty.bin", []openings.PolyglotEntry{})
-	
+
 	// Create single entry book
 	createTestBook("single.bin", testEntries[:1])
-	
+
 }
 
 func createTestBook(filename string, entries []openings.PolyglotEntry) {
@@ -65,20 +65,20 @@ func createTestBook(filename string, entries []openings.PolyglotEntry) {
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Hash < entries[j].Hash
 	})
-	
+
 	file, err := os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
-	
+
 	for _, entry := range entries {
 		err := openings.WriteEntry(file, entry)
 		if err != nil {
 			panic(err)
 		}
 	}
-	
+
 }
 
 // Alternative approach using raw binary writing (if WriteEntry is not available)

@@ -20,7 +20,7 @@ func TestMVVLVATiebreakerSimple(t *testing.T) {
 	// Create two capture moves from the same piece (rook) to different victims
 	captureQueen := board.Move{
 		From:      board.Square{Rank: 0, File: 7}, // h1
-		To:        board.Square{Rank: 4, File: 3}, // d5 
+		To:        board.Square{Rank: 4, File: 3}, // d5
 		Piece:     board.WhiteRook,
 		Captured:  board.BlackQueen,
 		IsCapture: true,
@@ -37,9 +37,8 @@ func TestMVVLVATiebreakerSimple(t *testing.T) {
 	// Calculate SEE and scores
 	queenSEE := engine.seeCalculator.SEE(b, captureQueen)
 	rookSEE := engine.seeCalculator.SEE(b, captureRook)
-	threadState := engine.getThreadLocalState()
-	queenScore := engine.getCaptureScore(b, captureQueen, threadState)
-	rookScore := engine.getCaptureScore(b, captureRook, threadState)
+	queenScore := engine.getCaptureScore(b, captureQueen)
+	rookScore := engine.getCaptureScore(b, captureRook)
 
 	t.Logf("Rook captures queen (Rxd5): SEE=%d, Score=%d", queenSEE, queenScore)
 	t.Logf("Rook captures rook (Rxe5): SEE=%d, Score=%d", rookSEE, rookScore)
@@ -50,7 +49,7 @@ func TestMVVLVATiebreakerSimple(t *testing.T) {
 	}
 
 	if queenScore <= rookScore {
-		t.Errorf("❌ Queen capture (score %d) should score higher than rook capture (score %d)", 
+		t.Errorf("❌ Queen capture (score %d) should score higher than rook capture (score %d)",
 			queenScore, rookScore)
 	} else {
 		t.Logf("✅ MVV-LVA tiebreaker working correctly")
@@ -71,10 +70,10 @@ func TestMVVLVATiebreakerSimple(t *testing.T) {
 
 	t.Logf("Victim values: Queen=%d, Rook=%d", queenValue, rookValue)
 	t.Logf("Score difference: %d (expected ~%d from MVV-LVA)", actualDifference, expectedDifference)
-	
+
 	// The difference should include the MVV-LVA component
 	if actualDifference < expectedDifference {
-		t.Errorf("❌ Score difference (%d) should include MVV-LVA component (%d)", 
+		t.Errorf("❌ Score difference (%d) should include MVV-LVA component (%d)",
 			actualDifference, expectedDifference)
 	}
 }
@@ -98,7 +97,7 @@ func TestMVVLVAInEqualExchanges(t *testing.T) {
 		IsCapture: true,
 	}
 
-	// Rook takes rook (should be SEE = 0)  
+	// Rook takes rook (should be SEE = 0)
 	rookTakesRook := board.Move{
 		From:      board.Square{Rank: 1, File: 4}, // e2
 		To:        board.Square{Rank: 4, File: 4}, // e5
@@ -109,9 +108,8 @@ func TestMVVLVAInEqualExchanges(t *testing.T) {
 
 	queenSEE := engine.seeCalculator.SEE(b, queenTakesQueen)
 	rookSEE := engine.seeCalculator.SEE(b, rookTakesRook)
-	threadState := engine.getThreadLocalState()
-	queenScore := engine.getCaptureScore(b, queenTakesQueen, threadState)
-	rookScore := engine.getCaptureScore(b, rookTakesRook, threadState)
+	queenScore := engine.getCaptureScore(b, queenTakesQueen)
+	rookScore := engine.getCaptureScore(b, rookTakesRook)
 
 	t.Logf("Queen takes queen (Qxd5): SEE=%d, Score=%d", queenSEE, queenScore)
 	t.Logf("Rook takes rook (Rxe5): SEE=%d, Score=%d", rookSEE, rookScore)
@@ -123,15 +121,15 @@ func TestMVVLVAInEqualExchanges(t *testing.T) {
 	}
 
 	if queenScore <= rookScore {
-		t.Errorf("❌ Queen exchange (score %d) should score higher than rook exchange (score %d) due to MVV-LVA", 
+		t.Errorf("❌ Queen exchange (score %d) should score higher than rook exchange (score %d) due to MVV-LVA",
 			queenScore, rookScore)
 	} else {
 		t.Logf("✅ MVV-LVA correctly prioritizes higher-value equal exchanges")
 	}
 
 	// For equal exchanges, the tiebreaker should be victim_value / 10
-	expectedQueenBonus := 900 / 10  // Queen victim value / 10
-	expectedRookBonus := 500 / 10   // Rook victim value / 10
+	expectedQueenBonus := 900 / 10 // Queen victim value / 10
+	expectedRookBonus := 500 / 10  // Rook victim value / 10
 	expectedDifference := expectedQueenBonus - expectedRookBonus
 
 	actualDifference := queenScore - rookScore

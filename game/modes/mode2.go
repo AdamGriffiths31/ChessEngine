@@ -25,9 +25,8 @@ type ComputerMode struct {
 func NewComputerMode() *ComputerMode {
 	engine := game.NewEngine()
 	prompter := ui.NewPrompter()
-	parser := game.NewMoveParser(game.White)
+	parser := game.NewMoveParser(true)
 
-	// Create computer player with minimax engine
 	aiEngine := search.NewMinimaxEngine()
 	config := ai.SearchConfig{
 		MaxDepth:            4,
@@ -54,28 +53,22 @@ func (cm *ComputerMode) Run() error {
 	cm.isRunning = true
 	cm.prompter.ShowWelcomeComputer()
 
-	// Ask player to choose color
 	cm.selectPlayerColor()
 
-	// Ask for difficulty level
 	cm.selectDifficulty()
 
-	// Ask for debug mode
 	cm.selectDebugMode()
 
 	for cm.isRunning {
 		state := cm.engine.GetState()
 
-		// Show current game state
 		cm.prompter.ShowGameState(state)
 
-		// Check game over
 		if state.GameOver {
 			cm.handleGameOver(state)
 			break
 		}
 
-		// Handle current player's turn
 		currentPlayer := cm.engine.GetCurrentPlayer()
 		if currentPlayer == cm.humanColor {
 			cm.handleHumanTurn()
@@ -137,7 +130,7 @@ func (cm *ComputerMode) selectDebugMode() {
 // handleHumanTurn processes the human player's move
 func (cm *ComputerMode) handleHumanTurn() {
 	currentPlayer := cm.engine.GetCurrentPlayer()
-	cm.parser.SetCurrentPlayer(currentPlayer)
+	cm.parser.SetCurrentPlayer(currentPlayer == game.White)
 
 	input, err := cm.prompter.PromptForMove(currentPlayer)
 	if err != nil {
@@ -145,14 +138,12 @@ func (cm *ComputerMode) handleHumanTurn() {
 		return
 	}
 
-	// Parse and validate move
 	move, err := cm.parser.ParseMove(input, cm.engine.GetState().Board)
 	if err != nil {
 		cm.handleSpecialCommand(err.Error())
 		return
 	}
 
-	// Apply the move
 	err = cm.engine.ValidateAndMakeMove(move)
 	if err != nil {
 		cm.prompter.ShowError(err)
@@ -169,7 +160,6 @@ func (cm *ComputerMode) handleComputerTurn() {
 
 	fmt.Println("Computer is thinking...")
 
-	// Convert game.Player to moves.Player
 	var movesPlayer moves.Player
 	if currentPlayer == game.White {
 		movesPlayer = moves.White
@@ -177,14 +167,12 @@ func (cm *ComputerMode) handleComputerTurn() {
 		movesPlayer = moves.Black
 	}
 
-	// Get computer's move with statistics
 	result, err := cm.computer.GetMoveWithStats(state.Board, movesPlayer, 3*time.Second)
 	if err != nil {
 		cm.prompter.ShowError(err)
 		return
 	}
 
-	// Apply the move
 	err = cm.engine.MakeMove(result.BestMove)
 	if err != nil {
 		cm.prompter.ShowError(err)
@@ -203,7 +191,6 @@ func (cm *ComputerMode) handleComputerTurn() {
 
 // handleSpecialCommand handles special commands like quit, reset, etc.
 func (cm *ComputerMode) handleSpecialCommand(command string) {
-	// Similar to mode1 implementation
 	switch command {
 	case "QUIT":
 		if cm.prompter.ConfirmQuit() {
@@ -221,7 +208,7 @@ func (cm *ComputerMode) handleSpecialCommand(command string) {
 }
 
 // handleGameOver handles the end of the game
-func (cm *ComputerMode) handleGameOver(state *game.GameState) {
+func (cm *ComputerMode) handleGameOver(state *game.State) {
 	if state.Winner == cm.humanColor {
 		fmt.Println("Congratulations! You won!")
 	} else {

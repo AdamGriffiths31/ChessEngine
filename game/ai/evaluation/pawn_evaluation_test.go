@@ -86,7 +86,7 @@ func TestEvaluatePawnsSimple(t *testing.T) {
 			name:        "single_black_passed_pawn",
 			whitePawns:  []int{},
 			blackPawns:  []int{20}, // e3
-			expected:    -45, // Actual observed value
+			expected:    -45,       // Actual observed value
 			description: "Single black passed pawn",
 		},
 		{
@@ -139,7 +139,7 @@ func TestIsPassedPawn(t *testing.T) {
 		},
 		{
 			name:        "white_blocked_by_enemy_pawn_ahead",
-			pawnSquare:  28, // e4
+			pawnSquare:  28,        // e4
 			enemyPawns:  []int{36}, // e5
 			isWhite:     true,
 			expected:    false,
@@ -147,7 +147,7 @@ func TestIsPassedPawn(t *testing.T) {
 		},
 		{
 			name:        "white_blocked_by_diagonal_enemy",
-			pawnSquare:  28, // e4
+			pawnSquare:  28,        // e4
 			enemyPawns:  []int{35}, // d5 - can capture if white advances
 			isWhite:     true,
 			expected:    false,
@@ -163,7 +163,7 @@ func TestIsPassedPawn(t *testing.T) {
 		},
 		{
 			name:        "black_blocked_by_enemy_pawn",
-			pawnSquare:  36, // e5
+			pawnSquare:  36,        // e5
 			enemyPawns:  []int{28}, // e4
 			isWhite:     false,
 			expected:    false,
@@ -188,39 +188,39 @@ func TestIsPassedPawn(t *testing.T) {
 
 func TestIsIsolatedPawn(t *testing.T) {
 	tests := []struct {
-		name         string
+		name          string
 		friendlyPawns []int
-		file         int
-		expected     bool
-		description  string
+		file          int
+		expected      bool
+		description   string
 	}{
 		{
-			name:         "isolated_e_file",
+			name:          "isolated_e_file",
 			friendlyPawns: []int{20}, // e3
-			file:         4, // e-file
-			expected:     true,
-			description:  "Pawn on e-file with no pawns on d or f files",
+			file:          4,         // e-file
+			expected:      true,
+			description:   "Pawn on e-file with no pawns on d or f files",
 		},
 		{
-			name:         "not_isolated_with_left_neighbor",
+			name:          "not_isolated_with_left_neighbor",
 			friendlyPawns: []int{20, 19}, // e3, d3
-			file:         4, // e-file
-			expected:     false,
-			description:  "Pawn on e-file with pawn on d-file",
+			file:          4,             // e-file
+			expected:      false,
+			description:   "Pawn on e-file with pawn on d-file",
 		},
 		{
-			name:         "not_isolated_with_right_neighbor",
+			name:          "not_isolated_with_right_neighbor",
 			friendlyPawns: []int{20, 21}, // e3, f3
-			file:         4, // e-file
-			expected:     false,
-			description:  "Pawn on e-file with pawn on f-file",
+			file:          4,             // e-file
+			expected:      false,
+			description:   "Pawn on e-file with pawn on f-file",
 		},
 		{
-			name:         "edge_file_isolated",
+			name:          "edge_file_isolated",
 			friendlyPawns: []int{16}, // a3
-			file:         0, // a-file
-			expected:     true,
-			description:  "Pawn on a-file with no pawn on b-file",
+			file:          0,         // a-file
+			expected:      true,
+			description:   "Pawn on a-file with no pawn on b-file",
 		},
 	}
 
@@ -241,39 +241,39 @@ func TestIsIsolatedPawn(t *testing.T) {
 
 func TestIsConnectedPawn(t *testing.T) {
 	tests := []struct {
-		name         string
+		name          string
 		friendlyPawns []int
-		pawnSquare   int
-		expected     bool
-		description  string
+		pawnSquare    int
+		expected      bool
+		description   string
 	}{
 		{
-			name:         "connected_diagonal_support",
+			name:          "connected_diagonal_support",
 			friendlyPawns: []int{20, 11}, // e3, d2
-			pawnSquare:   20, // e3
-			expected:     true,
-			description:  "Pawn supported by diagonal pawn behind",
+			pawnSquare:    20,            // e3
+			expected:      true,
+			description:   "Pawn supported by diagonal pawn behind",
 		},
 		{
-			name:         "not_connected_no_support",
+			name:          "not_connected_no_support",
 			friendlyPawns: []int{20}, // e3 only
-			pawnSquare:   20, // e3
-			expected:     false,
-			description:  "Pawn with no diagonal support",
+			pawnSquare:    20,        // e3
+			expected:      false,
+			description:   "Pawn with no diagonal support",
 		},
 		{
-			name:         "connected_right_diagonal",
+			name:          "connected_right_diagonal",
 			friendlyPawns: []int{20, 13}, // e3, f2
-			pawnSquare:   20, // e3
-			expected:     true,
-			description:  "Pawn supported by right diagonal pawn",
+			pawnSquare:    20,            // e3
+			expected:      true,
+			description:   "Pawn supported by right diagonal pawn",
 		},
 		{
-			name:         "edge_pawn_no_connection",
+			name:          "edge_pawn_no_connection",
 			friendlyPawns: []int{16}, // a3
-			pawnSquare:   16, // a3
-			expected:     false,
-			description:  "Edge pawn with no possible diagonal support",
+			pawnSquare:    16,        // a3
+			expected:      false,
+			description:   "Edge pawn with no possible diagonal support",
 		},
 	}
 
@@ -295,7 +295,7 @@ func TestIsConnectedPawn(t *testing.T) {
 func TestPassedPawnBonus(t *testing.T) {
 	// Test that passed pawn bonuses increase exponentially
 	expected := [8]int{0, 10, 15, 25, 40, 60, 90, 0}
-	
+
 	if len(PassedPawnBonus) != 8 {
 		t.Errorf("PassedPawnBonus should have 8 entries, has %d", len(PassedPawnBonus))
 	}
@@ -318,7 +318,7 @@ func TestPassedPawnBonus(t *testing.T) {
 func TestPawnHashCaching(t *testing.T) {
 	// Test that identical pawn structures return same result from cache
 	fen := "8/8/4P3/8/8/8/8/8 w - - 0 1"
-	
+
 	b1, err := board.FromFEN(fen)
 	if err != nil {
 		t.Fatalf("Failed to create board from FEN: %v", err)

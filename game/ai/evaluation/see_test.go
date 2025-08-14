@@ -137,8 +137,8 @@ func TestSEE_EnPassant(t *testing.T) {
 	// Set up en passant position
 	b := board.NewBoard()
 	// Place white pawn on e5 and black pawn on d5 (that just moved two squares)
-	b.SetPiece(4, 4, board.WhitePawn) // e5
-	b.SetPiece(4, 3, board.BlackPawn) // d5
+	b.SetPiece(4, 4, board.WhitePawn)                     // e5
+	b.SetPiece(4, 3, board.BlackPawn)                     // d5
 	b.SetEnPassantTarget(&board.Square{Rank: 5, File: 3}) // d6
 
 	move := board.Move{
@@ -152,7 +152,7 @@ func TestSEE_EnPassant(t *testing.T) {
 
 	calc := NewSEECalculator()
 	result := calc.SEE(b, move)
-	
+
 	// Should gain a pawn (100)
 	expected := 100
 	if result != expected {
@@ -174,7 +174,7 @@ func TestSEE_NonCapture(t *testing.T) {
 
 	calc := NewSEECalculator()
 	result := calc.SEE(b, move)
-	
+
 	// Non-captures should return 0
 	if result != 0 {
 		t.Errorf("Non-capture SEE() = %d, expected 0", result)
@@ -198,7 +198,7 @@ func TestSEE_PawnAttackers(t *testing.T) {
 	expectedBlackCount := 2
 	actualWhiteCount := whiteAttackers.PopCount()
 	actualBlackCount := blackAttackers.PopCount()
-	
+
 	if actualWhiteCount != expectedWhiteCount {
 		t.Errorf("Expected %d white pawn attackers, got %d", expectedWhiteCount, actualWhiteCount)
 	}
@@ -222,7 +222,7 @@ func TestSEE_KnightAttackers(t *testing.T) {
 	expectedBlackCount := 1
 	actualWhiteCount := whiteAttackers.PopCount()
 	actualBlackCount := blackAttackers.PopCount()
-	
+
 	if actualWhiteCount != expectedWhiteCount {
 		t.Errorf("Expected %d white knight attackers, got %d", expectedWhiteCount, actualWhiteCount)
 	}
@@ -248,7 +248,7 @@ func TestSEE_SlidingPieceAttackers(t *testing.T) {
 	expectedBlackCount := 2
 	actualWhiteCount := whiteAttackers.PopCount()
 	actualBlackCount := blackAttackers.PopCount()
-	
+
 	if actualWhiteCount != expectedWhiteCount {
 		t.Errorf("Expected %d white sliding piece attackers, got %d", expectedWhiteCount, actualWhiteCount)
 	}
@@ -259,7 +259,7 @@ func TestSEE_SlidingPieceAttackers(t *testing.T) {
 
 func TestSEE_GetPieceValue(t *testing.T) {
 	calc := NewSEECalculator()
-	
+
 	tests := []struct {
 		piece    board.Piece
 		expected int
@@ -289,7 +289,7 @@ func TestSEE_GetPieceValue(t *testing.T) {
 
 func TestSEE_IsWhitePiece(t *testing.T) {
 	calc := NewSEECalculator()
-	
+
 	tests := []struct {
 		piece    board.Piece
 		expected bool
@@ -359,18 +359,18 @@ func createBoardFromFEN(t testing.TB, fen string) *board.Board {
 		t.Fatalf("Failed to create board from FEN %s: %v", fen, err)
 		return nil
 	}
-	
+
 	// Only print the board for non-benchmark tests
 	if testing.Short() {
 		return b
 	}
-	
+
 	// Check if this is a benchmark test by looking at the test name
 	testName := t.Name()
 	if strings.Contains(testName, "Benchmark") {
 		return b // Skip printing for benchmarks
 	}
-	
+
 	// Debug: Print the board
 	t.Logf("Board from FEN: %s", fen)
 	for rank := 7; rank >= 0; rank-- {

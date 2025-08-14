@@ -26,7 +26,7 @@ func TestEvaluateBishops(t *testing.T) {
 			description: "White has bishop pair advantage",
 		},
 		{
-			name:        "black_bishop_pair", 
+			name:        "black_bishop_pair",
 			fen:         "rn1qk1nr/pppppppp/3b1b2/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			expected:    26, // Actual observed value
 			description: "Black has bishop pair advantage",
@@ -68,7 +68,7 @@ func TestEvaluateBishopPairBonus(t *testing.T) {
 			description: "White has both light and dark squared bishops",
 		},
 		{
-			name:        "black_bishop_pair", 
+			name:        "black_bishop_pair",
 			fen:         "8/1b6/8/2b5/8/8/8/8 w - - 0 1", // b7 (light) and c5 (dark)
 			expected:    -BishopPairBonus,
 			description: "Black has both light and dark squared bishops",

@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// Move represents a chess move with all necessary information
 type Move struct {
 	From        Square
 	To          Square
@@ -42,6 +43,7 @@ var NullMove = Move{
 	IsEnPassant: false,
 }
 
+// ParseSquare converts algebraic notation (e.g. "e4") to a Square struct
 func ParseSquare(notation string) (Square, error) {
 	if len(notation) != 2 {
 		return Square{}, errors.New("invalid square notation: must be 2 characters")
@@ -142,7 +144,7 @@ func (b *Board) MakeNullMove() MoveUndo {
 	b.enPassantTarget = nil
 
 	// Castling rights remain unchanged (no pieces moved)
-	
+
 	// Update hash for null move - flip side to move bit
 	if b.hashUpdater != nil {
 		sideKey := b.hashUpdater.GetNullMoveDelta()
@@ -160,11 +162,12 @@ func (b *Board) UnmakeNullMove(undo MoveUndo) {
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
 	b.sideToMove = undo.SideToMove
-	
+
 	// Restore the original hash
 	b.SetHash(undo.Hash)
 }
 
+// MakeMove executes a chess move on the board, updating the position
 func (b *Board) MakeMove(move Move) error {
 	// Use the piece from the Move struct if available, otherwise get from board
 	var piece Piece
@@ -330,6 +333,7 @@ func (b *Board) updateEnPassantTarget(move Move, piece Piece) {
 	}
 }
 
+// ParseSimpleMove parses a simple move notation (e.g. "e2e4") into a Move struct
 func ParseSimpleMove(notation string) (Move, error) {
 	notation = strings.TrimSpace(notation)
 
@@ -406,7 +410,7 @@ func charToPiece(char byte) (Piece, error) {
 // UnmakeMove reverses a move using the undo information
 func (b *Board) UnmakeMove(undo MoveUndo) {
 	move := undo.Move
-	
+
 	// Determine what piece to restore based on move type
 	var movedPiece Piece
 	if move.Promotion != Empty && move.Promotion != 0 {
@@ -487,7 +491,7 @@ func (b *Board) undoCastling(move Move) {
 func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
 	// In en passant, the captured pawn is not on the destination square
 	// It's on the same rank as the capturing pawn started, same file as destination
-	
+
 	var captureRank int
 	if move.Piece == WhitePawn || (move.Piece == Empty && move.From.Rank < move.To.Rank) {
 		// White pawn captured - black pawn was on rank 5 (index 4)
@@ -496,17 +500,12 @@ func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
 		// Black pawn captured - white pawn was on rank 4 (index 3)
 		captureRank = 3
 	}
-	
+
 	// Restore the captured pawn
 	b.SetPiece(captureRank, move.To.File, capturedPiece)
 }
 
-// isWhitePiece checks if a piece belongs to white
-func isWhitePiece(piece Piece) bool {
-	return piece == WhitePawn || piece == WhiteRook || piece == WhiteKnight ||
-		piece == WhiteBishop || piece == WhiteQueen || piece == WhiteKing
-}
-
+// ToFEN converts the board position to FEN (Forsyth-Edwards Notation) string
 func (b *Board) ToFEN() string {
 	var fen strings.Builder
 

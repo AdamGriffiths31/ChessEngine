@@ -7,14 +7,17 @@ import (
 )
 
 func TestMoveParserParseMove(t *testing.T) {
-	parser := NewMoveParser(White)
-	gameBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	
+	parser := NewMoveParser(true)
+	gameBoard, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
+
 	testCases := []struct {
-		notation     string
-		expectedErr  string
-		hasError     bool
-		expectMove   bool
+		notation    string
+		expectedErr string
+		hasError    bool
+		expectMove  bool
 	}{
 		{"e2e4", "", false, true},
 		{"quit", "QUIT", true, false},
@@ -25,11 +28,11 @@ func TestMoveParserParseMove(t *testing.T) {
 		{"e7e8q", "", false, true},
 		{"invalid", "algebraic notation not fully implemented - use coordinate notation (e.g., e2e4)", true, false},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.notation, func(t *testing.T) {
 			move, err := parser.ParseMove(tc.notation, gameBoard)
-			
+
 			if tc.hasError {
 				if err == nil {
 					t.Errorf("Expected error for notation %q, but got none", tc.notation)
@@ -52,22 +55,25 @@ func TestMoveParserParseMove(t *testing.T) {
 }
 
 func TestMoveParserSetCurrentPlayer(t *testing.T) {
-	parser := NewMoveParser(White)
-	
-	if parser.currentPlayer != White {
-		t.Errorf("Expected initial player to be White, got %v", parser.currentPlayer)
+	parser := NewMoveParser(true)
+
+	if !parser.isWhiteToMove {
+		t.Errorf("Expected initial player to be White (true), got %v", parser.isWhiteToMove)
 	}
-	
-	parser.SetCurrentPlayer(Black)
-	if parser.currentPlayer != Black {
-		t.Errorf("Expected player to be Black after setting, got %v", parser.currentPlayer)
+
+	parser.SetCurrentPlayer(false)
+	if parser.isWhiteToMove {
+		t.Errorf("Expected player to be Black (false) after setting, got %v", parser.isWhiteToMove)
 	}
 }
 
 func TestMoveParserParseCastling(t *testing.T) {
-	parser := NewMoveParser(White)
-	gameBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	
+	parser := NewMoveParser(true)
+	gameBoard, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
+
 	// Test white kingside castling
 	move, err := parser.ParseMove("o-o", gameBoard)
 	if err != nil {
@@ -76,9 +82,9 @@ func TestMoveParserParseCastling(t *testing.T) {
 	if !move.IsCastling {
 		t.Errorf("Expected move to be castling")
 	}
-	
+
 	// Test black castling
-	parser.SetCurrentPlayer(Black)
+	parser.SetCurrentPlayer(false)
 	move, err = parser.ParseMove("o-o-o", gameBoard)
 	if err != nil {
 		t.Errorf("Expected no error for black queenside castling, got: %v", err)
@@ -90,33 +96,33 @@ func TestMoveParserParseCastling(t *testing.T) {
 
 func TestMoveParserCharToPiece(t *testing.T) {
 	testCases := []struct {
-		player   Player
+		isWhite  bool
 		char     byte
 		expected board.Piece
 		hasError bool
 	}{
-		{White, 'q', board.WhiteQueen, false},
-		{White, 'r', board.WhiteRook, false},
-		{White, 'b', board.WhiteBishop, false},
-		{White, 'n', board.WhiteKnight, false},
-		{Black, 'q', board.BlackQueen, false},
-		{Black, 'r', board.BlackRook, false},
-		{Black, 'b', board.BlackBishop, false},
-		{Black, 'n', board.BlackKnight, false},
-		{White, 'x', board.Empty, true},
+		{true, 'q', board.WhiteQueen, false},
+		{true, 'r', board.WhiteRook, false},
+		{true, 'b', board.WhiteBishop, false},
+		{true, 'n', board.WhiteKnight, false},
+		{false, 'q', board.BlackQueen, false},
+		{false, 'r', board.BlackRook, false},
+		{false, 'b', board.BlackBishop, false},
+		{false, 'n', board.BlackKnight, false},
+		{true, 'x', board.Empty, true},
 	}
-	
+
 	for _, tc := range testCases {
-		parser := NewMoveParser(tc.player)
+		parser := NewMoveParser(tc.isWhite)
 		result, err := parser.charToPiece(tc.char)
-		
+
 		if tc.hasError {
 			if err == nil {
-				t.Errorf("Expected error for char %c with player %v, but got none", tc.char, tc.player)
+				t.Errorf("Expected error for char %c with player %v, but got none", tc.char, tc.isWhite)
 			}
 		} else {
 			if err != nil {
-				t.Errorf("Expected no error for char %c with player %v, but got: %v", tc.char, tc.player, err)
+				t.Errorf("Expected no error for char %c with player %v, but got: %v", tc.char, tc.isWhite, err)
 			}
 			if result != tc.expected {
 				t.Errorf("Expected piece %c, got %c", tc.expected, result)

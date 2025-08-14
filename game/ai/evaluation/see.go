@@ -18,6 +18,9 @@ func NewSEECalculator() *SEECalculator {
 // Returns the material balance after all exchanges on the target square
 // Positive values favor the side making the initial capture
 func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
+	if b == nil {
+		return 0
+	}
 	if !move.IsCapture {
 		return 0
 	}
@@ -25,66 +28,51 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 	target := move.To
 	depth := 0
 
-	// Initial capture value - use existing PieceValues
 	see.gain[depth] = see.getPieceValue(move.Captured)
-	
-	// Handle en passant special case
+
 	if move.IsEnPassant {
-		see.gain[depth] = 100 // Pawn value
+		see.gain[depth] = 100
 	}
 
-	// Get occupied squares bitboard using existing functionality
 	occupied := b.AllPieces
-	
-	// Get all attackers to the target square using existing functionality  
+
 	targetSquareIndex := board.FileRankToSquare(target.File, target.Rank)
-	
+
 	whiteAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardWhite)
 	blackAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardBlack)
-	
-	// Remove the piece that made the initial move
+
 	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
 	occupied = occupied.ClearBit(fromSquare)
-	
-	// Update attackers after the initial move (for X-ray attacks)
+
 	see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, fromSquare, occupied)
 
-	// Current side to move (opposite of the side that made the initial capture)
 	sideToMove := see.getOppositeSide(move.Piece)
 	attackingPiece := move.Piece
 
 	for {
 		depth++
-		
-		// Find the least valuable attacker for the current side
+
 		var attackers *board.Bitboard
 		if sideToMove == "w" {
 			attackers = &whiteAttackers
 		} else {
 			attackers = &blackAttackers
 		}
-		
+
 		nextAttacker := see.getLeastValuableAttacker(b, attackers, sideToMove, occupied)
-		
+
 		if nextAttacker.piece == board.Empty {
-			break // No more attackers for this side
+			break
 		}
-		
-		// Calculate gain from white's perspective
-		// The "capturedValue" is what the current attacker will capture
+
 		capturedValue := see.getPieceValue(attackingPiece)
-		
-		// Standard SEE: gain[depth] = value_of_captured_piece - gain[depth-1]
-		// This works because we're alternating perspectives with the minimax
+
 		see.gain[depth] = capturedValue - see.gain[depth-1]
-		
-		// Remove the attacking piece
+
 		occupied = occupied.ClearBit(nextAttacker.square)
-		
-		// Update attackers for X-ray attacks
+
 		see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, nextAttacker.square, occupied)
-		
-		// Switch sides and set up for next iteration
+
 		if sideToMove == "w" {
 			sideToMove = "b"
 		} else {
@@ -93,11 +81,7 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 		attackingPiece = nextAttacker.piece
 	}
 
-	// Minimax through the gain array
 	for depth--; depth > 0; depth-- {
-		// SEE minimax: each player will choose the move that's best for them
-		// But this means the opponent will choose the move that's worst for us
-		// If -gain[depth] is worse for the initial side than gain[depth-1], the opponent will force it
 		if see.gain[depth-1] > -see.gain[depth] {
 			see.gain[depth-1] = -see.gain[depth]
 		}
@@ -114,61 +98,54 @@ type attacker struct {
 
 // getLeastValuableAttacker finds the least valuable piece attacking the target square
 func (see *SEECalculator) getLeastValuableAttacker(b *board.Board, attackers *board.Bitboard, side string, occupied board.Bitboard) attacker {
-	// Check each piece type in order of value (least to most valuable)
+	if b == nil || attackers == nil {
+		return attacker{piece: board.Empty, square: -1}
+	}
 	pieceOrder := see.getPieceOrderForSide(side)
-	
+
 	for _, pieceType := range pieceOrder {
-		// Get pieces of this type that are attacking and still on the board
 		pieceBitboard := b.GetPieceBitboard(pieceType)
 		attackingPieces := pieceBitboard & *attackers & occupied
-		
+
 		if attackingPieces != 0 {
-			// Get the first (any) piece of this type
 			square, _ := attackingPieces.PopLSB()
-			
-			// Remove this attacker from the attackers bitboard
+
 			*attackers = (*attackers).ClearBit(square)
-			
+
 			return attacker{
 				piece:  pieceType,
 				square: square,
 			}
 		}
 	}
-	
+
 	return attacker{piece: board.Empty, square: -1}
 }
 
 // updateAttackersAfterMove updates attacker bitboards after a piece moves (for X-ray attacks)
-func (see *SEECalculator) updateAttackersAfterMove(b *board.Board, whiteAttackers, blackAttackers *board.Bitboard, target board.Square, removedSquare int, occupied board.Bitboard) {
-	// Recalculate attackers to handle X-ray attacks
-	// This is simpler and more reliable than trying to update incrementally
+func (see *SEECalculator) updateAttackersAfterMove(b *board.Board, whiteAttackers, blackAttackers *board.Bitboard, target board.Square, _ int, occupied board.Bitboard) {
 	targetSquareIndex := board.FileRankToSquare(target.File, target.Rank)
-	
+
 	newWhiteAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardWhite) & occupied
 	newBlackAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardBlack) & occupied
-	
+
 	*whiteAttackers = newWhiteAttackers
 	*blackAttackers = newBlackAttackers
 }
 
-// Helper functions
-
-
-// getPieceValue returns the value of a piece for SEE calculation using existing PieceValues
+// getPieceValue returns the value of a piece for SEE calculation
 func (see *SEECalculator) getPieceValue(piece board.Piece) int {
-	// Kings are extremely valuable for SEE (they have evaluation value 0 in PieceValues)
 	if piece == board.WhiteKing || piece == board.BlackKing {
 		return 10000
 	}
-	
+
 	if value, ok := PieceValues[piece]; ok {
 		if value < 0 {
-			return -value // Return absolute value
+			return -value
 		}
 		return value
 	}
-	
+
 	return 0
 }
 
@@ -194,7 +171,7 @@ func (see *SEECalculator) getOppositeSide(piece board.Piece) string {
 	return "w"
 }
 
-// isWhitePiece uses existing functionality to check if a piece is white
+// isWhitePiece checks if a piece is white
 func (see *SEECalculator) isWhitePiece(piece board.Piece) bool {
 	return board.IsWhitePiece(piece)
 }

@@ -7,22 +7,36 @@ import (
 	"strings"
 )
 
+// Piece represents a chess piece using standard FEN notation
 type Piece rune
 
 const (
-	Empty       Piece = '.'
-	WhitePawn   Piece = 'P'
-	WhiteRook   Piece = 'R'
+	// Empty represents an empty square
+	Empty Piece = '.'
+	// WhitePawn represents a white pawn piece
+	WhitePawn Piece = 'P'
+	// WhiteRook represents a white rook piece
+	WhiteRook Piece = 'R'
+	// WhiteKnight represents a white knight piece
 	WhiteKnight Piece = 'N'
+	// WhiteBishop represents a white bishop piece
 	WhiteBishop Piece = 'B'
-	WhiteQueen  Piece = 'Q'
-	WhiteKing   Piece = 'K'
-	BlackPawn   Piece = 'p'
-	BlackRook   Piece = 'r'
+	// WhiteQueen represents a white queen piece
+	WhiteQueen Piece = 'Q'
+	// WhiteKing represents a white king piece
+	WhiteKing Piece = 'K'
+	// BlackPawn represents a black pawn piece
+	BlackPawn Piece = 'p'
+	// BlackRook represents a black rook piece
+	BlackRook Piece = 'r'
+	// BlackKnight represents a black knight piece
 	BlackKnight Piece = 'n'
+	// BlackBishop represents a black bishop piece
 	BlackBishop Piece = 'b'
-	BlackQueen  Piece = 'q'
-	BlackKing   Piece = 'k'
+	// BlackQueen represents a black queen piece
+	BlackQueen Piece = 'q'
+	// BlackKing represents a black king piece
+	BlackKing Piece = 'k'
 )
 
 // Bitboard indices for piece types
@@ -41,11 +55,13 @@ const (
 	BlackKingIndex   = 11
 )
 
+// Square represents a position on the chess board
 type Square struct {
 	File int // 0-7 (a-h)
 	Rank int // 0-7 (1-8)
 }
 
+// Board represents a chess board with piece positions and game state
 type Board struct {
 	castlingRights  string  // KQkq format
 	enPassantTarget *Square // nil if no en passant
@@ -66,7 +82,7 @@ type Board struct {
 
 	// Zobrist hash for incremental updates
 	currentHash uint64
-	hashHistory []uint64 // Stack for unmake operations
+	hashHistory []uint64    // Stack for unmake operations
 	hashUpdater HashUpdater // For incremental hash updates
 }
 
@@ -90,6 +106,7 @@ func init() {
 	}
 }
 
+// NewBoard creates a new chess board with the standard starting position
 func NewBoard() *Board {
 	board := &Board{
 		castlingRights:  "KQkq",
@@ -155,12 +172,12 @@ func (b *Board) InitializeHashFromPosition(hashFunc func(*Board) uint64) {
 
 // HashUpdater interface for providing zobrist key updates
 type HashUpdater interface {
-	GetHashDelta(b *Board, move Move, oldState BoardState) uint64
+	GetHashDelta(b *Board, move Move, oldState State) uint64
 	GetNullMoveDelta() uint64 // Get hash delta for null move (just flip side-to-move)
 }
 
-// BoardState captures the board state before a move for hash calculation
-type BoardState struct {
+// State captures the board state before a move for hash calculation
+type State struct {
 	CastlingRights  string
 	EnPassantTarget *Square
 	SideToMove      string
@@ -171,7 +188,7 @@ func (b *Board) GetPawnHash() uint64 {
 	// Use bitboards for efficient pawn hash calculation
 	whitePawns := b.GetPieceBitboard(WhitePawn)
 	blackPawns := b.GetPieceBitboard(BlackPawn)
-	
+
 	// Simple but effective hash: combine white and black pawn bitboards
 	// Multiply by different primes to distinguish white vs black pawns
 	return uint64(whitePawns)*17 + uint64(blackPawns)*23
@@ -183,8 +200,8 @@ func (b *Board) SetHashUpdater(updater HashUpdater) {
 }
 
 // GetCurrentBoardState returns the current board state for hash calculations
-func (b *Board) GetCurrentBoardState() BoardState {
-	return BoardState{
+func (b *Board) GetCurrentBoardState() State {
+	return State{
 		CastlingRights:  b.castlingRights,
 		EnPassantTarget: b.enPassantTarget,
 		SideToMove:      b.sideToMove,
@@ -274,25 +291,6 @@ func (b *Board) GetColorBitboard(color BitboardColor) Bitboard {
 	return b.BlackPieces
 }
 
-// updateBitboards updates the derived bitboards (color and all pieces)
-func (b *Board) updateBitboards() {
-	b.WhitePieces = 0
-	b.BlackPieces = 0
-
-	// Combine all white piece bitboards
-	for i := WhitePawnIndex; i <= WhiteKingIndex; i++ {
-		b.WhitePieces |= b.PieceBitboards[i]
-	}
-
-	// Combine all black piece bitboards
-	for i := BlackPawnIndex; i <= BlackKingIndex; i++ {
-		b.BlackPieces |= b.PieceBitboards[i]
-	}
-
-	// All pieces is the union of white and black
-	b.AllPieces = b.WhitePieces | b.BlackPieces
-}
-
 // setPieceBitboard sets a piece on the bitboards
 func (b *Board) setPieceBitboard(rank, file int, piece Piece) {
 	square := FileRankToSquare(file, rank)
@@ -331,21 +329,23 @@ func (b *Board) removePieceBitboard(rank, file int, piece Piece) {
 	}
 }
 
+// GetPiece returns the piece at the specified rank and file coordinates
 func (b *Board) GetPiece(rank, file int) Piece {
 	if rank < 0 || rank > 7 || file < 0 || file > 7 {
 		return Empty
 	}
-	
+
 	square := rank*8 + file
 	return b.Mailbox[square]
 }
 
+// SetPiece places a piece at the specified rank and file coordinates
 func (b *Board) SetPiece(rank, file int, piece Piece) {
 	square := rank*8 + file
-	
+
 	// Get old piece from mailbox
 	oldPiece := b.Mailbox[square]
-	
+
 	// Update mailbox
 	b.Mailbox[square] = piece
 
@@ -360,6 +360,7 @@ func (b *Board) SetPiece(rank, file int, piece Piece) {
 	}
 }
 
+// FromFEN creates a new board from FEN (Forsyth-Edwards Notation) string
 func FromFEN(fen string) (*Board, error) {
 	if fen == "" {
 		return nil, errors.New("invalid FEN: missing board position")
@@ -392,7 +393,10 @@ func FromFEN(fen string) (*Board, error) {
 			}
 
 			if char >= '1' && char <= '8' {
-				emptySquares, _ := strconv.Atoi(string(char))
+				emptySquares, err := strconv.Atoi(string(char))
+				if err != nil {
+					return nil, fmt.Errorf("invalid FEN: failed to parse empty squares count: %w", err)
+				}
 				for i := 0; i < emptySquares; i++ {
 					if file >= 8 {
 						return nil, errors.New("invalid FEN: too many files in rank")
@@ -470,23 +474,27 @@ func (b *Board) getPieceCountFromBitboard(piece Piece) int {
 	return b.PieceBitboards[index].PopCount()
 }
 
-// Getter methods for board state
+// GetCastlingRights returns the current castling rights as a string
 func (b *Board) GetCastlingRights() string {
 	return b.castlingRights
 }
 
+// GetEnPassantTarget returns the current en passant target square if any
 func (b *Board) GetEnPassantTarget() *Square {
 	return b.enPassantTarget
 }
 
+// GetHalfMoveClock returns the current half-move clock for the 50-move rule
 func (b *Board) GetHalfMoveClock() int {
 	return b.halfMoveClock
 }
 
+// GetFullMoveNumber returns the current full move number
 func (b *Board) GetFullMoveNumber() int {
 	return b.fullMoveNumber
 }
 
+// GetSideToMove returns which side is to move ("w" or "b")
 func (b *Board) GetSideToMove() string {
 	return b.sideToMove
 }
@@ -563,53 +571,27 @@ func getPieceName(piece Piece) string {
 	}
 }
 
-// Setter methods for board state
+// SetCastlingRights sets the castling rights string
 func (b *Board) SetCastlingRights(rights string) {
 	b.castlingRights = rights
 }
 
+// SetEnPassantTarget sets the en passant target square
 func (b *Board) SetEnPassantTarget(target *Square) {
 	b.enPassantTarget = target
 }
 
+// SetHalfMoveClock sets the half-move clock for the 50-move rule
 func (b *Board) SetHalfMoveClock(clock int) {
 	b.halfMoveClock = clock
 }
 
+// SetFullMoveNumber sets the full move number
 func (b *Board) SetFullMoveNumber(num int) {
 	b.fullMoveNumber = num
 }
 
+// SetSideToMove sets which side is to move
 func (b *Board) SetSideToMove(side string) {
 	b.sideToMove = side
-}
-
-// validateBoardConsistency checks if the board state is internally consistent
-func (b *Board) validateBoardConsistency() bool {
-	// Count pieces by scanning the board
-	actualCounts := make(map[Piece]int)
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
-			piece := b.GetPiece(rank, file)
-			if piece != Empty {
-				actualCounts[piece]++
-			}
-		}
-	}
-
-	// Compare with tracked counts
-	pieces := []Piece{WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing,
-		BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing}
-
-	for _, piece := range pieces {
-		actual := actualCounts[piece]
-		tracked := b.getPieceCountFromBitboard(piece)
-
-		if actual != tracked {
-			fmt.Printf("Validation failed: %c has actual=%d, tracked=%d\n", piece, actual, tracked)
-			return false
-		}
-	}
-
-	return true
 }

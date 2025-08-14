@@ -95,7 +95,6 @@ func TestBitboardVsArrayMoveGeneration(t *testing.T) {
 					// Cleanup
 					ReleaseMoveList(arrayMoves)
 					ReleaseMoveList(bitboardMoves)
-					bitboardGenerator.Release()
 				})
 			}
 		})
@@ -161,7 +160,6 @@ func TestBitboardPawnMoveGeneration(t *testing.T) {
 
 			ReleaseMoveList(whiteMoves)
 			ReleaseMoveList(blackMoves)
-			bitboardGen.Release()
 		})
 	}
 }
@@ -219,7 +217,6 @@ func TestBitboardKnightMoveGeneration(t *testing.T) {
 			}
 
 			ReleaseMoveList(moves)
-			bitboardGen.Release()
 		})
 	}
 }
@@ -283,7 +280,6 @@ func TestBitboardSlidingPieceGeneration(t *testing.T) {
 			}
 
 			ReleaseMoveList(moves)
-			bitboardGen.Release()
 		})
 	}
 }
@@ -335,7 +331,6 @@ func TestBitboardCastlingGeneration(t *testing.T) {
 			}
 
 			ReleaseMoveList(moves)
-			bitboardGen.Release()
 		})
 	}
 }
@@ -403,7 +398,6 @@ func BenchmarkBitboardMoveGeneration(b *testing.B) {
 			}
 
 			bitboardGen := NewBitboardMoveGenerator()
-			defer bitboardGen.Release()
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
@@ -461,7 +455,6 @@ func BenchmarkMoveGenerationComparison(b *testing.B) {
 
 	b.Run("Bitboard", func(b *testing.B) {
 		bitboardGen := NewBitboardMoveGenerator()
-		defer bitboardGen.Release()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			moves := bitboardGen.GenerateAllMovesBitboard(board, White)

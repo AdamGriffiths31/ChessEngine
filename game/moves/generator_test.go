@@ -15,7 +15,10 @@ func TestNewGenerator(t *testing.T) {
 
 func TestGenerateAllMoves_InitialPosition(t *testing.T) {
 	gen := NewGenerator()
-	b, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
 
 	// Test white moves - should include pawns (16) + knights (4) + king (0) = 20 moves
 	// Rooks, bishops, queens are blocked by pawns in initial position
@@ -33,7 +36,8 @@ func TestGenerateAllMoves_InitialPosition(t *testing.T) {
 }
 
 func TestMoveList_AddMove(t *testing.T) {
-	ml := NewMoveList()
+	ml := GetMoveList()
+	defer ReleaseMoveList(ml)
 
 	if ml.Count != 0 {
 		t.Errorf("Expected empty move list to have count 0, got %d", ml.Count)
@@ -56,7 +60,8 @@ func TestMoveList_AddMove(t *testing.T) {
 }
 
 func TestMoveList_Contains(t *testing.T) {
-	ml := NewMoveList()
+	ml := GetMoveList()
+	defer ReleaseMoveList(ml)
 
 	move := board.Move{
 		From:      board.Square{File: 4, Rank: 1},
@@ -81,7 +86,7 @@ func TestMoveList_Contains(t *testing.T) {
 	}
 }
 
-func TestMovesEqual(t *testing.T) {
+func TestEqual(t *testing.T) {
 	move1 := board.Move{
 		From:      board.Square{File: 4, Rank: 1},
 		To:        board.Square{File: 4, Rank: 3},
@@ -94,7 +99,7 @@ func TestMovesEqual(t *testing.T) {
 		Promotion: board.Empty,
 	}
 
-	if !MovesEqual(move1, move2) {
+	if !Equal(move1, move2) {
 		t.Error("Expected identical moves to be equal")
 	}
 
@@ -104,7 +109,7 @@ func TestMovesEqual(t *testing.T) {
 		Promotion: board.Empty,
 	}
 
-	if MovesEqual(move1, move3) {
+	if Equal(move1, move3) {
 		t.Error("Expected different moves to not be equal")
 	}
 }
@@ -120,12 +125,12 @@ func TestFindKing(t *testing.T) {
 
 	// Test finding kings using bitboard lookup
 	whiteKingPos := gen.findKing(b, White)
-	if whiteKingPos == nil {
+	if whiteKingPos.File == -1 || whiteKingPos.Rank == -1 {
 		t.Error("Expected to find white king")
 	}
 
 	blackKingPos := gen.findKing(b, Black)
-	if blackKingPos == nil {
+	if blackKingPos.File == -1 || blackKingPos.Rank == -1 {
 		t.Error("Expected to find black king")
 	}
 
@@ -133,37 +138,43 @@ func TestFindKing(t *testing.T) {
 	expectedWhiteKing := board.Square{File: 4, Rank: 0} // e1
 	expectedBlackKing := board.Square{File: 4, Rank: 7} // e8
 
-	if *whiteKingPos != expectedWhiteKing {
-		t.Errorf("Expected white king at %v, got %v", expectedWhiteKing, *whiteKingPos)
+	if whiteKingPos != expectedWhiteKing {
+		t.Errorf("Expected white king at %v, got %v", expectedWhiteKing, whiteKingPos)
 	}
-	if *blackKingPos != expectedBlackKing {
-		t.Errorf("Expected black king at %v, got %v", expectedBlackKing, *blackKingPos)
+	if blackKingPos != expectedBlackKing {
+		t.Errorf("Expected black king at %v, got %v", expectedBlackKing, blackKingPos)
 	}
 
-	// Test with empty board - should return nil
-	emptyBoard, _ := board.FromFEN("8/8/8/8/8/8/8/8 w - - 0 1")
+	// Test with empty board - should return sentinel value
+	emptyBoard, err := board.FromFEN("8/8/8/8/8/8/8/8 w - - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create empty board from FEN: %v", err)
+	}
 	whiteKingPosEmpty := gen.findKing(emptyBoard, White)
 	blackKingPosEmpty := gen.findKing(emptyBoard, Black)
 
-	if whiteKingPosEmpty != nil {
-		t.Error("Expected nil for white king on empty board")
+	if whiteKingPosEmpty.File != -1 || whiteKingPosEmpty.Rank != -1 {
+		t.Error("Expected sentinel value for white king on empty board")
 	}
-	if blackKingPosEmpty != nil {
-		t.Error("Expected nil for black king on empty board")
+	if blackKingPosEmpty.File != -1 || blackKingPosEmpty.Rank != -1 {
+		t.Error("Expected sentinel value for black king on empty board")
 	}
 
 	// Test with custom position
-	customBoard, _ := board.FromFEN("8/8/8/3k4/3K4/8/8/8 w - - 0 1")
+	customBoard, err := board.FromFEN("8/8/8/3k4/3K4/8/8/8 w - - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create custom board from FEN: %v", err)
+	}
 	whiteKingCustom := gen.findKing(customBoard, White)
 	blackKingCustom := gen.findKing(customBoard, Black)
 
 	expectedWhiteCustom := board.Square{File: 3, Rank: 3} // d4
 	expectedBlackCustom := board.Square{File: 3, Rank: 4} // d5
 
-	if whiteKingCustom == nil || *whiteKingCustom != expectedWhiteCustom {
+	if whiteKingCustom.File == -1 || whiteKingCustom != expectedWhiteCustom {
 		t.Errorf("Expected white king at %v, got %v", expectedWhiteCustom, whiteKingCustom)
 	}
-	if blackKingCustom == nil || *blackKingCustom != expectedBlackCustom {
+	if blackKingCustom.File == -1 || blackKingCustom != expectedBlackCustom {
 		t.Errorf("Expected black king at %v, got %v", expectedBlackCustom, blackKingCustom)
 	}
 

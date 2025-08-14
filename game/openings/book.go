@@ -1,3 +1,4 @@
+// Package openings provides chess opening book functionality with Polyglot format support.
 package openings
 
 import (
@@ -8,37 +9,28 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/board"
 )
 
-// BookConfig contains configuration options for opening books
-type BookConfig struct {
-	// Enabled controls whether opening books are consulted
-	Enabled bool
-	
-	// BookFiles contains paths to opening book files
-	BookFiles []string
-	
-	// SelectionMode controls how moves are selected from multiple options
-	SelectionMode SelectionMode
-	
-	// RandomSeed for move selection (0 for time-based)
-	RandomSeed int64
-	
-	// WeightThreshold minimum weight for considering a move
-	WeightThreshold uint16
-}
-
 // SelectionMode defines how to select moves when multiple options exist
 type SelectionMode int
 
 const (
 	// SelectRandom chooses randomly based on weights
 	SelectRandom SelectionMode = iota
-	
+
 	// SelectBest always chooses the highest-weighted move
 	SelectBest
-	
+
 	// SelectWeightedRandom uses weighted random selection
 	SelectWeightedRandom
 )
+
+// BookConfig contains configuration options for opening books
+type BookConfig struct {
+	Enabled         bool
+	BookFiles       []string
+	SelectionMode   SelectionMode
+	RandomSeed      int64
+	WeightThreshold uint16
+}
 
 // DefaultBookConfig returns a default book configuration
 func DefaultBookConfig() BookConfig {
@@ -65,11 +57,11 @@ func NewBookLookupService(config BookConfig) *BookLookupService {
 	if seed == 0 {
 		seed = time.Now().UnixNano()
 	}
-	
+
 	return &BookLookupService{
 		manager: NewBookManager(),
 		config:  config,
-		rng:     rand.New(rand.NewSource(seed)),
+		rng:     rand.New(rand.NewSource(seed)), // #nosec G404 - chess move selection doesn't require crypto/rand
 		zobrist: GetPolyglotHash(),
 	}
 }
@@ -79,16 +71,16 @@ func (bls *BookLookupService) LoadBooks() error {
 	if !bls.config.Enabled {
 		return nil
 	}
-	
+
 	for _, filename := range bls.config.BookFiles {
 		book := NewPolyglotBook()
 		if err := book.LoadFromFile(filename); err != nil {
 			return fmt.Errorf("failed to load book %s: %w", filename, err)
 		}
-		
+
 		bls.manager.AddBook(book)
 	}
-	
+
 	return nil
 }
 
@@ -97,29 +89,25 @@ func (bls *BookLookupService) FindBookMove(b *board.Board) (*board.Move, error) 
 	if !bls.config.Enabled {
 		return nil, ErrPositionNotFound
 	}
-	
-	// Generate position hash
+
 	hash := bls.zobrist.HashPosition(b)
-	
-	// Lookup moves in books
+
 	bookMoves, err := bls.manager.LookupMove(hash, b)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to lookup moves in opening books: %w", err)
 	}
-	
-	// Filter moves by weight threshold
+
 	var validMoves []BookMove
 	for _, bookMove := range bookMoves {
 		if bookMove.Weight >= bls.config.WeightThreshold {
 			validMoves = append(validMoves, bookMove)
 		}
 	}
-	
+
 	if len(validMoves) == 0 {
 		return nil, ErrPositionNotFound
 	}
-	
-	// Select move based on configuration
+
 	selectedMove := bls.selectMove(validMoves)
 	return &selectedMove.Move, nil
 }
@@ -129,17 +117,17 @@ func (bls *BookLookupService) selectMove(bookMoves []BookMove) BookMove {
 	if len(bookMoves) == 1 {
 		return bookMoves[0]
 	}
-	
+
 	switch bls.config.SelectionMode {
 	case SelectBest:
 		return bls.selectBestMove(bookMoves)
-		
+
 	case SelectRandom:
 		return bls.selectRandomMove(bookMoves)
-		
+
 	case SelectWeightedRandom:
 		return bls.selectWeightedRandomMove(bookMoves)
-		
+
 	default:
 		return bls.selectWeightedRandomMove(bookMoves)
 	}
@@ -164,20 +152,17 @@ func (bls *BookLookupService) selectRandomMove(bookMoves []BookMove) BookMove {
 
 // selectWeightedRandomMove returns a move selected randomly based on weights
 func (bls *BookLookupService) selectWeightedRandomMove(bookMoves []BookMove) BookMove {
-	// Calculate total weight
 	var totalWeight uint32
 	for _, bookMove := range bookMoves {
 		totalWeight += uint32(bookMove.Weight)
 	}
-	
+
 	if totalWeight == 0 {
 		return bls.selectRandomMove(bookMoves)
 	}
-	
-	// Generate random number in range [0, totalWeight)
+
 	r := uint32(bls.rng.Int63n(int64(totalWeight)))
-	
-	// Find the selected move
+
 	var accumulatedWeight uint32
 	for _, bookMove := range bookMoves {
 		accumulatedWeight += uint32(bookMove.Weight)
@@ -185,8 +170,7 @@ func (bls *BookLookupService) selectWeightedRandomMove(bookMoves []BookMove) Boo
 			return bookMove
 		}
 	}
-	
-	// Fallback (should not happen)
+
 	return bookMoves[len(bookMoves)-1]
 }
 
@@ -226,20 +210,19 @@ func (bls *BookLookupService) ValidateMove(b *board.Board, move board.Move) bool
 	if !bls.config.Enabled {
 		return false
 	}
-	
+
 	hash := bls.zobrist.HashPosition(b)
 	bookMoves, err := bls.manager.LookupMove(hash, b)
 	if err != nil {
 		return false
 	}
-	
-	// Check if the move exists in book moves
+
 	for _, bookMove := range bookMoves {
 		if movesEqual(bookMove.Move, move) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 

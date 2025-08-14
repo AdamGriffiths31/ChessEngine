@@ -42,11 +42,11 @@ func TestEvaluateQueens(t *testing.T) {
 			}
 
 			score := evaluateQueens(b)
-			
+
 			// Allow some tolerance for mobility table variations
 			tolerance := 5
 			if abs(score-tt.expected) > tolerance {
-				t.Errorf("%s: expected ~%d, got %d (difference: %d)", 
+				t.Errorf("%s: expected ~%d, got %d (difference: %d)",
 					tt.description, tt.expected, score, score-tt.expected)
 			}
 		})
@@ -67,13 +67,13 @@ func TestEvaluateQueensForColor(t *testing.T) {
 			expected:    46, // Updated actual value
 		},
 		{
-			fen:         "8/8/8/8/8/8/3Q4/8 w - - 0 1", 
+			fen:         "8/8/8/8/8/8/3Q4/8 w - - 0 1",
 			description: "White queen on 2nd rank",
 			isWhite:     true,
 			expected:    42, // Updated actual value
 		},
 		{
-			fen:         "8/3Q4/8/8/8/8/8/8 w - - 0 1", 
+			fen:         "8/3Q4/8/8/8/8/8/8 w - - 0 1",
 			description: "White queen on 7th rank",
 			isWhite:     true,
 			expected:    62, // Updated actual value

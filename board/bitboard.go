@@ -1,3 +1,4 @@
+// Package board provides chess board representation and move generation using bitboards.
 package board
 
 import (
@@ -16,20 +17,78 @@ type Bitboard uint64
 type BitboardColor int
 
 const (
+	// BitboardWhite represents white pieces in bitboard operations
 	BitboardWhite BitboardColor = iota
+	// BitboardBlack represents black pieces in bitboard operations
 	BitboardBlack
 )
 
 // Square constants for easy reference
 const (
-	A1, B1, C1, D1, E1, F1, G1, H1 = 0, 1, 2, 3, 4, 5, 6, 7
-	A2, B2, C2, D2, E2, F2, G2, H2 = 8, 9, 10, 11, 12, 13, 14, 15
-	A3, B3, C3, D3, E3, F3, G3, H3 = 16, 17, 18, 19, 20, 21, 22, 23
-	A4, B4, C4, D4, E4, F4, G4, H4 = 24, 25, 26, 27, 28, 29, 30, 31
-	A5, B5, C5, D5, E5, F5, G5, H5 = 32, 33, 34, 35, 36, 37, 38, 39
-	A6, B6, C6, D6, E6, F6, G6, H6 = 40, 41, 42, 43, 44, 45, 46, 47
-	A7, B7, C7, D7, E7, F7, G7, H7 = 48, 49, 50, 51, 52, 53, 54, 55
-	A8, B8, C8, D8, E8, F8, G8, H8 = 56, 57, 58, 59, 60, 61, 62, 63
+	A1 = 0
+	B1 = 1
+	C1 = 2
+	D1 = 3
+	E1 = 4
+	F1 = 5
+	G1 = 6
+	H1 = 7
+	A2 = 8
+	B2 = 9
+	C2 = 10
+	D2 = 11
+	E2 = 12
+	F2 = 13
+	G2 = 14
+	H2 = 15
+	A3 = 16
+	B3 = 17
+	C3 = 18
+	D3 = 19
+	E3 = 20
+	F3 = 21
+	G3 = 22
+	H3 = 23
+	A4 = 24
+	B4 = 25
+	C4 = 26
+	D4 = 27
+	E4 = 28
+	F4 = 29
+	G4 = 30
+	H4 = 31
+	A5 = 32
+	B5 = 33
+	C5 = 34
+	D5 = 35
+	E5 = 36
+	F5 = 37
+	G5 = 38
+	H5 = 39
+	A6 = 40
+	B6 = 41
+	C6 = 42
+	D6 = 43
+	E6 = 44
+	F6 = 45
+	G6 = 46
+	H6 = 47
+	A7 = 48
+	B7 = 49
+	C7 = 50
+	D7 = 51
+	E7 = 52
+	F7 = 53
+	G7 = 54
+	H7 = 55
+	A8 = 56
+	B8 = 57
+	C8 = 58
+	D8 = 59
+	E8 = 60
+	F8 = 61
+	G8 = 62
+	H8 = 63
 )
 
 // Center square masks
@@ -194,7 +253,7 @@ func GetRankBitboard(square int) Bitboard {
 func (b Bitboard) String() string {
 	var result strings.Builder
 	result.WriteString("  a b c d e f g h\n")
-	
+
 	// Print from rank 8 down to rank 1 (top to bottom visually)
 	for rank := 7; rank >= 0; rank-- {
 		result.WriteString(strconv.Itoa(rank + 1))
@@ -337,7 +396,7 @@ func GetAdjacentFileForwardFill(pawns Bitboard, color BitboardColor) Bitboard {
 	leftFiles := pawns.ShiftWest()
 	rightFiles := pawns.ShiftEast()
 	adjacentPawns := leftFiles | rightFiles
-	
+
 	// Get forward fill for adjacent file pawns
 	return GetFileForwardFill(adjacentPawns, color)
 }
@@ -347,28 +406,28 @@ func GetAdjacentFileForwardFill(pawns Bitboard, color BitboardColor) Bitboard {
 func GetPassedPawns(friendlyPawns, enemyPawns Bitboard, color BitboardColor) Bitboard {
 	// Get all squares that enemy pawns control ahead on same files
 	enemyFileControl := GetFileForwardFill(enemyPawns, OppositeBitboardColor(color))
-	
+
 	// Get all squares that enemy pawns control ahead on adjacent files
 	enemyAdjacentControl := GetAdjacentFileForwardFill(enemyPawns, OppositeBitboardColor(color))
-	
+
 	// Combined enemy control (squares enemy pawns can reach)
 	enemyControl := enemyFileControl | enemyAdjacentControl
-	
+
 	// Passed pawns are friendly pawns that are not blocked by enemy control
 	var passedPawns Bitboard
 	pawnList := friendlyPawns.BitList()
-	
+
 	for _, square := range pawnList {
 		squareBit := Bitboard(1) << square
-		
+
 		// Get forward fill for this specific pawn
 		pawnForwardFill := GetFileForwardFill(squareBit, color)
-		
+
 		// If this pawn's forward path doesn't intersect enemy control, it's passed
 		if (pawnForwardFill & enemyControl) == 0 {
 			passedPawns |= squareBit
 		}
 	}
-	
+
 	return passedPawns
 }

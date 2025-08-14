@@ -34,9 +34,9 @@ func TestDepthBasedSEEPruning(t *testing.T) {
 
 	// Test pruning thresholds at different depths
 	testCases := []struct {
-		depth           int
+		depth             int
 		expectedThreshold int
-		shouldPrune     bool
+		shouldPrune       bool
 	}{
 		{depth: 2, expectedThreshold: -50, shouldPrune: seeValue < -50},
 		{depth: 4, expectedThreshold: -50, shouldPrune: seeValue < -50},
@@ -53,8 +53,8 @@ func TestDepthBasedSEEPruning(t *testing.T) {
 			}
 
 			shouldPrune := seeValue < pruneThreshold
-			
-			t.Logf("Depth %d: threshold=%d, SEE=%d, should prune=%v", 
+
+			t.Logf("Depth %d: threshold=%d, SEE=%d, should prune=%v",
 				tc.depth, pruneThreshold, seeValue, shouldPrune)
 
 			if pruneThreshold != tc.expectedThreshold {
@@ -88,7 +88,7 @@ func TestQuiescenceSearchPruning(t *testing.T) {
 	threadState := engine.getThreadLocalState()
 	result1 := engine.quiescence(ctx, b, moves.White, alpha, beta, 2, threadState, &stats1)
 
-	// Deep quiescence search (depth 6) 
+	// Deep quiescence search (depth 6)
 	result2 := engine.quiescence(ctx, b, moves.White, alpha, beta, 6, threadState, &stats2)
 
 	t.Logf("Shallow quiescence (depth 2): result=%d, nodes=%d", result1, stats1.NodesSearched)
@@ -96,15 +96,15 @@ func TestQuiescenceSearchPruning(t *testing.T) {
 
 	// Deep search should potentially search fewer nodes due to more aggressive pruning
 	// Note: This is not guaranteed as it depends on the specific position and move ordering
-	t.Logf("Node difference: %d (deep search may prune more aggressively)", 
-		int(stats1.NodesSearched) - int(stats2.NodesSearched))
+	t.Logf("Node difference: %d (deep search may prune more aggressively)",
+		int(stats1.NodesSearched)-int(stats2.NodesSearched))
 }
 
 func TestSEEPruningThresholds(t *testing.T) {
 	// Test various SEE values against the pruning thresholds
 	testCaptures := []struct {
-		name     string
-		seeValue int
+		name        string
+		seeValue    int
 		description string
 	}{
 		{"Excellent capture", 300, "Should never be pruned"},

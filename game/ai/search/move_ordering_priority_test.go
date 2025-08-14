@@ -18,7 +18,7 @@ func TestMoveOrderingPriorities(t *testing.T) {
 
 	engine := NewMinimaxEngine()
 	engine.SetDebugMoveOrdering(true)
-	
+
 	// Set up a killer move at depth 0 (simulate previous search finding Qd3 as good)
 	killerMove := board.Move{
 		From:  board.Square{Rank: 1, File: 3}, // d2
@@ -39,8 +39,8 @@ func TestMoveOrderingPriorities(t *testing.T) {
 
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
-		if move.Piece == board.WhiteQueen && move.IsCapture && 
-		   move.To.Rank == 3 && move.To.File == 3 { // Qxd4 - terrible capture
+		if move.Piece == board.WhiteQueen && move.IsCapture &&
+			move.To.Rank == 3 && move.To.File == 3 { // Qxd4 - terrible capture
 			terribleCapture = move
 			foundCapture = true
 		} else if move.From == killerMove.From && move.To == killerMove.To {
@@ -58,7 +58,7 @@ func TestMoveOrderingPriorities(t *testing.T) {
 
 	// Calculate scores manually
 	// threadState already available from above
-	terribleCaptureScore := engine.getCaptureScore(b, terribleCapture, threadState)
+	terribleCaptureScore := engine.getCaptureScore(b, terribleCapture)
 	killerScore := 500000 // This is the hardcoded killer move score in orderMoves
 
 	seeValue := engine.seeCalculator.SEE(b, terribleCapture)
@@ -68,13 +68,13 @@ func TestMoveOrderingPriorities(t *testing.T) {
 
 	// The issue: terrible capture should have lower priority than killer moves
 	if terribleCaptureScore > killerScore {
-		t.Errorf("ISSUE CONFIRMED: Terrible capture (score %d) has higher priority than killer move (score %d)", 
+		t.Errorf("ISSUE CONFIRMED: Terrible capture (score %d) has higher priority than killer move (score %d)",
 			terribleCaptureScore, killerScore)
 		t.Logf("This means the engine will try terrible captures before good quiet moves")
 		t.Logf("Expected: Killer moves should have higher priority than clearly losing captures")
 	}
 
-	// Order moves and check actual ordering  
+	// Order moves and check actual ordering
 	engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
 	orderedMoves := engine.GetLastMoveOrder()
 
@@ -91,7 +91,7 @@ func TestMoveOrderingPriorities(t *testing.T) {
 	t.Logf("Killer move position in ordered list: %d", killerPos)
 
 	if capturePos != -1 && killerPos != -1 && capturePos < killerPos {
-		t.Errorf("ORDERING ISSUE: Terrible capture (pos %d) ordered before killer move (pos %d)", 
+		t.Errorf("ORDERING ISSUE: Terrible capture (pos %d) ordered before killer move (pos %d)",
 			capturePos, killerPos)
 	}
 }
@@ -117,8 +117,7 @@ func TestMoveOrderingThresholds(t *testing.T) {
 
 	// Get the actual SEE value
 	actualSEE := engine.seeCalculator.SEE(b, testMove)
-	threadState := engine.getThreadLocalState()
-	actualScore := engine.getCaptureScore(b, testMove, threadState)
+	actualScore := engine.getCaptureScore(b, testMove)
 
 	t.Logf("Actual terrible capture:")
 	t.Logf("  SEE: %d", actualSEE)
@@ -184,14 +183,14 @@ func TestMoveOrderingThresholds(t *testing.T) {
 			}
 		}
 
-		t.Logf("  %s (SEE %d): score %d - %s", 
+		t.Logf("  %s (SEE %d): score %d - %s",
 			tc.name, tc.seeValue, score, status)
 	}
 
 	// Show current implementation
 	t.Logf("\n✅ CURRENT IMPLEMENTATION (Tactical Ordering):")
 	t.Logf("  if seeValue > 0: return 1000000 + seeValue           // Good captures")
-	t.Logf("  else if seeValue == 0: return 900000                 // Equal exchanges")  
+	t.Logf("  else if seeValue == 0: return 900000                 // Equal exchanges")
 	t.Logf("  else if seeValue >= -100: return 100000 + seeValue + 100  // Below killers, above history")
 	t.Logf("  else: return 25000 + seeValue + 1000                 // Below history, above quiet")
 }

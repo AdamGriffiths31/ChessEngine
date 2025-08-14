@@ -16,9 +16,9 @@ func TestPrompterCreation(t *testing.T) {
 	}
 }
 
-func TestPrompterMessages(t *testing.T) {
+func TestPrompterMessages(_ *testing.T) {
 	prompter := NewPrompter()
-	
+
 	// Test that these methods don't panic (they just print to stdout)
 	prompter.ShowWelcome()
 	prompter.ShowMessage("Test message")
@@ -26,11 +26,11 @@ func TestPrompterMessages(t *testing.T) {
 	prompter.ShowGoodbye()
 }
 
-func TestPrompterShowGameState(t *testing.T) {
+func TestPrompterShowGameState(_ *testing.T) {
 	prompter := NewPrompter()
 	engine := game.NewEngine()
 	state := engine.GetState()
-	
+
 	// Test that ShowGameState doesn't panic
 	prompter.ShowGameState(state)
 }

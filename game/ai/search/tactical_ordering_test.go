@@ -22,7 +22,7 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 	// Set up killer moves (simulate previous search results)
 	killerMove1 := board.Move{
 		From:  board.Square{Rank: 0, File: 3}, // d1
-		To:    board.Square{Rank: 2, File: 3}, // d3  
+		To:    board.Square{Rank: 2, File: 3}, // d3
 		Piece: board.WhiteQueen,
 	}
 	killerMove2 := board.Move{
@@ -52,7 +52,7 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
-		
+
 		if move.IsCapture {
 			seeValue := engine.seeCalculator.SEE(b, move)
 			if seeValue > 0 {
@@ -92,7 +92,7 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 		score    int
 	}
 
-	var categorizedMoves []moveWithCategory
+	categorizedMoves := make([]moveWithCategory, 0, len(orderedMoves))
 
 	for pos, move := range orderedMoves {
 		var category string
@@ -100,8 +100,7 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 
 		if move.IsCapture {
 			seeValue := engine.seeCalculator.SEE(b, move)
-			threadState := engine.getThreadLocalState()
-			score = engine.getCaptureScore(b, move, threadState)
+			score = engine.getCaptureScore(b, move)
 			if seeValue > 0 {
 				category = "Good Capture"
 			} else if seeValue == 0 {
@@ -136,14 +135,14 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 		if i >= 10 {
 			break
 		}
-		t.Logf("  %d. %s %s (score: %d)", 
-			i+1, boardSquareToString(cm.move.From)+"-"+boardSquareToString(cm.move.To), 
+		t.Logf("  %d. %s %s (score: %d)",
+			i+1, boardSquareToString(cm.move.From)+"-"+boardSquareToString(cm.move.To),
 			cm.category, cm.score)
 	}
 
 	// Verify ordering hierarchy
 	expectedOrder := []string{
-		"Good Capture", "Equal Exchange", "Killer Move", "History Move", 
+		"Good Capture", "Equal Exchange", "Killer Move", "History Move",
 		"Slightly Bad Capture", "Terrible Capture", "Quiet Move",
 	}
 
@@ -164,13 +163,13 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 	}
 
 	// Verify that categories appear in correct order
-	var prevPos int = -1
+	var prevPos = -1
 	orderCorrect := true
-	
+
 	for _, category := range expectedOrder {
 		if pos, exists := categoryFirstPos[category]; exists {
 			if pos < prevPos {
-				t.Errorf("❌ Order violation: %s (pos %d) should not appear before previous category (pos %d)", 
+				t.Errorf("❌ Order violation: %s (pos %d) should not appear before previous category (pos %d)",
 					category, pos, prevPos)
 				orderCorrect = false
 			}
@@ -195,7 +194,7 @@ func TestSpecificTacticalScenarios(t *testing.T) {
 			description: "Queen sacrifice Qd5+ might be a good terrible capture leading to mate",
 		},
 		{
-			name:        "Tactical pin scenario", 
+			name:        "Tactical pin scenario",
 			fen:         "r2qkb1r/ppp2ppp/2n2n2/2bpp3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 6",
 			description: "Bxf7+ might be a good terrible capture (sacrifice) creating tactical complications",
 		},
@@ -227,13 +226,12 @@ func TestSpecificTacticalScenarios(t *testing.T) {
 
 			t.Logf("%s", tc.description)
 			t.Logf("Found %d terrible captures that might be tactical sacrifices:", len(terribleCaptures))
-			
+
 			for _, capture := range terribleCaptures {
 				seeValue := engine.seeCalculator.SEE(b, capture)
-				threadState := engine.getThreadLocalState()
-				score := engine.getCaptureScore(b, capture, threadState)
-				t.Logf("  %s%s (SEE: %d, Score: %d) - Still searched before quiet moves", 
-					boardSquareToString(capture.From), boardSquareToString(capture.To), 
+				score := engine.getCaptureScore(b, capture)
+				t.Logf("  %s%s (SEE: %d, Score: %d) - Still searched before quiet moves",
+					boardSquareToString(capture.From), boardSquareToString(capture.To),
 					seeValue, score)
 			}
 		})

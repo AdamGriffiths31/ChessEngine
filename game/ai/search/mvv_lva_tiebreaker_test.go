@@ -9,16 +9,16 @@ import (
 
 func TestMVVLVATiebreaker(t *testing.T) {
 	testCases := []struct {
-		name        string
-		description string
-		fen         string
+		name          string
+		description   string
+		fen           string
 		expectedOrder []string // List of expected captures in order (from-to format)
 	}{
 		{
-			name:        "Equal exchange tiebreaker",  
-			description: "When multiple equal exchanges (SEE=0), prefer capturing higher value piece",
-			fen:         "4k3/8/8/3qr3/8/8/3QR3/4K3 w - - 0 1", // Qxd5, Rxe5 both SEE=0
-			expectedOrder: []string{"d2d5", "e2e5"}, // Queen capture (SEE=0) before rook capture (SEE=0)
+			name:          "Equal exchange tiebreaker",
+			description:   "When multiple equal exchanges (SEE=0), prefer capturing higher value piece",
+			fen:           "4k3/8/8/3qr3/8/8/3QR3/4K3 w - - 0 1", // Qxd5, Rxe5 both SEE=0
+			expectedOrder: []string{"d2d5", "e2e5"},              // Queen capture (SEE=0) before rook capture (SEE=0)
 		},
 	}
 
@@ -52,13 +52,12 @@ func TestMVVLVATiebreaker(t *testing.T) {
 					for _, expected := range tc.expectedOrder {
 						if moveStr == expected {
 							testCaptures = append(testCaptures, move)
-							
+
 							seeValue := engine.seeCalculator.SEE(b, move)
-							threadState := engine.getThreadLocalState()
-					score := engine.getCaptureScore(b, move, threadState)
+							score := engine.getCaptureScore(b, move)
 							victimValue := move.Captured
-							
-							t.Logf("  %s: SEE=%d, Score=%d, Victim=%s", 
+
+							t.Logf("  %s: SEE=%d, Score=%d, Victim=%s",
 								moveStr, seeValue, score, string(victimValue))
 							break
 						}
@@ -95,17 +94,17 @@ func TestMVVLVATiebreaker(t *testing.T) {
 			for i := 0; i < len(tc.expectedOrder)-1; i++ {
 				current := tc.expectedOrder[i]
 				next := tc.expectedOrder[i+1]
-				
+
 				currentPos, currentExists := capturePositions[current]
 				nextPos, nextExists := capturePositions[next]
-				
+
 				if !currentExists || !nextExists {
 					t.Errorf("Missing expected captures in ordered moves")
 					continue
 				}
-				
+
 				if currentPos >= nextPos {
-					t.Errorf("❌ MVV-LVA tiebreaker failed: %s (pos %d) should come before %s (pos %d)", 
+					t.Errorf("❌ MVV-LVA tiebreaker failed: %s (pos %d) should come before %s (pos %d)",
 						current, currentPos, next, nextPos)
 				} else {
 					t.Logf("✅ %s correctly ordered before %s", current, next)
@@ -144,27 +143,26 @@ func TestSEEWithMVVLVAScoring(t *testing.T) {
 
 	queenSEE := engine.seeCalculator.SEE(b, captureQueen)
 	rookSEE := engine.seeCalculator.SEE(b, captureRook)
-	threadState := engine.getThreadLocalState()
-	queenScore := engine.getCaptureScore(b, captureQueen, threadState)
-	rookScore := engine.getCaptureScore(b, captureRook, threadState)
+	queenScore := engine.getCaptureScore(b, captureQueen)
+	rookScore := engine.getCaptureScore(b, captureRook)
 
 	t.Logf("Qxd5 (capture queen): SEE=%d, Score=%d", queenSEE, queenScore)
 	t.Logf("Qxe5 (capture rook): SEE=%d, Score=%d", rookSEE, rookScore)
 
 	// Both should be good captures, but queen capture should have higher score due to MVV-LVA
 	if queenScore <= rookScore {
-		t.Errorf("❌ Queen capture (score %d) should have higher score than rook capture (score %d)", 
+		t.Errorf("❌ Queen capture (score %d) should have higher score than rook capture (score %d)",
 			queenScore, rookScore)
 	} else {
-		t.Logf("✅ MVV-LVA tiebreaker working: queen capture (%d) > rook capture (%d)", 
+		t.Logf("✅ MVV-LVA tiebreaker working: queen capture (%d) > rook capture (%d)",
 			queenScore, rookScore)
 	}
 
 	scoreDifference := queenScore - rookScore
 	expectedDifference := (900 - 500) / 100 // Queen (900) vs Rook (500), divided by 100
-	
+
 	if scoreDifference != expectedDifference {
-		t.Logf("Score difference: %d (expected ~%d from victim value tiebreaker)", 
+		t.Logf("Score difference: %d (expected ~%d from victim value tiebreaker)",
 			scoreDifference, expectedDifference)
 	}
 }

@@ -1,6 +1,5 @@
 package board
 
-
 // Magic bitboard implementation for sliding pieces (rooks, bishops, queens)
 
 // MagicEntry represents a magic number entry for a square
@@ -12,18 +11,20 @@ type MagicEntry struct {
 }
 
 var (
-	// Magic entries for each square
-	RookMagics   [64]MagicEntry
+	// RookMagics contains magic entries for each square for rook moves
+	RookMagics [64]MagicEntry
+	// BishopMagics contains magic entries for each square for bishop moves
 	BishopMagics [64]MagicEntry
 
-	// Attack lookup tables
-	RookAttacks   []Bitboard // Global attack table for all rook positions
-	BishopAttacks []Bitboard // Global attack table for all bishop positions
+	// RookAttacks is the global attack table for all rook positions
+	RookAttacks []Bitboard
+	// BishopAttacks is the global attack table for all bishop positions
+	BishopAttacks []Bitboard
 
-	// Relevant occupancy bits for each square
-	RookRelevantBits   [64]int
+	// RookRelevantBits contains relevant occupancy bits for each square for rooks
+	RookRelevantBits [64]int
+	// BishopRelevantBits contains relevant occupancy bits for each square for bishops
 	BishopRelevantBits [64]int
-
 )
 
 // Pre-computed magic numbers
@@ -336,4 +337,3 @@ func GetBishopAttacks(square int, occupancy Bitboard) Bitboard {
 func GetQueenAttacks(square int, occupancy Bitboard) Bitboard {
 	return GetRookAttacks(square, occupancy) | GetBishopAttacks(square, occupancy)
 }
-

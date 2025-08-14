@@ -1,8 +1,8 @@
 package moves
 
 import (
-	"sync"
 	"github.com/AdamGriffiths31/ChessEngine/board"
+	"sync"
 )
 
 // MoveListPool manages a pool of reusable MoveList objects to reduce allocation overhead.
@@ -16,7 +16,7 @@ var globalMoveListPool = &MoveListPool{
 	pool: sync.Pool{
 		New: func() interface{} {
 			return &MoveList{
-				Moves: make([]board.Move, 0, PoolPreAllocCapacity), // Pre-allocate larger capacity
+				Moves: make([]board.Move, 0, PoolPreAllocCapacity),
 				Count: 0,
 			}
 		},
@@ -27,8 +27,13 @@ var globalMoveListPool = &MoveListPool{
 // Always returns a list with Count=0 and empty Moves slice.
 // Must be paired with ReleaseMoveList() when done to return it to the pool.
 func GetMoveList() *MoveList {
-	ml := globalMoveListPool.pool.Get().(*MoveList)
-	ml.Clear() // Ensure it's clean
+	item := globalMoveListPool.pool.Get()
+	ml, ok := item.(*MoveList)
+	if !ok {
+		// This should never happen if the pool is used correctly
+		return &MoveList{}
+	}
+	ml.Clear()
 	return ml
 }
 
@@ -39,24 +44,10 @@ func ReleaseMoveList(ml *MoveList) {
 	if ml == nil {
 		return
 	}
-	
+
 	// Only pool lists with reasonable capacity to avoid memory bloat
 	if cap(ml.Moves) <= MaxMoveListCapacity {
-		ml.Clear() // Clear before returning to pool
+		ml.Clear()
 		globalMoveListPool.pool.Put(ml)
 	}
-}
-
-// PoolStats provides statistics about pool usage (for debugging)
-type PoolStats struct {
-	Gets     int64
-	Puts     int64
-	New      int64
-}
-
-var poolStats PoolStats
-
-// GetPoolStats returns current pool statistics
-func GetPoolStats() PoolStats {
-	return poolStats
 }

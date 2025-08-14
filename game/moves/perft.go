@@ -2,7 +2,7 @@ package moves
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
@@ -27,13 +27,6 @@ type PerftDepth struct {
 	Nodes int64 `json:"nodes"`
 }
 
-
-// Perft calculates the number of possible moves at a given depth
-func Perft(b *board.Board, depth int, player Player) int64 {
-	generator := NewGenerator()
-	return PerftWithGenerator(b, depth, player, generator)
-}
-
 // PerftWithGenerator calculates the number of possible moves at a given depth using a provided generator
 func PerftWithGenerator(b *board.Board, depth int, player Player, generator *Generator) int64 {
 	if depth == 0 {
@@ -51,12 +44,10 @@ func PerftWithGenerator(b *board.Board, depth int, player Player, generator *Gen
 	defer ReleaseMoveList(moves)
 
 	var nodeCount int64
-	
-	for _, move := range moves.Moves {
-		// Make the move and store history using the generator
-		history := generator.makeMove(b, move)
 
-		// Recursively calculate nodes for next player
+	for _, move := range moves.Moves {
+		history := generator.MoveExecutor.MakeMove(b, move, generator.updateBoardState)
+
 		nextPlayer := White
 		if player == White {
 			nextPlayer = Black
@@ -64,17 +55,15 @@ func PerftWithGenerator(b *board.Board, depth int, player Player, generator *Gen
 
 		nodeCount += PerftWithGenerator(b, depth-1, nextPlayer, generator)
 
-		// Undo the move using the generator
-		generator.unmakeMove(b, history)
+		generator.MoveExecutor.UnmakeMove(b, history)
 	}
 
 	return nodeCount
 }
 
-
 // LoadPerftTestData loads test data from JSON file
 func LoadPerftTestData(filePath string) (*PerftTestData, error) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath) // #nosec G304 - perft test files are trusted test data
 	if err != nil {
 		return nil, err
 	}
@@ -92,4 +81,3 @@ func LoadPerftTestData(filePath string) (*PerftTestData, error) {
 func GetTestDataPath() string {
 	return filepath.Join("testdata", "perft_tests.json")
 }
-

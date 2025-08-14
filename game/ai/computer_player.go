@@ -1,3 +1,4 @@
+// Package ai provides chess engine AI functionality including search algorithms and evaluation.
 package ai
 
 import (

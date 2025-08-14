@@ -52,8 +52,11 @@ func GetPieceColor(piece Piece) PieceColor {
 type PieceColor int
 
 const (
+	// NoneColor represents no piece color (empty squares)
 	NoneColor PieceColor = iota
+	// WhiteColor represents white pieces
 	WhiteColor
+	// BlackColor represents black pieces
 	BlackColor
 )
 
@@ -104,7 +107,7 @@ func (b *Board) FindKing(color PieceColor) (rank, file int, found bool) {
 	} else {
 		kingPiece = BlackKing
 	}
-	
+
 	for rank := 0; rank < 8; rank++ {
 		for file := 0; file < 8; file++ {
 			if b.GetPiece(rank, file) == kingPiece {

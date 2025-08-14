@@ -49,7 +49,7 @@ func TestUpdateHistory(t *testing.T) {
 
 func TestUpdateHistoryInvalidSquares(t *testing.T) {
 	h := NewHistoryTable()
-	
+
 	// Test invalid from square
 	invalidMove := board.Move{
 		From: board.Square{File: -1, Rank: 0},
@@ -161,11 +161,11 @@ func TestSquareToIndex(t *testing.T) {
 		square   board.Square
 		expected int
 	}{
-		{board.Square{File: 0, Rank: 0}, 0},   // a1
-		{board.Square{File: 7, Rank: 0}, 7},   // h1
-		{board.Square{File: 0, Rank: 1}, 8},   // a2
-		{board.Square{File: 7, Rank: 7}, 63},  // h8
-		{board.Square{File: 4, Rank: 3}, 28},  // e4
+		{board.Square{File: 0, Rank: 0}, 0},  // a1
+		{board.Square{File: 7, Rank: 0}, 7},  // h1
+		{board.Square{File: 0, Rank: 1}, 8},  // a2
+		{board.Square{File: 7, Rank: 7}, 63}, // h8
+		{board.Square{File: 4, Rank: 3}, 28}, // e4
 	}
 
 	for _, test := range tests {

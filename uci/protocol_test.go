@@ -86,34 +86,34 @@ func TestProtocolHandler_ParsePosition(t *testing.T) {
 	handler := NewProtocolHandler()
 
 	tests := []struct {
-		name        string
-		args        []string
-		expectedFEN string
+		name          string
+		args          []string
+		expectedFEN   string
 		expectedMoves []string
-		expectedErr bool
+		expectedErr   bool
 	}{
 		{
-			name:        "startpos only",
-			args:        []string{"startpos"},
-			expectedFEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			name:          "startpos only",
+			args:          []string{"startpos"},
+			expectedFEN:   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			expectedMoves: nil,
 		},
 		{
-			name:        "startpos with moves",
-			args:        []string{"startpos", "moves", "e2e4", "e7e5"},
-			expectedFEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			name:          "startpos with moves",
+			args:          []string{"startpos", "moves", "e2e4", "e7e5"},
+			expectedFEN:   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			expectedMoves: []string{"e2e4", "e7e5"},
 		},
 		{
-			name:        "fen position",
-			args:        []string{"fen", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR", "b", "KQkq", "e3", "0", "1"},
-			expectedFEN: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+			name:          "fen position",
+			args:          []string{"fen", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR", "b", "KQkq", "e3", "0", "1"},
+			expectedFEN:   "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
 			expectedMoves: nil,
 		},
 		{
-			name:        "fen position with moves",
-			args:        []string{"fen", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR", "b", "KQkq", "e3", "0", "1", "moves", "e7e5"},
-			expectedFEN: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+			name:          "fen position with moves",
+			args:          []string{"fen", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR", "b", "KQkq", "e3", "0", "1", "moves", "e7e5"},
+			expectedFEN:   "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
 			expectedMoves: []string{"e7e5"},
 		},
 		{
@@ -153,9 +153,9 @@ func TestProtocolHandler_ParsePosition(t *testing.T) {
 				t.Errorf("ParsePosition() fen = %v, want %v", fen, tt.expectedFEN)
 			}
 
-			if (moves == nil && tt.expectedMoves != nil) || 
-			   (moves != nil && tt.expectedMoves == nil) ||
-			   !reflect.DeepEqual(moves, tt.expectedMoves) {
+			if (moves == nil && tt.expectedMoves != nil) ||
+				(moves != nil && tt.expectedMoves == nil) ||
+				!reflect.DeepEqual(moves, tt.expectedMoves) {
 				t.Errorf("ParsePosition() moves = %v, want %v", moves, tt.expectedMoves)
 			}
 		})
@@ -223,8 +223,8 @@ func TestProtocolHandler_ParseGo(t *testing.T) {
 			expected: SearchParams{},
 		},
 		{
-			name: "invalid depth value",
-			args: []string{"depth", "invalid"},
+			name:     "invalid depth value",
+			args:     []string{"depth", "invalid"},
 			expected: SearchParams{},
 		},
 	}
@@ -243,11 +243,11 @@ func TestProtocolHandler_ParseSetOption(t *testing.T) {
 	handler := NewProtocolHandler()
 
 	tests := []struct {
-		name         string
-		args         []string
-		expectedName string
+		name          string
+		args          []string
+		expectedName  string
 		expectedValue string
-		expectedErr  bool
+		expectedErr   bool
 	}{
 		{
 			name:          "simple option",

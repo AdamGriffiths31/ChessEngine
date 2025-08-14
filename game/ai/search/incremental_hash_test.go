@@ -92,7 +92,7 @@ func TestIncrementalHashComplexMoves(t *testing.T) {
 	// Test capture move
 	captureMove := board.Move{
 		From:      board.Square{File: 5, Rank: 2}, // f3
-		To:        board.Square{File: 7, Rank: 2}, // h3  
+		To:        board.Square{File: 7, Rank: 2}, // h3
 		Piece:     board.WhiteQueen,
 		Captured:  board.BlackPawn,
 		IsCapture: true,
@@ -140,7 +140,10 @@ func BenchmarkIncrementalHashUpdate(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		undo, _ := testBoard.MakeMoveWithUndo(move)
+		undo, err := testBoard.MakeMoveWithUndo(move)
+		if err != nil {
+			b.Fatalf("Failed to make move: %v", err)
+		}
 		_ = testBoard.GetHash() // Access the incremental hash
 		testBoard.UnmakeMove(undo)
 	}
@@ -162,7 +165,10 @@ func BenchmarkFullHashRecalculation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		undo, _ := testBoard.MakeMoveWithUndo(move)
+		undo, err := testBoard.MakeMoveWithUndo(move)
+		if err != nil {
+			b.Fatalf("Failed to make move: %v", err)
+		}
 		_ = zobrist.HashPosition(testBoard) // Full recalculation
 		testBoard.UnmakeMove(undo)
 	}

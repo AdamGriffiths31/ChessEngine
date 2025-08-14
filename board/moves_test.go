@@ -133,7 +133,10 @@ func TestParseSimpleMove(t *testing.T) {
 
 func TestMakeMove(t *testing.T) {
 	// Test basic pawn move
-	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
 
 	move := Move{
 		From:      Square{File: 4, Rank: 1}, // e2
@@ -142,7 +145,7 @@ func TestMakeMove(t *testing.T) {
 		Promotion: Empty,
 	}
 
-	err := board.MakeMove(move)
+	err = board.MakeMove(move)
 	if err != nil {
 		t.Errorf("Expected no error making move, got: %v", err)
 	}
@@ -158,7 +161,10 @@ func TestMakeMove(t *testing.T) {
 
 func TestBoardToFEN(t *testing.T) {
 	// Test initial position
-	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
 
 	fen := board.ToFEN()
 	expected := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -321,7 +327,7 @@ func TestUnmakeMove(t *testing.T) {
 
 			// Compare with expected
 			if finalFEN != tt.expectedFEN {
-				t.Errorf("%s\nExpected: %s\nGot:      %s", 
+				t.Errorf("%s\nExpected: %s\nGot:      %s",
 					tt.description, tt.expectedFEN, finalFEN)
 			}
 		})
@@ -330,8 +336,11 @@ func TestUnmakeMove(t *testing.T) {
 
 func TestUnmakeMoveStateRestoration(t *testing.T) {
 	// Test that all board state is properly restored
-	board, _ := FromFEN("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 5 10")
-	
+	board, err := FromFEN("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 5 10")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
+
 	// Store original state
 	origCastling := board.castlingRights
 	origEnPassant := board.enPassantTarget
@@ -341,14 +350,17 @@ func TestUnmakeMoveStateRestoration(t *testing.T) {
 
 	// Make a move that affects state
 	move := Move{
-		From: Square{4, 0}, 
-		To: Square{6, 0}, 
-		Piece: WhiteKing, 
+		From:       Square{4, 0},
+		To:         Square{6, 0},
+		Piece:      WhiteKing,
 		IsCastling: true,
 	}
-	
-	undo, _ := board.MakeMoveWithUndo(move)
-	
+
+	undo, err := board.MakeMoveWithUndo(move)
+	if err != nil {
+		t.Fatalf("Failed to make move: %v", err)
+	}
+
 	// State should have changed
 	if board.castlingRights == origCastling {
 		t.Error("Castling rights didn't change after king move")
@@ -356,25 +368,25 @@ func TestUnmakeMoveStateRestoration(t *testing.T) {
 	if board.sideToMove == origSideToMove {
 		t.Error("Side to move didn't change")
 	}
-	
+
 	// Unmake the move
 	board.UnmakeMove(undo)
-	
+
 	// All state should be restored
 	if board.castlingRights != origCastling {
-		t.Errorf("Castling rights not restored: expected %s, got %s", 
+		t.Errorf("Castling rights not restored: expected %s, got %s",
 			origCastling, board.castlingRights)
 	}
 	if board.halfMoveClock != origHalfMove {
-		t.Errorf("Half move clock not restored: expected %d, got %d", 
+		t.Errorf("Half move clock not restored: expected %d, got %d",
 			origHalfMove, board.halfMoveClock)
 	}
 	if board.fullMoveNumber != origFullMove {
-		t.Errorf("Full move number not restored: expected %d, got %d", 
+		t.Errorf("Full move number not restored: expected %d, got %d",
 			origFullMove, board.fullMoveNumber)
 	}
 	if board.sideToMove != origSideToMove {
-		t.Errorf("Side to move not restored: expected %s, got %s", 
+		t.Errorf("Side to move not restored: expected %s, got %s",
 			origSideToMove, board.sideToMove)
 	}
 	if !equalEnPassant(board.enPassantTarget, origEnPassant) {
@@ -384,29 +396,32 @@ func TestUnmakeMoveStateRestoration(t *testing.T) {
 
 func TestUnmakeMoveWithMissingPiece(t *testing.T) {
 	// Test error handling when move.Piece is not set
-	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	
+	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
+
 	// Make move without setting Piece field
 	move := Move{
-		From: Square{4, 1}, 
-		To: Square{4, 3},
+		From: Square{4, 1},
+		To:   Square{4, 3},
 		// Piece is intentionally not set
 	}
-	
+
 	// MakeMoveWithUndo should fill in the piece
 	undo, err := board.MakeMoveWithUndo(move)
 	if err != nil {
 		t.Fatalf("MakeMoveWithUndo failed: %v", err)
 	}
-	
+
 	// Verify piece was set in undo
 	if undo.Move.Piece != WhitePawn {
 		t.Errorf("MakeMoveWithUndo didn't set piece correctly: got %c", undo.Move.Piece)
 	}
-	
+
 	// Unmake should work correctly
 	board.UnmakeMove(undo)
-	
+
 	// Verify pawn is back
 	if board.GetPiece(1, 4) != WhitePawn {
 		t.Error("Pawn not restored after unmake")
@@ -415,28 +430,31 @@ func TestUnmakeMoveWithMissingPiece(t *testing.T) {
 
 func TestUnmakeMoveConsistencyCheck(t *testing.T) {
 	// Test multiple make/unmake cycles maintain consistency
-	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
 	originalFEN := board.ToFEN()
-	
+
 	moves := []Move{
-		{From: Square{4, 1}, To: Square{4, 3}, Piece: WhitePawn}, // e4
-		{From: Square{4, 6}, To: Square{4, 4}, Piece: BlackPawn}, // e5
+		{From: Square{4, 1}, To: Square{4, 3}, Piece: WhitePawn},   // e4
+		{From: Square{4, 6}, To: Square{4, 4}, Piece: BlackPawn},   // e5
 		{From: Square{6, 0}, To: Square{5, 2}, Piece: WhiteKnight}, // Nf3
 		{From: Square{1, 7}, To: Square{2, 5}, Piece: BlackKnight}, // Nc6
 	}
-	
+
 	// Make and unmake each move
 	for i, move := range moves {
 		undo, err := board.MakeMoveWithUndo(move)
 		if err != nil {
 			t.Fatalf("Move %d failed: %v", i, err)
 		}
-		
+
 		board.UnmakeMove(undo)
-		
+
 		currentFEN := board.ToFEN()
 		if currentFEN != originalFEN {
-			t.Errorf("Board state corrupted after move %d make/unmake cycle\nExpected: %s\nGot: %s", 
+			t.Errorf("Board state corrupted after move %d make/unmake cycle\nExpected: %s\nGot: %s",
 				i, originalFEN, currentFEN)
 		}
 	}
@@ -444,29 +462,32 @@ func TestUnmakeMoveConsistencyCheck(t *testing.T) {
 
 func TestUnmakeMoveComplexPosition(t *testing.T) {
 	// Test from the actual problematic position in the bug
-	board, _ := FromFEN("rn1qk2r/1b3ppp/1p2pn2/p2p4/PpPQPb2/5P1P/3K4/RNBQ1BNR w kq - 1 14")
+	board, err := FromFEN("rn1qk2r/1b3ppp/1p2pn2/p2p4/PpPQPb2/5P1P/3K4/RNBQ1BNR w kq - 1 14")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
 	originalFEN := board.ToFEN()
-	
+
 	// Try the illegal move that was causing issues
 	move := Move{
-		From: Square{3, 3}, // d4
-		To: Square{4, 2},   // e3
-		Piece: WhiteQueen,
+		From:     Square{3, 3}, // d4
+		To:       Square{4, 2}, // e3
+		Piece:    WhiteQueen,
 		Captured: Empty, // No piece on e3
 	}
-	
+
 	undo, err := board.MakeMoveWithUndo(move)
 	if err != nil {
 		t.Fatalf("Failed to make move: %v", err)
 	}
-	
+
 	// Unmake the move
 	board.UnmakeMove(undo)
-	
+
 	// Verify board is restored exactly
 	finalFEN := board.ToFEN()
 	if finalFEN != originalFEN {
-		t.Errorf("Board not restored correctly\nExpected: %s\nGot:      %s", 
+		t.Errorf("Board not restored correctly\nExpected: %s\nGot:      %s",
 			originalFEN, finalFEN)
 	}
 }
@@ -484,9 +505,12 @@ func equalEnPassant(a, b *Square) bool {
 
 func TestUnmakeMoveSequence(t *testing.T) {
 	// Test making/unmaking multiple special moves in sequence
-	board, _ := FromFEN("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
+	board, err := FromFEN("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
 	originalFEN := board.ToFEN()
-	
+
 	// Sequence: simple moves to test multiple make/unmake cycles
 	moves := []Move{
 		// White castles kingside
@@ -496,9 +520,9 @@ func TestUnmakeMoveSequence(t *testing.T) {
 		// White moves pawn
 		{From: Square{4, 1}, To: Square{4, 3}, Piece: WhitePawn},
 	}
-	
-	var undos []MoveUndo
-	
+
+	undos := make([]MoveUndo, 0, len(moves))
+
 	// Make all moves
 	for i, move := range moves {
 		undo, err := board.MakeMoveWithUndo(move)
@@ -507,16 +531,16 @@ func TestUnmakeMoveSequence(t *testing.T) {
 		}
 		undos = append(undos, undo)
 	}
-	
+
 	// Unmake all moves in reverse order
 	for i := len(undos) - 1; i >= 0; i-- {
 		board.UnmakeMove(undos[i])
 	}
-	
+
 	// Should be back to original position
 	finalFEN := board.ToFEN()
 	if finalFEN != originalFEN {
-		t.Errorf("Sequence make/unmake failed\nExpected: %s\nGot:      %s", 
+		t.Errorf("Sequence make/unmake failed\nExpected: %s\nGot:      %s",
 			originalFEN, finalFEN)
 	}
 }
@@ -551,7 +575,7 @@ func TestUnmakeMoveEdgeCases(t *testing.T) {
 			description: "Full material position should restore correctly",
 		},
 		{
-			name:        "Minimal material position", 
+			name:        "Minimal material position",
 			setupFEN:    "8/8/8/8/8/8/8/K6k w - - 0 1",
 			move:        Move{From: Square{0, 0}, To: Square{1, 0}, Piece: WhiteKing},
 			expectedFEN: "8/8/8/8/8/8/8/K6k w - - 0 1",
@@ -582,7 +606,7 @@ func TestUnmakeMoveEdgeCases(t *testing.T) {
 
 			finalFEN := board.ToFEN()
 			if finalFEN != tt.expectedFEN {
-				t.Errorf("%s\nExpected: %s\nGot:      %s", 
+				t.Errorf("%s\nExpected: %s\nGot:      %s",
 					tt.description, tt.expectedFEN, finalFEN)
 			}
 		})
@@ -591,12 +615,18 @@ func TestUnmakeMoveEdgeCases(t *testing.T) {
 
 // Benchmark to ensure performance isn't degraded
 func BenchmarkUnmakeMove(b *testing.B) {
-	board, _ := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		b.Fatalf("Failed to create board from FEN: %v", err)
+	}
 	move := Move{From: Square{4, 1}, To: Square{4, 3}, Piece: WhitePawn}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		undo, _ := board.MakeMoveWithUndo(move)
+		undo, err := board.MakeMoveWithUndo(move)
+		if err != nil {
+			b.Fatalf("Failed to make move: %v", err)
+		}
 		board.UnmakeMove(undo)
 	}
 }
@@ -614,7 +644,7 @@ func TestNullMove(t *testing.T) {
 			description: "Null move from starting position should switch to black",
 		},
 		{
-			name:        "Starting position black to move", 
+			name:        "Starting position black to move",
 			setupFEN:    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 5 10",
 			description: "Null move from black should switch to white and increment full moves",
 		},
@@ -653,7 +683,7 @@ func TestNullMove(t *testing.T) {
 					t.Errorf("Expected side to move to change from w to b")
 				}
 				if board.fullMoveNumber != origFullMove {
-					t.Errorf("Expected full move number to stay %d when white makes null move, got %d", 
+					t.Errorf("Expected full move number to stay %d when white makes null move, got %d",
 						origFullMove, board.fullMoveNumber)
 				}
 			} else {
@@ -661,14 +691,14 @@ func TestNullMove(t *testing.T) {
 					t.Errorf("Expected side to move to change from b to w")
 				}
 				if board.fullMoveNumber != origFullMove+1 {
-					t.Errorf("Expected full move number to increment from %d to %d when black makes null move, got %d", 
+					t.Errorf("Expected full move number to increment from %d to %d when black makes null move, got %d",
 						origFullMove, origFullMove+1, board.fullMoveNumber)
 				}
 			}
 
 			// Half move clock should increment
 			if board.halfMoveClock != origHalfMove+1 {
-				t.Errorf("Expected half move clock to increment from %d to %d, got %d", 
+				t.Errorf("Expected half move clock to increment from %d to %d, got %d",
 					origHalfMove, origHalfMove+1, board.halfMoveClock)
 			}
 
@@ -679,7 +709,7 @@ func TestNullMove(t *testing.T) {
 
 			// Castling rights should be preserved
 			if board.castlingRights != origCastling {
-				t.Errorf("Expected castling rights to be preserved as %q, got %q", 
+				t.Errorf("Expected castling rights to be preserved as %q, got %q",
 					origCastling, board.castlingRights)
 			}
 
@@ -688,11 +718,11 @@ func TestNullMove(t *testing.T) {
 
 			// Verify everything is restored
 			if board.sideToMove != origSideToMove {
-				t.Errorf("Expected side to move to be restored to %q, got %q", 
+				t.Errorf("Expected side to move to be restored to %q, got %q",
 					origSideToMove, board.sideToMove)
 			}
 			if board.castlingRights != origCastling {
-				t.Errorf("Expected castling rights to be restored to %q, got %q", 
+				t.Errorf("Expected castling rights to be restored to %q, got %q",
 					origCastling, board.castlingRights)
 			}
 			if (board.enPassantTarget == nil) != (origEnPassant == nil) {
@@ -700,23 +730,23 @@ func TestNullMove(t *testing.T) {
 			}
 			if board.enPassantTarget != nil && origEnPassant != nil {
 				if *board.enPassantTarget != *origEnPassant {
-					t.Errorf("Expected en passant target to be restored to %v, got %v", 
+					t.Errorf("Expected en passant target to be restored to %v, got %v",
 						*origEnPassant, *board.enPassantTarget)
 				}
 			}
 			if board.halfMoveClock != origHalfMove {
-				t.Errorf("Expected half move clock to be restored to %d, got %d", 
+				t.Errorf("Expected half move clock to be restored to %d, got %d",
 					origHalfMove, board.halfMoveClock)
 			}
 			if board.fullMoveNumber != origFullMove {
-				t.Errorf("Expected full move number to be restored to %d, got %d", 
+				t.Errorf("Expected full move number to be restored to %d, got %d",
 					origFullMove, board.fullMoveNumber)
 			}
 
 			// Verify board position unchanged (all pieces should be in same place)
 			finalFEN := board.ToFEN()
 			if finalFEN != test.setupFEN {
-				t.Errorf("Expected board to be fully restored to original FEN %q, got %q", 
+				t.Errorf("Expected board to be fully restored to original FEN %q, got %q",
 					test.setupFEN, finalFEN)
 			}
 		})
@@ -726,11 +756,11 @@ func TestNullMove(t *testing.T) {
 func TestNullMoveConstant(t *testing.T) {
 	// Test that the NullMove constant has expected properties
 	if NullMove.From.File != -1 || NullMove.From.Rank != -1 {
-		t.Errorf("Expected NullMove.From to be (-1, -1), got (%d, %d)", 
+		t.Errorf("Expected NullMove.From to be (-1, -1), got (%d, %d)",
 			NullMove.From.File, NullMove.From.Rank)
 	}
 	if NullMove.To.File != -1 || NullMove.To.Rank != -1 {
-		t.Errorf("Expected NullMove.To to be (-1, -1), got (%d, %d)", 
+		t.Errorf("Expected NullMove.To to be (-1, -1), got (%d, %d)",
 			NullMove.To.File, NullMove.To.Rank)
 	}
 	if NullMove.Piece != Empty {

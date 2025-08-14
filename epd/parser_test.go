@@ -6,10 +6,10 @@ import (
 
 func TestParseEPD(t *testing.T) {
 	tests := []struct {
-		name        string
-		epdLine     string
-		expectError bool
-		expectedBM  string
+		name            string
+		epdLine         string
+		expectError     bool
+		expectedBM      string
 		expectedComment string
 	}{
 		{
@@ -44,27 +44,27 @@ func TestParseEPD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			position, err := ParseEPD(tt.epdLine)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 				return
 			}
-			
+
 			if position.BestMove != tt.expectedBM {
 				t.Errorf("Expected best move %s, got %s", tt.expectedBM, position.BestMove)
 			}
-			
+
 			if tt.expectedComment != "" && position.Comment != tt.expectedComment {
 				t.Errorf("Expected comment %s, got %s", tt.expectedComment, position.Comment)
 			}
-			
+
 			// Verify that board was parsed correctly
 			if position.Board == nil {
 				t.Error("Board should not be nil")

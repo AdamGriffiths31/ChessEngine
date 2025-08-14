@@ -1,3 +1,4 @@
+// Package search provides chess move search algorithms and transposition table implementation.
 package search
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/board"
 )
 
+// History table configuration constants
 const (
 	MaxHistoryScore    = 10000
 	HistoryDecayFactor = 4
@@ -37,10 +39,8 @@ func (h *HistoryTable) UpdateHistory(move board.Move, depth int) {
 	from := squareToIndex(move.From)
 	to := squareToIndex(move.To)
 
-	// Add bonus based on depth - deeper searches give more bonus
-	bonus := HistoryBonus * int32(depth+1)
+	bonus := HistoryBonus * int32(depth+1) // #nosec G115 - depth is small, intentional conversion
 
-	// Atomically add the bonus with saturation to max value
 	for {
 		current := h.table[from][to].Load()
 		newValue := current + bonus
@@ -84,7 +84,6 @@ func (h *HistoryTable) Clear() {
 func (h *HistoryTable) Age() {
 	currentAge := h.age.Add(1)
 
-	// Apply decay every few ages to prevent scores from growing too large
 	if currentAge%8 == 0 {
 		for i := 0; i < 64; i++ {
 			for j := 0; j < 64; j++ {
@@ -103,12 +102,10 @@ func (h *HistoryTable) Age() {
 // GetMaxScore returns the maximum history score currently in the table
 // Used for normalizing history scores for LMR reduction calculations
 func (h *HistoryTable) GetMaxScore() int32 {
-	// Since we cap scores at MaxHistoryScore, we can simply return that
-	// This avoids scanning the entire table
 	return MaxHistoryScore
 }
 
 // squareToIndex converts a board square to an index (0-63)
 func squareToIndex(square board.Square) int {
-	return int(square.Rank*8 + square.File)
+	return square.Rank*8 + square.File
 }

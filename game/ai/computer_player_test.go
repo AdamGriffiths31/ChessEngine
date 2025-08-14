@@ -14,7 +14,7 @@ type MockEngine struct {
 	name string
 }
 
-func (m *MockEngine) FindBestMove(ctx context.Context, b *board.Board, player moves.Player, config SearchConfig) SearchResult {
+func (m *MockEngine) FindBestMove(_ context.Context, _ *board.Board, player moves.Player, config SearchConfig) SearchResult {
 	// Return a simple pawn move for testing
 	var move board.Move
 	if player == moves.White {
@@ -26,23 +26,23 @@ func (m *MockEngine) FindBestMove(ctx context.Context, b *board.Board, player mo
 	} else {
 		// e7e5 for black
 		move = board.Move{
-			From: board.Square{File: 4, Rank: 6}, // e7  
+			From: board.Square{File: 4, Rank: 6}, // e7
 			To:   board.Square{File: 4, Rank: 4}, // e5
 		}
 	}
-	
+
 	return SearchResult{
 		BestMove: move,
 		Score:    EvaluationScore(0),
 		Stats: SearchStats{
 			NodesSearched: 100,
-			Depth:        config.MaxDepth, // Return the configured depth
-			Time:         10 * time.Millisecond,
+			Depth:         config.MaxDepth, // Return the configured depth
+			Time:          10 * time.Millisecond,
 		},
 	}
 }
 
-func (m *MockEngine) SetEvaluator(evaluator Evaluator) {
+func (m *MockEngine) SetEvaluator(_ Evaluator) {
 	// No-op for mock
 }
 
@@ -60,13 +60,13 @@ func TestNewComputerPlayer(t *testing.T) {
 		MaxDepth: 3,
 		MaxTime:  2 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Test Computer", engine, config)
-	
+
 	if player == nil {
 		t.Fatal("NewComputerPlayer should not return nil")
 	}
-	
+
 	if player.GetName() != "Test Computer" {
 		t.Errorf("Expected name 'Test Computer', got '%s'", player.GetName())
 	}
@@ -78,26 +78,26 @@ func TestComputerPlayerGetMove(t *testing.T) {
 		MaxDepth: 2,
 		MaxTime:  1 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Test Computer", engine, config)
-	
+
 	// Create starting position
 	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create starting position: %v", err)
 	}
-	
+
 	// Get move for white
 	move, err := player.GetMove(b, moves.White, 2*time.Second)
 	if err != nil {
 		t.Fatalf("GetMove returned error: %v", err)
 	}
-	
+
 	// Should return a valid move
 	if move.From.File == -1 && move.From.Rank == -1 {
 		t.Error("GetMove should return a valid move")
 	}
-	
+
 	// Mock engine returns e2e4 for white, which should be a white pawn
 	expectedFrom := board.Square{File: 4, Rank: 1} // e2
 	if move.From != expectedFrom {
@@ -111,26 +111,26 @@ func TestComputerPlayerGetMoveBlack(t *testing.T) {
 		MaxDepth: 2,
 		MaxTime:  1 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Black Computer", engine, config)
-	
+
 	// Position where it's black to move
 	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create test position: %v", err)
 	}
-	
+
 	// Get move for black
 	move, err := player.GetMove(b, moves.Black, 2*time.Second)
 	if err != nil {
 		t.Fatalf("GetMove returned error: %v", err)
 	}
-	
+
 	// Should return a valid move
 	if move.From.File == -1 && move.From.Rank == -1 {
 		t.Error("GetMove should return a valid move for black")
 	}
-	
+
 	// Mock engine returns e7e5 for black, which should be a black pawn
 	expectedFrom := board.Square{File: 4, Rank: 6} // e7
 	if move.From != expectedFrom {
@@ -144,12 +144,12 @@ func TestSetDifficultyEasy(t *testing.T) {
 		MaxDepth: 4,
 		MaxTime:  3 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Test Computer", engine, config)
-	
+
 	// Set to easy difficulty
 	player.SetDifficulty("easy")
-	
+
 	// Check that difficulty description is correct
 	expectedDiff := "Easy (depth 2, 1s think time)"
 	if player.GetDifficulty() != expectedDiff {
@@ -163,12 +163,12 @@ func TestSetDifficultyMedium(t *testing.T) {
 		MaxDepth: 2,
 		MaxTime:  1 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Test Computer", engine, config)
-	
+
 	// Set to medium difficulty
 	player.SetDifficulty("medium")
-	
+
 	// Check that difficulty description is correct
 	expectedDiff := "Medium (depth 4, 3s think time)"
 	if player.GetDifficulty() != expectedDiff {
@@ -182,12 +182,12 @@ func TestSetDifficultyHard(t *testing.T) {
 		MaxDepth: 2,
 		MaxTime:  1 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Test Computer", engine, config)
-	
+
 	// Set to hard difficulty
 	player.SetDifficulty("hard")
-	
+
 	// Check that difficulty description is correct
 	expectedDiff := "Hard (depth 6, 5s think time)"
 	if player.GetDifficulty() != expectedDiff {
@@ -201,12 +201,12 @@ func TestSetDifficultyUnknown(t *testing.T) {
 		MaxDepth: 2,
 		MaxTime:  1 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Test Computer", engine, config)
-	
+
 	// Set to unknown difficulty - should default to medium
 	player.SetDifficulty("unknown")
-	
+
 	// Check that it defaults to medium
 	expectedDiff := "Medium (depth 4, 3s think time)"
 	if player.GetDifficulty() != expectedDiff {
@@ -220,29 +220,29 @@ func TestGetMoveWithTimeout(t *testing.T) {
 		MaxDepth: 1, // Keep depth low for faster execution
 		MaxTime:  100 * time.Millisecond,
 	}
-	
+
 	player := NewComputerPlayer("Fast Computer", engine, config)
-	
+
 	// Create starting position
 	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create starting position: %v", err)
 	}
-	
+
 	// Get move with very short timeout
 	start := time.Now()
 	move, err := player.GetMove(b, moves.White, 50*time.Millisecond)
 	duration := time.Since(start)
-	
+
 	if err != nil {
 		t.Fatalf("GetMove returned error: %v", err)
 	}
-	
+
 	// Should return a move within reasonable time
 	if duration > 500*time.Millisecond {
 		t.Errorf("GetMove took too long: %v", duration)
 	}
-	
+
 	// Should still return a valid move
 	if move.From.File == -1 && move.From.Rank == -1 {
 		t.Error("GetMove should return a valid move even with short timeout")
@@ -255,20 +255,20 @@ func TestGetMoveForcedCapture(t *testing.T) {
 		MaxDepth: 3,
 		MaxTime:  2 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Tactical Computer", engine, config)
-	
+
 	// Position where white can capture black queen with rook (White king on e1, Rook on d2, Black queen on d4, Black king on e8)
 	b, err := board.FromFEN("4k3/8/8/8/3q4/8/3R4/4K3 w - - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create tactical position: %v", err)
 	}
-	
+
 	move, err := player.GetMove(b, moves.White, 3*time.Second)
 	if err != nil {
 		t.Fatalf("GetMove returned error: %v", err)
 	}
-	
+
 	// Mock engine will return e2e4, so just verify we get a valid move
 	if move.From.File == -1 && move.From.Rank == -1 {
 		t.Error("GetMove should return a valid move")
@@ -281,31 +281,31 @@ func TestGetMoveDifferentDifficulties(t *testing.T) {
 		MaxDepth: 4,
 		MaxTime:  3 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Variable Computer", engine, config)
-	
+
 	// Create a complex position
 	b, err := board.FromFEN("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create test position: %v", err)
 	}
-	
+
 	difficulties := []string{"easy", "medium", "hard"}
-	
+
 	// Test that all difficulties return valid moves
 	for _, diff := range difficulties {
 		player.SetDifficulty(diff)
-		
+
 		move, err := player.GetMove(b, moves.White, 3*time.Second)
 		if err != nil {
 			t.Errorf("GetMove failed for difficulty %s: %v", diff, err)
 			continue
 		}
-		
+
 		if move.From.File == -1 && move.From.Rank == -1 {
 			t.Errorf("Invalid move returned for difficulty %s", diff)
 		}
-		
+
 		// Mock engine returns e2e4 for white
 		expectedFrom := board.Square{File: 4, Rank: 1} // e2
 		if move.From != expectedFrom {
@@ -314,40 +314,26 @@ func TestGetMoveDifferentDifficulties(t *testing.T) {
 	}
 }
 
-// Helper function to check if a piece is white
-func isWhitePiece(piece board.Piece) bool {
-	return piece == board.WhitePawn || piece == board.WhiteRook || 
-		   piece == board.WhiteKnight || piece == board.WhiteBishop || 
-		   piece == board.WhiteQueen || piece == board.WhiteKing
-}
-
-// Helper function to check if a piece is black  
-func isBlackPiece(piece board.Piece) bool {
-	return piece == board.BlackPawn || piece == board.BlackRook || 
-		   piece == board.BlackKnight || piece == board.BlackBishop || 
-		   piece == board.BlackQueen || piece == board.BlackKing
-}
-
 func TestSetDebugMode(t *testing.T) {
 	engine := NewMockEngine()
 	config := SearchConfig{
 		MaxDepth: 3,
 		MaxTime:  2 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Debug Computer", engine, config)
-	
+
 	// Initially debug should be off
 	if player.IsDebugMode() {
 		t.Error("Debug mode should be disabled by default")
 	}
-	
+
 	// Enable debug mode
 	player.SetDebugMode(true)
 	if !player.IsDebugMode() {
 		t.Error("Debug mode should be enabled after calling SetDebugMode(true)")
 	}
-	
+
 	// Disable debug mode
 	player.SetDebugMode(false)
 	if player.IsDebugMode() {
@@ -361,40 +347,40 @@ func TestGetMoveWithStats(t *testing.T) {
 		MaxDepth: 3,
 		MaxTime:  2 * time.Second,
 	}
-	
+
 	player := NewComputerPlayer("Stats Computer", engine, config)
-	
+
 	// Create starting position
 	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	if err != nil {
 		t.Fatalf("Failed to create starting position: %v", err)
 	}
-	
+
 	// Get move with stats
 	result, err := player.GetMoveWithStats(b, moves.White, 2*time.Second)
 	if err != nil {
 		t.Fatalf("GetMoveWithStats returned error: %v", err)
 	}
-	
+
 	// Should return a valid move
 	if result.BestMove.From.File == -1 && result.BestMove.From.Rank == -1 {
 		t.Error("GetMoveWithStats should return a valid move")
 	}
-	
+
 	// Should have stats
 	if result.Stats.NodesSearched == 0 {
 		t.Error("GetMoveWithStats should return search statistics")
 	}
-	
+
 	if result.Stats.Time <= 0 {
 		t.Error("GetMoveWithStats should return positive search time")
 	}
-	
+
 	// Mock returns specific values
 	if result.Stats.NodesSearched != 100 {
 		t.Errorf("Expected 100 nodes searched, got %d", result.Stats.NodesSearched)
 	}
-	
+
 	// Mock should return the configured depth
 	if result.Stats.Depth != config.MaxDepth {
 		t.Errorf("Expected depth %d, got %d", config.MaxDepth, result.Stats.Depth)

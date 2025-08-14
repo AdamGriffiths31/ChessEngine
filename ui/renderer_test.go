@@ -15,7 +15,7 @@ type TestCase struct {
 
 func TestRenderBoardFromFEN_GoldenFile(t *testing.T) {
 	goldenFile := filepath.Join("testdata", "golden_boards.json")
-	data, err := os.ReadFile(goldenFile)
+	data, err := os.ReadFile(goldenFile) // #nosec G304 - test file path is controlled by tests
 	if err != nil {
 		t.Fatalf("Failed to read golden file: %v", err)
 	}

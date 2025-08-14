@@ -2,35 +2,35 @@ package moves
 
 // Board constants
 const (
-	MinRank = 0
-	MaxRank = 7
-	MinFile = 0
-	MaxFile = 7
+	MinRank   = 0
+	MaxRank   = 7
+	MinFile   = 0
+	MaxFile   = 7
 	BoardSize = 8
 )
 
 // Castling constants
 const (
-	KingsideFile = 6
-	QueensideFile = 2
-	KingsideRookFromFile = 7
-	KingsideRookToFile = 5
+	KingsideFile          = 6
+	QueensideFile         = 2
+	KingsideRookFromFile  = 7
+	KingsideRookToFile    = 5
 	QueensideRookFromFile = 0
-	QueensideRookToFile = 3
-	KingStartFile = 4
+	QueensideRookToFile   = 3
+	KingStartFile         = 4
 )
 
 // Move list capacity - optimized for typical chess positions
 const (
-	InitialMoveListCapacity = 64   // Initial capacity for new lists
-	MaxMoveListCapacity     = 512  // Pool capacity limit
-	PoolPreAllocCapacity    = 128  // Reduced from 256 - more realistic for typical positions
+	InitialMoveListCapacity = 64  // Initial capacity for new lists
+	MaxMoveListCapacity     = 512 // Pool capacity limit
+	PoolPreAllocCapacity    = 128 // Reduced from 256 - more realistic for typical positions
 )
 
 // Chess board dimensions for validation
 const (
-	ChessboardFiles = 8  // Number of files (a-h)
-	ChessboardRanks = 8  // Number of ranks (1-8)
+	ChessboardFiles = 8 // Number of files (a-h)
+	ChessboardRanks = 8 // Number of ranks (1-8)
 )
 
 // Direction represents a movement direction with rank and file deltas
@@ -48,7 +48,7 @@ var (
 		{0, 1},  // Right
 		{0, -1}, // Left
 	}
-	
+
 	// Bishop directions (diagonals)
 	BishopDirections = []Direction{
 		{1, 1},   // Up-right
@@ -56,13 +56,13 @@ var (
 		{-1, 1},  // Down-right
 		{-1, -1}, // Down-left
 	}
-	
+
 	// Queen directions (combination of rook and bishop)
 	QueenDirections = []Direction{
-		{1, 0}, {-1, 0}, {0, 1}, {0, -1},     // Rook moves
-		{1, 1}, {1, -1}, {-1, 1}, {-1, -1},   // Bishop moves
+		{1, 0}, {-1, 0}, {0, 1}, {0, -1}, // Rook moves
+		{1, 1}, {1, -1}, {-1, 1}, {-1, -1}, // Bishop moves
 	}
-	
+
 	// Knight directions (L-shaped moves)
 	KnightDirections = []Direction{
 		{2, 1},   // Up 2, Right 1

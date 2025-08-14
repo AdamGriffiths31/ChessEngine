@@ -106,7 +106,9 @@ func TestEngineReset(t *testing.T) {
 		To:        board.Square{File: 4, Rank: 3}, // e4
 		Promotion: board.Empty,
 	}
-	engine.MakeMove(move)
+	if err := engine.MakeMove(move); err != nil {
+		t.Fatalf("Failed to make move: %v", err)
+	}
 
 	// Reset the engine
 	engine.Reset()

@@ -11,16 +11,19 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/game/moves"
 )
 
+// Prompter handles user interaction and console output for the chess game
 type Prompter struct {
 	scanner *bufio.Scanner
 }
 
+// NewPrompter creates a new Prompter instance for handling user input
 func NewPrompter() *Prompter {
 	return &Prompter{
 		scanner: bufio.NewScanner(os.Stdin),
 	}
 }
 
+// ShowWelcome displays the welcome message and command instructions
 func (p *Prompter) ShowWelcome() {
 	fmt.Println("Chess Engine - Manual Play")
 	fmt.Println("==========================")
@@ -36,6 +39,7 @@ func (p *Prompter) ShowWelcome() {
 	fmt.Println()
 }
 
+// ShowWelcomeComputer displays welcome message for computer vs human games
 func (p *Prompter) ShowWelcomeComputer() {
 	fmt.Println("Chess Engine - Player vs Computer")
 	fmt.Println("=================================")
@@ -51,7 +55,8 @@ func (p *Prompter) ShowWelcomeComputer() {
 	fmt.Println()
 }
 
-func (p *Prompter) ShowGameState(state *game.GameState) {
+// ShowGameState displays the current game state including board and status
+func (p *Prompter) ShowGameState(state *game.State) {
 	// Get current turn from board's side to move
 	var currentTurn string
 	if state.Board.GetSideToMove() == "w" {
@@ -66,62 +71,71 @@ func (p *Prompter) ShowGameState(state *game.GameState) {
 	fmt.Println()
 }
 
+// PromptForMove prompts the user to enter a move and returns the input
 func (p *Prompter) PromptForMove(currentPlayer game.Player) (string, error) {
 	fmt.Printf("Enter move for %s (or 'quit', 'reset', 'fen', 'moves'): ", currentPlayer)
-	
+
 	if !p.scanner.Scan() {
 		return "", fmt.Errorf("failed to read input")
 	}
-	
+
 	return strings.TrimSpace(p.scanner.Text()), nil
 }
 
+// ShowError displays an error message to the user
 func (p *Prompter) ShowError(err error) {
 	fmt.Printf("Error: %s\n", err.Error())
 	fmt.Println()
 }
 
+// ShowMessage displays a message to the user
 func (p *Prompter) ShowMessage(message string) {
 	fmt.Println(message)
 	fmt.Println()
 }
 
+// ShowFEN displays the current position in FEN notation
 func (p *Prompter) ShowFEN(fen string) {
 	fmt.Printf("Current FEN: %s\n", fen)
 	fmt.Println()
 }
 
+// ConfirmQuit asks the user to confirm if they want to quit the game
 func (p *Prompter) ConfirmQuit() bool {
 	fmt.Print("Are you sure you want to quit? (y/N): ")
-	
+
 	if !p.scanner.Scan() {
 		return false
 	}
-	
+
 	response := strings.ToLower(strings.TrimSpace(p.scanner.Text()))
 	return response == "y" || response == "yes"
 }
 
+// ConfirmReset asks the user to confirm if they want to reset the game
 func (p *Prompter) ConfirmReset() bool {
 	fmt.Print("Are you sure you want to reset the game? (y/N): ")
-	
+
 	if !p.scanner.Scan() {
 		return false
 	}
-	
+
 	response := strings.ToLower(strings.TrimSpace(p.scanner.Text()))
 	return response == "y" || response == "yes"
 }
 
+// ShowGoodbye displays the goodbye message when exiting
 func (p *Prompter) ShowGoodbye() {
 	fmt.Println("Thanks for playing!")
 }
 
+// ShowMoves displays the available legal moves for debugging
 func (p *Prompter) ShowMoves(moveList *moves.MoveList, playerName string) {
 	displayer := NewMovesDisplayer()
 	displayer.ShowMoves(moveList, playerName)
 }
 
+// ShowMoveValidated confirms that a move was successfully validated
 func (p *Prompter) ShowMoveValidated() {
 	fmt.Println("Move validated ✓")
 	fmt.Println()
@@ -140,7 +154,7 @@ func (p *Prompter) PromptForChoice(prompt string, options []string) (int, error)
 	}
 
 	input := strings.TrimSpace(p.scanner.Text())
-	
+
 	// Parse the choice
 	var choice int
 	_, err := fmt.Sscanf(input, "%d", &choice)
@@ -194,15 +208,15 @@ func (p *Prompter) ShowSearchStats(move string, stats ai.SearchStats, score ai.E
 	fmt.Printf("   Search depth: %d\n", stats.Depth)
 	fmt.Printf("   Nodes searched: %d\n", stats.NodesSearched)
 	fmt.Printf("   Search time: %v\n", stats.Time)
-	
+
 	// Convert score to White's perspective for consistent display
 	displayScore := score
 	if player == moves.Black {
 		displayScore = -score
 	}
-	
+
 	fmt.Printf("   Position evaluation: %d centipawns (from White's perspective)\n", int(displayScore))
-	
+
 	// Show what the score means
 	if displayScore > 0 {
 		fmt.Printf("   Assessment: White is better by %d centipawns\n", int(displayScore))
@@ -211,11 +225,11 @@ func (p *Prompter) ShowSearchStats(move string, stats ai.SearchStats, score ai.E
 	} else {
 		fmt.Printf("   Assessment: Position is equal\n")
 	}
-	
+
 	// Show efficiency metrics
 	nodesPerSecond := float64(stats.NodesSearched) / stats.Time.Seconds()
 	fmt.Printf("   Search efficiency: %.0f nodes/second\n", nodesPerSecond)
-	
+
 	// Show debug information if available
 	if len(stats.DebugInfo) > 0 {
 		fmt.Println("   Debug info:")
@@ -223,6 +237,6 @@ func (p *Prompter) ShowSearchStats(move string, stats ai.SearchStats, score ai.E
 			fmt.Printf("     %s\n", info)
 		}
 	}
-	
+
 	fmt.Println()
 }

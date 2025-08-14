@@ -156,26 +156,26 @@ func TestRookConnectedBehavior(t *testing.T) {
 			}
 
 			whiteRooks := b.GetPieceBitboard(board.WhiteRook)
-			
+
 			// Calculate only the connected rooks bonus from full evaluation
 			fullScore := evaluateRooksForColor(b, whiteRooks, true)
-			
+
 			// Calculate expected score without connected bonus
 			expectedWithoutConnection := 0
 			tempRooks := whiteRooks
 			for tempRooks != 0 {
 				square, newRooks := tempRooks.PopLSB()
 				tempRooks = newRooks
-				
+
 				rank := square / 8
-				
+
 				// Open file bonus (both rooks are on open files in these tests)
 				expectedWithoutConnection += RookOpenFileBonus
-				
+
 				// Mobility bonus
 				expectedWithoutConnection += RookMobilityByRank[rank] * RookMobilityUnit
 			}
-			
+
 			connectionBonus := fullScore - expectedWithoutConnection
 			if connectionBonus != tt.expected {
 				t.Errorf("%s: expected connection bonus %d, got %d", tt.description, tt.expected, connectionBonus)
@@ -194,7 +194,7 @@ func TestRookMobilityByRank(t *testing.T) {
 	if RookMobilityByRank[0] >= RookMobilityByRank[3] {
 		t.Errorf("First rank should have lower mobility than middle ranks")
 	}
-	
+
 	if RookMobilityByRank[7] >= RookMobilityByRank[3] {
 		t.Errorf("Last rank should have lower mobility than middle ranks")
 	}

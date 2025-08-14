@@ -3,72 +3,50 @@ package moves
 import "github.com/AdamGriffiths31/ChessEngine/board"
 
 // MoveGenerator defines the interface for generating legal chess moves.
-// Implementations use high-performance bitboard operations for optimal speed.
 type MoveGenerator interface {
 	GenerateAllMoves(b *board.Board, player Player) *MoveList
 }
 
-// Generator implements the MoveGenerator interface providing complete chess move generation.
-// Uses high-performance bitboard operations exclusively for optimal speed (3-5x faster than array-based).
-// Includes specialized handlers for complex moves like castling, en passant, and promotion.
-// The generator maintains separate handlers for different move types and supports object pooling.
+// Generator implements the MoveGenerator interface for complete chess move generation.
+// Uses high-performance bitboard operations for all move types.
 type Generator struct {
-	castlingHandler   *CastlingHandler
-	enPassantHandler  *EnPassantHandler
-	promotionHandler  *PromotionHandler
-	moveExecutor      *MoveExecutor
+	MoveExecutor      *MoveExecutor
 	attackDetector    *AttackDetector
 	bitboardGenerator *BitboardMoveGenerator
 }
 
 // NewGenerator creates a new move generator with bitboard-based move generation.
-// The generator includes optimizations like king position caching, object pooling,
-// and high-performance bitboard operations for efficient move generation during search.
 func NewGenerator() *Generator {
 	return &Generator{
-		castlingHandler:   &CastlingHandler{},
-		enPassantHandler:  &EnPassantHandler{},
-		promotionHandler:  &PromotionHandler{},
-		moveExecutor:      &MoveExecutor{},
+		MoveExecutor:      &MoveExecutor{},
 		attackDetector:    &AttackDetector{},
 		bitboardGenerator: NewBitboardMoveGenerator(),
 	}
 }
 
-// GenerateAllMoves generates all legal moves for the given player using high-performance bitboard operations.
-// This includes all piece types and special moves (castling, en passant, promotion).
-// Moves are filtered to ensure they don't leave the king in check.
-// Returns a MoveList that should be released back to the pool when done.
+// GenerateAllMoves generates all legal moves for the given player.
 // Returns an empty list if board is nil.
 func (g *Generator) GenerateAllMoves(b *board.Board, player Player) *MoveList {
 	if b == nil {
-		return GetMoveList() // Return empty list
+		return GetMoveList()
 	}
 
-	// Use bitboard generation for optimal performance
 	return g.bitboardGenerator.GenerateAllMovesBitboard(b, player)
 }
 
 // IsKingInCheck checks if the king of the given player is currently in check.
-// Uses optimized bitboard operations and attack detection for performance.
 // Returns false if board is nil or king is not found.
 func (g *Generator) IsKingInCheck(b *board.Board, player Player) bool {
 	kingSquare := g.findKing(b, player)
 	if kingSquare.File == -1 {
-		return false // No king found
+		return false
 	}
 
-	return g.isSquareUnderAttack(b, kingSquare, player)
+	return g.attackDetector.IsSquareAttacked(b, kingSquare, player)
 }
 
-// isSquareUnderAttack checks if a square is under attack by the enemy player.
-// Used internally for king safety validation during move generation.
-func (g *Generator) isSquareUnderAttack(b *board.Board, square board.Square, player Player) bool {
-	return g.attackDetector.IsSquareAttacked(b, square, player)
-}
-
-// findKing finds the king's position for the given player using bitboard lookup.
-// Returns a Square with File=-1 if no king is found (which indicates an invalid board state).
+// findKing finds the king's position for the given player.
+// Returns a Square with File=-1 if no king is found.
 func (g *Generator) findKing(b *board.Board, player Player) board.Square {
 	var kingPiece board.Piece
 	if player == White {
@@ -79,7 +57,7 @@ func (g *Generator) findKing(b *board.Board, player Player) board.Square {
 
 	kingBitboard := b.GetPieceBitboard(kingPiece)
 	if kingBitboard == 0 {
-		return board.Square{File: -1, Rank: -1} // No king found - sentinel value
+		return board.Square{File: -1, Rank: -1}
 	}
 
 	squareIndex := kingBitboard.LSB()
@@ -88,33 +66,90 @@ func (g *Generator) findKing(b *board.Board, player Player) board.Square {
 	}
 
 	file, rank := board.SquareToFileRank(squareIndex)
-	return board.Square{File: file, Rank: rank} // Return by value - no allocation!
+	return board.Square{File: file, Rank: rank}
 }
 
-// makeMove executes a move on the board and returns the move history.
-// This is a wrapper that delegates to the MoveExecutor with board state updates.
-func (g *Generator) makeMove(b *board.Board, move board.Move) *MoveHistory {
-	return g.moveExecutor.MakeMove(b, move, g.updateBoardState)
-}
+// updateBoardState updates castling rights, en passant, and move counters
+func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
+	castlingRights := b.GetCastlingRights()
+	piece := b.GetPiece(move.To.Rank, move.To.File)
 
-// unmakeMove reverts a move using the provided move history.
-// This is a wrapper that delegates to the MoveExecutor for consistent undo operations.
-func (g *Generator) unmakeMove(b *board.Board, history *MoveHistory) {
-	g.moveExecutor.UnmakeMove(b, history)
-}
-
-// IsSquareAttacked checks if a square is under attack by the opposing player.
-// This is the public interface for external attack detection queries.
-// Returns true if any enemy piece can attack the specified square.
-func (g *Generator) IsSquareAttacked(b *board.Board, square board.Square, player Player) bool {
-	return g.attackDetector.IsSquareAttacked(b, square, player)
-}
-
-// Release cleans up and releases any resources held by the generator.
-// Should be called when the generator is no longer needed to prevent memory leaks.
-// Safe to call multiple times.
-func (g *Generator) Release() {
-	if g.bitboardGenerator != nil {
-		g.bitboardGenerator.Release()
+	if piece == board.WhiteKing {
+		castlingRights = g.removeCastlingRights(castlingRights, "KQ")
+	} else if piece == board.BlackKing {
+		castlingRights = g.removeCastlingRights(castlingRights, "kq")
 	}
+
+	if piece == board.WhiteRook {
+		if move.From.File == QueensideRookFromFile && move.From.Rank == 0 {
+			castlingRights = g.removeCastlingRights(castlingRights, "Q")
+		} else if move.From.File == KingsideRookFromFile && move.From.Rank == 0 {
+			castlingRights = g.removeCastlingRights(castlingRights, "K")
+		}
+	} else if piece == board.BlackRook {
+		if move.From.File == QueensideRookFromFile && move.From.Rank == 7 {
+			castlingRights = g.removeCastlingRights(castlingRights, "q")
+		} else if move.From.File == KingsideRookFromFile && move.From.Rank == 7 {
+			castlingRights = g.removeCastlingRights(castlingRights, "k")
+		}
+	}
+
+	if move.IsCapture {
+		if move.To.File == QueensideRookFromFile && move.To.Rank == 0 {
+			castlingRights = g.removeCastlingRights(castlingRights, "Q")
+		} else if move.To.File == KingsideRookFromFile && move.To.Rank == 0 {
+			castlingRights = g.removeCastlingRights(castlingRights, "K")
+		} else if move.To.File == QueensideRookFromFile && move.To.Rank == 7 {
+			castlingRights = g.removeCastlingRights(castlingRights, "q")
+		} else if move.To.File == KingsideRookFromFile && move.To.Rank == 7 {
+			castlingRights = g.removeCastlingRights(castlingRights, "k")
+		}
+	}
+
+	b.SetCastlingRights(castlingRights)
+
+	if piece == board.WhitePawn || piece == board.BlackPawn {
+		if abs(move.To.Rank-move.From.Rank) == 2 {
+			targetRank := (move.From.Rank + move.To.Rank) / 2
+			enPassantTarget := &board.Square{File: move.From.File, Rank: targetRank}
+			b.SetEnPassantTarget(enPassantTarget)
+		} else {
+			b.SetEnPassantTarget(nil)
+		}
+	} else {
+		b.SetEnPassantTarget(nil)
+	}
+
+	halfMoveClock := b.GetHalfMoveClock()
+	if move.IsCapture || piece == board.WhitePawn || piece == board.BlackPawn {
+		halfMoveClock = 0
+	} else {
+		halfMoveClock++
+	}
+	b.SetHalfMoveClock(halfMoveClock)
+
+	if b.GetSideToMove() == "b" {
+		b.SetFullMoveNumber(b.GetFullMoveNumber() + 1)
+	}
+}
+
+// removeCastlingRights removes specific castling rights from the string
+func (g *Generator) removeCastlingRights(rights, toRemove string) string {
+	result := ""
+	for _, r := range rights {
+		remove := false
+		for _, removeR := range toRemove {
+			if r == removeR {
+				remove = true
+				break
+			}
+		}
+		if !remove {
+			result += string(r)
+		}
+	}
+	if result == "" {
+		return "-"
+	}
+	return result
 }

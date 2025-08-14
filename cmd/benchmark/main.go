@@ -1,6 +1,4 @@
-// cmd/benchmark/main.go
-// Example program showing how to benchmark your chess engine with and without transposition tables
-
+// Package main benchmarks chess engine performance with and without transposition tables.
 package main
 
 import (
@@ -15,14 +13,14 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/game/moves"
 )
 
-// BenchmarkPosition represents a test position for benchmarking
+// BenchmarkPosition represents a chess position for performance testing.
 type BenchmarkPosition struct {
 	Name        string
 	FEN         string
 	Description string
 }
 
-// BenchmarkResult holds the results from a single benchmark run
+// BenchmarkResult contains performance metrics from testing a position.
 type BenchmarkResult struct {
 	Position      BenchmarkPosition
 	BestMove      board.Move
@@ -35,7 +33,6 @@ type BenchmarkResult struct {
 	TTHitRate     float64
 }
 
-// Standard benchmark positions
 var standardPositions = []BenchmarkPosition{
 	{
 		Name:        "Starting Position",
@@ -60,7 +57,6 @@ var standardPositions = []BenchmarkPosition{
 }
 
 func main() {
-	// Command line flags
 	depth := flag.Int("depth", 5, "Search depth for benchmarking")
 	ttSize := flag.Int("ttsize", 256, "Transposition table size in MB")
 	customPos := flag.String("fen", "", "Custom position FEN (optional)")
@@ -73,7 +69,6 @@ func main() {
 	fmt.Printf("TT Size: %d MB\n", *ttSize)
 	fmt.Printf("Timeout: %d seconds\n\n", *timeout)
 
-	// Use custom position if provided, otherwise use standard positions
 	positions := standardPositions
 	if *customPos != "" {
 		positions = []BenchmarkPosition{
@@ -85,64 +80,53 @@ func main() {
 		}
 	}
 
-	// Run benchmarks without transposition tables
 	fmt.Println("Running benchmark WITHOUT transposition tables...")
 	fmt.Println("------------------------------------------------")
 	resultsWithoutTT := runBenchmark(positions, *depth, *timeout, 0)
 
-	// Run benchmarks with transposition tables
 	fmt.Println("\nRunning benchmark WITH transposition tables...")
 	fmt.Println("---------------------------------------------")
 	resultsWithTT := runBenchmark(positions, *depth, *timeout, *ttSize)
 
-	// Compare results
 	compareResults(resultsWithoutTT, resultsWithTT)
 }
 
-// runBenchmark runs the benchmark suite with or without transposition tables
 func runBenchmark(positions []BenchmarkPosition, depth, timeoutSecs, ttSizeMB int) []BenchmarkResult {
-	var results []BenchmarkResult
+	results := make([]BenchmarkResult, 0, len(positions))
 
 	for _, pos := range positions {
 		fmt.Printf("Testing: %s\n", pos.Name)
-		
-		// Create engine
+
 		engine := search.NewMinimaxEngine()
 		if ttSizeMB > 0 {
 			engine.SetTranspositionTableSize(ttSizeMB)
 		}
 
-		// Parse FEN
 		b, err := board.FromFEN(pos.FEN)
 		if err != nil {
-			fmt.Printf("Error parsing FEN for %s: %v\n", pos.Name, err)
+			fmt.Printf("Failed to parse FEN for position %s: %v\n", pos.Name, err)
 			continue
 		}
 
-		// Create search context with timeout
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
 		defer cancel()
 
-		// Configure search
 		config := ai.SearchConfig{
-			MaxDepth:         depth,
-			UseOpeningBook:   false,
-			DebugMode:        false,
+			MaxDepth:       depth,
+			UseOpeningBook: false,
+			DebugMode:      false,
 		}
 
-		// Run search
 		startTime := time.Now()
 		result := engine.FindBestMove(ctx, b, moves.White, config)
 		searchTime := time.Since(startTime)
 
-		// Get transposition table stats
 		var ttHits, ttMisses uint64
 		var ttHitRate float64
 		if ttSizeMB > 0 {
 			ttHits, ttMisses, _, ttHitRate = engine.GetTranspositionTableStats()
 		}
 
-		// Store result
 		benchResult := BenchmarkResult{
 			Position:      pos,
 			BestMove:      result.BestMove,
@@ -156,7 +140,6 @@ func runBenchmark(positions []BenchmarkPosition, depth, timeoutSecs, ttSizeMB in
 		}
 		results = append(results, benchResult)
 
-		// Print individual result
 		fmt.Printf("  Best Move: %s%s\n", result.BestMove.From.String(), result.BestMove.To.String())
 		fmt.Printf("  Score: %d\n", result.Score)
 		fmt.Printf("  Nodes: %d\n", result.Stats.NodesSearched)
@@ -170,11 +153,10 @@ func runBenchmark(positions []BenchmarkPosition, depth, timeoutSecs, ttSizeMB in
 	return results
 }
 
-// compareResults compares benchmark results with and without transposition tables
 func compareResults(withoutTT, withTT []BenchmarkResult) {
 	fmt.Println("\nComparison Results")
 	fmt.Println("==================")
-	
+
 	if len(withoutTT) != len(withTT) {
 		fmt.Println("Error: Result sets have different lengths")
 		return
@@ -183,7 +165,7 @@ func compareResults(withoutTT, withTT []BenchmarkResult) {
 	var totalNodesWithoutTT, totalNodesWithTT int64
 	var totalTimeWithoutTT, totalTimeWithTT time.Duration
 
-	fmt.Printf("%-20s %12s %12s %12s %12s %12s\n", 
+	fmt.Printf("%-20s %12s %12s %12s %12s %12s\n",
 		"Position", "Nodes (No TT)", "Nodes (TT)", "Time (No TT)", "Time (TT)", "TT Hit Rate")
 	fmt.Println("-------------------------------------------------------------------------------------")
 
@@ -213,21 +195,19 @@ func compareResults(withoutTT, withTT []BenchmarkResult) {
 		totalTimeWithoutTT.Round(time.Millisecond),
 		totalTimeWithTT.Round(time.Millisecond))
 
-	// Calculate improvements
 	nodeReduction := float64(totalNodesWithoutTT-totalNodesWithTT) / float64(totalNodesWithoutTT) * 100
 	timeImprovement := float64(totalTimeWithoutTT-totalTimeWithTT) / float64(totalTimeWithoutTT) * 100
 
 	fmt.Printf("\nPerformance Impact:\n")
 	fmt.Printf("- Node reduction: %.1f%%\n", nodeReduction)
 	fmt.Printf("- Time improvement: %.1f%%\n", timeImprovement)
-	
+
 	if nodeReduction > 0 {
-		fmt.Printf("- Effective branching factor reduction: %.2fx\n", 
+		fmt.Printf("- Effective branching factor reduction: %.2fx\n",
 			float64(totalNodesWithoutTT)/float64(totalNodesWithTT))
 	}
 }
 
-// Helper function to truncate string to specified length
 func truncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s

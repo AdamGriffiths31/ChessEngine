@@ -17,13 +17,13 @@ var (
 type OpeningBook interface {
 	// LookupMove finds book moves for the given position hash
 	LookupMove(hash uint64, b *board.Board) ([]BookMove, error)
-	
+
 	// LoadFromFile loads the opening book from a file
 	LoadFromFile(filename string) error
-	
+
 	// IsLoaded returns true if a book is currently loaded
 	IsLoaded() bool
-	
+
 	// GetBookInfo returns information about the loaded book
 	GetBookInfo() BookInfo
 }
@@ -32,10 +32,10 @@ type OpeningBook interface {
 type BookMove struct {
 	// Move is the chess move
 	Move board.Move
-	
+
 	// Weight represents the relative frequency/strength of this move
 	Weight uint16
-	
+
 	// Learn contains learning data (wins, losses, draws)
 	Learn uint32
 }
@@ -44,10 +44,10 @@ type BookMove struct {
 type BookInfo struct {
 	// Filename is the path to the book file
 	Filename string
-	
+
 	// EntryCount is the number of entries in the book
 	EntryCount int
-	
+
 	// FileSize is the size of the book file in bytes
 	FileSize int64
 }
@@ -56,20 +56,20 @@ type BookInfo struct {
 type PolyglotEntry struct {
 	// Hash is the 64-bit Zobrist hash of the position
 	Hash uint64
-	
+
 	// Move is the 16-bit encoded move
 	Move uint16
-	
+
 	// Weight is the relative frequency/strength of this move
 	Weight uint16
-	
+
 	// Learn contains learning data
 	Learn uint32
 }
 
 // BookManager manages multiple opening books
 type BookManager struct {
-	books []OpeningBook
+	books   []OpeningBook
 	primary OpeningBook
 }
 
@@ -101,7 +101,7 @@ func (bm *BookManager) LookupMove(hash uint64, b *board.Board) ([]BookMove, erro
 			return moves, nil
 		}
 	}
-	
+
 	// Search other books if primary didn't have the position
 	for _, book := range bm.books {
 		if book != bm.primary && book.IsLoaded() {
@@ -111,6 +111,6 @@ func (bm *BookManager) LookupMove(hash uint64, b *board.Board) ([]BookMove, erro
 			}
 		}
 	}
-	
+
 	return nil, ErrPositionNotFound
 }

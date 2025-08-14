@@ -144,7 +144,7 @@ func TestEvaluateKingEndgameActivity(t *testing.T) {
 		{
 			name:        "king_edge_h4",
 			kingSquare:  31, // h4
-			expected:    9, // Actual observed value
+			expected:    9,  // Actual observed value
 			description: "King on edge h4 square",
 		},
 	}
@@ -242,7 +242,7 @@ func TestEvaluateOpenFilesNearKing(t *testing.T) {
 		{
 			name:        "multiple_open_files",
 			fen:         "rnbqkbnr/p2p2pp/8/8/8/8/P2P2PP/RNBQKBNR w KQkq - 0 1",
-			kingSquare:  4, // e1
+			kingSquare:  4,   // e1
 			expected:    -40, // Actual observed value: two open files (d-file and f-file)
 			description: "King with multiple open files nearby",
 		},

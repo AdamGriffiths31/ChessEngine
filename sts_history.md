@@ -58,3 +58,5 @@ This file tracks the STS (Strategic Test Suite) performance of ChessEngine over 
 | 2025-08-13 17:13 | a0f56c9 | STS1-6 (6 files) | 60 | 423 | 600 | 70% | 3000 | 34 | 999 | 5s | 8 | 5s | 302s | 7.9M | 10.2 | depth=999, timeout=5s, 10 per file, 6 files, 8 threads |
 | 2025-08-13 18:25 | a0f56c9 | STS1-6 (6 files) | 60 | 373 | 600 | 62% | 2706 | 30 | 999 | 5s | 8 | 5s | 302s | 7.9M | 10.0 | depth=999, timeout=5s, 10 per file, 6 files, 8 threads |
 | 2025-08-13 18:58 | a0f56c9 | STS1-6 (6 files) | 60 | 393 | 600 | 65% | 2715 | 32 | 999 | 5s | 8 | 5s | 302s | 8.2M | 10.1 | depth=999, timeout=5s, 10 per file, 6 files, 8 threads |
+| 2025-08-14 16:41 | 7961ce1 | STS1-6 (6 files) | 60 | 409 | 600 | 68% | 2724 | 32 | 999 | 5s | 8 | 5s | 302s | 8.2M | 10.2 | depth=999, timeout=5s, 10 per file, 6 files, 8 threads |
+| 2025-08-14 18:40 | 7961ce1 | STS1-6 (6 files) | 60 | 362 | 600 | 60% | 2700 | 28 | 999 | 5s | 8 | 5s | 302s | 8.4M | 9.2 | depth=999, timeout=5s, 10 per file, 6 files, 8 threads |

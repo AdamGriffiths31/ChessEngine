@@ -13,12 +13,12 @@ import (
 
 // STSResult represents the result of testing a single EPD position
 type STSResult struct {
-	Position       *EPDPosition
-	EngineMove     board.Move
-	EngineMoveStr  string
-	Score          int // Points scored (0-10)
-	SearchResult   ai.SearchResult
-	TestDuration   time.Duration
+	Position      *Position
+	EngineMove    board.Move
+	EngineMoveStr string
+	Score         int // Points scored (0-10)
+	SearchResult  ai.SearchResult
+	TestDuration  time.Duration
 }
 
 // STSSuiteResult represents results from a complete test suite
@@ -61,9 +61,9 @@ func NewSTSScorerWithTTClear(engine ai.Engine, config ai.SearchConfig, verbose b
 }
 
 // ScorePosition tests a single EPD position and returns the result
-func (scorer *STSScorer) ScorePosition(ctx context.Context, position *EPDPosition) STSResult {
+func (scorer *STSScorer) ScorePosition(ctx context.Context, position *Position) STSResult {
 	startTime := time.Now()
-	
+
 	// Create timeout context for this position if MaxTime is configured
 	searchCtx := ctx
 	if scorer.config.MaxTime > 0 {
@@ -71,7 +71,7 @@ func (scorer *STSScorer) ScorePosition(ctx context.Context, position *EPDPositio
 		searchCtx, cancel = context.WithTimeout(ctx, scorer.config.MaxTime)
 		defer cancel()
 	}
-	
+
 	// Determine the player to move from the board
 	var player moves.Player
 	if position.Board.GetSideToMove() == "w" {
@@ -79,87 +79,87 @@ func (scorer *STSScorer) ScorePosition(ctx context.Context, position *EPDPositio
 	} else {
 		player = moves.Black
 	}
-	
+
 	// Find the best move using our engine
 	searchResult := scorer.engine.FindBestMove(searchCtx, position.Board, player, scorer.config)
-	
+
 	duration := time.Since(startTime)
-	
+
 	// Convert engine move to string for comparison
 	engineMoveStr := moveToString(searchResult.BestMove)
-	
+
 	// Convert engine move to algebraic notation for better comparison
 	algebraicMove := scorer.moveToAlgebraic(position.Board, searchResult.BestMove)
-	
+
 	// Calculate score based on whether engine found the best move
 	score := scorer.calculateScore(position, searchResult.BestMove, engineMoveStr, algebraicMove)
-	
+
 	return STSResult{
-		Position:       position,
-		EngineMove:     searchResult.BestMove,
-		EngineMoveStr:  engineMoveStr + "/" + algebraicMove, // Show both notations
-		Score:          score,
-		SearchResult:   searchResult,
-		TestDuration:   duration,
+		Position:      position,
+		EngineMove:    searchResult.BestMove,
+		EngineMoveStr: engineMoveStr + "/" + algebraicMove, // Show both notations
+		Score:         score,
+		SearchResult:  searchResult,
+		TestDuration:  duration,
 	}
 }
 
 // calculateScore determines the points awarded based on engine's move choice
-func (scorer *STSScorer) calculateScore(position *EPDPosition, engineMove board.Move, engineMoveStr, algebraicMove string) int {
+func (scorer *STSScorer) calculateScore(position *Position, engineMove board.Move, engineMoveStr, algebraicMove string) int {
 	// If we have detailed move scores from STS format, use them
 	if len(position.MoveScores) > 0 {
 		return scorer.calculateSTSScore(position, engineMove, engineMoveStr, algebraicMove)
 	}
-	
+
 	// Fallback to simple scoring for basic EPD format
 	return scorer.calculateSimpleScore(position, engineMove, engineMoveStr, algebraicMove)
 }
 
 // calculateSTSScore uses the detailed STS scoring system
-func (scorer *STSScorer) calculateSTSScore(position *EPDPosition, engineMove board.Move, engineMoveStr, algebraicMove string) int {
+func (scorer *STSScorer) calculateSTSScore(position *Position, engineMove board.Move, engineMoveStr, algebraicMove string) int {
 	// Check each scored move using multiple comparison methods
 	for _, moveScore := range position.MoveScores {
-		if engineMoveStr == moveScore.Move || 
-		   algebraicMove == moveScore.Move ||
-		   scorer.moveMatches(engineMove, moveScore.Move) {
+		if engineMoveStr == moveScore.Move ||
+			algebraicMove == moveScore.Move ||
+			scorer.moveMatches(engineMove, moveScore.Move) {
 			return moveScore.Points
 		}
 	}
-	
+
 	// Handle avoid move penalty
 	if position.AvoidMove != "" {
-		if engineMoveStr == position.AvoidMove || 
-		   algebraicMove == position.AvoidMove ||
-		   scorer.moveMatches(engineMove, position.AvoidMove) {
+		if engineMoveStr == position.AvoidMove ||
+			algebraicMove == position.AvoidMove ||
+			scorer.moveMatches(engineMove, position.AvoidMove) {
 			return 0 // No points for avoided move
 		}
 	}
-	
+
 	// No match in the scored moves - give minimal points
 	return 1 // Minimal points for any legal move not explicitly scored
 }
 
 // calculateSimpleScore uses basic best move scoring
-func (scorer *STSScorer) calculateSimpleScore(position *EPDPosition, engineMove board.Move, engineMoveStr, algebraicMove string) int {
+func (scorer *STSScorer) calculateSimpleScore(position *Position, engineMove board.Move, engineMoveStr, algebraicMove string) int {
 	// Handle best move comparison
 	if position.BestMove != "" {
 		// Try multiple comparison methods
-		if engineMoveStr == position.BestMove || 
-		   algebraicMove == position.BestMove ||
-		   scorer.moveMatches(engineMove, position.BestMove) {
+		if engineMoveStr == position.BestMove ||
+			algebraicMove == position.BestMove ||
+			scorer.moveMatches(engineMove, position.BestMove) {
 			return 10 // Full points for match
 		}
 	}
-	
+
 	// Handle avoid move penalty
 	if position.AvoidMove != "" {
-		if engineMoveStr == position.AvoidMove || 
-		   algebraicMove == position.AvoidMove ||
-		   scorer.moveMatches(engineMove, position.AvoidMove) {
+		if engineMoveStr == position.AvoidMove ||
+			algebraicMove == position.AvoidMove ||
+			scorer.moveMatches(engineMove, position.AvoidMove) {
 			return 0 // No points for avoided move
 		}
 	}
-	
+
 	// If no exact match but not an avoided move, give partial credit
 	return 1 // Minimal points for any legal move that's not avoided
 }
@@ -173,22 +173,22 @@ func moveToString(move board.Move) string {
 func (scorer *STSScorer) moveMatches(engineMove board.Move, expectedMove string) bool {
 	// Handle castling notation variations
 	if expectedMove == "e1g1" || expectedMove == "0-0" || expectedMove == "O-O" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 0 && 
-		       engineMove.To.File == 6 && engineMove.To.Rank == 0
+		return engineMove.From.File == 4 && engineMove.From.Rank == 0 &&
+			engineMove.To.File == 6 && engineMove.To.Rank == 0
 	}
 	if expectedMove == "e1c1" || expectedMove == "0-0-0" || expectedMove == "O-O-O" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 0 && 
-		       engineMove.To.File == 2 && engineMove.To.Rank == 0
+		return engineMove.From.File == 4 && engineMove.From.Rank == 0 &&
+			engineMove.To.File == 2 && engineMove.To.Rank == 0
 	}
 	if expectedMove == "e8g8" || expectedMove == "o-o" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 7 && 
-		       engineMove.To.File == 6 && engineMove.To.Rank == 7
+		return engineMove.From.File == 4 && engineMove.From.Rank == 7 &&
+			engineMove.To.File == 6 && engineMove.To.Rank == 7
 	}
 	if expectedMove == "e8c8" || expectedMove == "o-o-o" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 7 && 
-		       engineMove.To.File == 2 && engineMove.To.Rank == 7
+		return engineMove.From.File == 4 && engineMove.From.Rank == 7 &&
+			engineMove.To.File == 2 && engineMove.To.Rank == 7
 	}
-	
+
 	// Try to parse algebraic moves like "Rad1", "Nf3", "exd5"
 	return scorer.parseAndMatchAlgebraic(engineMove, expectedMove)
 }
@@ -198,23 +198,23 @@ func (scorer *STSScorer) parseAndMatchAlgebraic(engineMove board.Move, expectedM
 	if len(expectedMove) < 2 {
 		return false
 	}
-	
+
 	// Get destination square from the expected move
 	// For moves like "Rad1", "Nf3", "exd5", the destination is the last 2 chars
 	if len(expectedMove) >= 2 {
 		destSquareStr := expectedMove[len(expectedMove)-2:]
-		
+
 		// Parse destination square
-		if len(destSquareStr) == 2 && 
-		   destSquareStr[0] >= 'a' && destSquareStr[0] <= 'h' &&
-		   destSquareStr[1] >= '1' && destSquareStr[1] <= '8' {
-			
+		if len(destSquareStr) == 2 &&
+			destSquareStr[0] >= 'a' && destSquareStr[0] <= 'h' &&
+			destSquareStr[1] >= '1' && destSquareStr[1] <= '8' {
+
 			expectedFile := int(destSquareStr[0] - 'a')
 			expectedRank := int(destSquareStr[1] - '1')
-			
+
 			// Check if engine move goes to the same destination
 			if engineMove.To.File == expectedFile && engineMove.To.Rank == expectedRank {
-				
+
 				// If it's a piece move (starts with capital letter), check piece type matches
 				if len(expectedMove) > 2 {
 					firstChar := expectedMove[0]
@@ -224,28 +224,28 @@ func (scorer *STSScorer) parseAndMatchAlgebraic(engineMove board.Move, expectedM
 						if enginePiece >= 'a' && enginePiece <= 'z' {
 							enginePiece = enginePiece - 'a' + 'A'
 						}
-						
+
 						// Check if piece types match
 						return rune(firstChar) == rune(enginePiece)
 					}
 				}
-				
+
 				// For pawn moves or exact destination matches, accept it
 				return true
 			}
 		}
 	}
-	
+
 	return false
 }
 
 // ScoreSuite runs a complete test suite and returns aggregated results
-func (scorer *STSScorer) ScoreSuite(ctx context.Context, positions []*EPDPosition, suiteName string) STSSuiteResult {
+func (scorer *STSScorer) ScoreSuite(ctx context.Context, positions []*Position, suiteName string) STSSuiteResult {
 	results := make([]STSResult, 0, len(positions))
 	totalScore := 0
 	maxScore := len(positions) * 10 // Maximum possible score
 	totalTime := time.Duration(0)
-	
+
 	for i, position := range positions {
 		// Clear transposition table before each position if requested
 		if scorer.clearTT {
@@ -253,20 +253,20 @@ func (scorer *STSScorer) ScoreSuite(ctx context.Context, positions []*EPDPositio
 				minimaxEngine.ClearSearchState()
 			}
 		}
-		
+
 		result := scorer.ScorePosition(ctx, position)
 		results = append(results, result)
 		totalScore += result.Score
 		totalTime += result.TestDuration
-		
+
 		// Print result immediately after each position (if verbose mode)
 		if scorer.verbose {
 			scorer.printPositionResult(i+1, result)
 		}
 	}
-	
+
 	scorePercent := float64(totalScore) / float64(maxScore) * 100.0
-	
+
 	return STSSuiteResult{
 		SuiteName:     suiteName,
 		Results:       results,
@@ -292,7 +292,7 @@ func (scorer *STSScorer) printPositionResult(posNum int, result STSResult) {
 			display = result.Position.Comment
 		}
 	}
-	
+
 	// Add FEN at the end for easy analysis
 	if display != "" {
 		display += " | FEN: " + result.Position.Board.ToFEN()
@@ -313,23 +313,23 @@ func (scorer *STSScorer) printPositionResult(posNum int, result STSResult) {
 func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) string {
 	// Get the piece that's moving
 	piece := board.GetPiece(move.From.Rank, move.From.File)
-	
+
 	// Handle castling
 	if move.IsCastling {
 		if move.To.File == 6 { // Kingside
 			return "O-O"
-		} else { // Queenside
-			return "O-O-O"
 		}
+		// Queenside
+		return "O-O-O"
 	}
-	
+
 	// Basic algebraic conversion
 	pieceChar := ""
 	switch piece {
 	case 'K', 'k': // King
 		pieceChar = "K"
 	case 'Q', 'q': // Queen
-		pieceChar = "Q"  
+		pieceChar = "Q"
 	case 'R', 'r': // Rook
 		pieceChar = "R"
 	case 'B', 'b': // Bishop
@@ -339,27 +339,27 @@ func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) st
 	case 'P', 'p': // Pawn
 		pieceChar = "" // Pawns don't have piece letters
 	}
-	
+
 	// Destination square
 	toSquare := move.To.String()
-	
+
 	// Check if it's a capture
 	isCapture := board.GetPiece(move.To.Rank, move.To.File) != '.' || move.IsEnPassant
-	
+
 	// Basic algebraic notation
 	algebraic := pieceChar
-	
+
 	// For pawn captures, include the file
 	if piece == 'P' || piece == 'p' {
 		if isCapture {
-			algebraic = string('a' + rune(move.From.File)) + "x"
+			algebraic = string('a'+rune(move.From.File)) + "x"
 		}
 	} else if isCapture {
 		algebraic += "x"
 	}
-	
+
 	algebraic += toSquare
-	
+
 	// Handle pawn promotion
 	if move.Promotion != '.' {
 		switch move.Promotion {
@@ -373,6 +373,6 @@ func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) st
 			algebraic += "=N"
 		}
 	}
-	
+
 	return algebraic
 }

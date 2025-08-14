@@ -9,19 +9,19 @@ import (
 func TestBookLookupService(t *testing.T) {
 	config := DefaultBookConfig()
 	config.SelectionMode = SelectBest
-	
+
 	service := NewBookLookupService(config)
-	
+
 	if !service.IsEnabled() {
 		t.Error("Service should be enabled with default config")
 	}
-	
+
 	// Test enabling/disabling
 	service.SetEnabled(false)
 	if service.IsEnabled() {
 		t.Error("Service should be disabled after SetEnabled(false)")
 	}
-	
+
 	service.SetEnabled(true)
 	if !service.IsEnabled() {
 		t.Error("Service should be enabled after SetEnabled(true)")
@@ -35,15 +35,15 @@ func TestBookLookupServiceConfiguration(t *testing.T) {
 		SelectionMode:   SelectRandom,
 		WeightThreshold: 50,
 	}
-	
+
 	service := NewBookLookupService(config)
-	
+
 	// Test configuration methods
 	service.SetSelectionMode(SelectBest)
 	if service.config.SelectionMode != SelectBest {
 		t.Error("Selection mode not updated correctly")
 	}
-	
+
 	service.SetWeightThreshold(100)
 	if service.config.WeightThreshold != 100 {
 		t.Error("Weight threshold not updated correctly")
@@ -52,10 +52,13 @@ func TestBookLookupServiceConfiguration(t *testing.T) {
 
 func TestBookManager(t *testing.T) {
 	manager := NewBookManager()
-	
+
 	// Create test board
-	testBoard, _ := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	
+	testBoard, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create board from FEN: %v", err)
+	}
+
 	// Create mock books
 	book1 := &MockBook{loaded: true, moves: map[uint64][]BookMove{
 		0x123: {{Weight: 100}, {Weight: 50}},
@@ -63,10 +66,10 @@ func TestBookManager(t *testing.T) {
 	book2 := &MockBook{loaded: true, moves: map[uint64][]BookMove{
 		0x456: {{Weight: 200}},
 	}}
-	
+
 	manager.AddBook(book1)
 	manager.AddBook(book2)
-	
+
 	// Test lookup from primary book
 	moves, err := manager.LookupMove(0x123, testBoard)
 	if err != nil {
@@ -75,7 +78,7 @@ func TestBookManager(t *testing.T) {
 	if len(moves) != 2 {
 		t.Errorf("Expected 2 moves, got %d", len(moves))
 	}
-	
+
 	// Test lookup from secondary book
 	moves, err = manager.LookupMove(0x456, testBoard)
 	if err != nil {
@@ -84,7 +87,7 @@ func TestBookManager(t *testing.T) {
 	if len(moves) != 1 {
 		t.Errorf("Expected 1 move, got %d", len(moves))
 	}
-	
+
 	// Test non-existent position
 	_, err = manager.LookupMove(0x999, testBoard)
 	if err != ErrPositionNotFound {
@@ -95,20 +98,20 @@ func TestBookManager(t *testing.T) {
 func TestMoveSelection(t *testing.T) {
 	config := DefaultBookConfig()
 	service := NewBookLookupService(config)
-	
+
 	bookMoves := []BookMove{
 		{Weight: 100},
 		{Weight: 200},
 		{Weight: 50},
 	}
-	
+
 	// Test best move selection
 	service.SetSelectionMode(SelectBest)
 	selected := service.selectMove(bookMoves)
 	if selected.Weight != 200 {
 		t.Errorf("Expected best move with weight 200, got %d", selected.Weight)
 	}
-	
+
 	// Test random selection (just check it returns a valid move)
 	service.SetSelectionMode(SelectRandom)
 	selected = service.selectMove(bookMoves)
@@ -122,7 +125,7 @@ func TestMoveSelection(t *testing.T) {
 	if !found {
 		t.Error("Random selection returned invalid move")
 	}
-	
+
 	// Test single move
 	singleMove := []BookMove{{Weight: 100}}
 	selected = service.selectMove(singleMove)
@@ -135,9 +138,9 @@ func TestWeightedRandomSelection(t *testing.T) {
 	config := DefaultBookConfig()
 	config.SelectionMode = SelectWeightedRandom
 	config.RandomSeed = 12345 // Fixed seed for reproducible tests
-	
+
 	service := NewBookLookupService(config)
-	
+
 	// Test weighted selection with different scenarios
 	tests := []struct {
 		name      string
@@ -166,13 +169,13 @@ func TestWeightedRandomSelection(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Run multiple selections to ensure it doesn't crash
 			for i := 0; i < 100; i++ {
 				selected := service.selectMove(test.bookMoves)
-				
+
 				// Verify selected move is from the input list
 				found := false
 				for _, move := range test.bookMoves {
@@ -192,7 +195,7 @@ func TestWeightedRandomSelection(t *testing.T) {
 func TestBookLookupServiceWithMockBook(t *testing.T) {
 	config := DefaultBookConfig()
 	service := NewBookLookupService(config)
-	
+
 	// Create mock book
 	mockBook := &MockBook{
 		loaded: true,
@@ -204,15 +207,15 @@ func TestBookLookupServiceWithMockBook(t *testing.T) {
 			},
 		},
 	}
-	
+
 	service.manager.AddBook(mockBook)
-	
+
 	// Create test board
 	b := board.NewBoard()
-	
+
 	// For testing, we'll use a simple approach - just use the real zobrist hash
 	// In a real test, we'd mock the board position to produce the expected hash
-	
+
 	// Test finding book move - this will likely return ErrPositionNotFound since
 	// the board position won't match our mock hash, but that's expected
 	_, err := service.FindBookMove(b)
@@ -225,12 +228,12 @@ func TestBookLookupServiceWithMockBook(t *testing.T) {
 func TestValidateMove(t *testing.T) {
 	config := DefaultBookConfig()
 	service := NewBookLookupService(config)
-	
+
 	testMove := board.Move{
 		From: board.Square{File: 4, Rank: 1},
 		To:   board.Square{File: 4, Rank: 3},
 	}
-	
+
 	mockBook := &MockBook{
 		loaded: true,
 		moves: map[uint64][]BookMove{
@@ -239,11 +242,11 @@ func TestValidateMove(t *testing.T) {
 			},
 		},
 	}
-	
+
 	service.manager.AddBook(mockBook)
-	
+
 	b := board.NewBoard()
-	
+
 	// For this simplified test, we just test that ValidateMove doesn't crash
 	// In a real implementation, we'd set up the board position to match the mock hash
 	valid := service.ValidateMove(b, testMove)
@@ -258,16 +261,16 @@ type MockBook struct {
 	info   BookInfo
 }
 
-func (mb *MockBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, error) {
+func (mb *MockBook) LookupMove(hash uint64, _ *board.Board) ([]BookMove, error) {
 	if !mb.loaded {
 		return nil, ErrBookNotLoaded
 	}
-	
+
 	moves, exists := mb.moves[hash]
 	if !exists {
 		return nil, ErrPositionNotFound
 	}
-	
+
 	return moves, nil
 }
 
@@ -291,28 +294,31 @@ func (mb *MockBook) GetBookInfo() BookInfo {
 func BenchmarkBookLookup(b *testing.B) {
 	config := DefaultBookConfig()
 	service := NewBookLookupService(config)
-	
+
 	mockBook := &MockBook{
 		loaded: true,
 		moves: map[uint64][]BookMove{
 			0x123: {{Weight: 100}},
 		},
 	}
-	
+
 	service.manager.AddBook(mockBook)
-	
+
 	testBoard := board.NewBoard()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		service.FindBookMove(testBoard)
+		_, err := service.FindBookMove(testBoard)
+		if err != nil {
+			b.Errorf("FindBookMove failed: %v", err)
+		}
 	}
 }
 
 func BenchmarkMoveSelection(b *testing.B) {
 	config := DefaultBookConfig()
 	service := NewBookLookupService(config)
-	
+
 	bookMoves := []BookMove{
 		{Weight: 100},
 		{Weight: 200},
@@ -320,7 +326,7 @@ func BenchmarkMoveSelection(b *testing.B) {
 		{Weight: 150},
 		{Weight: 75},
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		service.selectMove(bookMoves)

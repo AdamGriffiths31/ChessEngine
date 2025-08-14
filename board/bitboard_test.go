@@ -6,10 +6,10 @@ import (
 
 func TestBitboardBasicOperations(t *testing.T) {
 	// Test SetBit
-	var bb Bitboard = 0
-	bb = bb.SetBit(0)   // a1
-	bb = bb.SetBit(63)  // h8
-	bb = bb.SetBit(28)  // e4
+	var bb Bitboard
+	bb = bb.SetBit(0)  // a1
+	bb = bb.SetBit(63) // h8
+	bb = bb.SetBit(28) // e4
 
 	if !bb.HasBit(0) {
 		t.Error("Expected bit 0 (a1) to be set")
@@ -46,7 +46,7 @@ func TestBitboardBasicOperations(t *testing.T) {
 
 func TestBitboardBitScanning(t *testing.T) {
 	// Test empty bitboard
-	var empty Bitboard = 0
+	var empty Bitboard
 	if empty.LSB() != -1 {
 		t.Error("LSB of empty bitboard should be -1")
 	}
@@ -86,7 +86,7 @@ func TestBitboardBitScanning(t *testing.T) {
 }
 
 func TestBitboardPopCount(t *testing.T) {
-	var bb Bitboard = 0
+	var bb Bitboard
 
 	// Empty bitboard
 	if bb.PopCount() != 0 {
@@ -119,12 +119,12 @@ func TestCoordinateConversion(t *testing.T) {
 		rank   int
 		str    string
 	}{
-		{0, 0, 0, "a1"},   // a1
-		{7, 7, 0, "h1"},   // h1
-		{56, 0, 7, "a8"},  // a8
-		{63, 7, 7, "h8"},  // h8
-		{28, 4, 3, "e4"},  // e4
-		{35, 3, 4, "d5"},  // d5
+		{0, 0, 0, "a1"},  // a1
+		{7, 7, 0, "h1"},  // h1
+		{56, 0, 7, "a8"}, // a8
+		{63, 7, 7, "h8"}, // h8
+		{28, 4, 3, "e4"}, // e4
+		{35, 3, 4, "d5"}, // d5
 	}
 
 	for _, tc := range testCases {
@@ -251,7 +251,7 @@ func TestBitboardShifts(t *testing.T) {
 
 func TestBitboardDisplay(t *testing.T) {
 	// Test empty bitboard
-	var empty Bitboard = 0
+	var empty Bitboard
 	str := empty.String()
 	if len(str) == 0 {
 		t.Error("Empty bitboard string should not be empty")
@@ -273,7 +273,7 @@ func TestBitboardDisplay(t *testing.T) {
 
 func TestBitList(t *testing.T) {
 	// Test empty bitboard
-	var empty Bitboard = 0
+	var empty Bitboard
 	list := empty.BitList()
 	if len(list) != 0 {
 		t.Error("Empty bitboard should return empty list")
@@ -302,7 +302,7 @@ func TestBitList(t *testing.T) {
 }
 
 func TestIsEmptyNotEmpty(t *testing.T) {
-	var empty Bitboard = 0
+	var empty Bitboard
 	if !empty.IsEmpty() {
 		t.Error("Empty bitboard should return true for IsEmpty()")
 	}

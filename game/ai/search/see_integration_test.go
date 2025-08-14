@@ -34,7 +34,7 @@ func TestSEEIntegrationInMoveOrdering(t *testing.T) {
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
 		if move.Piece == board.WhiteQueen && move.IsCapture {
-			t.Logf("Queen capture: from %s to %s, captures %v", 
+			t.Logf("Queen capture: from %s to %s, captures %v",
 				boardSquareToString(move.From), boardSquareToString(move.To), move.Captured)
 		}
 	}
@@ -70,7 +70,7 @@ func TestSEEIntegrationInMoveOrdering(t *testing.T) {
 	// Determine which is better/worse
 	var betterCapture, worseCapture board.Move
 	var betterSEE, worseSEE int
-	
+
 	if b7SEE >= f6SEE {
 		betterCapture = captureKnightB7
 		worseCapture = captureKnightF6
@@ -83,9 +83,9 @@ func TestSEEIntegrationInMoveOrdering(t *testing.T) {
 		worseSEE = b7SEE
 	}
 
-	t.Logf("Better capture: %s to %s (SEE: %d)", 
+	t.Logf("Better capture: %s to %s (SEE: %d)",
 		boardSquareToString(betterCapture.From), boardSquareToString(betterCapture.To), betterSEE)
-	t.Logf("Worse capture: %s to %s (SEE: %d)", 
+	t.Logf("Worse capture: %s to %s (SEE: %d)",
 		boardSquareToString(worseCapture.From), boardSquareToString(worseCapture.To), worseSEE)
 
 	// Order moves using the engine's method
@@ -122,7 +122,7 @@ func TestSEEIntegrationInMoveOrdering(t *testing.T) {
 func TestSEEIntegrationQuiescencePruning(t *testing.T) {
 	// Test that SEE-based pruning works in quiescence search
 	// We'll create a position with a clearly bad capture and verify it gets pruned
-	
+
 	fen := "4k3/8/8/4p3/3p4/8/3Q4/4K3 w - - 0 1" // Queen can capture defended pawn
 	b, err := board.FromFEN(fen)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestSEEIntegrationQuiescencePruning(t *testing.T) {
 	}
 
 	engine := NewMinimaxEngine()
-	
+
 	// The bad capture should be pruned by SEE in quiescence search
 	move := board.Move{
 		From:      board.Square{Rank: 1, File: 3}, // d2
