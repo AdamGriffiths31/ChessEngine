@@ -352,6 +352,7 @@ func BenchmarkSEE_ComplexPosition(b *testing.B) {
 	}
 }
 
+
 // Helper function to create board from FEN using existing functionality
 func createBoardFromFEN(t testing.TB, fen string) *board.Board {
 	b, err := board.FromFEN(fen)

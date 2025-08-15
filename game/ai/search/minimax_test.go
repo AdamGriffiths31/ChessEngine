@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -361,4 +362,160 @@ func TestOppositePlayer(t *testing.T) {
 	if oppositePlayer(moves.Black) != moves.White {
 		t.Error("Opposite of Black should be White")
 	}
+}
+
+// TestEngineWithValidation creates an engine configured like uci/engine.go and validates best moves
+func TestEngineWithValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		fen         string
+		player      moves.Player
+		timeout     time.Duration
+		expectedMove string // UCI format move (e.g., "e2e4")
+		description string
+	}{
+		{
+			name:        "Complex endgame position - 5s",
+			fen:         "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
+			player:      moves.White,
+			timeout:     5 * time.Second,
+			expectedMove: "", // Let the engine decide the best move
+			description: "Complex endgame with tactical possibilities (5 second search)",
+		},
+		{
+			name:        "Complex endgame position - 10s",
+			fen:         "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
+			player:      moves.White,
+			timeout:     10 * time.Second,
+			expectedMove: "", // Let the engine decide the best move
+			description: "Complex endgame with tactical possibilities (10 second search)",
+		},
+		{
+			name:        "Alpha-beta debug - depth 1",
+			fen:         "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
+			player:      moves.White,
+			timeout:     50 * time.Millisecond,
+			expectedMove: "", // Let the engine decide the best move
+			description: "Debug alpha-beta pruning at depth 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create and configure engine like uci/engine.go does
+			engine := NewMinimaxEngine()
+			// Enable TT - our PVS fix should handle TT interference properly
+			engine.SetTranspositionTableSize(256) // Same as UCI engine
+			
+			// Clear any previous search state to avoid stale TT data
+			engine.ClearSearchState()
+
+			// Create board from FEN
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatalf("Failed to create board from FEN %s: %v", tt.fen, err)
+			}
+
+			// Configure search like uci/engine.go
+			maxDepth := 999 // Let time limit control depth
+			if strings.Contains(tt.name, "debug") {
+				maxDepth = 1 // Force depth 1 for debug test
+			}
+			
+			config := ai.SearchConfig{
+				MaxDepth:            maxDepth,
+				MaxTime:             tt.timeout,
+				DebugMode:           false,
+				UseOpeningBook:      false, // Disable for deterministic testing
+				BookSelectMode:      ai.BookSelectWeightedRandom,
+				BookWeightThreshold: 1,
+				LMRMinDepth:         3,
+				LMRMinMoves:         4,
+				NumThreads:          1, // Single threaded for reproducible results
+			}
+
+			// Create context with timeout
+			ctx, cancel := context.WithTimeout(context.Background(), tt.timeout)
+			defer cancel()
+
+			// Find best move
+			startTime := time.Now()
+			result := engine.FindBestMove(ctx, b, tt.player, config)
+			searchDuration := time.Since(startTime)
+
+			// Validate result
+			if result.BestMove.From.File == -1 && result.BestMove.From.Rank == -1 {
+				t.Errorf("Engine failed to find a valid move")
+				return
+			}
+
+			// Convert to UCI format for comparison
+			converter := NewMoveConverter()
+			actualMoveUCI := converter.ToUCI(result.BestMove)
+
+			// Log detailed results
+			t.Logf("Position: %s", tt.fen)
+			t.Logf("Description: %s", tt.description)
+			t.Logf("Found move: %s (score: %d, depth: %d, nodes: %d, time: %.3fs)",
+				actualMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, searchDuration.Seconds())
+			
+			// Check if this is the problematic f2f6 move
+			if actualMoveUCI == "f2f6" {
+				t.Logf("WARNING: Engine chose f2f6 which Stockfish identifies as a blunder!")
+			}
+
+			// Validate specific expected moves if provided
+			if tt.expectedMove != "" {
+				if actualMoveUCI != tt.expectedMove {
+					t.Errorf("Expected move %s, got %s", tt.expectedMove, actualMoveUCI)
+				}
+			}
+
+			// Validate search completed successfully
+			if result.Stats.NodesSearched == 0 {
+				t.Errorf("Expected to search some nodes, got %d", result.Stats.NodesSearched)
+			}
+
+			if result.Stats.Depth == 0 {
+				t.Errorf("Expected search depth > 0, got %d", result.Stats.Depth)
+			}
+
+			// Validate timeout wasn't exceeded significantly
+			if searchDuration > tt.timeout+100*time.Millisecond {
+				t.Errorf("Search took too long: %v (timeout was %v)", searchDuration, tt.timeout)
+			}
+		})
+	}
+}
+
+// NewMoveConverter creates a UCI move converter (simplified version for testing)
+func NewMoveConverter() *MoveConverter {
+	return &MoveConverter{}
+}
+
+// MoveConverter handles UCI move format conversion
+type MoveConverter struct{}
+
+// ToUCI converts a board.Move to UCI notation
+func (mc *MoveConverter) ToUCI(move board.Move) string {
+	from := move.From.String()
+	to := move.To.String()
+	
+	result := from + to
+	
+	// Add promotion
+	if move.Promotion != board.Empty {
+		switch move.Promotion {
+		case board.WhiteQueen, board.BlackQueen:
+			result += "q"
+		case board.WhiteRook, board.BlackRook:
+			result += "r"
+		case board.WhiteBishop, board.BlackBishop:
+			result += "b"
+		case board.WhiteKnight, board.BlackKnight:
+			result += "n"
+		}
+	}
+	
+	return result
 }

@@ -731,48 +731,87 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		alpha := -ai.MateScore - 1
 		beta := ai.MateScore + 1
 
-		if currentDepth > 1 {
-			window := ai.EvaluationScore(50)
+		// Use aspiration windows for depths > 1
+		useAspirationWindow := currentDepth > 1
+		window := ai.EvaluationScore(50)
+		
+		if useAspirationWindow {
 			alpha = lastCompletedScore - window
 			beta = lastCompletedScore + window
 		}
 
-		moveIndex := 0
+		// Keep trying with wider windows until we get a score within bounds
+		for {
+			tempBestScore := -ai.MateScore - 1
+			tempBestMove := board.Move{}
+			moveIndex := 0
 
-		for _, move := range legalMoves.Moves[:legalMoves.Count] {
-			undo, err := b.MakeMoveWithUndo(move)
-			if err != nil {
-				continue
-			}
+			for _, move := range legalMoves.Moves[:legalMoves.Count] {
+				
+				undo, err := b.MakeMoveWithUndo(move)
+				if err != nil {
+					continue
+				}
 
-			var score ai.EvaluationScore
-			var moveStats ai.SearchStats
+				var score ai.EvaluationScore
+				var moveStats ai.SearchStats
 
-			if moveIndex == 0 {
-				score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, threadState, &moveStats)
-			} else {
-				score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -alpha-1, -alpha, currentDepth, config, threadState, &moveStats)
-
-				if score > alpha && score < beta {
+				if moveIndex == 0 {
 					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, threadState, &moveStats)
+				} else {
+					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -alpha-1, -alpha, currentDepth, config, threadState, &moveStats)
+
+					if score > alpha && score < beta {
+						score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, threadState, &moveStats)
+					}
+				}
+
+				b.UnmakeMove(undo)
+				
+
+				if score > tempBestScore {
+					tempBestScore = score
+					tempBestMove = move
+
+					if score > alpha {
+						alpha = score
+					}
+				}
+
+				moveIndex++
+
+				if config.MaxTime > 0 && time.Since(startTime) >= config.MaxTime {
+					break
 				}
 			}
-
-			b.UnmakeMove(undo)
-
-			if score > bestScore {
-				bestScore = score
-				bestMove = move
-
-				if score > alpha {
-					alpha = score
-				}
-			}
-
-			moveIndex++
-
-			if config.MaxTime > 0 && time.Since(startTime) >= config.MaxTime {
+			
+			// Check if we need to re-search with wider window
+			if !useAspirationWindow || (tempBestScore > lastCompletedScore - window && tempBestScore < lastCompletedScore + window) {
+				// Score is within aspiration window or we're not using aspiration
+				bestScore = tempBestScore
+				bestMove = tempBestMove
 				break
+			}
+			
+			// Aspiration window failed - widen and retry
+			if tempBestScore <= lastCompletedScore - window {
+				// Fail low - score is worse than expected
+				window *= 2
+				alpha = lastCompletedScore - window
+				// Keep beta the same to avoid re-searching moves that already failed high
+			} else if tempBestScore >= lastCompletedScore + window {
+				// Fail high - score is better than expected  
+				window *= 2
+				beta = lastCompletedScore + window
+				// Keep alpha the same
+				alpha = lastCompletedScore - window/2
+			}
+			
+			// Safety: if window gets too large, disable aspiration
+			if window > 1000 {
+				useAspirationWindow = false
+				alpha = -ai.MateScore - 1
+				beta = ai.MateScore + 1
 			}
 		}
 
@@ -920,6 +959,7 @@ func (m *MinimaxEngine) selectBestLazySMPResult(resultChan <-chan lazySMPWorkerR
 // negamax performs negamax search with alpha-beta pruning and optimizations
 func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, config ai.SearchConfig, threadState *ThreadLocalState, stats *ai.SearchStats) ai.EvaluationScore {
 	threadState.searchStats.NodesSearched++
+	
 
 	currentDepth := originalMaxDepth - depth
 	if currentDepth > stats.Depth {
@@ -963,6 +1003,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			}
 
 			if entry.GetDepth() >= minDepthRequired {
+				
 				switch entry.GetType() {
 				case EntryExact:
 					return entry.Score
@@ -1015,13 +1056,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	}
 
 	if depth <= 0 {
-		score := m.quiescence(ctx, b, player, alpha, beta, originalMaxDepth-depth, threadState, stats)
-
-		if m.transpositionTable != nil {
-			m.transpositionTable.Store(hash, 0, score, EntryExact, board.Move{})
-		}
-
-		return score
+		return m.quiescence(ctx, b, player, alpha, beta, originalMaxDepth-depth, threadState, stats)
 	}
 
 	legalMoves := m.generator.GenerateAllMoves(b, player)
@@ -1047,6 +1082,9 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	bestMove := board.Move{}
 	entryType := EntryUpperBound
 	moveCount := 0
+	
+	// Track if we improved alpha to determine correct entry type
+	alphaImproved := false
 
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
@@ -1125,7 +1163,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 		if score > alpha {
 			alpha = score
-			entryType = EntryExact
+			alphaImproved = true
 
 			if alpha >= beta {
 				if !move.IsCapture && currentDepth >= 0 && currentDepth < MaxKillerDepth {
@@ -1141,7 +1179,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 				}
 
 				if m.transpositionTable != nil {
-					m.transpositionTable.Store(hash, depth, beta, EntryLowerBound, move)
+					m.transpositionTable.Store(hash, depth, bestScore, EntryLowerBound, move)
 				}
 
 				return beta
@@ -1150,6 +1188,21 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	}
 
 	if m.transpositionTable != nil {
+		// Determine correct entry type based on bounds
+		if alphaImproved {
+			// We found a move that improved alpha
+			if bestScore >= beta {
+				// This shouldn't happen as we return early on beta cutoff
+				entryType = EntryLowerBound
+			} else {
+				// Score is between original alpha and beta
+				entryType = EntryExact
+			}
+		} else {
+			// No move improved alpha - this is an upper bound
+			entryType = EntryUpperBound
+		}
+		
 		m.transpositionTable.Store(hash, depth, bestScore, entryType, bestMove)
 	}
 
