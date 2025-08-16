@@ -36,6 +36,9 @@ tools/engines.json
 *.tmp
 *.log
 
+# Profiling data
+profiles/
+
 # Test data - large EPD files
 testdata/
 
