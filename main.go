@@ -1,51 +1,42 @@
+// Package main provides the entry point for the chess engine application.
 package main
 
 import (
-	"bufio"
-	"flag"
 	"fmt"
-	"log"
 	"os"
-	"runtime/pprof"
-	"strings"
 
-	"github.com/AdamGriffiths31/ChessEngine/search"
-	"github.com/AdamGriffiths31/ChessEngine/uci"
+	"github.com/AdamGriffiths31/ChessEngine/game/modes"
 )
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-
 func main() {
-	flag.Parse()
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
+	fmt.Println("Chess Engine")
+	fmt.Println("============")
+	fmt.Println("\nSelect game mode:")
+	fmt.Println("1. Manual Play (Player vs Player)")
+	fmt.Println("2. Player vs Computer")
+	fmt.Print("\nEnter choice (1 or 2): ")
+
+	var choice int
+	if _, err := fmt.Scanln(&choice); err != nil {
+		fmt.Printf("Error reading input: %v\n", err)
+		return
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			panic(fmt.Errorf("main reader loop: %v", err))
-		}
-		input = strings.TrimSpace(input)
+	var err error
+	switch choice {
+	case 1:
+		manualMode := modes.NewManualMode()
+		err = manualMode.Run()
+	case 2:
+		computerMode := modes.NewComputerMode()
+		err = computerMode.Run()
+	default:
+		fmt.Println("Invalid choice")
+		os.Exit(1)
+	}
 
-		if input == "uci" {
-			uci := uci.NewUCI()
-			uci.UCIMode()
-			continue
-		}
-
-		if input == "b" {
-			search.RunBenchmark()
-		}
-
-		if input == "quit" {
-			break
-		}
+	if err != nil {
+		fmt.Printf("Error running game: %v\n", err)
+		os.Exit(1)
 	}
 }
