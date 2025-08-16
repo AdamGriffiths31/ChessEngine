@@ -331,8 +331,6 @@ run_benchmark() {
     echo "Time Control: $TC_DESC"
     echo "Games: $GAME_COUNT"
     echo "Results will be saved to: $pgn_file"
-    echo "Debug logs will be monitored for illegal moves..."
-    echo "UCI debug logs will be saved to /tmp/chess/ for detailed analysis..."
     echo
     
     # Build ChessEngine
@@ -388,95 +386,10 @@ run_benchmark() {
     # Check for illegal moves in the output
     check_for_illegal_moves "$cutechess_output_file" "$pgn_file" "$timestamp"
     
-    # Analyze game performance (especially for multi-threaded issues)
-    analyze_game_performance "$cutechess_output_file" "$pgn_file" "$timestamp"
-    
     # Analyze results
     analyze_results "$pgn_file" "$timestamp"
 }
 
-# Analyze game performance for threading and other issues
-analyze_game_performance() {
-    local cutechess_output="$1"
-    local pgn_file="$2" 
-    local timestamp="$3"
-    
-    echo -e "${YELLOW}Analyzing game performance...${NC}"
-    
-    # Find the most recent UCI debug log file
-    local uci_debug_log=""
-    uci_debug_log=$(ls -t /tmp/chess/uci_debug_* 2>/dev/null | head -1)
-    
-    if [ -n "$uci_debug_log" ] && [ -f "$uci_debug_log" ]; then
-        echo -e "${BLUE}=== Performance Analysis from UCI Debug Log ===${NC}"
-        echo "Debug log: $uci_debug_log"
-        echo
-        
-        # Count search depths achieved
-        echo "Search Depth Analysis:"
-        grep "AI chose move:" "$uci_debug_log" | sed 's/.*depth=\([0-9]*\).*/\1/' | sort -n | uniq -c | head -10
-        echo
-        
-        # Analyze time usage patterns
-        echo "Time Usage Analysis:"
-        echo "Moves using full allocated time (potential time trouble):"
-        grep "AI chose move:" "$uci_debug_log" | grep -E "time=[4-9]\.[0-9]/[5-9]\." | wc -l
-        echo
-        
-        # Check for transposition table performance
-        echo "Transposition Table Stats (last few moves):"
-        grep "TT:" "$uci_debug_log" | tail -5
-        echo
-        
-        # Look for thread-related messages or performance indicators
-        echo "Thread-related Performance Indicators:"
-        echo "Total AI moves made:"
-        grep -c "AI chose move:" "$uci_debug_log"
-        
-        # Check average nodes per second
-        echo "NPS Analysis (last 10 moves):"
-        grep "AI chose move:" "$uci_debug_log" | tail -10 | grep -o "nodes=[0-9]*" | sed 's/nodes=//' | {
-            total=0
-            count=0
-            while read nodes; do
-                total=$((total + nodes))
-                count=$((count + 1))
-            done
-            if [ $count -gt 0 ]; then
-                avg=$((total / count))
-                echo "Average nodes in last 10 moves: $avg"
-            fi
-        }
-        echo
-        
-        # Check for any error patterns
-        echo "Error/Warning Patterns:"
-        grep -i "error\|warning\|fail" "$uci_debug_log" | head -5
-        echo
-        
-    else
-        echo -e "${YELLOW}No UCI debug log found for performance analysis${NC}"
-    fi
-    
-    # Analyze PGN for move time patterns if available
-    if [ -f "$pgn_file" ]; then
-        echo -e "${BLUE}=== Game Outcome Analysis ===${NC}"
-        echo "Games by result:"
-        grep "Result" "$pgn_file" | sort | uniq -c
-        echo
-        
-        # Look for short games (potential blunders)
-        echo "Move count analysis:"
-        grep -E "^1\." "$pgn_file" | wc -w | while read move_count; do
-            if [ "$move_count" -lt 40 ]; then
-                echo "Short game detected: $move_count moves"
-            fi
-        done
-    fi
-    
-    echo -e "${GREEN}✅ Performance analysis complete${NC}"
-    echo
-}
 
 # Check for illegal moves and dump debug logs if found
 check_for_illegal_moves() {
@@ -581,7 +494,6 @@ analyze_results() {
     local draws=0
     
     # Count results properly - White and Result are on separate lines
-    echo "DEBUG: Analyzing PGN file with multi-line approach..."
     
     # Parse the file to match games correctly
     wins=0
@@ -609,24 +521,18 @@ analyze_results() {
             if [ "$in_chessengine_white_game" = true ]; then
                 if [ "$result" = "1-0" ]; then
                     wins=$((wins + 1))
-                    echo "DEBUG: ChessEngine win as White"
                 elif [ "$result" = "0-1" ]; then
                     losses=$((losses + 1))
-                    echo "DEBUG: ChessEngine loss as White"
                 elif [ "$result" = "1/2-1/2" ]; then
                     draws=$((draws + 1))
-                    echo "DEBUG: ChessEngine draw as White"
                 fi
             elif [ "$in_chessengine_black_game" = true ]; then
                 if [ "$result" = "0-1" ]; then
                     wins=$((wins + 1))
-                    echo "DEBUG: ChessEngine win as Black"
                 elif [ "$result" = "1-0" ]; then
                     losses=$((losses + 1))
-                    echo "DEBUG: ChessEngine loss as Black"
                 elif [ "$result" = "1/2-1/2" ]; then
                     draws=$((draws + 1))
-                    echo "DEBUG: ChessEngine draw as Black"
                 fi
             fi
             
@@ -636,18 +542,13 @@ analyze_results() {
         fi
     done < "$pgn_file"
     
-    echo "DEBUG: Final counts - wins=$wins, losses=$losses, draws=$draws"
-    
     # Calculate score percentage without bc
-    echo "DEBUG: Calculating score... total_games=[$total_games], wins=[$wins], losses=[$losses], draws=[$draws]"
     local score=0
     if [ $total_games -gt 0 ]; then
         # Calculate score as (wins + draws*0.5) / total * 100, using integer arithmetic
         local points=$((wins * 2 + draws))  # wins worth 2 points, draws worth 1 point
         local max_points=$((total_games * 2))  # max possible points
-        echo "DEBUG: points=[$points], max_points=[$max_points]"
         score=$((points * 100 / max_points))
-        echo "DEBUG: final score=[$score]"
     fi
     
     echo "Total Games: $total_games"
