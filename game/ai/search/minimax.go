@@ -299,6 +299,13 @@ func (m *MinimaxEngine) AggregateThreadStats() ai.SearchStats {
 		m.globalStats.LMRReductions += stats.LMRReductions
 		m.globalStats.LMRReSearches += stats.LMRReSearches
 		m.globalStats.LMRNodesSkipped += stats.LMRNodesSkipped
+		m.globalStats.NullMoves += stats.NullMoves
+		m.globalStats.NullCutoffs += stats.NullCutoffs
+		m.globalStats.QNodes += stats.QNodes
+		m.globalStats.TTCutoffs += stats.TTCutoffs
+		m.globalStats.FirstMoveCutoffs += stats.FirstMoveCutoffs
+		m.globalStats.TotalCutoffs += stats.TotalCutoffs
+		m.globalStats.DeltaPruned += stats.DeltaPruned
 
 		threadState.searchStats = ai.SearchStats{}
 
@@ -471,14 +478,16 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 
 	threadState := m.getThreadLocalStateFromContext(ctx)
 
-	if config.UseOpeningBook {
+	// Initialize book service only once if not already done and still in opening phase
+	moveNumber := b.GetFullMoveNumber()
+	if config.UseOpeningBook && m.bookService == nil && moveNumber <= 10 {
 		if err := m.initializeBookService(config); err != nil {
 			fmt.Printf("Warning: failed to initialize opening book service: %v\n", err)
-			m.bookService = nil
 		}
 	}
 
-	if config.UseOpeningBook && m.bookService != nil {
+	// Check opening book only in first 10 moves
+	if config.UseOpeningBook && m.bookService != nil && moveNumber <= 10 {
 		bookMove, err := m.bookService.FindBookMove(b)
 		if err == nil && bookMove != nil {
 			result.BestMove = *bookMove
@@ -545,19 +554,22 @@ func (m *MinimaxEngine) lazySMPSearch(ctx context.Context, b *board.Board, playe
 		}
 	}
 
-	if config.UseOpeningBook {
+	// Initialize book service only once if not already done and still in opening phase
+	moveNumber := b.GetFullMoveNumber()
+	if config.UseOpeningBook && m.bookService == nil && moveNumber <= 10 {
 		if err := m.initializeBookService(config); err != nil {
 			fmt.Printf("Warning: failed to initialize opening book service: %v\n", err)
-			m.bookService = nil
 		}
-		if m.bookService != nil {
-			bookMove, err := m.bookService.FindBookMove(b)
-			if err == nil && bookMove != nil {
-				return ai.SearchResult{
-					BestMove: *bookMove,
-					Score:    0,
-					Stats:    ai.SearchStats{BookMoveUsed: true},
-				}
+	}
+
+	// Check opening book only in first 10 moves
+	if config.UseOpeningBook && m.bookService != nil && moveNumber <= 10 {
+		bookMove, err := m.bookService.FindBookMove(b)
+		if err == nil && bookMove != nil {
+			return ai.SearchResult{
+				BestMove: *bookMove,
+				Score:    0,
+				Stats:    ai.SearchStats{BookMoveUsed: true},
 			}
 		}
 	}
@@ -820,6 +832,13 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		finalStats.LMRReductions = threadState.searchStats.LMRReductions
 		finalStats.LMRReSearches = threadState.searchStats.LMRReSearches
 		finalStats.LMRNodesSkipped = threadState.searchStats.LMRNodesSkipped
+		finalStats.NullMoves = threadState.searchStats.NullMoves
+		finalStats.NullCutoffs = threadState.searchStats.NullCutoffs
+		finalStats.QNodes = threadState.searchStats.QNodes
+		finalStats.TTCutoffs = threadState.searchStats.TTCutoffs
+		finalStats.FirstMoveCutoffs = threadState.searchStats.FirstMoveCutoffs
+		finalStats.TotalCutoffs = threadState.searchStats.TotalCutoffs
+		finalStats.DeltaPruned = threadState.searchStats.DeltaPruned
 
 		if config.MaxTime == 0 || time.Since(startTime) < config.MaxTime {
 			lastCompletedBestMove = bestMove
@@ -898,6 +917,13 @@ func (m *MinimaxEngine) selectBestLazySMPResult(resultChan <-chan lazySMPWorkerR
 		aggregatedStats.LMRReductions += result.stats.LMRReductions
 		aggregatedStats.LMRReSearches += result.stats.LMRReSearches
 		aggregatedStats.LMRNodesSkipped += result.stats.LMRNodesSkipped
+		aggregatedStats.NullMoves += result.stats.NullMoves
+		aggregatedStats.NullCutoffs += result.stats.NullCutoffs
+		aggregatedStats.QNodes += result.stats.QNodes
+		aggregatedStats.TTCutoffs += result.stats.TTCutoffs
+		aggregatedStats.FirstMoveCutoffs += result.stats.FirstMoveCutoffs
+		aggregatedStats.TotalCutoffs += result.stats.TotalCutoffs
+		aggregatedStats.DeltaPruned += result.stats.DeltaPruned
 
 		if existing, exists := moveResults[result.bestMove]; !exists ||
 			result.depth > existing.depth ||
@@ -1006,9 +1032,11 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 				
 				switch entry.GetType() {
 				case EntryExact:
+					threadState.searchStats.TTCutoffs++
 					return entry.Score
 				case EntryLowerBound:
 					if entry.Score >= beta {
+						threadState.searchStats.TTCutoffs++
 						return entry.Score
 					}
 					if entry.Score > alpha {
@@ -1166,6 +1194,12 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			alphaImproved = true
 
 			if alpha >= beta {
+				// Track move ordering statistics
+				threadState.searchStats.TotalCutoffs++
+				if moveCount == 1 {
+					threadState.searchStats.FirstMoveCutoffs++
+				}
+
 				if !move.IsCapture && currentDepth >= 0 && currentDepth < MaxKillerDepth {
 					m.storeKiller(move, currentDepth, threadState)
 				}
@@ -1212,6 +1246,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 // quiescence performs quiescence search using provided thread state
 func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player moves.Player, alpha, beta ai.EvaluationScore, depthFromRoot int, threadState *ThreadLocalState, stats *ai.SearchStats) ai.EvaluationScore {
 	threadState.searchStats.NodesSearched++
+	threadState.searchStats.QNodes++
 
 	select {
 	case <-ctx.Done():
@@ -1311,6 +1346,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 
 			margin := ai.EvaluationScore(200)
 			if eval+captureValue+margin < alpha {
+				threadState.searchStats.DeltaPruned++
 				continue
 			}
 		}

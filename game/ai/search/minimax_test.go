@@ -367,36 +367,36 @@ func TestOppositePlayer(t *testing.T) {
 // TestEngineWithValidation creates an engine configured like uci/engine.go and validates best moves
 func TestEngineWithValidation(t *testing.T) {
 	tests := []struct {
-		name        string
-		fen         string
-		player      moves.Player
-		timeout     time.Duration
+		name         string
+		fen          string
+		player       moves.Player
+		timeout      time.Duration
 		expectedMove string // UCI format move (e.g., "e2e4")
-		description string
+		description  string
 	}{
 		{
-			name:        "Complex endgame position - 5s",
-			fen:         "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
-			player:      moves.White,
-			timeout:     5 * time.Second,
+			name:         "Complex endgame position - 5s",
+			fen:          "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
+			player:       moves.White,
+			timeout:      5 * time.Second,
 			expectedMove: "", // Let the engine decide the best move
-			description: "Complex endgame with tactical possibilities (5 second search)",
+			description:  "Complex endgame with tactical possibilities (5 second search)",
 		},
 		{
-			name:        "Complex endgame position - 10s",
-			fen:         "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
-			player:      moves.White,
-			timeout:     10 * time.Second,
+			name:         "Complex endgame position - 10s",
+			fen:          "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
+			player:       moves.White,
+			timeout:      10 * time.Second,
 			expectedMove: "", // Let the engine decide the best move
-			description: "Complex endgame with tactical possibilities (10 second search)",
+			description:  "Complex endgame with tactical possibilities (10 second search)",
 		},
 		{
-			name:        "Alpha-beta debug - depth 1",
-			fen:         "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
-			player:      moves.White,
-			timeout:     50 * time.Millisecond,
+			name:         "Alpha-beta debug - depth 1",
+			fen:          "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
+			player:       moves.White,
+			timeout:      50 * time.Millisecond,
 			expectedMove: "", // Let the engine decide the best move
-			description: "Debug alpha-beta pruning at depth 1",
+			description:  "Debug alpha-beta pruning at depth 1",
 		},
 	}
 
@@ -406,7 +406,7 @@ func TestEngineWithValidation(t *testing.T) {
 			engine := NewMinimaxEngine()
 			// Enable TT - our PVS fix should handle TT interference properly
 			engine.SetTranspositionTableSize(256) // Same as UCI engine
-			
+
 			// Clear any previous search state to avoid stale TT data
 			engine.ClearSearchState()
 
@@ -421,7 +421,7 @@ func TestEngineWithValidation(t *testing.T) {
 			if strings.Contains(tt.name, "debug") {
 				maxDepth = 1 // Force depth 1 for debug test
 			}
-			
+
 			config := ai.SearchConfig{
 				MaxDepth:            maxDepth,
 				MaxTime:             tt.timeout,
@@ -458,11 +458,6 @@ func TestEngineWithValidation(t *testing.T) {
 			t.Logf("Description: %s", tt.description)
 			t.Logf("Found move: %s (score: %d, depth: %d, nodes: %d, time: %.3fs)",
 				actualMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, searchDuration.Seconds())
-			
-			// Check if this is the problematic f2f6 move
-			if actualMoveUCI == "f2f6" {
-				t.Logf("WARNING: Engine chose f2f6 which Stockfish identifies as a blunder!")
-			}
 
 			// Validate specific expected moves if provided
 			if tt.expectedMove != "" {
@@ -500,9 +495,9 @@ type MoveConverter struct{}
 func (mc *MoveConverter) ToUCI(move board.Move) string {
 	from := move.From.String()
 	to := move.To.String()
-	
+
 	result := from + to
-	
+
 	// Add promotion
 	if move.Promotion != board.Empty {
 		switch move.Promotion {
@@ -516,6 +511,6 @@ func (mc *MoveConverter) ToUCI(move board.Move) string {
 			result += "n"
 		}
 	}
-	
+
 	return result
 }

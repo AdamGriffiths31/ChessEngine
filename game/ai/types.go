@@ -23,6 +23,13 @@ type SearchStats struct {
 	// Null move pruning statistics
 	NullMoves   int64 // Number of null move attempts
 	NullCutoffs int64 // Number of successful null move cutoffs
+
+	// Additional search statistics
+	QNodes          int64 // Quiescence search nodes
+	TTCutoffs       int64 // Beta cutoffs from transposition table
+	FirstMoveCutoffs int64 // Beta cutoffs on first move tried
+	TotalCutoffs     int64 // Total beta cutoffs (for move ordering calculation)
+	DeltaPruned     int64 // Captures skipped by delta pruning
 }
 
 // SearchConfig configures the search parameters

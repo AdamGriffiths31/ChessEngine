@@ -26,12 +26,27 @@ func (mc *MoveConverter) ToUCI(move board.Move) string {
 	from := squareToUCI(move.From)
 	to := squareToUCI(move.To)
 
-	if move.Promotion != board.Empty {
-		promotion := strings.ToLower(string(move.Promotion))
-		return from + to + promotion
+	uciMove := from + to
+	
+	// Convert Chess960 castling notation to standard UCI notation
+	// This fixes opening book data that contains Chess960 format moves
+	switch uciMove {
+	case "e1h1": // White kingside castling
+		uciMove = "e1g1"
+	case "e1a1": // White queenside castling
+		uciMove = "e1c1"
+	case "e8h8": // Black kingside castling
+		uciMove = "e8g8"
+	case "e8a8": // Black queenside castling
+		uciMove = "e8c8"
 	}
 
-	return from + to
+	if move.Promotion != board.Empty {
+		promotion := strings.ToLower(string(move.Promotion))
+		return uciMove + promotion
+	}
+
+	return uciMove
 }
 
 // FromUCI converts UCI notation to internal Move representation.

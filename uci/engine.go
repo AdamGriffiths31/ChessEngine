@@ -98,8 +98,6 @@ func (ue *Engine) Run(input io.Reader, output io.Writer) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		ue.debugLogger.Printf("UCI-IN: [%s] %s", time.Now().Format("15:04:05.000"), line)
-
 		if ue.commLogger != nil {
 			ue.commLogger.LogIncoming(line)
 		}
@@ -107,12 +105,9 @@ func (ue *Engine) Run(input io.Reader, output io.Writer) error {
 		response := ue.HandleCommand(line)
 
 		if response != "" {
-			ue.debugLogger.Printf("UCI-OUT: [%s] %s", time.Now().Format("15:04:05.000"), response)
 			if _, err := fmt.Fprintln(ue.output, response); err != nil {
 				ue.debugLogger.Printf("UCI-ERROR: Failed to write response: %v", err)
 			}
-		} else {
-			ue.debugLogger.Printf("UCI-OUT: [%s] (no response)", time.Now().Format("15:04:05.000"))
 		}
 
 		cmd := ue.protocol.ParseCommand(line)
@@ -134,8 +129,6 @@ func (ue *Engine) Run(input io.Reader, output io.Writer) error {
 // HandleCommand processes a single UCI command and returns the response.
 func (ue *Engine) HandleCommand(input string) string {
 	cmd := ue.protocol.ParseCommand(input)
-
-	ue.debugLogger.Printf("CMD-PARSE: Command='%s', Args=%v", cmd.Name, cmd.Args)
 
 	if cmd.Name == "" {
 		return ""
@@ -181,11 +174,9 @@ func (ue *Engine) handleIsReady() string {
 }
 
 func (ue *Engine) handlePosition(args []string) string {
-	ue.debugLogger.Printf("POSITION: Received args=%v", args)
-
 	fen, moveList, err := ue.protocol.ParsePosition(args)
 	if err != nil {
-		ue.debugLogger.Printf("POSITION: Failed to parse position - fen: %q, error: %v", fen, err)
+		ue.debugLogger.Printf("POSITION-ERROR: Failed to parse position - fen: %q, error: %v", fen, err)
 		return ""
 	}
 
@@ -194,36 +185,30 @@ func (ue *Engine) handlePosition(args []string) string {
 	for _, moveStr := range moveList {
 		move, err := ue.converter.FromUCI(moveStr, ue.engine.GetState().Board)
 		if err != nil {
-			ue.debugLogger.Printf("POSITION: Failed to convert UCI move - move: %s, board: %s, error: %v",
-				moveStr, ue.engine.GetCurrentFEN(), err)
+			ue.debugLogger.Printf("POSITION-ERROR: Failed to convert UCI move - move: %s, error: %v", moveStr, err)
 			return ""
 		}
 
 		err = ue.engine.MakeMove(move)
 		if err != nil {
-			ue.debugLogger.Printf("POSITION: Failed to make move - move: %+v, error: %v", move, err)
+			ue.debugLogger.Printf("POSITION-ERROR: Failed to make move - move: %+v, error: %v", move, err)
 			return ""
 		}
 	}
 
-	ue.debugLogger.Printf("POSITION: Final position loaded: %s", ue.engine.GetCurrentFEN())
+	// Log final position for debugging evaluation swings
+	ue.debugLogger.Printf("POSITION: %s", ue.engine.GetCurrentFEN())
+
 	return ""
 }
 
 func (ue *Engine) handleGo(args []string) {
 	if ue.searching {
-		ue.debugLogger.Printf("GO-CMD: Ignoring go command - already searching")
 		return
 	}
 
-	ue.debugLogger.Printf("GO-CMD: Starting search with args: %v", args)
-
 	params := ue.protocol.ParseGo(args)
-	ue.debugLogger.Printf("GO-PARSE: Parsed parameters - Depth=%d, MoveTime=%v, WTime=%v, BTime=%v, WInc=%v, BInc=%v, Infinite=%v",
-		params.Depth, params.MoveTime, params.WTime, params.BTime, params.WInc, params.BInc, params.Infinite)
-
 	player := moves.Player(ue.engine.GetCurrentPlayer())
-	ue.debugLogger.Printf("GO-PARSE: Current player from engine state: %s", player)
 
 	ue.searching = true
 	ue.stopChannel = make(chan struct{})
@@ -235,12 +220,35 @@ func (ue *Engine) handleGo(args []string) {
 		}
 	}
 
+	// Get absolute path to opening book relative to executable
+	execPath, err := os.Executable()
+	if err != nil {
+		ue.debugLogger.Printf("BOOK-ERROR: Failed to get executable path: %v", err)
+		execPath = ""
+	}
+
+	var bookFiles []string
+	if execPath != "" {
+		// Assuming executable is in tools/bin/ and book is at game/openings/testdata/performance.bin
+		execDir := filepath.Dir(execPath)
+		projectRoot := filepath.Join(execDir, "..", "..")
+		bookPath := filepath.Join(projectRoot, "game", "openings", "testdata", "performance.bin")
+		bookPath, _ = filepath.Abs(bookPath)
+
+		if _, err := os.Stat(bookPath); err == nil {
+			bookFiles = []string{bookPath}
+			ue.debugLogger.Printf("BOOK: Found opening book at: %s", bookPath)
+		} else {
+			ue.debugLogger.Printf("BOOK-ERROR: Opening book not found at: %s", bookPath)
+		}
+	}
+
 	config := ai.SearchConfig{
 		MaxDepth:            999,
 		MaxTime:             5 * time.Second,
 		DebugMode:           false,
-		UseOpeningBook:      true,
-		BookFiles:           []string{"game/openings/testdata/performance.bin"},
+		UseOpeningBook:      len(bookFiles) > 0,
+		BookFiles:           bookFiles,
 		BookSelectMode:      ai.BookSelectWeightedRandom,
 		BookWeightThreshold: 1,
 		LMRMinDepth:         3,
@@ -279,9 +287,6 @@ func (ue *Engine) handleGo(args []string) {
 
 	ue.moveNumber++
 
-	ue.debugLogger.Printf("Move %d search starting - Position: %s, Player: %v",
-		ue.moveNumber, ue.engine.GetCurrentFEN(), player)
-
 	searchStart := time.Now()
 	var result ai.SearchResult
 	var searchDuration time.Duration
@@ -310,10 +315,6 @@ func (ue *Engine) handleGo(args []string) {
 		searchDuration = time.Since(searchStart)
 	}()
 
-	if config.UseOpeningBook && result.Stats.BookMoveUsed {
-		ue.debugLogger.Printf("Book move used for move %d", ue.moveNumber)
-	}
-
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
 	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI)
 
@@ -324,9 +325,14 @@ func (ue *Engine) handleGo(args []string) {
 			hits, misses, collisions, hitRate)
 	}
 
-	ue.debugLogger.Printf("AI chose move: %s (%s) (From=%s, To=%s, Piece=%d, Captured=%d, Promotion=%d score=%d depth=%d nodes=%d book=%t time=%.3fs/%.3fs) %s",
-		bestMoveUCI, formattedBestMove, result.BestMove.From.String(), result.BestMove.To.String(),
-		result.BestMove.Piece, result.BestMove.Captured, result.BestMove.Promotion, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.BookMoveUsed, searchDuration.Seconds(), config.MaxTime.Seconds(), ttStatsStr)
+	// Calculate move ordering percentage
+	var moveOrderPct float64
+	if result.Stats.TotalCutoffs > 0 {
+		moveOrderPct = float64(result.Stats.FirstMoveCutoffs) / float64(result.Stats.TotalCutoffs) * 100
+	}
+
+	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | MO: %.0f%% | Time: %.3fs | Book: %t | %s",
+		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, moveOrderPct, searchDuration.Seconds(), result.Stats.BookMoveUsed, ttStatsStr)
 
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
@@ -368,14 +374,11 @@ func (ue *Engine) handleSetOption(args []string) string {
 		if _, err := fmt.Sscanf(value, "%d", &hashSizeMB); err == nil && hashSizeMB > 0 {
 			if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
 				minimaxEngine.SetTranspositionTableSize(hashSizeMB)
-				ue.debugLogger.Printf("Set transposition table size to %d MB", hashSizeMB)
 			}
 		}
 	case "Threads":
 		var threadCount int
-		if _, err := fmt.Sscanf(value, "%d", &threadCount); err == nil && threadCount > 0 && threadCount <= 32 {
-			ue.debugLogger.Printf("Set thread count to %d", threadCount)
-		} else {
+		if _, err := fmt.Sscanf(value, "%d", &threadCount); err != nil || threadCount <= 0 || threadCount > 32 {
 			ue.debugLogger.Printf("Invalid thread count: %s (must be 1-32)", value)
 		}
 	}
@@ -384,13 +387,12 @@ func (ue *Engine) handleSetOption(args []string) string {
 }
 
 func (ue *Engine) handleNewGame() string {
-	ue.debugLogger.Println("NEWGAME: Resetting engine...")
+	ue.debugLogger.Println("=== NEW GAME ===")
 	ue.engine.Reset()
 	ue.moveNumber = 0
 
 	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
 		minimaxEngine.ClearSearchState()
-		ue.debugLogger.Println("NEWGAME: Cleared transposition table")
 	}
 
 	return ""
@@ -435,7 +437,7 @@ func (ue *Engine) calculateMoveTime(params SearchParams, player moves.Player, mo
 		maxSafeTime = incrementPortion + baseTimePortion
 
 		if timeLeft < 5*time.Second {
-			maxSafeTime = increment * 8 / 10
+			maxSafeTime = increment * 9 / 10
 		}
 	} else {
 		maxSafeTime = timeLeft / 3

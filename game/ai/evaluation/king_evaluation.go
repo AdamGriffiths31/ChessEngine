@@ -19,7 +19,7 @@ import (
 // King evaluation constants - minimal and essential
 const (
 	// King safety (simplified)
-	KingShelterBonus = 10  // Per pawn in front of castled king
+	KingShelterBonus = 15  // Per pawn in front of castled king
 	OpenFileNearKing = -20 // Open file next to king
 
 	// Endgame king activity
@@ -138,6 +138,7 @@ func evaluateKingSafety(b *board.Board, kingSquare int, isWhite bool) int {
 	}
 
 	score += evaluateOpenFilesNearKing(b, kingSquare)
+	score += evaluateBasicThreats(b, kingSquare, isWhite)
 
 	return score
 }
@@ -220,6 +221,34 @@ func evaluateOpenFilesNearKing(b *board.Board, kingSquare int) int {
 		if (allPawns & fileMask) == 0 {
 			score += OpenFileNearKing
 		}
+	}
+
+	return score
+}
+
+// evaluateBasicThreats provides simple threat detection near the king
+// Counts enemy pieces in king zone and applies exponential penalty for multiple threats
+func evaluateBasicThreats(b *board.Board, kingSquare int, isWhite bool) int {
+	if b == nil {
+		return 0
+	}
+	score := 0
+	zone := KingSafetyZone[kingSquare] // Use pre-computed safety zone
+
+	// Get enemy pieces
+	var enemyPieces board.Bitboard
+	if isWhite {
+		enemyPieces = b.GetColorBitboard(board.BitboardBlack)
+	} else {
+		enemyPieces = b.GetColorBitboard(board.BitboardWhite)
+	}
+
+	// Count enemies near king (fast bitboard operation)
+	threatsNearKing := (enemyPieces & zone).PopCount()
+
+	// Simple penalty: more threats = exponentially worse
+	if threatsNearKing >= 2 {
+		score -= threatsNearKing * threatsNearKing * 25
 	}
 
 	return score
