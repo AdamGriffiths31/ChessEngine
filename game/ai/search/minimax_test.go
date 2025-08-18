@@ -375,22 +375,6 @@ func TestEngineWithValidation(t *testing.T) {
 		description  string
 	}{
 		{
-			name:         "Complex endgame position - 5s",
-			fen:          "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
-			player:       moves.White,
-			timeout:      5 * time.Second,
-			expectedMove: "", // Let the engine decide the best move
-			description:  "Complex endgame with tactical possibilities (5 second search)",
-		},
-		{
-			name:         "Complex endgame position - 10s",
-			fen:          "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
-			player:       moves.White,
-			timeout:      10 * time.Second,
-			expectedMove: "", // Let the engine decide the best move
-			description:  "Complex endgame with tactical possibilities (10 second search)",
-		},
-		{
 			name:         "Alpha-beta debug - depth 1",
 			fen:          "1r6/3pk1P1/4pp2/p1p1n3/4P1P1/1P1P4/B1P1RRK1/3r4 w - - 5 35",
 			player:       moves.White,

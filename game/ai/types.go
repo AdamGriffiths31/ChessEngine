@@ -25,11 +25,16 @@ type SearchStats struct {
 	NullCutoffs int64 // Number of successful null move cutoffs
 
 	// Additional search statistics
-	QNodes          int64 // Quiescence search nodes
-	TTCutoffs       int64 // Beta cutoffs from transposition table
+	QNodes           int64 // Quiescence search nodes
+	TTCutoffs        int64 // Beta cutoffs from transposition table
 	FirstMoveCutoffs int64 // Beta cutoffs on first move tried
 	TotalCutoffs     int64 // Total beta cutoffs (for move ordering calculation)
-	DeltaPruned     int64 // Captures skipped by delta pruning
+	DeltaPruned      int64 // Captures skipped by delta pruning
+
+	// Razoring statistics
+	RazoringAttempts int64 // Number of razoring attempts
+	RazoringCutoffs  int64 // Successful razoring cutoffs
+	RazoringFailed   int64 // Razoring attempts that failed verification
 }
 
 // SearchConfig configures the search parameters
@@ -51,6 +56,10 @@ type SearchConfig struct {
 
 	// Null move pruning configuration
 	DisableNullMove bool // If true, disables null move pruning for comparison testing
+
+	// Razoring configuration
+	DisableRazoring     bool    // If true, disables razoring for comparison testing
+	RazoringMarginScale float64 // Scale factor for margins (default 1.0)
 
 	// Parallel search configuration
 	NumThreads int // Number of threads to use for parallel search (default: 1 for sequential)

@@ -42,6 +42,11 @@ type ThreadSearchParams struct {
 	HistoryHighThreshold int32
 	HistoryMedThreshold  int32
 	HistoryLowThreshold  int32
+
+	// Razoring parameters
+	RazoringEnabled  bool
+	RazoringMargins  [4]ai.EvaluationScore // Margins for depths 1-3 (index 0 unused)
+	RazoringMaxDepth int                   // Maximum depth to apply razoring
 }
 
 // getThreadSearchParams returns thread-specific search parameters based on threadID
@@ -53,6 +58,11 @@ func getThreadSearchParams(threadID int) ThreadSearchParams {
 		HistoryHighThreshold: 2000,
 		HistoryMedThreshold:  500,
 		HistoryLowThreshold:  -500,
+
+		// Razoring parameters
+		RazoringEnabled:  true,
+		RazoringMargins:  [4]ai.EvaluationScore{0, 200, 350, 500}, // index 0 unused
+		RazoringMaxDepth: 3,
 	}
 
 	if threadID == 0 || threadID == -1 {
@@ -67,6 +77,11 @@ func getThreadSearchParams(threadID int) ThreadSearchParams {
 			HistoryHighThreshold: 1500,
 			HistoryMedThreshold:  300,
 			HistoryLowThreshold:  -700,
+
+			// Razoring parameters - more aggressive margins
+			RazoringEnabled:  true,
+			RazoringMargins:  [4]ai.EvaluationScore{0, 150, 300, 450},
+			RazoringMaxDepth: 3,
 		}
 	case 2:
 		return ThreadSearchParams{
@@ -75,6 +90,11 @@ func getThreadSearchParams(threadID int) ThreadSearchParams {
 			HistoryHighThreshold: 2800,
 			HistoryMedThreshold:  800,
 			HistoryLowThreshold:  -300,
+
+			// Razoring parameters - less aggressive margins
+			RazoringEnabled:  true,
+			RazoringMargins:  [4]ai.EvaluationScore{0, 250, 400, 550},
+			RazoringMaxDepth: 3,
 		}
 	case 3:
 		return ThreadSearchParams{
@@ -83,6 +103,11 @@ func getThreadSearchParams(threadID int) ThreadSearchParams {
 			HistoryHighThreshold: 1200,
 			HistoryMedThreshold:  200,
 			HistoryLowThreshold:  -900,
+
+			// Razoring parameters - moderate margins
+			RazoringEnabled:  true,
+			RazoringMargins:  [4]ai.EvaluationScore{0, 180, 320, 480},
+			RazoringMaxDepth: 3,
 		}
 	default:
 		return baseParams
@@ -235,6 +260,7 @@ func (m *MinimaxEngine) getThreadLocalState() *ThreadLocalState {
 	newState := &ThreadLocalState{
 		moveOrderBuffer: make([]moveScore, 256),
 		debugMoveOrder:  make([]board.Move, 0),
+		searchParams:    getThreadSearchParams(0),
 	}
 
 	m.threadStates.Store(singleThreadKey, newState)
@@ -306,6 +332,9 @@ func (m *MinimaxEngine) AggregateThreadStats() ai.SearchStats {
 		m.globalStats.FirstMoveCutoffs += stats.FirstMoveCutoffs
 		m.globalStats.TotalCutoffs += stats.TotalCutoffs
 		m.globalStats.DeltaPruned += stats.DeltaPruned
+		m.globalStats.RazoringAttempts += stats.RazoringAttempts
+		m.globalStats.RazoringCutoffs += stats.RazoringCutoffs
+		m.globalStats.RazoringFailed += stats.RazoringFailed
 
 		threadState.searchStats = ai.SearchStats{}
 
@@ -738,7 +767,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		}
 
 		bestScore := -ai.MateScore - 1
-		bestMove := legalMoves.Moves[0]
+		var bestMove board.Move
 
 		alpha := -ai.MateScore - 1
 		beta := ai.MateScore + 1
@@ -746,7 +775,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		// Use aspiration windows for depths > 1
 		useAspirationWindow := currentDepth > 1
 		window := ai.EvaluationScore(50)
-		
+
 		if useAspirationWindow {
 			alpha = lastCompletedScore - window
 			beta = lastCompletedScore + window
@@ -759,7 +788,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			moveIndex := 0
 
 			for _, move := range legalMoves.Moves[:legalMoves.Count] {
-				
+
 				undo, err := b.MakeMoveWithUndo(move)
 				if err != nil {
 					continue
@@ -779,7 +808,6 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				}
 
 				b.UnmakeMove(undo)
-				
 
 				if score > tempBestScore {
 					tempBestScore = score
@@ -796,29 +824,29 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 					break
 				}
 			}
-			
+
 			// Check if we need to re-search with wider window
-			if !useAspirationWindow || (tempBestScore > lastCompletedScore - window && tempBestScore < lastCompletedScore + window) {
+			if !useAspirationWindow || (tempBestScore > lastCompletedScore-window && tempBestScore < lastCompletedScore+window) {
 				// Score is within aspiration window or we're not using aspiration
 				bestScore = tempBestScore
 				bestMove = tempBestMove
 				break
 			}
-			
+
 			// Aspiration window failed - widen and retry
-			if tempBestScore <= lastCompletedScore - window {
+			if tempBestScore <= lastCompletedScore-window {
 				// Fail low - score is worse than expected
 				window *= 2
 				alpha = lastCompletedScore - window
 				// Keep beta the same to avoid re-searching moves that already failed high
-			} else if tempBestScore >= lastCompletedScore + window {
-				// Fail high - score is better than expected  
+			} else if tempBestScore >= lastCompletedScore+window {
+				// Fail high - score is better than expected
 				window *= 2
 				beta = lastCompletedScore + window
 				// Keep alpha the same
 				alpha = lastCompletedScore - window/2
 			}
-			
+
 			// Safety: if window gets too large, disable aspiration
 			if window > 1000 {
 				useAspirationWindow = false
@@ -839,6 +867,9 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		finalStats.FirstMoveCutoffs = threadState.searchStats.FirstMoveCutoffs
 		finalStats.TotalCutoffs = threadState.searchStats.TotalCutoffs
 		finalStats.DeltaPruned = threadState.searchStats.DeltaPruned
+		finalStats.RazoringAttempts = threadState.searchStats.RazoringAttempts
+		finalStats.RazoringCutoffs = threadState.searchStats.RazoringCutoffs
+		finalStats.RazoringFailed = threadState.searchStats.RazoringFailed
 
 		if config.MaxTime == 0 || time.Since(startTime) < config.MaxTime {
 			lastCompletedBestMove = bestMove
@@ -985,7 +1016,6 @@ func (m *MinimaxEngine) selectBestLazySMPResult(resultChan <-chan lazySMPWorkerR
 // negamax performs negamax search with alpha-beta pruning and optimizations
 func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, config ai.SearchConfig, threadState *ThreadLocalState, stats *ai.SearchStats) ai.EvaluationScore {
 	threadState.searchStats.NodesSearched++
-	
 
 	currentDepth := originalMaxDepth - depth
 	if currentDepth > stats.Depth {
@@ -1029,7 +1059,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			}
 
 			if entry.GetDepth() >= minDepthRequired {
-				
+
 				switch entry.GetType() {
 				case EntryExact:
 					threadState.searchStats.TTCutoffs++
@@ -1083,6 +1113,30 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		}
 	}
 
+	// Simplest approach - razor based on static eval only
+	if !config.DisableRazoring &&
+		threadState.searchParams.RazoringEnabled &&
+		!inCheck &&
+		depth <= threadState.searchParams.RazoringMaxDepth &&
+		depth > 0 {
+
+		razoringMargin := threadState.searchParams.RazoringMargins[depth]
+
+		if staticEval+razoringMargin < alpha {
+			// Don't check for TT move at all
+			threadState.searchStats.RazoringAttempts++
+
+			qScore := m.quiescence(ctx, b, player, alpha, beta,
+				originalMaxDepth-depth, threadState, stats)
+
+			if qScore <= alpha {
+				threadState.searchStats.RazoringCutoffs++
+				return qScore
+			}
+			threadState.searchStats.RazoringFailed++
+		}
+	}
+
 	if depth <= 0 {
 		return m.quiescence(ctx, b, player, alpha, beta, originalMaxDepth-depth, threadState, stats)
 	}
@@ -1108,9 +1162,8 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	bestScore := -ai.MateScore - 1
 	bestMove := board.Move{}
-	entryType := EntryUpperBound
 	moveCount := 0
-	
+
 	// Track if we improved alpha to determine correct entry type
 	alphaImproved := false
 
@@ -1223,6 +1276,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	if m.transpositionTable != nil {
 		// Determine correct entry type based on bounds
+		var entryType EntryType
 		if alphaImproved {
 			// We found a move that improved alpha
 			if bestScore >= beta {
@@ -1236,7 +1290,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			// No move improved alpha - this is an upper bound
 			entryType = EntryUpperBound
 		}
-		
+
 		m.transpositionTable.Store(hash, depth, bestScore, entryType, bestMove)
 	}
 

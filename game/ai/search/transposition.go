@@ -89,19 +89,19 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 
 	index := hash & tt.mask
 	entry := &tt.table[index]
-	
+
 	hashUpper := uint32(hash >> 32)
 	hashLower := uint32(hash)
 	currentAge := tt.age.Load()
-	
+
 	// Create new packed key
 	newKey := packKey(hashUpper, depth, entryType, currentAge)
-	
+
 	for {
 		// Load current entry atomically
 		currentKey := atomic.LoadUint64((*uint64)(unsafe.Pointer(&entry.Key)))
 		currentHash := atomic.LoadUint32((*uint32)(unsafe.Pointer(&entry.Hash)))
-		
+
 		// Check if slot is empty
 		if currentKey == 0 {
 			// Try to claim empty slot
@@ -114,20 +114,20 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 			}
 			continue // Retry if someone else claimed it
 		}
-		
+
 		// Unpack current entry
 		curHashUpper, curDepth, curEntryType, curAge := unpackKey(currentKey)
 		curFullHash := uint64(curHashUpper)<<32 | uint64(currentHash)
-		
+
 		// Check for hash collision
 		if curFullHash != 0 && curFullHash != hash {
 			tt.collisions.Add(1)
 		}
-		
+
 		// CRITICAL FIX: Proper replacement logic for same position
 		if curFullHash == hash {
 			shouldReplace := false
-			
+
 			// Always replace if new search is strictly deeper
 			if depth > curDepth {
 				shouldReplace = true
@@ -135,7 +135,7 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 				// At same depth, use entry type priority
 				// EntryExact > EntryLowerBound > EntryUpperBound
 				// This ensures refutations (usually EntryExact) replace speculative scores
-				
+
 				if entryType == EntryExact {
 					// Exact scores always replace at same depth
 					shouldReplace = true
@@ -143,7 +143,7 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 					// Lower bounds are better than upper bounds
 					shouldReplace = true
 				} else if entryType == EntryUpperBound && curEntryType == EntryLowerBound {
-					// CRITICAL: For PVS, allow upper bounds from full window searches to replace 
+					// CRITICAL: For PVS, allow upper bounds from full window searches to replace
 					// lower bounds from null window searches, as the full window provides more accurate bounds
 					shouldReplace = true
 				} else if entryType == curEntryType {
@@ -160,7 +160,7 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 					}
 				}
 			}
-			
+
 			if shouldReplace {
 				if atomic.CompareAndSwapUint64((*uint64)(unsafe.Pointer(&entry.Key)), currentKey, newKey) {
 					atomic.StoreUint32((*uint32)(unsafe.Pointer(&entry.Hash)), hashLower)
@@ -170,17 +170,16 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 					return
 				}
 				continue // Retry if entry changed
-			} else {
-				// Don't replace - keep existing entry
-				return
 			}
+			// Don't replace - keep existing entry
+			return
 		}
-		
+
 		// For different positions (hash collision), use replacement logic
 		if curFullHash != hash {
 			existingScore := tt.calculateEntryValueFromPacked(curDepth, curAge)
 			newScore := tt.calculateNewEntryValue(depth, entryType)
-			
+
 			// Replace if new entry is more valuable
 			if newScore > existingScore {
 				if atomic.CompareAndSwapUint64((*uint64)(unsafe.Pointer(&entry.Key)), currentKey, newKey) {
@@ -193,7 +192,7 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 				continue // Retry if entry changed
 			}
 		}
-		
+
 		// Entry not replaced, exit
 		return
 	}

@@ -142,6 +142,7 @@ go test -run TestPerft ./game/moves
 - **Late Move Reductions** (LMR) for non-critical moves
 - **Aspiration Windows** for efficient root search
 - **Null Move Pruning** for forward pruning
+- **Razoring** for forward pruning in losing positions at shallow depths
 
 ### Evaluation Features
 - **Tapered Evaluation** blending middle game and endgame scores

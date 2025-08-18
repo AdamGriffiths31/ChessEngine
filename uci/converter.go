@@ -27,7 +27,7 @@ func (mc *MoveConverter) ToUCI(move board.Move) string {
 	to := squareToUCI(move.To)
 
 	uciMove := from + to
-	
+
 	// Convert Chess960 castling notation to standard UCI notation
 	// This fixes opening book data that contains Chess960 format moves
 	switch uciMove {

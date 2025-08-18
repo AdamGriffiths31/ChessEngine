@@ -1,3 +1,4 @@
+// Package main provides profiling utilities for the chess engine.
 package main
 
 import (
@@ -18,14 +19,14 @@ import (
 
 func main() {
 	var (
-		stsFile      = flag.String("file", "", "STS EPD file to benchmark")
-		position     = flag.Int("pos", 1, "Position number in the file (1-based)")
-		searchTime   = flag.Duration("time", 10*time.Second, "Search time per position")
-		cpuProfile   = flag.String("cpuprofile", "", "Write CPU profile to file")
-		memProfile   = flag.String("memprofile", "", "Write memory profile to file")
-		threads      = flag.Int("threads", 1, "Number of search threads")
-		ttSize       = flag.Int("tt", 256, "Transposition table size in MB")
-		showDetails  = flag.Bool("details", false, "Show detailed search information")
+		stsFile     = flag.String("file", "", "STS EPD file to benchmark")
+		position    = flag.Int("pos", 1, "Position number in the file (1-based)")
+		searchTime  = flag.Duration("time", 10*time.Second, "Search time per position")
+		cpuProfile  = flag.String("cpuprofile", "", "Write CPU profile to file")
+		memProfile  = flag.String("memprofile", "", "Write memory profile to file")
+		threads     = flag.Int("threads", 1, "Number of search threads")
+		ttSize      = flag.Int("tt", 256, "Transposition table size in MB")
+		showDetails = flag.Bool("details", false, "Show detailed search information")
 	)
 	flag.Parse()
 
@@ -100,9 +101,9 @@ func main() {
 	// Run the search
 	ctx := context.Background()
 	startTime := time.Now()
-	
+
 	result := engine.FindBestMove(ctx, b, player, config)
-	
+
 	searchDuration := time.Since(startTime)
 
 	// Display results
@@ -120,7 +121,7 @@ func main() {
 		fmt.Printf("Null cutoffs: %d\n", result.Stats.NullCutoffs)
 		fmt.Printf("LMR reductions: %d\n", result.Stats.LMRReductions)
 		fmt.Printf("LMR re-searches: %d\n", result.Stats.LMRReSearches)
-		
+
 		// Get TT stats
 		hits, misses, collisions, hitRate := engine.GetTranspositionTableStats()
 		fmt.Printf("\nTransposition Table:\n")
@@ -132,7 +133,7 @@ func main() {
 
 	// Check if the move matches expected best moves
 	moveStr := fmt.Sprintf("%s%s", result.BestMove.From.String(), result.BestMove.To.String())
-	
+
 	// Calculate STS score based on move scores
 	score := 0
 	for _, ms := range epdPos.MoveScores {

@@ -233,7 +233,9 @@ func (ue *Engine) handleGo(args []string) {
 		execDir := filepath.Dir(execPath)
 		projectRoot := filepath.Join(execDir, "..", "..")
 		bookPath := filepath.Join(projectRoot, "game", "openings", "testdata", "performance.bin")
-		bookPath, _ = filepath.Abs(bookPath)
+		if absPath, err := filepath.Abs(bookPath); err == nil {
+			bookPath = absPath
+		}
 
 		if _, err := os.Stat(bookPath); err == nil {
 			bookFiles = []string{bookPath}
@@ -331,8 +333,8 @@ func (ue *Engine) handleGo(args []string) {
 		moveOrderPct = float64(result.Stats.FirstMoveCutoffs) / float64(result.Stats.TotalCutoffs) * 100
 	}
 
-	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | MO: %.0f%% | Time: %.3fs | Book: %t | %s",
-		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, moveOrderPct, searchDuration.Seconds(), result.Stats.BookMoveUsed, ttStatsStr)
+	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | Time: %.3fs | Book: %t | %s",
+		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, searchDuration.Seconds(), result.Stats.BookMoveUsed, ttStatsStr)
 
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
