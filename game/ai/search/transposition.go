@@ -124,7 +124,6 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 			tt.collisions.Add(1)
 		}
 
-		// CRITICAL FIX: Proper replacement logic for same position
 		if curFullHash == hash {
 			shouldReplace := false
 
@@ -143,9 +142,9 @@ func (tt *TranspositionTable) Store(hash uint64, depth int, score ai.EvaluationS
 					// Lower bounds are better than upper bounds
 					shouldReplace = true
 				} else if entryType == EntryUpperBound && curEntryType == EntryLowerBound {
-					// CRITICAL: For PVS, allow upper bounds from full window searches to replace
-					// lower bounds from null window searches, as the full window provides more accurate bounds
-					shouldReplace = true
+					// CRITICAL: Upper bounds should NOT replace lower bounds at the same depth
+					// This violates search invariants and causes score/move corruption
+					shouldReplace = false
 				} else if entryType == curEntryType {
 					// Same type at same depth - keep the existing one to avoid thrashing
 					// Unless the score difference is significant (indicates a refutation)

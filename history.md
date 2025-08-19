@@ -21,5 +21,7 @@ This file tracks the performance of ChessEngine against various opponents over t
 | 2025-08-10 17:30 | Weak Stockfish v2 | Bullet (2+2) | 1 thread | 3 | 3 | 0 | 0 | 100% | Null Move fix |
 | 2025-08-10 20:54 | Weak Stockfish v3 | Bullet (2+2) | 1 thread | 3 | 1 | 2 | 0 | 33% | - |
 | 2025-08-11 12:34 | Weak Stockfish v3 | Bullet (2+2) | 1 thread | 3 | 1 | 2 | 0 | 33% | - |
-| 2025-08-16 21:11 | Weak Stockfish v3 | Bullet (2+2) | 8 threads | 3 | 3 | 0 | 0 | 100% | - |
 | 2025-08-18 19:28 | Weak Stockfish v3 | Bullet (2+2) | 8 threads | 3 | 2 | 1 | 0 | 66% | - |
+| 2025-08-18 21:14 | Weak Stockfish v3 | Bullet (2+2) | 8 threads | 3 | 1 | 2 | 0 | 33% | - |
+| 2025-08-19 17:35 | Weak Stockfish v3 | Bullet (2+2) | 8 threads | 3 | 1 | 0 | 2 | 66% | - |
+| 2025-08-19 18:19 | Weak Stockfish v3 | Bullet (2+2) | 8 threads | 3 | 1 | 1 | 1 | 50% | - |

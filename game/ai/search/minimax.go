@@ -963,23 +963,48 @@ func (m *MinimaxEngine) selectBestLazySMPResult(resultChan <-chan lazySMPWorkerR
 		}
 	}
 
+	hasMate := false
+	bestMateScore := -ai.MateScore
+	var bestMateResult lazySMPWorkerResult
+
+	for _, result := range allResults {
+		// Check for mate scores (both positive and negative mates) using more precise threshold
+		if math.Abs(float64(result.score)) >= float64(ai.MateScore-100) {
+			hasMate = true
+			// For mate positions, higher score = shorter mate = better
+			if result.score > bestMateScore {
+				bestMateScore = result.score
+				bestMateResult = result
+			}
+		}
+	}
+
+	// If any thread found a mate, ignore voting and just return the best mate
+	if hasMate {
+		aggregatedStats.Depth = maxDepth
+		aggregatedStats.Time = time.Since(startTime)
+
+		return ai.SearchResult{
+			BestMove: bestMateResult.bestMove,
+			Score:    bestMateResult.score,
+			Stats:    aggregatedStats,
+		}
+	}
+
+	// Non-mate positions: use improved voting with better score weighting
 	scoreRange := maxScore - minScore
 	if scoreRange == 0 {
 		scoreRange = 1
 	}
 
 	for _, result := range allResults {
-
 		depthWeight := float64(result.depth) / float64(maxDepth)
-
 		scoreWeight := float64(result.score-minScore) / float64(scoreRange)
-
 		nodeWeight := math.Log10(float64(result.stats.NodesSearched)+1) / 100.0
 
-		voteWeight := depthWeight*0.6 + scoreWeight*0.35 + nodeWeight*0.05
+		voteWeight := depthWeight*0.25 + scoreWeight*0.65 + nodeWeight*0.10
 
 		moveVotes[result.bestMove] += voteWeight
-
 	}
 
 	var bestMove board.Move

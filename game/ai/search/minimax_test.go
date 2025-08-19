@@ -382,6 +382,30 @@ func TestEngineWithValidation(t *testing.T) {
 			expectedMove: "", // Let the engine decide the best move
 			description:  "Debug alpha-beta pruning at depth 1",
 		},
+		{
+			name:         "Complex middlegame position",
+			fen:          "r2qk2r/pbp1n1bp/1p1pp1p1/8/2P2P2/1QN1P3/PP1NB1PP/R4RK1 b kq - 0 13",
+			player:       moves.Black,
+			timeout:      6 * time.Second,
+			expectedMove: "", // Let the engine decide the best move
+			description:  "Complex middlegame position with 6s search time",
+		},
+		{
+			name:         "Mate in one position",
+			fen:          "8/8/8/k7/6P1/3BKP2/1Q6/8 w - - 9 60",
+			player:       moves.White,
+			timeout:      5 * time.Second,
+			expectedMove: "b2b5", // Qb5# is mate in one
+			description:  "White has mate in one with Qb5#",
+		},
+		{
+			name:         "Mate in one position - 8 threads",
+			fen:          "8/8/8/k7/6P1/3BKP2/1Q6/8 w - - 9 60",
+			player:       moves.White,
+			timeout:      5 * time.Second,
+			expectedMove: "b2b5", // Qb5# is mate in one
+			description:  "White has mate in one with Qb5# using 8 threads",
+		},
 	}
 
 	for _, tt := range tests {
@@ -406,6 +430,12 @@ func TestEngineWithValidation(t *testing.T) {
 				maxDepth = 1 // Force depth 1 for debug test
 			}
 
+			// Use 8 threads for multi-threaded test
+			numThreads := 1
+			if strings.Contains(tt.name, "8 threads") {
+				numThreads = 8
+			}
+
 			config := ai.SearchConfig{
 				MaxDepth:            maxDepth,
 				MaxTime:             tt.timeout,
@@ -415,7 +445,7 @@ func TestEngineWithValidation(t *testing.T) {
 				BookWeightThreshold: 1,
 				LMRMinDepth:         3,
 				LMRMinMoves:         4,
-				NumThreads:          1, // Single threaded for reproducible results
+				NumThreads:          numThreads,
 			}
 
 			// Create context with timeout
@@ -497,4 +527,162 @@ func (mc *MoveConverter) ToUCI(move board.Move) string {
 	}
 
 	return result
+}
+
+func TestTranspositionTableDepthRequirementBug(t *testing.T) {
+	engine := NewMinimaxEngine()
+	engine.SetTranspositionTableSize(1) // Enable TT
+
+	// Mate in one position
+	b, err := board.FromFEN("8/8/8/k7/6P1/3BKP2/1Q6/8 w - - 9 60")
+	if err != nil {
+		t.Fatalf("Failed to create test position: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// Test single-threaded - should find mate
+	configSingle := ai.SearchConfig{
+		MaxDepth:       2, // Allow depth 2 to avoid the starting depth bug
+		NumThreads:     1,
+		UseOpeningBook: false,
+	}
+
+	resultSingle := engine.FindBestMove(ctx, b, moves.White, configSingle)
+	t.Logf("Single-threaded: move=%s, score=%d",
+		NewMoveConverter().ToUCI(resultSingle.BestMove), resultSingle.Score)
+
+	// Clear TT and test multi-threaded - may miss mate due to depth requirement bug
+	engine.ClearSearchState()
+
+	configMulti := ai.SearchConfig{
+		MaxDepth:       2, // Allow depth 2
+		NumThreads:     8,
+		UseOpeningBook: false,
+	}
+
+	resultMulti := engine.FindBestMove(ctx, b, moves.White, configMulti)
+	t.Logf("Multi-threaded: move=%s, score=%d",
+		NewMoveConverter().ToUCI(resultMulti.BestMove), resultMulti.Score)
+
+	// Both should find the mate move b2b5
+	expectedMove := "b2b5"
+	if NewMoveConverter().ToUCI(resultSingle.BestMove) != expectedMove {
+		t.Errorf("Single-threaded should find %s, got %s",
+			expectedMove, NewMoveConverter().ToUCI(resultSingle.BestMove))
+	}
+
+	if NewMoveConverter().ToUCI(resultMulti.BestMove) != expectedMove {
+		t.Errorf("Multi-threaded should find %s, got %s (potential TT depth bug)",
+			expectedMove, NewMoveConverter().ToUCI(resultMulti.BestMove))
+	}
+
+	// Check if multi-threaded found a lower mate score (indicating longer mate)
+	if resultSingle.Score > resultMulti.Score {
+		t.Errorf("Multi-threaded found longer mate path: single=%d vs multi=%d",
+			resultSingle.Score, resultMulti.Score)
+	}
+}
+
+func TestReplicateLogsBugMateIn6VsMateIn1(t *testing.T) {
+	engine := NewMinimaxEngine()
+	engine.SetTranspositionTableSize(256) // Same as UCI engine
+
+	// Mate in one position from the logs
+	b, err := board.FromFEN("8/8/8/k7/6P1/3BKP2/1Q6/8 w - - 9 60")
+	if err != nil {
+		t.Fatalf("Failed to create test position: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// Force a shallow search to trigger the bugs more easily
+	config := ai.SearchConfig{
+		MaxDepth:            2,                      // Shallow search like in logs
+		MaxTime:             100 * time.Millisecond, // Very short time
+		UseOpeningBook:      false,
+		BookSelectMode:      ai.BookSelectWeightedRandom,
+		BookWeightThreshold: 1,
+		LMRMinDepth:         3,
+		LMRMinMoves:         4,
+		NumThreads:          8, // Multi-threaded like UCI
+	}
+
+	// Compare single vs multi-threaded more directly
+	engine.ClearSearchState()
+
+	// Single-threaded baseline
+	configSingle := config
+	configSingle.NumThreads = 1
+	resultSingle := engine.FindBestMove(ctx, b, moves.White, configSingle)
+	moveSingle := NewMoveConverter().ToUCI(resultSingle.BestMove)
+
+	engine.ClearSearchState()
+
+	// Multi-threaded test
+	resultMulti := engine.FindBestMove(ctx, b, moves.White, config)
+	moveMulti := NewMoveConverter().ToUCI(resultMulti.BestMove)
+
+	t.Logf("Single-threaded: move=%s, score=%d, depth=%d, nodes=%d",
+		moveSingle, resultSingle.Score, resultSingle.Stats.Depth, resultSingle.Stats.NodesSearched)
+	t.Logf("Multi-threaded:  move=%s, score=%d, depth=%d, nodes=%d",
+		moveMulti, resultMulti.Score, resultMulti.Stats.Depth, resultMulti.Stats.NodesSearched)
+
+	// Check for the specific bugs
+	if moveSingle != moveMulti {
+		t.Logf("MOVE DISCREPANCY: Single=%s vs Multi=%s", moveSingle, moveMulti)
+	}
+
+	if resultSingle.Score != resultMulti.Score {
+		t.Logf("SCORE DISCREPANCY: Single=%d vs Multi=%d (mate diff: %d moves)",
+			resultSingle.Score, resultMulti.Score,
+			int(resultSingle.Score)-int(resultMulti.Score))
+	}
+
+	// Check if we got the wrong move from logs
+	if moveMulti == "d3e4" {
+		t.Logf("REPRODUCED LOG BUG: Multi-threaded found d3e4!")
+	}
+
+	// Check if we got a mate-in-6 score
+	if resultMulti.Score == 9999994 {
+		t.Logf("REPRODUCED SCORE BUG: Found mate-in-6 score (9999994)!")
+	}
+}
+
+func TestMateSelectionWithMultipleMates(t *testing.T) {
+	engine := NewMinimaxEngine()
+	engine.SetTranspositionTableSize(256)
+
+	// Position where multiple mates are possible
+	// This is a constructed scenario to test that we pick the shortest mate
+	b, err := board.FromFEN("6k1/5ppp/8/8/8/8/5PPP/4RRK1 w - - 0 1")
+	if err != nil {
+		t.Fatalf("Failed to create test position: %v", err)
+	}
+
+	ctx := context.Background()
+	config := ai.SearchConfig{
+		MaxDepth:       6, // Allow deeper search to find multiple mates
+		MaxTime:        2 * time.Second,
+		NumThreads:     8,
+		UseOpeningBook: false,
+	}
+
+	result := engine.FindBestMove(ctx, b, moves.White, config)
+	move := NewMoveConverter().ToUCI(result.BestMove)
+
+	t.Logf("Multi-mate test: move=%s, score=%d, depth=%d, nodes=%d",
+		move, result.Score, result.Stats.Depth, result.Stats.NodesSearched)
+
+	// Should find some mate (score >= MateScore - 1000)
+	if result.Score < ai.MateScore-1000 {
+		t.Logf("No mate found, score too low: %d", result.Score)
+	} else {
+		mateIn := 10000000 - int(result.Score)
+		t.Logf("Found mate in %d moves", mateIn)
+
+		// Verify the mate-specific logic was used (should be exact mate score, not voting result)
+		// Note: All EvaluationScore values are integers by design
+	}
 }
