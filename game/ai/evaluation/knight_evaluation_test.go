@@ -54,8 +54,8 @@ func TestEvaluateKnightsSimple(t *testing.T) {
 			name:        "knight_central_square",
 			fen:         "8/8/8/3N4/8/8/8/8 w - - 0 1",
 			isWhite:     true,
-			expected:    62, // 8 * 4 (mobility) + 30 (outpost)
-			description: "White knight on central d5 square with outpost",
+			expected:    32, // 8 * 4 (mobility) - no outpost without pawn support
+			description: "White knight on central d5 square without outpost",
 		},
 		{
 			name:        "knight_corner_square",
@@ -72,11 +72,11 @@ func TestEvaluateKnightsSimple(t *testing.T) {
 			description: "White knight on edge with no outpost",
 		},
 		{
-			name:        "black_knight_outpost",
+			name:        "black_knight_no_outpost",
 			fen:         "8/8/8/8/3n4/8/8/8 w - - 0 1",
 			isWhite:     false,
-			expected:    62, // 8 * 4 (mobility) + 30 (outpost)
-			description: "Black knight on outpost e4",
+			expected:    32, // 8 * 4 (mobility) - no outpost without pawn support
+			description: "Black knight on e4 without outpost support",
 		},
 	}
 
@@ -110,28 +110,34 @@ func TestKnightOutpostDetection(t *testing.T) {
 		description string
 	}{
 		{
-			name:        "valid_white_outpost_d5",
+			name:        "not_outpost_without_pawn_defense",
 			fen:         "8/8/8/3N4/8/8/8/8 w - - 0 1",
-			expected:    true,
-			description: "White knight on d5 with no enemy pawns on c or e files",
+			expected:    false, // Now correctly requires pawn support
+			description: "White knight on d5 not outpost without pawn defense",
 		},
 		{
-			name:        "invalid_outpost_enemy_pawn",
+			name:        "not_outpost_with_enemy_pawn_nearby",
 			fen:         "8/2p5/8/3N4/8/8/8/8 w - - 0 1",
-			expected:    true, // Actual behavior - outpost detection is simplified
-			description: "White knight on d5 but enemy pawn on c file",
+			expected:    false, // Enemy pawn can attack + no pawn support
+			description: "White knight on d5 not outpost with enemy pawn on c file",
 		},
 		{
-			name:        "valid_black_outpost_e4",
+			name:        "not_outpost_black_knight_no_support",
 			fen:         "8/8/8/8/4n3/8/8/8 w - - 0 1",
-			expected:    true,
-			description: "Black knight on e4 with no enemy pawns on d or f files",
+			expected:    false, // Now correctly requires pawn support
+			description: "Black knight on e4 not outpost without pawn support",
 		},
 		{
-			name:        "knight_wrong_rank",
+			name:        "not_outpost_d6_no_support",
 			fen:         "8/8/3N4/8/8/8/8/8 w - - 0 1",
-			expected:    true, // Rank 6 (index 5) is in outpost ranks for white
-			description: "White knight on d6 - in outpost rank range",
+			expected:    false, // Rank 6 but no pawn support
+			description: "White knight on d6 not outpost without pawn defense",
+		},
+		{
+			name:        "valid_outpost_with_pawn_support",
+			fen:         "8/8/8/3N4/2P1P3/8/8/8 w - - 0 1",
+			expected:    true, // Should be true - knight defended by pawns on c4,e4
+			description: "Knight on d5 is valid outpost when defended by pawns",
 		},
 	}
 
@@ -157,7 +163,11 @@ func TestKnightOutpostDetection(t *testing.T) {
 
 			// Test the outpost detection logic within evaluateKnightsSimple
 			score := evaluateKnightsSimple(b, knights, isWhite)
-			hasOutpost := score > (KnightMobilityTable[0] * KnightMobilityUnit) // More than just mobility
+
+			// Calculate expected mobility score for the knight position
+			knightSquare, _ := knights.PopLSB()
+			expectedMobility := KnightMobilityTable[knightSquare] * KnightMobilityUnit
+			hasOutpost := score > expectedMobility // Has outpost bonus if score exceeds mobility
 
 			if hasOutpost != tt.expected {
 				t.Errorf("%s: expected outpost %t, got %t (score: %d)", tt.description, tt.expected, hasOutpost, score)

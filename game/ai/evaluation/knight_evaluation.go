@@ -90,6 +90,7 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 		if outpostRanks[rank] {
 			isOutpost := true
 
+			// Check if enemy pawns can attack this outpost square
 			if file > 0 {
 				leftFileMask := board.FileMask(file - 1)
 				if (enemyPawns & leftFileMask) != 0 {
@@ -104,8 +105,39 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 				}
 			}
 
+			// Check if knight is defended by friendly pawns
 			if isOutpost {
-				score += KnightOutpostBonus
+				hasSupport := false
+				var friendlyPawns board.Bitboard
+				if isWhite {
+					friendlyPawns = b.GetPieceBitboard(board.WhitePawn)
+					// Check for pawn support from behind (rank-1)
+					if rank > 0 {
+						supportRank := rank - 1
+						if file > 0 && friendlyPawns.HasBit(supportRank*8+(file-1)) {
+							hasSupport = true
+						}
+						if file < 7 && friendlyPawns.HasBit(supportRank*8+(file+1)) {
+							hasSupport = true
+						}
+					}
+				} else {
+					friendlyPawns = b.GetPieceBitboard(board.BlackPawn)
+					// Check for pawn support from behind (rank+1)
+					if rank < 7 {
+						supportRank := rank + 1
+						if file > 0 && friendlyPawns.HasBit(supportRank*8+(file-1)) {
+							hasSupport = true
+						}
+						if file < 7 && friendlyPawns.HasBit(supportRank*8+(file+1)) {
+							hasSupport = true
+						}
+					}
+				}
+
+				if hasSupport {
+					score += KnightOutpostBonus
+				}
 			}
 		}
 	}

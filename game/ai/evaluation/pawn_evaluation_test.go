@@ -275,6 +275,20 @@ func TestIsConnectedPawn(t *testing.T) {
 			expected:      false,
 			description:   "Edge pawn with no possible diagonal support",
 		},
+		{
+			name:          "not_connected_forward_left_diagonal",
+			friendlyPawns: []int{20, 27}, // e3, d4 (pawn in front diagonally)
+			pawnSquare:    20,            // e3
+			expected:      false,
+			description:   "Pawn not connected by forward-left diagonal pawn",
+		},
+		{
+			name:          "not_connected_forward_right_diagonal",
+			friendlyPawns: []int{20, 29}, // e3, f4 (right diagonal in front)
+			pawnSquare:    20,            // e3
+			expected:      false,
+			description:   "Pawn not connected by forward-right diagonal pawn",
+		},
 	}
 
 	for _, tt := range tests {

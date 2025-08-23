@@ -157,10 +157,12 @@ func isIsolatedPawn(friendlyPawns board.Bitboard, file int) bool {
 }
 
 // isConnectedPawn checks if a pawn is protected by another friendly pawn
+// Only checks backward diagonals - pawns in front cannot provide protection
 func isConnectedPawn(friendlyPawns board.Bitboard, square int) bool {
 	file := square % 8
 	rank := square / 8
 
+	// Check left diagonal support (backward)
 	if file > 0 && rank > 0 {
 		supportSquare := (rank-1)*8 + (file - 1)
 		if friendlyPawns.HasBit(supportSquare) {
@@ -168,22 +170,9 @@ func isConnectedPawn(friendlyPawns board.Bitboard, square int) bool {
 		}
 	}
 
+	// Check right diagonal support (backward)
 	if file < 7 && rank > 0 {
 		supportSquare := (rank-1)*8 + (file + 1)
-		if friendlyPawns.HasBit(supportSquare) {
-			return true
-		}
-	}
-
-	if file > 0 && rank < 7 {
-		supportSquare := (rank+1)*8 + (file - 1)
-		if friendlyPawns.HasBit(supportSquare) {
-			return true
-		}
-	}
-
-	if file < 7 && rank < 7 {
-		supportSquare := (rank+1)*8 + (file + 1)
 		if friendlyPawns.HasBit(supportSquare) {
 			return true
 		}

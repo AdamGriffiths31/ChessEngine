@@ -298,7 +298,7 @@ run_benchmark() {
     
     # Build and execute cutechess-cli command using eval for proper option handling
     local base_cmd="\"$TOOLS_DIR/engines/cutechess-cli\""
-    base_cmd="$base_cmd -engine cmd=\"$chess_cmd\" name=\"ChessEngine\" proto=uci option.Hash=1024"
+    base_cmd="$base_cmd -engine cmd=\"$chess_cmd\" name=\"ChessEngine\" proto=uci option.Hash=512"
     base_cmd="$base_cmd -engine cmd=\"$opponent_cmd\" name=\"$OPPONENT\" proto=uci"
     
     # Add opponent options if they exist

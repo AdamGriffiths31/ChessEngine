@@ -86,7 +86,6 @@ type State struct {
 	searchStats     ai.SearchStats
 	searchParams    Params
 	debugMoveOrder  []board.Move
-	positionHistory []uint64 // Track position hashes for repetition detection
 	searchCancelled bool
 }
 
@@ -126,7 +125,6 @@ func NewMinimaxEngine() *MinimaxEngine {
 			reorderBuffer:   make([]board.Move, 0, 512),
 			searchParams:    getParams(),
 			debugMoveOrder:  make([]board.Move, 0),
-			positionHistory: make([]uint64, 0, 64),
 		},
 	}
 
@@ -328,7 +326,6 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 
 // runIterativeDeepening runs the core iterative deepening search
 func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig, startTime time.Time) ai.SearchResult {
-	m.searchState.positionHistory = m.searchState.positionHistory[:0]
 
 	legalMoves := m.generator.GenerateAllMoves(b, player)
 	defer moves.ReleaseMoveList(legalMoves)
@@ -413,10 +410,8 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 
 				undo, err := b.MakeMoveWithUndo(move)
 				if err != nil {
-					continue
+					panic(fmt.Sprintf("MakeMoveWithUndo failed in iterative deepening: %v", err))
 				}
-
-				m.searchState.positionHistory = append(m.searchState.positionHistory, b.GetHash())
 
 				var score ai.EvaluationScore
 				var moveStats ai.SearchStats
@@ -432,10 +427,6 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				}
 
 				b.UnmakeMove(undo)
-
-				if len(m.searchState.positionHistory) > 0 {
-					m.searchState.positionHistory = m.searchState.positionHistory[:len(m.searchState.positionHistory)-1]
-				}
 
 				if score > tempBestScore {
 					tempBestScore = score
@@ -471,8 +462,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				// Fail high - score is better than expected
 				window *= 2
 				beta = lastCompletedScore + window
-				// Keep alpha the same
-				alpha = lastCompletedScore - window/2
+				// Keep alpha at the current best score found
 			}
 
 			// Safety: if window gets too large, disable aspiration
@@ -522,47 +512,6 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	}
 }
 
-// isRepetition checks if the current position is a repetition.
-// Following Stockfish approach: returns draw on first repetition during search (ply > 0),
-// but requires second repetition at root (ply = 0).
-func (m *MinimaxEngine) isRepetition(b *board.Board, currentHash uint64, ply int) bool {
-	halfMoveClock := b.GetHalfMoveClock()
-
-	if halfMoveClock < 4 {
-		return false
-	}
-
-	historyLength := len(m.searchState.positionHistory)
-	startIndex := 0
-	if halfMoveClock < historyLength {
-		startIndex = historyLength - halfMoveClock
-	}
-
-	repetitionCount := 0
-
-	for i := historyLength - 1; i >= startIndex; i-- {
-		if historyLength%2 != i%2 {
-			continue
-		}
-		if i < 0 {
-			break
-		}
-
-		if m.searchState.positionHistory[i] == currentHash {
-			repetitionCount++
-
-			if ply > 0 {
-				return true
-			}
-			if repetitionCount >= 2 {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 // negamax performs negamax search with alpha-beta pruning and optimizations
 func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, config ai.SearchConfig, stats *ai.SearchStats) ai.EvaluationScore {
 	m.searchState.searchStats.NodesSearched++
@@ -586,11 +535,6 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	var ttMove board.Move
 	hash := b.GetHash()
-
-	ply := originalMaxDepth - depth
-	if m.isRepetition(b, hash, ply) {
-		return ai.DrawScore
-	}
 
 	if m.transpositionTable != nil {
 		if entry, found := m.transpositionTable.Probe(hash); found {
@@ -722,10 +666,8 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
-			continue
+			panic(fmt.Sprintf("MakeMoveWithUndo failed in negamax: %v", err))
 		}
-
-		m.searchState.positionHistory = append(m.searchState.positionHistory, b.GetHash())
 
 		moveCount++
 		var score ai.EvaluationScore
@@ -788,10 +730,6 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		}
 
 		b.UnmakeMove(undo)
-
-		if len(m.searchState.positionHistory) > 0 {
-			m.searchState.positionHistory = m.searchState.positionHistory[:len(m.searchState.positionHistory)-1]
-		}
 
 		if score > bestScore {
 			bestScore = score
@@ -971,17 +909,11 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
-			continue
+			panic(fmt.Sprintf("MakeMoveWithUndo failed in quiescence: %v", err))
 		}
-
-		m.searchState.positionHistory = append(m.searchState.positionHistory, b.GetHash())
 
 		score := -m.quiescence(ctx, b, oppositePlayer(player), -beta, -alpha, depthFromRoot+1, stats)
 		b.UnmakeMove(undo)
-
-		if len(m.searchState.positionHistory) > 0 {
-			m.searchState.positionHistory = m.searchState.positionHistory[:len(m.searchState.positionHistory)-1]
-		}
 
 		if score > bestScore {
 			bestScore = score
@@ -1241,7 +1173,6 @@ func (m *MinimaxEngine) ClearSearchState() {
 	m.searchState.searchStats = ai.SearchStats{}
 	m.searchState.moveOrderBuffer = make([]moveScore, 0, 256)
 	m.searchState.searchCancelled = false
-	m.searchState.positionHistory = m.searchState.positionHistory[:0]
 
 	if m.transpositionTable != nil {
 		m.transpositionTable.Clear()

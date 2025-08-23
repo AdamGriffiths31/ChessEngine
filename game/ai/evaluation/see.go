@@ -65,6 +65,11 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 			break
 		}
 
+		// Stop exchange before king capture (following Stockfish approach)
+		if nextAttacker.piece == board.WhiteKing || nextAttacker.piece == board.BlackKing {
+			break
+		}
+
 		capturedValue := see.getPieceValue(attackingPiece)
 
 		see.gain[depth] = capturedValue - see.gain[depth-1]
