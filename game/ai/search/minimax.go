@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
@@ -18,7 +17,7 @@ const (
 	// MinEval represents the minimum possible evaluation score
 	MinEval = ai.EvaluationScore(-1000000)
 	// MaxKillerDepth is the maximum depth for killer move tables
-	MaxKillerDepth = 64
+	MaxKillerDepth = 128
 	// MateDistanceThreshold is the threshold for detecting mate distances
 	MateDistanceThreshold = 1000
 )
@@ -35,8 +34,8 @@ func init() {
 	}
 }
 
-// ThreadSearchParams holds thread-specific search parameters for Lazy SMP diversity
-type ThreadSearchParams struct {
+// Params holds search parameters
+type Params struct {
 	LMRDivisor           float64
 	NullMoveReduction    int
 	HistoryHighThreshold int32
@@ -45,95 +44,54 @@ type ThreadSearchParams struct {
 
 	// Razoring parameters
 	RazoringEnabled  bool
-	RazoringMargins  [4]ai.EvaluationScore // Margins for depths 1-3 (index 0 unused)
+	RazoringMargins  [5]ai.EvaluationScore // Margins for depths 1-4 (index 0 unused)
 	RazoringMaxDepth int                   // Maximum depth to apply razoring
+
+	// Futility pruning parameters
+	FutilityMargins [5]ai.EvaluationScore // Futility margins for depths 1-4 (index 0 unused)
+
+	// Extension thresholds
+	CheckExtensionThreshold int                // Whether to extend single checks (0=no, 1=yes)
+	SingularExtensionMargin ai.EvaluationScore // Margin for singular extensions
 }
 
-// getThreadSearchParams returns thread-specific search parameters based on threadID
-func getThreadSearchParams(threadID int) ThreadSearchParams {
-
-	baseParams := ThreadSearchParams{
-		LMRDivisor:           1.8,
-		NullMoveReduction:    2,
-		HistoryHighThreshold: 2000,
+// getParams returns well-tuned search parameters
+func getParams() Params {
+	return Params{
+		LMRDivisor:           1.8,  // Standard LMR divisor
+		NullMoveReduction:    2,    // Conservative null move
+		HistoryHighThreshold: 2000, // Well-tested history values
 		HistoryMedThreshold:  500,
 		HistoryLowThreshold:  -500,
 
-		// Razoring parameters
+		// Stockfish-aligned razoring margins - targeting 10-15% attempt rate
 		RazoringEnabled:  true,
-		RazoringMargins:  [4]ai.EvaluationScore{0, 200, 350, 500}, // index 0 unused
+		RazoringMargins:  [5]ai.EvaluationScore{0, 100, 150, 200, 250},
 		RazoringMaxDepth: 3,
-	}
 
-	if threadID == 0 || threadID == -1 {
-		return baseParams
-	}
+		// Standard futility pruning
+		FutilityMargins: [5]ai.EvaluationScore{0, 100, 200, 300, 400},
 
-	switch threadID % 4 {
-	case 1:
-		return ThreadSearchParams{
-			LMRDivisor:           1.6,
-			NullMoveReduction:    3,
-			HistoryHighThreshold: 1500,
-			HistoryMedThreshold:  300,
-			HistoryLowThreshold:  -700,
-
-			// Razoring parameters - more aggressive margins
-			RazoringEnabled:  true,
-			RazoringMargins:  [4]ai.EvaluationScore{0, 150, 300, 450},
-			RazoringMaxDepth: 3,
-		}
-	case 2:
-		return ThreadSearchParams{
-			LMRDivisor:           2.2,
-			NullMoveReduction:    2,
-			HistoryHighThreshold: 2800,
-			HistoryMedThreshold:  800,
-			HistoryLowThreshold:  -300,
-
-			// Razoring parameters - less aggressive margins
-			RazoringEnabled:  true,
-			RazoringMargins:  [4]ai.EvaluationScore{0, 250, 400, 550},
-			RazoringMaxDepth: 3,
-		}
-	case 3:
-		return ThreadSearchParams{
-			LMRDivisor:           1.4,
-			NullMoveReduction:    4,
-			HistoryHighThreshold: 1200,
-			HistoryMedThreshold:  200,
-			HistoryLowThreshold:  -900,
-
-			// Razoring parameters - moderate margins
-			RazoringEnabled:  true,
-			RazoringMargins:  [4]ai.EvaluationScore{0, 180, 320, 480},
-			RazoringMaxDepth: 3,
-		}
-	default:
-		return baseParams
+		// Standard extensions
+		CheckExtensionThreshold: 1,
+		SingularExtensionMargin: 100,
 	}
 }
 
-// ThreadLocalState contains state for single-threaded search
-// Kept for backwards compatibility and single-threaded mode
-type ThreadLocalState struct {
+// State contains state for search
+type State struct {
 	killerTable     [MaxKillerDepth][2]board.Move
 	moveOrderBuffer []moveScore
 	reorderBuffer   []board.Move
 	searchStats     ai.SearchStats
-	searchParams    ThreadSearchParams
+	searchParams    Params
 	debugMoveOrder  []board.Move
-	historyTable    *HistoryTable
-	threadID        int
-}
-
-// Cleanup performs any necessary cleanup operations for the engine
-func (m *MinimaxEngine) Cleanup() {
+	positionHistory []uint64 // Track position hashes for repetition detection
+	searchCancelled bool
 }
 
 // MinimaxEngine implements negamax search with alpha-beta pruning, transposition table,
 // history heuristic, null move pruning, SEE-based move ordering, and opening book support
-// Now thread-safe with per-thread state management
 type MinimaxEngine struct {
 	evaluator          ai.Evaluator
 	generator          *moves.Generator
@@ -143,9 +101,7 @@ type MinimaxEngine struct {
 	historyTable       *HistoryTable
 	seeCalculator      *evaluation.SEECalculator
 	debugMoveOrdering  bool
-	threadStates       sync.Map
-	globalStats        ai.SearchStats
-	statsMutex         sync.Mutex
+	searchState        State
 }
 
 // moveScore holds move index and score for ordering
@@ -164,184 +120,17 @@ func NewMinimaxEngine() *MinimaxEngine {
 		zobrist:            openings.GetPolyglotHash(),
 		historyTable:       NewHistoryTable(),
 		seeCalculator:      evaluation.NewSEECalculator(),
+		searchState: State{
+			killerTable:     [MaxKillerDepth][2]board.Move{},
+			moveOrderBuffer: make([]moveScore, 0, 512),
+			reorderBuffer:   make([]board.Move, 0, 512),
+			searchParams:    getParams(),
+			debugMoveOrder:  make([]board.Move, 0),
+			positionHistory: make([]uint64, 0, 64),
+		},
 	}
-
-	engine.initializeThreadStates(16)
 
 	return engine
-}
-
-// initializeThreadStates pre-allocates thread-local state for parallel search
-// This prevents expensive on-demand allocation during search and reduces contention
-func (m *MinimaxEngine) initializeThreadStates(maxThreads int) {
-	for threadID := 0; threadID < maxThreads; threadID++ {
-		key := generateThreadKey(threadID)
-
-		threadState := &ThreadLocalState{
-			killerTable:     [MaxKillerDepth][2]board.Move{},
-			moveOrderBuffer: make([]moveScore, 512),
-			reorderBuffer:   make([]board.Move, 512),
-			searchStats:     ai.SearchStats{},
-			searchParams:    getThreadSearchParams(threadID),
-			debugMoveOrder:  make([]board.Move, 0, 512),
-			historyTable:    NewHistoryTable(),
-			threadID:        threadID,
-		}
-
-		m.threadStates.Store(key, threadState)
-	}
-
-	mainKey := "thread_main"
-	mainState := &ThreadLocalState{
-		killerTable:     [MaxKillerDepth][2]board.Move{},
-		moveOrderBuffer: make([]moveScore, 512),
-		reorderBuffer:   make([]board.Move, 512),
-		searchStats:     ai.SearchStats{},
-		searchParams:    getThreadSearchParams(-1),
-		historyTable:    NewHistoryTable(),
-		threadID:        -1,
-		debugMoveOrder:  make([]board.Move, 0, 512),
-	}
-	m.threadStates.Store(mainKey, mainState)
-}
-
-// fastCopyBoard creates an optimized deep copy of a board for thread isolation
-func (m *MinimaxEngine) fastCopyBoard(original *board.Board) *board.Board {
-	if original == nil {
-		return nil
-	}
-
-	newBoard := &board.Board{}
-
-	newBoard.SetCastlingRights(original.GetCastlingRights())
-	newBoard.SetHalfMoveClock(original.GetHalfMoveClock())
-	newBoard.SetFullMoveNumber(original.GetFullMoveNumber())
-	newBoard.SetSideToMove(original.GetSideToMove())
-
-	if epTarget := original.GetEnPassantTarget(); epTarget != nil {
-		newTarget := &board.Square{
-			File: epTarget.File,
-			Rank: epTarget.Rank,
-		}
-		newBoard.SetEnPassantTarget(newTarget)
-	}
-
-	for i := 0; i < 12; i++ {
-		newBoard.PieceBitboards[i] = original.PieceBitboards[i]
-	}
-
-	newBoard.WhitePieces = original.WhitePieces
-	newBoard.BlackPieces = original.BlackPieces
-	newBoard.AllPieces = original.AllPieces
-
-	for i := 0; i < 64; i++ {
-		newBoard.Mailbox[i] = original.Mailbox[i]
-	}
-
-	newBoard.SetHash(original.GetHash())
-	newBoard.SetHashUpdater(m)
-
-	return newBoard
-}
-
-// getThreadLocalState returns state for single-threaded search
-// For multi-threaded search, workers will have their own WorkerState
-func (m *MinimaxEngine) getThreadLocalState() *ThreadLocalState {
-	const singleThreadKey = "single_thread"
-
-	if state, exists := m.threadStates.Load(singleThreadKey); exists {
-		threadState, ok := state.(*ThreadLocalState)
-		if !ok {
-			panic("invalid thread state type")
-		}
-		return threadState
-	}
-
-	newState := &ThreadLocalState{
-		moveOrderBuffer: make([]moveScore, 256),
-		debugMoveOrder:  make([]board.Move, 0),
-		searchParams:    getThreadSearchParams(0),
-	}
-
-	m.threadStates.Store(singleThreadKey, newState)
-	return newState
-}
-
-// generateThreadKey creates a consistent key for thread-specific state storage
-func generateThreadKey(threadID int) string {
-	return fmt.Sprintf("worker_%d", threadID)
-}
-
-// getThreadSpecificState returns state for a specific thread ID
-// This ensures each parallel search thread has isolated state
-func (m *MinimaxEngine) getThreadSpecificState(threadID int) *ThreadLocalState {
-	key := generateThreadKey(threadID)
-
-	if state, exists := m.threadStates.Load(key); exists {
-		threadState, ok := state.(*ThreadLocalState)
-		if !ok {
-			panic("invalid thread state type")
-		}
-		return threadState
-	}
-
-	fmt.Printf("WARNING: Creating thread state on-demand for worker %d\n", threadID)
-	newState := &ThreadLocalState{
-		moveOrderBuffer: make([]moveScore, 256),
-		searchParams:    getThreadSearchParams(threadID),
-		debugMoveOrder:  make([]board.Move, 0),
-	}
-
-	m.threadStates.Store(key, newState)
-	return newState
-}
-
-// getThreadLocalStateFromContext returns thread state based on context
-// If context has threadID, returns thread-specific state; otherwise returns single-thread state
-func (m *MinimaxEngine) getThreadLocalStateFromContext(ctx context.Context) *ThreadLocalState {
-	if threadID, ok := ctx.Value("threadID").(int); ok {
-		return m.getThreadSpecificState(threadID)
-	}
-
-	return m.getThreadLocalState()
-}
-
-// AggregateThreadStats collects statistics from all thread-local states
-// Should be called after search completion for accurate reporting
-func (m *MinimaxEngine) AggregateThreadStats() ai.SearchStats {
-	m.statsMutex.Lock()
-	defer m.statsMutex.Unlock()
-
-	m.globalStats = ai.SearchStats{}
-
-	m.threadStates.Range(func(_, value interface{}) bool {
-		threadState, ok := value.(*ThreadLocalState)
-		if !ok {
-			return true
-		}
-		stats := threadState.searchStats
-
-		m.globalStats.NodesSearched += stats.NodesSearched
-		m.globalStats.LMRReductions += stats.LMRReductions
-		m.globalStats.LMRReSearches += stats.LMRReSearches
-		m.globalStats.LMRNodesSkipped += stats.LMRNodesSkipped
-		m.globalStats.NullMoves += stats.NullMoves
-		m.globalStats.NullCutoffs += stats.NullCutoffs
-		m.globalStats.QNodes += stats.QNodes
-		m.globalStats.TTCutoffs += stats.TTCutoffs
-		m.globalStats.FirstMoveCutoffs += stats.FirstMoveCutoffs
-		m.globalStats.TotalCutoffs += stats.TotalCutoffs
-		m.globalStats.DeltaPruned += stats.DeltaPruned
-		m.globalStats.RazoringAttempts += stats.RazoringAttempts
-		m.globalStats.RazoringCutoffs += stats.RazoringCutoffs
-		m.globalStats.RazoringFailed += stats.RazoringFailed
-
-		threadState.searchStats = ai.SearchStats{}
-
-		return true
-	})
-
-	return m.globalStats
 }
 
 // GetHashDelta implements the board.HashUpdater interface
@@ -501,88 +290,6 @@ func (m *MinimaxEngine) initializeBookService(config ai.SearchConfig) error {
 
 // FindBestMove searches for the best move using minimax with optional opening book
 func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig) ai.SearchResult {
-	result := ai.SearchResult{
-		Stats: ai.SearchStats{},
-	}
-
-	threadState := m.getThreadLocalStateFromContext(ctx)
-
-	// Initialize book service only once if not already done and still in opening phase
-	moveNumber := b.GetFullMoveNumber()
-	if config.UseOpeningBook && m.bookService == nil && moveNumber <= 10 {
-		if err := m.initializeBookService(config); err != nil {
-			fmt.Printf("Warning: failed to initialize opening book service: %v\n", err)
-		}
-	}
-
-	// Check opening book only in first 10 moves
-	if config.UseOpeningBook && m.bookService != nil && moveNumber <= 10 {
-		bookMove, err := m.bookService.FindBookMove(b)
-		if err == nil && bookMove != nil {
-			result.BestMove = *bookMove
-			result.Score = 0
-			result.Stats.BookMoveUsed = true
-			return result
-		}
-	}
-
-	b.SetHashUpdater(m)
-	b.InitializeHashFromPosition(m.zobrist.HashPosition)
-
-	startTime := time.Now()
-
-	if m.transpositionTable != nil {
-		m.transpositionTable.IncrementAge()
-	}
-
-	if m.historyTable != nil {
-		m.historyTable.Age()
-	}
-
-	if config.NumThreads > 1 {
-		return m.lazySMPSearch(ctx, b, player, config)
-	}
-
-	return m.runIterativeDeepening(ctx, b, player, config, threadState, startTime)
-}
-
-// lazySMPSearch implements Lazy SMP (Symmetric MultiProcessing) parallel search
-//
-// How Lazy SMP Works:
-// Each thread searches the ENTIRE tree from the root position independently.
-// This seems redundant but actually provides excellent work distribution because:
-//
-// 1. Transposition Table creates diversity:
-//   - Thread A searches move X first, stores result in TT
-//   - Thread B hits this TT entry, changes move ordering, searches Y first
-//   - Different move orders → different subtrees → natural work split
-//
-// 2. Timing variations compound:
-//   - Threads start at slightly different times
-//   - Small differences in TT hits cascade into large search differences
-//   - Each thread naturally explores different parts of the search tree
-//
-// 3. No explicit coordination needed:
-//   - No work queues or move assignments
-//   - No communication overhead between threads
-//   - Load balancing happens automatically via TT
-//
-// 4. Proven effectiveness:
-//   - Used by Stockfish and other top engines
-//   - Typically achieves 5-7x speedup with 8 threads
-//   - Much simpler than work-splitting approaches
-//
-// The "lazy" refers to lazy coordination - we don't explicitly distribute
-// work, instead letting probability and the shared TT handle it naturally.
-func (m *MinimaxEngine) lazySMPSearch(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig) ai.SearchResult {
-	if b == nil {
-		return ai.SearchResult{
-			BestMove: board.Move{},
-			Score:    -ai.MateScore,
-			Stats:    ai.SearchStats{},
-		}
-	}
-
 	// Initialize book service only once if not already done and still in opening phase
 	moveNumber := b.GetFullMoveNumber()
 	if config.UseOpeningBook && m.bookService == nil && moveNumber <= 10 {
@@ -606,125 +313,40 @@ func (m *MinimaxEngine) lazySMPSearch(ctx context.Context, b *board.Board, playe
 	b.SetHashUpdater(m)
 	b.InitializeHashFromPosition(m.zobrist.HashPosition)
 
+	startTime := time.Now()
+
 	if m.transpositionTable != nil {
 		m.transpositionTable.IncrementAge()
 	}
+
 	if m.historyTable != nil {
 		m.historyTable.Age()
 	}
 
-	legalMoves := m.generator.GenerateAllMoves(b, player)
-	defer moves.ReleaseMoveList(legalMoves)
-
-	if legalMoves.Count == 0 {
-		isCheck := m.generator.IsKingInCheck(b, player)
-		panic(fmt.Sprintf("THREADING BUG: Main thread found no legal moves! Player=%v, InCheck=%v, FEN=%s",
-			player, isCheck, b.ToFEN()))
-	}
-
-	return m.launchLazySMPWorkers(ctx, b, player, config)
-}
-
-// lazySMPWorkerResult represents the result from a single Lazy SMP worker thread
-type lazySMPWorkerResult struct {
-	bestMove board.Move
-	score    ai.EvaluationScore
-	depth    int
-	stats    ai.SearchStats
-	workerID int
-}
-
-// launchLazySMPWorkers launches independent worker threads for Lazy SMP search
-func (m *MinimaxEngine) launchLazySMPWorkers(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig) ai.SearchResult {
-
-	resultChan := make(chan lazySMPWorkerResult, config.NumThreads)
-	var wg sync.WaitGroup
-
-	startTime := time.Now()
-
-	for workerID := 0; workerID < config.NumThreads; workerID++ {
-		wg.Add(1)
-		go func(id int) {
-			defer func() {
-				wg.Done()
-				if r := recover(); r != nil {
-					fmt.Printf("[PANIC-worker-%d] Worker thread panicked: %v\n", id, r)
-					panic(r)
-				}
-			}()
-
-			workerBoard := m.fastCopyBoard(b)
-			if workerBoard == nil {
-				panic(fmt.Sprintf("THREADING BUG: Worker %d - fastCopyBoard returned nil!", id))
-			}
-
-			threadState := m.getThreadSpecificState(id)
-			if threadState == nil {
-				panic(fmt.Sprintf("THREADING BUG: Worker %d - getThreadSpecificState returned nil!", id))
-			}
-
-			originalFEN := b.ToFEN()
-			workerFEN := workerBoard.ToFEN()
-			if originalFEN != workerFEN {
-				panic(fmt.Sprintf("THREADING BUG: Worker %d - Board copy mismatch! Original: %s, Worker: %s",
-					id, originalFEN, workerFEN))
-			}
-
-			if threadState.historyTable != nil {
-				threadState.historyTable.Age()
-			}
-
-			result := m.runIterativeDeepening(ctx, workerBoard, player, config, threadState, startTime, id)
-
-			if result.Stats.Depth == 0 {
-				panic(fmt.Sprintf("THREADING BUG: Worker %d - runIterativeDeepening returned depth 0! Nodes=%d, Score=%d",
-					id, result.Stats.NodesSearched, result.Score))
-			}
-
-			if result.Stats.NodesSearched == 0 {
-				panic(fmt.Sprintf("THREADING BUG: Worker %d - runIterativeDeepening searched 0 nodes! Depth=%d, Score=%d",
-					id, result.Stats.Depth, result.Score))
-			}
-
-			workerResult := lazySMPWorkerResult{
-				bestMove: result.BestMove,
-				score:    result.Score,
-				depth:    result.Stats.Depth,
-				stats:    result.Stats,
-				workerID: id,
-			}
-
-			if workerResult.depth == 0 {
-				panic(fmt.Sprintf("THREADING BUG: Worker %d - About to send result with depth 0!", id))
-			}
-
-			resultChan <- workerResult
-		}(workerID)
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	return m.selectBestLazySMPResult(resultChan, startTime)
+	return m.runIterativeDeepening(ctx, b, player, config, startTime)
 }
 
 // runIterativeDeepening runs the core iterative deepening search
-// Used for both single-threaded search and individual worker threads in Lazy SMP
-func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig, threadState *ThreadLocalState, startTime time.Time, workerID ...int) ai.SearchResult {
-	threadID := "main"
-	if len(workerID) > 0 {
-		threadID = fmt.Sprintf("worker-%d", workerID[0])
-	}
+func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig, startTime time.Time) ai.SearchResult {
+	m.searchState.positionHistory = m.searchState.positionHistory[:0]
 
 	legalMoves := m.generator.GenerateAllMoves(b, player)
 	defer moves.ReleaseMoveList(legalMoves)
 
 	if legalMoves.Count == 0 {
 		isCheck := m.generator.IsKingInCheck(b, player)
-		panic(fmt.Sprintf("THREADING BUG: No legal moves found in thread %s! Player=%v, InCheck=%v, FEN=%s",
-			threadID, player, isCheck, b.ToFEN()))
+		if isCheck {
+			return ai.SearchResult{
+				BestMove: board.Move{},
+				Score:    -ai.MateScore,
+				Stats:    ai.SearchStats{},
+			}
+		}
+		return ai.SearchResult{
+			BestMove: board.Move{},
+			Score:    ai.DrawScore,
+			Stats:    ai.SearchStats{},
+		}
 	}
 
 	var rootTTMove board.Move
@@ -735,7 +357,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		}
 	}
 
-	m.orderRootMovesWithDiversity(b, legalMoves, rootTTMove, threadState)
+	m.orderMoves(b, legalMoves, 0, rootTTMove)
 
 	lastCompletedBestMove := legalMoves.Moves[0]
 	lastCompletedScore := ai.EvaluationScore(0)
@@ -743,13 +365,10 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	var finalStats ai.SearchStats
 
 	startingDepth := 1
-	if threadState != nil && threadState.threadID >= 0 {
-		if threadState.threadID%2 == 1 {
-			startingDepth = 2
-		}
-	}
 
 	for currentDepth := startingDepth; currentDepth <= config.MaxDepth; currentDepth++ {
+		m.searchState.searchCancelled = false
+
 		select {
 		case <-ctx.Done():
 			finalStats.Time = time.Since(startTime)
@@ -788,26 +407,35 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			moveIndex := 0
 
 			for _, move := range legalMoves.Moves[:legalMoves.Count] {
+				if m.searchState.searchCancelled {
+					break
+				}
 
 				undo, err := b.MakeMoveWithUndo(move)
 				if err != nil {
 					continue
 				}
 
+				m.searchState.positionHistory = append(m.searchState.positionHistory, b.GetHash())
+
 				var score ai.EvaluationScore
 				var moveStats ai.SearchStats
 
 				if moveIndex == 0 {
-					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, threadState, &moveStats)
+					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &moveStats)
 				} else {
-					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -alpha-1, -alpha, currentDepth, config, threadState, &moveStats)
+					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -alpha-1, -alpha, currentDepth, config, &moveStats)
 
 					if score > alpha && score < beta {
-						score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, threadState, &moveStats)
+						score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &moveStats)
 					}
 				}
 
 				b.UnmakeMove(undo)
+
+				if len(m.searchState.positionHistory) > 0 {
+					m.searchState.positionHistory = m.searchState.positionHistory[:len(m.searchState.positionHistory)-1]
+				}
 
 				if score > tempBestScore {
 					tempBestScore = score
@@ -855,26 +483,28 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			}
 		}
 
-		finalStats.NodesSearched = threadState.searchStats.NodesSearched
+		finalStats.NodesSearched = m.searchState.searchStats.NodesSearched
 		finalStats.Depth = currentDepth
-		finalStats.LMRReductions = threadState.searchStats.LMRReductions
-		finalStats.LMRReSearches = threadState.searchStats.LMRReSearches
-		finalStats.LMRNodesSkipped = threadState.searchStats.LMRNodesSkipped
-		finalStats.NullMoves = threadState.searchStats.NullMoves
-		finalStats.NullCutoffs = threadState.searchStats.NullCutoffs
-		finalStats.QNodes = threadState.searchStats.QNodes
-		finalStats.TTCutoffs = threadState.searchStats.TTCutoffs
-		finalStats.FirstMoveCutoffs = threadState.searchStats.FirstMoveCutoffs
-		finalStats.TotalCutoffs = threadState.searchStats.TotalCutoffs
-		finalStats.DeltaPruned = threadState.searchStats.DeltaPruned
-		finalStats.RazoringAttempts = threadState.searchStats.RazoringAttempts
-		finalStats.RazoringCutoffs = threadState.searchStats.RazoringCutoffs
-		finalStats.RazoringFailed = threadState.searchStats.RazoringFailed
+		finalStats.LMRReductions = m.searchState.searchStats.LMRReductions
+		finalStats.LMRReSearches = m.searchState.searchStats.LMRReSearches
+		finalStats.LMRNodesSkipped = m.searchState.searchStats.LMRNodesSkipped
+		finalStats.NullMoves = m.searchState.searchStats.NullMoves
+		finalStats.NullCutoffs = m.searchState.searchStats.NullCutoffs
+		finalStats.QNodes = m.searchState.searchStats.QNodes
+		finalStats.TTCutoffs = m.searchState.searchStats.TTCutoffs
+		finalStats.FirstMoveCutoffs = m.searchState.searchStats.FirstMoveCutoffs
+		finalStats.TotalCutoffs = m.searchState.searchStats.TotalCutoffs
+		finalStats.DeltaPruned = m.searchState.searchStats.DeltaPruned
+		finalStats.RazoringAttempts = m.searchState.searchStats.RazoringAttempts
+		finalStats.RazoringCutoffs = m.searchState.searchStats.RazoringCutoffs
+		finalStats.RazoringFailed = m.searchState.searchStats.RazoringFailed
 
-		if config.MaxTime == 0 || time.Since(startTime) < config.MaxTime {
+		if !m.searchState.searchCancelled && (config.MaxTime == 0 || time.Since(startTime) < config.MaxTime) {
 			lastCompletedBestMove = bestMove
 			lastCompletedScore = bestScore
 			lastCompletedDepth = currentDepth
+		} else if m.searchState.searchCancelled {
+			break
 		}
 
 		if bestScore >= ai.MateScore-1000 || bestScore <= -ai.MateScore+1000 {
@@ -885,16 +515,6 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	finalStats.Time = time.Since(startTime)
 	finalStats.Depth = lastCompletedDepth
 
-	if finalStats.Depth == 0 {
-		panic(fmt.Sprintf("THREADING BUG: %s - About to return result with depth 0! Nodes=%d, Score=%d, BestMove=%s",
-			threadID, finalStats.NodesSearched, lastCompletedScore, moveToDebugString(lastCompletedBestMove)))
-	}
-
-	if finalStats.NodesSearched == 0 {
-		panic(fmt.Sprintf("THREADING BUG: %s - About to return result with 0 nodes! Depth=%d, Score=%d, BestMove=%s",
-			threadID, finalStats.Depth, lastCompletedScore, moveToDebugString(lastCompletedBestMove)))
-	}
-
 	return ai.SearchResult{
 		BestMove: lastCompletedBestMove,
 		Score:    lastCompletedScore,
@@ -902,145 +522,50 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	}
 }
 
-// selectBestLazySMPResult selects the best result from all Lazy SMP workers using thread voting
-func (m *MinimaxEngine) selectBestLazySMPResult(resultChan <-chan lazySMPWorkerResult, startTime time.Time) ai.SearchResult {
-	var aggregatedStats ai.SearchStats
-	resultsReceived := 0
+// isRepetition checks if the current position is a repetition.
+// Following Stockfish approach: returns draw on first repetition during search (ply > 0),
+// but requires second repetition at root (ply = 0).
+func (m *MinimaxEngine) isRepetition(b *board.Board, currentHash uint64, ply int) bool {
+	halfMoveClock := b.GetHalfMoveClock()
 
-	moveVotes := make(map[board.Move]float64)
-	moveResults := make(map[board.Move]lazySMPWorkerResult)
-	allResults := make([]lazySMPWorkerResult, 0, 16)
-
-	var minScore, maxScore ai.EvaluationScore
-	var maxDepth int
-	firstResult := true
-
-	for result := range resultChan {
-		resultsReceived++
-		allResults = append(allResults, result)
-
-		if result.depth == 0 {
-			panic(fmt.Sprintf("THREADING BUG: Main thread received result with depth 0 from worker-%d!", result.workerID))
-		}
-
-		if result.stats.NodesSearched == 0 {
-			panic(fmt.Sprintf("THREADING BUG: Main thread received result with 0 nodes from worker-%d!", result.workerID))
-		}
-
-		if firstResult {
-			minScore = result.score
-			maxScore = result.score
-			firstResult = false
-		} else {
-			if result.score < minScore {
-				minScore = result.score
-			}
-			if result.score > maxScore {
-				maxScore = result.score
-			}
-		}
-
-		if result.depth > maxDepth {
-			maxDepth = result.depth
-		}
-
-		aggregatedStats.NodesSearched += result.stats.NodesSearched
-		aggregatedStats.LMRReductions += result.stats.LMRReductions
-		aggregatedStats.LMRReSearches += result.stats.LMRReSearches
-		aggregatedStats.LMRNodesSkipped += result.stats.LMRNodesSkipped
-		aggregatedStats.NullMoves += result.stats.NullMoves
-		aggregatedStats.NullCutoffs += result.stats.NullCutoffs
-		aggregatedStats.QNodes += result.stats.QNodes
-		aggregatedStats.TTCutoffs += result.stats.TTCutoffs
-		aggregatedStats.FirstMoveCutoffs += result.stats.FirstMoveCutoffs
-		aggregatedStats.TotalCutoffs += result.stats.TotalCutoffs
-		aggregatedStats.DeltaPruned += result.stats.DeltaPruned
-
-		if existing, exists := moveResults[result.bestMove]; !exists ||
-			result.depth > existing.depth ||
-			(result.depth == existing.depth && result.score > existing.score) {
-			moveResults[result.bestMove] = result
-		}
+	if halfMoveClock < 4 {
+		return false
 	}
 
-	hasMate := false
-	bestMateScore := -ai.MateScore
-	var bestMateResult lazySMPWorkerResult
+	historyLength := len(m.searchState.positionHistory)
+	startIndex := 0
+	if halfMoveClock < historyLength {
+		startIndex = historyLength - halfMoveClock
+	}
 
-	for _, result := range allResults {
-		// Check for mate scores (both positive and negative mates) using more precise threshold
-		if math.Abs(float64(result.score)) >= float64(ai.MateScore-100) {
-			hasMate = true
-			// For mate positions, higher score = shorter mate = better
-			if result.score > bestMateScore {
-				bestMateScore = result.score
-				bestMateResult = result
+	repetitionCount := 0
+
+	for i := historyLength - 1; i >= startIndex; i-- {
+		if historyLength%2 != i%2 {
+			continue
+		}
+		if i < 0 {
+			break
+		}
+
+		if m.searchState.positionHistory[i] == currentHash {
+			repetitionCount++
+
+			if ply > 0 {
+				return true
+			}
+			if repetitionCount >= 2 {
+				return true
 			}
 		}
 	}
 
-	// If any thread found a mate, ignore voting and just return the best mate
-	if hasMate {
-		aggregatedStats.Depth = maxDepth
-		aggregatedStats.Time = time.Since(startTime)
-
-		return ai.SearchResult{
-			BestMove: bestMateResult.bestMove,
-			Score:    bestMateResult.score,
-			Stats:    aggregatedStats,
-		}
-	}
-
-	// Non-mate positions: use improved voting with better score weighting
-	scoreRange := maxScore - minScore
-	if scoreRange == 0 {
-		scoreRange = 1
-	}
-
-	for _, result := range allResults {
-		depthWeight := float64(result.depth) / float64(maxDepth)
-		scoreWeight := float64(result.score-minScore) / float64(scoreRange)
-		nodeWeight := math.Log10(float64(result.stats.NodesSearched)+1) / 100.0
-
-		voteWeight := depthWeight*0.25 + scoreWeight*0.65 + nodeWeight*0.10
-
-		moveVotes[result.bestMove] += voteWeight
-	}
-
-	var bestMove board.Move
-	var bestVotes float64
-	for move, votes := range moveVotes {
-		if votes > bestVotes {
-			bestVotes = votes
-			bestMove = move
-		}
-	}
-
-	bestResult := moveResults[bestMove]
-
-	aggregatedStats.Depth = maxDepth
-
-	aggregatedStats.Time = time.Since(startTime)
-
-	if resultsReceived == 0 {
-		panic("THREADING BUG: No worker results received from any worker threads!")
-	}
-
-	if bestResult.depth == 0 {
-		panic(fmt.Sprintf("THREADING BUG: Best result has depth 0! Received %d results, best worker was %d",
-			resultsReceived, bestResult.workerID))
-	}
-
-	return ai.SearchResult{
-		BestMove: bestResult.bestMove,
-		Score:    bestResult.score,
-		Stats:    aggregatedStats,
-	}
+	return false
 }
 
 // negamax performs negamax search with alpha-beta pruning and optimizations
-func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, config ai.SearchConfig, threadState *ThreadLocalState, stats *ai.SearchStats) ai.EvaluationScore {
-	threadState.searchStats.NodesSearched++
+func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, config ai.SearchConfig, stats *ai.SearchStats) ai.EvaluationScore {
+	m.searchState.searchStats.NodesSearched++
 
 	currentDepth := originalMaxDepth - depth
 	if currentDepth > stats.Depth {
@@ -1049,11 +574,8 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	select {
 	case <-ctx.Done():
-		eval := m.evaluator.Evaluate(b)
-		if player == moves.Black {
-			eval = -eval
-		}
-		return eval
+		m.searchState.searchCancelled = true
+		return alpha
 	default:
 	}
 
@@ -1064,6 +586,11 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	var ttMove board.Move
 	hash := b.GetHash()
+
+	ply := originalMaxDepth - depth
+	if m.isRepetition(b, hash, ply) {
+		return ai.DrawScore
+	}
 
 	if m.transpositionTable != nil {
 		if entry, found := m.transpositionTable.Probe(hash); found {
@@ -1078,20 +605,14 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 				ttMove = board.Move{}
 			}
 
-			minDepthRequired := depth
-			if config.NumThreads > 1 {
-				minDepthRequired = depth + 1
-			}
-
-			if entry.GetDepth() >= minDepthRequired {
-
+			if entry.GetDepth() >= depth {
 				switch entry.GetType() {
 				case EntryExact:
-					threadState.searchStats.TTCutoffs++
+					m.searchState.searchStats.TTCutoffs++
 					return entry.Score
 				case EntryLowerBound:
 					if entry.Score >= beta {
-						threadState.searchStats.TTCutoffs++
+						m.searchState.searchStats.TTCutoffs++
 						return entry.Score
 					}
 					if entry.Score > alpha {
@@ -1115,9 +636,9 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		beta < ai.MateScore-MateDistanceThreshold &&
 		beta > -ai.MateScore+MateDistanceThreshold {
 		if !inCheck {
-			threadState.searchStats.NullMoves++
+			m.searchState.searchStats.NullMoves++
 
-			nullReduction := threadState.searchParams.NullMoveReduction
+			nullReduction := m.searchState.searchParams.NullMoveReduction
 			if depth >= 6 && nullReduction < 3 {
 				nullReduction++
 			}
@@ -1125,13 +646,13 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			nullUndo := b.MakeNullMove()
 
 			nullScore := -m.negamax(ctx, b, oppositePlayer(player),
-				depth-1-nullReduction, -beta, -beta+1, originalMaxDepth, config, threadState, stats)
+				depth-1-nullReduction, -beta, -beta+1, originalMaxDepth, config, stats)
 
 			b.UnmakeNullMove(nullUndo)
 
 			if nullScore >= beta {
 				if nullScore < ai.MateScore-MateDistanceThreshold {
-					threadState.searchStats.NullCutoffs++
+					m.searchState.searchStats.NullCutoffs++
 					return beta
 				}
 			}
@@ -1140,30 +661,30 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	// Simplest approach - razor based on static eval only
 	if !config.DisableRazoring &&
-		threadState.searchParams.RazoringEnabled &&
+		m.searchState.searchParams.RazoringEnabled &&
 		!inCheck &&
-		depth <= threadState.searchParams.RazoringMaxDepth &&
+		depth <= m.searchState.searchParams.RazoringMaxDepth &&
 		depth > 0 {
 
-		razoringMargin := threadState.searchParams.RazoringMargins[depth]
+		razoringMargin := m.searchState.searchParams.RazoringMargins[depth]
 
 		if staticEval+razoringMargin < alpha {
 			// Don't check for TT move at all
-			threadState.searchStats.RazoringAttempts++
+			m.searchState.searchStats.RazoringAttempts++
 
 			qScore := m.quiescence(ctx, b, player, alpha, beta,
-				originalMaxDepth-depth, threadState, stats)
+				originalMaxDepth-depth, stats)
 
 			if qScore <= alpha {
-				threadState.searchStats.RazoringCutoffs++
+				m.searchState.searchStats.RazoringCutoffs++
 				return qScore
 			}
-			threadState.searchStats.RazoringFailed++
+			m.searchState.searchStats.RazoringFailed++
 		}
 	}
 
 	if depth <= 0 {
-		return m.quiescence(ctx, b, player, alpha, beta, originalMaxDepth-depth, threadState, stats)
+		return m.quiescence(ctx, b, player, alpha, beta, originalMaxDepth-depth, stats)
 	}
 
 	legalMoves := m.generator.GenerateAllMoves(b, player)
@@ -1183,7 +704,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		return ai.DrawScore
 	}
 
-	m.orderMoves(b, legalMoves, currentDepth, ttMove, threadState)
+	m.orderMoves(b, legalMoves, currentDepth, ttMove)
 
 	bestScore := -ai.MateScore - 1
 	bestMove := board.Move{}
@@ -1195,10 +716,16 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	for i := 0; i < legalMoves.Count; i++ {
 		move := legalMoves.Moves[i]
 
+		if m.searchState.searchCancelled {
+			break
+		}
+
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
 			continue
 		}
+
+		m.searchState.positionHistory = append(m.searchState.positionHistory, b.GetHash())
 
 		moveCount++
 		var score ai.EvaluationScore
@@ -1210,22 +737,22 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			!inCheck &&
 			!move.IsCapture &&
 			move.Promotion == board.Empty &&
-			!m.isKillerMove(move, currentDepth, threadState) {
+			!m.isKillerMove(move, currentDepth) {
 
 			givesCheck := board.MoveGivesCheck(b, move)
 
 			if !givesCheck {
-				reduction = int(math.Log(float64(min(depth, 15))) * math.Log(float64(min(moveCount, 63))) / threadState.searchParams.LMRDivisor)
+				reduction = int(math.Log(float64(min(depth, 15))) * math.Log(float64(min(moveCount, 63))) / m.searchState.searchParams.LMRDivisor)
 
-				historyScore := m.getHistoryScore(move, threadState)
-				if historyScore > threadState.searchParams.HistoryHighThreshold {
+				historyScore := m.getHistoryScore(move)
+				if historyScore > m.searchState.searchParams.HistoryHighThreshold {
 					reduction = 0
-				} else if historyScore > threadState.searchParams.HistoryMedThreshold && reduction > 0 {
+				} else if historyScore > m.searchState.searchParams.HistoryMedThreshold && reduction > 0 {
 					newReduction := reduction * 2 / 3
 					if newReduction >= 0 {
 						reduction = newReduction
 					}
-				} else if historyScore < threadState.searchParams.HistoryLowThreshold && reduction >= 0 {
+				} else if historyScore < m.searchState.searchParams.HistoryLowThreshold && reduction >= 0 {
 					newReduction := reduction * 4 / 3
 					if newReduction < depth {
 						reduction = newReduction
@@ -1244,23 +771,27 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		}
 
 		if reduction > 0 {
-			threadState.searchStats.LMRReductions++
+			m.searchState.searchStats.LMRReductions++
 
 			score = -m.negamax(ctx, b, oppositePlayer(player),
-				depth-1-reduction, -alpha-1, -alpha, originalMaxDepth, config, threadState, stats)
+				depth-1-reduction, -alpha-1, -alpha, originalMaxDepth, config, stats)
 
 			if score > alpha {
-				threadState.searchStats.LMRReSearches++
+				m.searchState.searchStats.LMRReSearches++
 
 				score = -m.negamax(ctx, b, oppositePlayer(player),
-					depth-1, -beta, -alpha, originalMaxDepth, config, threadState, stats)
+					depth-1, -beta, -alpha, originalMaxDepth, config, stats)
 			}
 		} else {
 			score = -m.negamax(ctx, b, oppositePlayer(player),
-				depth-1, -beta, -alpha, originalMaxDepth, config, threadState, stats)
+				depth-1, -beta, -alpha, originalMaxDepth, config, stats)
 		}
 
 		b.UnmakeMove(undo)
+
+		if len(m.searchState.positionHistory) > 0 {
+			m.searchState.positionHistory = m.searchState.positionHistory[:len(m.searchState.positionHistory)-1]
+		}
 
 		if score > bestScore {
 			bestScore = score
@@ -1273,24 +804,22 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 			if alpha >= beta {
 				// Track move ordering statistics
-				threadState.searchStats.TotalCutoffs++
+				m.searchState.searchStats.TotalCutoffs++
 				if moveCount == 1 {
-					threadState.searchStats.FirstMoveCutoffs++
+					m.searchState.searchStats.FirstMoveCutoffs++
 				}
 
 				if !move.IsCapture && currentDepth >= 0 && currentDepth < MaxKillerDepth {
-					m.storeKiller(move, currentDepth, threadState)
+					m.storeKiller(move, currentDepth)
 				}
 
 				if !move.IsCapture {
-					if threadState != nil && threadState.historyTable != nil {
-						threadState.historyTable.UpdateHistory(move, depth)
-					} else {
+					if m.historyTable != nil {
 						m.historyTable.UpdateHistory(move, depth)
 					}
 				}
 
-				if m.transpositionTable != nil {
+				if m.transpositionTable != nil && !m.searchState.searchCancelled {
 					m.transpositionTable.Store(hash, depth, bestScore, EntryLowerBound, move)
 				}
 
@@ -1299,7 +828,10 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		}
 	}
 
-	if m.transpositionTable != nil {
+	if moveCount == 0 && m.searchState.searchCancelled {
+		return alpha
+	}
+	if m.transpositionTable != nil && !m.searchState.searchCancelled {
 		// Determine correct entry type based on bounds
 		var entryType EntryType
 		if alphaImproved {
@@ -1322,18 +854,15 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	return bestScore
 }
 
-// quiescence performs quiescence search using provided thread state
-func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player moves.Player, alpha, beta ai.EvaluationScore, depthFromRoot int, threadState *ThreadLocalState, stats *ai.SearchStats) ai.EvaluationScore {
-	threadState.searchStats.NodesSearched++
-	threadState.searchStats.QNodes++
+// quiescence performs quiescence search
+func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player moves.Player, alpha, beta ai.EvaluationScore, depthFromRoot int, stats *ai.SearchStats) ai.EvaluationScore {
+	m.searchState.searchStats.NodesSearched++
+	m.searchState.searchStats.QNodes++
 
 	select {
 	case <-ctx.Done():
-		eval := m.evaluator.Evaluate(b)
-		if player == moves.Black {
-			eval = -eval
-		}
-		return eval
+		m.searchState.searchCancelled = true
+		return alpha
 	default:
 	}
 
@@ -1400,11 +929,15 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		return eval
 	}
 
-	m.orderCapturesWithThreadState(b, captureList, threadState)
+	m.orderCaptures(b, captureList)
 
 	bestScore := eval
 	for i := 0; i < captureList.Count; i++ {
 		move := captureList.Moves[i]
+
+		if m.searchState.searchCancelled {
+			break
+		}
 
 		if !inCheck {
 			captureValue := ai.EvaluationScore(0)
@@ -1425,13 +958,13 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 
 			margin := ai.EvaluationScore(200)
 			if eval+captureValue+margin < alpha {
-				threadState.searchStats.DeltaPruned++
+				m.searchState.searchStats.DeltaPruned++
 				continue
 			}
 		}
 
 		if !inCheck && move.IsCapture {
-			if seeScore := m.seeWithThreadState(b, move); seeScore < 0 {
+			if seeScore := m.seeCalculator.SEE(b, move); seeScore < -100 {
 				continue
 			}
 		}
@@ -1441,8 +974,14 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 			continue
 		}
 
-		score := -m.quiescence(ctx, b, oppositePlayer(player), -beta, -alpha, depthFromRoot+1, threadState, stats)
+		m.searchState.positionHistory = append(m.searchState.positionHistory, b.GetHash())
+
+		score := -m.quiescence(ctx, b, oppositePlayer(player), -beta, -alpha, depthFromRoot+1, stats)
 		b.UnmakeMove(undo)
+
+		if len(m.searchState.positionHistory) > 0 {
+			m.searchState.positionHistory = m.searchState.positionHistory[:len(m.searchState.positionHistory)-1]
+		}
 
 		if score > bestScore {
 			bestScore = score
@@ -1456,7 +995,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		}
 	}
 
-	if m.transpositionTable != nil {
+	if m.transpositionTable != nil && !m.searchState.searchCancelled {
 		var entryType EntryType
 		if bestScore <= originalAlpha {
 			entryType = EntryUpperBound
@@ -1471,16 +1010,16 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	return bestScore
 }
 
-// orderMoves orders moves using the provided thread state
-func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, depth int, ttMove board.Move, threadState *ThreadLocalState) {
+// orderMoves orders moves for search
+func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, depth int, ttMove board.Move) {
 	if moveList.Count <= 1 {
 		return
 	}
 
-	if cap(threadState.moveOrderBuffer) < moveList.Count {
-		threadState.moveOrderBuffer = make([]moveScore, moveList.Count)
+	if cap(m.searchState.moveOrderBuffer) < moveList.Count {
+		m.searchState.moveOrderBuffer = make([]moveScore, moveList.Count)
 	} else {
-		threadState.moveOrderBuffer = threadState.moveOrderBuffer[:moveList.Count]
+		m.searchState.moveOrderBuffer = m.searchState.moveOrderBuffer[:moveList.Count]
 	}
 
 	for i := 0; i < moveList.Count; i++ {
@@ -1505,173 +1044,117 @@ func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, dep
 				}
 			}
 
-			if !move.IsCapture && m.isKillerMove(move, depth, threadState) {
+			if !move.IsCapture && m.isKillerMove(move, depth) {
 				score = 500000
 			}
 
 			if !move.IsCapture && move.Promotion == board.Empty {
-				score += int(m.getHistoryScore(move, threadState))
+				score += int(m.getHistoryScore(move))
 			}
 		}
 
-		threadState.moveOrderBuffer[i] = moveScore{index: i, score: score}
+		m.searchState.moveOrderBuffer[i] = moveScore{index: i, score: score}
 	}
 
-	for i := 0; i < moveList.Count-1; i++ {
-		for j := i + 1; j < moveList.Count; j++ {
-			if threadState.moveOrderBuffer[j].score > threadState.moveOrderBuffer[i].score {
-				threadState.moveOrderBuffer[i], threadState.moveOrderBuffer[j] = threadState.moveOrderBuffer[j], threadState.moveOrderBuffer[i]
-			}
+	// Insertion sort - O(n²) worst case but O(n) best case, better cache locality
+	for i := 1; i < moveList.Count; i++ {
+		key := m.searchState.moveOrderBuffer[i]
+		j := i - 1
+		for j >= 0 && m.searchState.moveOrderBuffer[j].score < key.score {
+			m.searchState.moveOrderBuffer[j+1] = m.searchState.moveOrderBuffer[j]
+			j--
 		}
+		m.searchState.moveOrderBuffer[j+1] = key
 	}
 
-	if cap(threadState.reorderBuffer) < moveList.Count {
-		threadState.reorderBuffer = make([]board.Move, moveList.Count)
+	if cap(m.searchState.reorderBuffer) < moveList.Count {
+		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
 	} else {
-		threadState.reorderBuffer = threadState.reorderBuffer[:moveList.Count]
+		m.searchState.reorderBuffer = m.searchState.reorderBuffer[:moveList.Count]
 	}
 
 	for i := 0; i < moveList.Count; i++ {
-		origIndex := threadState.moveOrderBuffer[i].index
-		threadState.reorderBuffer[i] = moveList.Moves[origIndex]
+		origIndex := m.searchState.moveOrderBuffer[i].index
+		m.searchState.reorderBuffer[i] = moveList.Moves[origIndex]
 	}
 
-	copy(moveList.Moves[:moveList.Count], threadState.reorderBuffer)
+	copy(moveList.Moves[:moveList.Count], m.searchState.reorderBuffer)
 
 	if m.debugMoveOrdering {
-		if cap(threadState.debugMoveOrder) < moveList.Count {
-			threadState.debugMoveOrder = make([]board.Move, moveList.Count)
+		if cap(m.searchState.debugMoveOrder) < moveList.Count {
+			m.searchState.debugMoveOrder = make([]board.Move, moveList.Count)
 		} else {
-			threadState.debugMoveOrder = threadState.debugMoveOrder[:moveList.Count]
+			m.searchState.debugMoveOrder = m.searchState.debugMoveOrder[:moveList.Count]
 		}
-		copy(threadState.debugMoveOrder, moveList.Moves[:moveList.Count])
+		copy(m.searchState.debugMoveOrder, moveList.Moves[:moveList.Count])
 	}
 }
 
-// orderRootMovesWithDiversity applies thread-specific move ordering at the root position
-// This is CRITICAL for Lazy SMP thread diversity - different threads explore different move orders
-func (m *MinimaxEngine) orderRootMovesWithDiversity(b *board.Board, moveList *moves.MoveList, ttMove board.Move, threadState *ThreadLocalState) {
-	m.orderMoves(b, moveList, 0, ttMove, threadState)
-
-	if threadState == nil || threadState.threadID < 0 || moveList.Count <= 2 {
-		return
-	}
-
-	switch threadState.threadID % 4 {
-	case 0:
-		return
-
-	case 1:
-		startIdx := 0
-		if moveList.Count > 0 && (moveList.Moves[0].From == ttMove.From && moveList.Moves[0].To == ttMove.To) {
-			startIdx = 1
-		}
-
-		for i := startIdx; i < moveList.Count-1; i += 2 {
-			moveList.Moves[i], moveList.Moves[i+1] = moveList.Moves[i+1], moveList.Moves[i]
-		}
-
-	case 2:
-		quietStart := -1
-		for i := 0; i < moveList.Count; i++ {
-			if !moveList.Moves[i].IsCapture && moveList.Moves[i].Promotion == board.Empty {
-				quietStart = i
-				break
-			}
-		}
-
-		if quietStart > 0 && quietStart < moveList.Count-1 {
-			for i, j := quietStart, moveList.Count-1; i < j; i, j = i+1, j-1 {
-				moveList.Moves[i], moveList.Moves[j] = moveList.Moves[j], moveList.Moves[i]
-			}
-		}
-
-	case 3:
-		startIdx := 0
-		if moveList.Count > 0 && (moveList.Moves[0].From == ttMove.From && moveList.Moves[0].To == ttMove.To) {
-			startIdx = 1
-		}
-
-		if startIdx < moveList.Count-2 {
-			rotations := (threadState.threadID / 4) % (moveList.Count - startIdx)
-			for r := 0; r < rotations; r++ {
-				tmp := moveList.Moves[startIdx]
-				for i := startIdx; i < moveList.Count-1; i++ {
-					moveList.Moves[i] = moveList.Moves[i+1]
-				}
-				moveList.Moves[moveList.Count-1] = tmp
-			}
-		}
-	}
-}
-
-// isKillerMove checks if move is a killer using provided thread state
-func (m *MinimaxEngine) isKillerMove(move board.Move, depth int, threadState *ThreadLocalState) bool {
+// isKillerMove checks if move is a killer move
+func (m *MinimaxEngine) isKillerMove(move board.Move, depth int) bool {
 	if depth < 0 || depth >= MaxKillerDepth {
 		return false
 	}
 
-	return (move.From == threadState.killerTable[depth][0].From && move.To == threadState.killerTable[depth][0].To) ||
-		(move.From == threadState.killerTable[depth][1].From && move.To == threadState.killerTable[depth][1].To)
+	return (move.From == m.searchState.killerTable[depth][0].From && move.To == m.searchState.killerTable[depth][0].To) ||
+		(move.From == m.searchState.killerTable[depth][1].From && move.To == m.searchState.killerTable[depth][1].To)
 }
 
-// storeKiller stores a killer move using provided thread state
-func (m *MinimaxEngine) storeKiller(move board.Move, depth int, threadState *ThreadLocalState) {
+// storeKiller stores a killer move
+func (m *MinimaxEngine) storeKiller(move board.Move, depth int) {
 	if depth < 0 || depth >= MaxKillerDepth {
 		return
 	}
 
-	if m.isKillerMove(move, depth, threadState) {
+	if m.isKillerMove(move, depth) {
 		return
 	}
 
-	threadState.killerTable[depth][1] = threadState.killerTable[depth][0]
-	threadState.killerTable[depth][0] = move
+	m.searchState.killerTable[depth][1] = m.searchState.killerTable[depth][0]
+	m.searchState.killerTable[depth][0] = move
 }
 
-// orderCapturesWithThreadState orders captures using thread state
-func (m *MinimaxEngine) orderCapturesWithThreadState(b *board.Board, moveList *moves.MoveList, threadState *ThreadLocalState) {
+// orderCaptures orders captures using SEE scores
+func (m *MinimaxEngine) orderCaptures(b *board.Board, moveList *moves.MoveList) {
 	if moveList.Count <= 1 {
 		return
 	}
 
-	if cap(threadState.moveOrderBuffer) < moveList.Count {
-		threadState.moveOrderBuffer = make([]moveScore, moveList.Count)
+	if cap(m.searchState.moveOrderBuffer) < moveList.Count {
+		m.searchState.moveOrderBuffer = make([]moveScore, moveList.Count)
 	} else {
-		threadState.moveOrderBuffer = threadState.moveOrderBuffer[:moveList.Count]
+		m.searchState.moveOrderBuffer = m.searchState.moveOrderBuffer[:moveList.Count]
 	}
 
 	for i := 0; i < moveList.Count; i++ {
 		move := moveList.Moves[i]
-		score := m.seeWithThreadState(b, move)
-		threadState.moveOrderBuffer[i] = moveScore{index: i, score: int(score)}
+		score := m.seeCalculator.SEE(b, move)
+		m.searchState.moveOrderBuffer[i] = moveScore{index: i, score: score}
 	}
 
-	for i := 0; i < moveList.Count-1; i++ {
-		for j := i + 1; j < moveList.Count; j++ {
-			if threadState.moveOrderBuffer[j].score > threadState.moveOrderBuffer[i].score {
-				threadState.moveOrderBuffer[i], threadState.moveOrderBuffer[j] = threadState.moveOrderBuffer[j], threadState.moveOrderBuffer[i]
-			}
+	// Insertion sort - O(n²) worst case but O(n) best case, better cache locality
+	for i := 1; i < moveList.Count; i++ {
+		key := m.searchState.moveOrderBuffer[i]
+		j := i - 1
+		for j >= 0 && m.searchState.moveOrderBuffer[j].score < key.score {
+			m.searchState.moveOrderBuffer[j+1] = m.searchState.moveOrderBuffer[j]
+			j--
 		}
+		m.searchState.moveOrderBuffer[j+1] = key
 	}
 
-	if cap(threadState.reorderBuffer) < moveList.Count {
-		threadState.reorderBuffer = make([]board.Move, moveList.Count)
+	if cap(m.searchState.reorderBuffer) < moveList.Count {
+		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
 	} else {
-		threadState.reorderBuffer = threadState.reorderBuffer[:moveList.Count]
+		m.searchState.reorderBuffer = m.searchState.reorderBuffer[:moveList.Count]
 	}
 
 	for i := 0; i < moveList.Count; i++ {
-		origIndex := threadState.moveOrderBuffer[i].index
-		threadState.reorderBuffer[i] = moveList.Moves[origIndex]
+		origIndex := m.searchState.moveOrderBuffer[i].index
+		m.searchState.reorderBuffer[i] = moveList.Moves[origIndex]
 	}
 
-	copy(moveList.Moves[:moveList.Count], threadState.reorderBuffer)
-}
-
-// seeWithThreadState performs SEE calculation directly (no caching)
-func (m *MinimaxEngine) seeWithThreadState(b *board.Board, move board.Move) ai.EvaluationScore {
-	return ai.EvaluationScore(m.seeCalculator.SEE(b, move))
+	copy(moveList.Moves[:moveList.Count], m.searchState.reorderBuffer)
 }
 
 // getCaptureScore calculates the capture score using SEE for accurate evaluation
@@ -1709,7 +1192,7 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	} else if seeValue == 0 {
 		return 900000 + mvvLvaScore
 	} else if seeValue >= -100 {
-		return 100000 + seeValue + 100 + mvvLvaScore
+		return 50000 + seeValue + 100 + mvvLvaScore
 	}
 	return 25000 + seeValue + 1000 + mvvLvaScore
 }
@@ -1751,17 +1234,14 @@ func (m *MinimaxEngine) GetName() string {
 
 // ClearSearchState clears transient search state between different positions
 func (m *MinimaxEngine) ClearSearchState() {
-	m.threadStates.Range(func(_, value interface{}) bool {
-		if state, ok := value.(*ThreadLocalState); ok {
-			for i := 0; i < MaxKillerDepth; i++ {
-				state.killerTable[i][0] = board.Move{}
-				state.killerTable[i][1] = board.Move{}
-			}
-			state.searchStats = ai.SearchStats{}
-			state.moveOrderBuffer = make([]moveScore, 0, 256)
-		}
-		return true
-	})
+	for i := 0; i < MaxKillerDepth; i++ {
+		m.searchState.killerTable[i][0] = board.Move{}
+		m.searchState.killerTable[i][1] = board.Move{}
+	}
+	m.searchState.searchStats = ai.SearchStats{}
+	m.searchState.moveOrderBuffer = make([]moveScore, 0, 256)
+	m.searchState.searchCancelled = false
+	m.searchState.positionHistory = m.searchState.positionHistory[:0]
 
 	if m.transpositionTable != nil {
 		m.transpositionTable.Clear()
@@ -1775,27 +1255,17 @@ func (m *MinimaxEngine) ClearSearchState() {
 func (m *MinimaxEngine) SetDebugMoveOrdering(enabled bool) {
 	m.debugMoveOrdering = enabled
 	if !enabled {
-		m.threadStates.Range(func(_, value interface{}) bool {
-			if state, ok := value.(*ThreadLocalState); ok {
-				state.debugMoveOrder = nil
-			}
-			return true
-		})
+		m.searchState.debugMoveOrder = nil
 	}
 }
 
 // GetLastMoveOrder returns the move order from the last orderMoves call (for tests only)
-// Note: In multi-threaded mode, this returns the order from the current goroutine
 func (m *MinimaxEngine) GetLastMoveOrder() []board.Move {
-	threadState := m.getThreadLocalState()
-	return threadState.debugMoveOrder
+	return m.searchState.debugMoveOrder
 }
 
-// getHistoryScore returns the history score for a move using thread-local history table
-func (m *MinimaxEngine) getHistoryScore(move board.Move, threadState *ThreadLocalState) int32 {
-	if threadState != nil && threadState.historyTable != nil {
-		return threadState.historyTable.GetHistoryScore(move)
-	}
+// getHistoryScore returns the history score for a move
+func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 	if m.historyTable == nil {
 		return 0
 	}

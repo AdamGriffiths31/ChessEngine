@@ -85,11 +85,10 @@ func TestQuiescenceSearchPruning(t *testing.T) {
 	// Shallow quiescence search (depth 2)
 	alpha := ai.EvaluationScore(-1000)
 	beta := ai.EvaluationScore(1000)
-	threadState := engine.getThreadLocalState()
-	result1 := engine.quiescence(ctx, b, moves.White, alpha, beta, 2, threadState, &stats1)
+	result1 := engine.quiescence(ctx, b, moves.White, alpha, beta, 2, &stats1)
 
 	// Deep quiescence search (depth 6)
-	result2 := engine.quiescence(ctx, b, moves.White, alpha, beta, 6, threadState, &stats2)
+	result2 := engine.quiescence(ctx, b, moves.White, alpha, beta, 6, &stats2)
 
 	t.Logf("Shallow quiescence (depth 2): result=%d, nodes=%d", result1, stats1.NodesSearched)
 	t.Logf("Deep quiescence (depth 6): result=%d, nodes=%d", result2, stats2.NodesSearched)

@@ -26,8 +26,7 @@ func TestMoveOrderingPriorities(t *testing.T) {
 		Piece: board.WhiteQueen,
 	}
 	// Store killer move using the public API
-	threadState := engine.getThreadLocalState()
-	engine.storeKiller(killerMove, 0, threadState)
+	engine.storeKiller(killerMove, 0)
 
 	generator := moves.NewGenerator()
 	legalMoves := generator.GenerateAllMoves(b, moves.White)
@@ -57,7 +56,6 @@ func TestMoveOrderingPriorities(t *testing.T) {
 	}
 
 	// Calculate scores manually
-	// threadState already available from above
 	terribleCaptureScore := engine.getCaptureScore(b, terribleCapture)
 	killerScore := 500000 // This is the hardcoded killer move score in orderMoves
 
@@ -75,7 +73,7 @@ func TestMoveOrderingPriorities(t *testing.T) {
 	}
 
 	// Order moves and check actual ordering
-	engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
+	engine.orderMoves(b, legalMoves, 0, board.Move{})
 	orderedMoves := engine.GetLastMoveOrder()
 
 	var capturePos, killerPos int = -1, -1

@@ -147,59 +147,9 @@ select_time_control() {
     done
 }
 
-# Select thread count for ChessEngine
-select_thread_count() {
-    echo -e "${YELLOW}ChessEngine thread count:${NC}"
-    echo "  1) Single-threaded (1 thread) - Strongest tactical play"
-    echo "  2) Light parallel (2 threads) - Good balance"
-    echo "  3) Medium parallel (4 threads) - Balanced speed/strength"
-    echo "  4) High parallel (8 threads) - Maximum speed"
-    echo "  5) Custom"
-    echo
-    
-    while true; do
-        echo -n "Select thread count (number): "
-        read thread_selection
-        
-        case $thread_selection in
-            1)
-                THREAD_COUNT=1
-                THREAD_DESC="1 thread"
-                break
-                ;;
-            2)
-                THREAD_COUNT=2
-                THREAD_DESC="2 threads"
-                break
-                ;;
-            3)
-                THREAD_COUNT=4
-                THREAD_DESC="4 threads"
-                break
-                ;;
-            4)
-                THREAD_COUNT=8
-                THREAD_DESC="8 threads"
-                break
-                ;;
-            5)
-                while true; do
-                    echo -n "Enter number of threads (1-32): "
-                    read THREAD_COUNT
-                    if [[ "$THREAD_COUNT" =~ ^[0-9]+$ ]] && [ "$THREAD_COUNT" -gt 0 ] && [ "$THREAD_COUNT" -le 32 ]; then
-                        THREAD_DESC="$THREAD_COUNT threads"
-                        break
-                    else
-                        echo -e "${RED}Please enter a number between 1 and 32.${NC}"
-                    fi
-                done
-                break
-                ;;
-            *)
-                echo -e "${RED}Invalid selection. Please enter a number between 1 and 5.${NC}"
-                ;;
-        esac
-    done
+# Configure ChessEngine
+configure_engine() {
+    ENGINE_DESC="ChessEngine"
 }
 
 # Select number of games
@@ -327,7 +277,7 @@ run_benchmark() {
     local pgn_file="$RESULTS_DIR/benchmark_${timestamp}.pgn"
     
     echo -e "${BLUE}=== Starting Benchmark ===${NC}"
-    echo "ChessEngine ($THREAD_DESC) vs $OPPONENT"
+    echo "ChessEngine ($ENGINE_DESC) vs $OPPONENT"
     echo "Time Control: $TC_DESC"
     echo "Games: $GAME_COUNT"
     echo "Results will be saved to: $pgn_file"
@@ -348,7 +298,7 @@ run_benchmark() {
     
     # Build and execute cutechess-cli command using eval for proper option handling
     local base_cmd="\"$TOOLS_DIR/engines/cutechess-cli\""
-    base_cmd="$base_cmd -engine cmd=\"$chess_cmd\" name=\"ChessEngine\" proto=uci option.Threads=$THREAD_COUNT"
+    base_cmd="$base_cmd -engine cmd=\"$chess_cmd\" name=\"ChessEngine\" proto=uci option.Hash=1024"
     base_cmd="$base_cmd -engine cmd=\"$opponent_cmd\" name=\"$OPPONENT\" proto=uci"
     
     # Add opponent options if they exist
@@ -587,7 +537,7 @@ This file tracks the performance of ChessEngine against various opponents over t
 
 ## Results Summary
 
-| Date | Opponent | Time Control | Threads | Games | Wins | Losses | Draws | Score | Notes |
+| Date | Opponent | Time Control | Games | Wins | Losses | Draws | Score | Notes |
 |------|----------|--------------|---------|-------|------|--------|-------|-------|-------|
 EOF
     fi
@@ -603,7 +553,7 @@ EOF
     # Format time as HH:MM
     local time="${time_part:0:2}:${time_part:2:2}"
     
-    echo "| $date $time | $OPPONENT | $TC_DESC | $THREAD_DESC | $total | $wins | $losses | $draws | ${score}% | $NOTES |" >> "$BENCHMARK_LOG"
+    echo "| $date $time | $OPPONENT | $TC_DESC | $ENGINE_DESC | $total | $wins | $losses | $draws | ${score}% | $NOTES |" >> "$BENCHMARK_LOG"
 }
 
 # Main execution
@@ -616,8 +566,7 @@ main() {
     echo -e "${GREEN}Selected time control: $TC_DESC${NC}"
     echo
     
-    select_thread_count
-    echo -e "${GREEN}Selected threads: $THREAD_DESC${NC}"
+    configure_engine
     echo
     
     select_game_count
@@ -633,7 +582,7 @@ main() {
     echo
     
     echo -e "${YELLOW}Summary:${NC}"
-    echo "  ChessEngine ($THREAD_DESC) vs $OPPONENT"
+    echo "  ChessEngine ($ENGINE_DESC) vs $OPPONENT"
     echo "  Time Control: $TC_DESC"
     echo "  Games: $GAME_COUNT"
     echo "  Notes: $NOTES"

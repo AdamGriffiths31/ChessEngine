@@ -15,7 +15,7 @@ const (
 )
 
 // HistoryTable tracks the success rate of moves based on from/to square combinations
-// Uses a butterfly table approach for better cache locality and atomic operations for thread safety
+// Uses a butterfly table approach for better cache locality
 type HistoryTable struct {
 	table [64][64]atomic.Int32
 	age   atomic.Uint32

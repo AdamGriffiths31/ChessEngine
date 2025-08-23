@@ -60,9 +60,6 @@ type SearchConfig struct {
 	// Razoring configuration
 	DisableRazoring     bool    // If true, disables razoring for comparison testing
 	RazoringMarginScale float64 // Scale factor for margins (default 1.0)
-
-	// Parallel search configuration
-	NumThreads int // Number of threads to use for parallel search (default: 1 for sequential)
 }
 
 // BookSelectionMode defines how to select moves from opening books

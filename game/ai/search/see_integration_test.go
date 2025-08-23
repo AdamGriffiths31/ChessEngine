@@ -89,8 +89,7 @@ func TestSEEIntegrationInMoveOrdering(t *testing.T) {
 		boardSquareToString(worseCapture.From), boardSquareToString(worseCapture.To), worseSEE)
 
 	// Order moves using the engine's method
-	threadState := engine.getThreadLocalState()
-	engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
+	engine.orderMoves(b, legalMoves, 0, board.Move{})
 
 	// Get the ordered moves
 	orderedMoves := engine.GetLastMoveOrder()

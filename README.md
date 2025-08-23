@@ -8,7 +8,6 @@ A high-performance chess engine written in Go, featuring advanced search algorit
 - **Minimax Search** with alpha-beta pruning and aspiration windows
 - **Advanced Pruning** including null move pruning and late move reductions (LMR)
 - **Transposition Tables** with Zobrist hashing for position caching
-- **Multi-threading Support** (1-32 threads) with Lazy SMP for parallel search
 - **Opening Book** support via Polyglot format
 - **Time Management** with iterative deepening
 
@@ -127,7 +126,6 @@ go test -run TestPerft ./game/moves
 - **Node rate**: ~500K-1M nodes/second (hardware dependent)
 - **Search depth**: Typically 6-12 ply in tournament time controls
 - **Memory usage**: ~50-200MB for transposition tables
-- **Multi-threading**: Linear speedup up to 8 threads
 
 ### Engine Strength
 - Validated against standard test suites (STS, EPD)

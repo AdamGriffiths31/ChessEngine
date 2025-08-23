@@ -70,8 +70,7 @@ func TestMVVLVATiebreaker(t *testing.T) {
 			}
 
 			// Order moves
-			threadState := engine.getThreadLocalState()
-			engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
+			engine.orderMoves(b, legalMoves, 0, board.Move{})
 			orderedMoves := engine.GetLastMoveOrder()
 
 			// Find positions of our test captures

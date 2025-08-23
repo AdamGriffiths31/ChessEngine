@@ -22,7 +22,7 @@ func TestEvaluateKings(t *testing.T) {
 		{
 			name:        "white_castled_kingside",
 			fen:         "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQ1RK1 w kq - 0 1",
-			expected:    62, // Actual observed value: castled + shelter
+			expected:    75, // Actual observed value: castled + shelter
 			description: "White king castled kingside with good shelter",
 		},
 		{
@@ -66,7 +66,7 @@ func TestEvaluateKingSimple(t *testing.T) {
 			name:        "white_king_castled_kingside",
 			fen:         "8/8/8/8/8/8/PPPPPPPP/RNBQ1RK1 w - - 0 1",
 			isWhite:     true,
-			expected:    52, // Castled + shelter bonuses
+			expected:    65, // Castled + shelter bonuses
 			description: "White king castled kingside",
 		},
 		{
@@ -173,7 +173,7 @@ func TestEvaluatePawnShelter(t *testing.T) {
 			fen:         "8/8/8/8/8/8/5PPP/6K1 w - - 0 1",
 			kingSquare:  6, // g1
 			isWhite:     true,
-			expected:    37, // Actual observed value
+			expected:    50, // Actual observed value
 			description: "White king with perfect kingside shelter",
 		},
 		{
@@ -181,7 +181,7 @@ func TestEvaluatePawnShelter(t *testing.T) {
 			fen:         "8/8/8/8/8/8/6PP/6K1 w - - 0 1",
 			kingSquare:  6, // g1
 			isWhite:     true,
-			expected:    30, // Actual observed value
+			expected:    40, // Actual observed value
 			description: "White king with partial kingside shelter",
 		},
 		{
@@ -189,7 +189,7 @@ func TestEvaluatePawnShelter(t *testing.T) {
 			fen:         "2k5/ppp5/8/8/8/8/8/8 w - - 0 1",
 			kingSquare:  58, // c8
 			isWhite:     false,
-			expected:    30, // Actual observed value
+			expected:    40, // Actual observed value
 			description: "Black king with perfect queenside shelter",
 		},
 		{

@@ -19,7 +19,7 @@ import (
 // King evaluation constants - minimal and essential
 const (
 	// King safety (simplified)
-	KingShelterBonus = 15  // Per pawn in front of castled king
+	KingShelterBonus = 20  // Per pawn in front of castled king
 	OpenFileNearKing = -20 // Open file next to king
 
 	// Endgame king activity

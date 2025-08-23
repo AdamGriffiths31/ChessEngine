@@ -26,7 +26,6 @@ func main() {
 	verbose := flag.Bool("verbose", false, "Show detailed results for each position")
 	ttSize := flag.Int("ttsize", 256, "Transposition table size in MB")
 	clearTT := flag.Bool("clear-tt", true, "Clear transposition table between positions (recommended for EPD benchmarks)")
-	threads := flag.Int("threads", 1, "Number of search threads for parallel search")
 	flag.Parse()
 
 	fmt.Printf("STS (Strategic Test Suite) Benchmark\n")
@@ -35,7 +34,6 @@ func main() {
 	fmt.Printf("Timeout per position: %d seconds\n", *timeout)
 	fmt.Printf("Transposition Table: %d MB\n", *ttSize)
 	fmt.Printf("Clear TT between positions: %v\n", *clearTT)
-	fmt.Printf("Search Threads: %d\n", *threads)
 	if *maxPositions > 0 {
 		fmt.Printf("Max positions: %d\n", *maxPositions)
 	}
@@ -77,7 +75,6 @@ func main() {
 		DebugMode:   false,
 		LMRMinDepth: 3,
 		LMRMinMoves: 4,
-		NumThreads:  *threads,
 	}
 
 	scorer := epd.NewSTSScorerWithTTClear(engine, searchConfig, *verbose, *clearTT)

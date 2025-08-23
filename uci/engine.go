@@ -31,6 +31,7 @@ type Engine struct {
 	debugLogger *log.Logger
 	moveNumber  int
 	commLogger  *CommunicationLogger
+	bookLogged  bool
 }
 
 // NewUCIEngine creates a new UCI engine wrapper.
@@ -162,7 +163,6 @@ func (ue *Engine) handleUCI() string {
 		"id name ChessEngine",
 		"id author Adam Griffiths",
 		"option name Hash type spin default 128 min 1 max 1024",
-		"option name Threads type spin default 1 min 1 max 32",
 		"uciok",
 	}
 
@@ -180,7 +180,11 @@ func (ue *Engine) handlePosition(args []string) string {
 		return ""
 	}
 
-	ue.engine.Reset()
+	// Load the FEN position
+	if err := ue.engine.LoadFromFEN(fen); err != nil {
+		ue.debugLogger.Printf("POSITION-ERROR: Failed to load FEN %q: %v", fen, err)
+		return ""
+	}
 
 	for _, moveStr := range moveList {
 		move, err := ue.converter.FromUCI(moveStr, ue.engine.GetState().Board)
@@ -196,9 +200,6 @@ func (ue *Engine) handlePosition(args []string) string {
 		}
 	}
 
-	// Log final position for debugging evaluation swings
-	ue.debugLogger.Printf("POSITION: %s", ue.engine.GetCurrentFEN())
-
 	return ""
 }
 
@@ -212,13 +213,6 @@ func (ue *Engine) handleGo(args []string) {
 
 	ue.searching = true
 	ue.stopChannel = make(chan struct{})
-
-	threadCount := 1
-	if threadStr, exists := ue.options["Threads"]; exists {
-		if _, err := fmt.Sscanf(threadStr, "%d", &threadCount); err != nil || threadCount < 1 || threadCount > 32 {
-			threadCount = 1
-		}
-	}
 
 	// Get absolute path to opening book relative to executable
 	execPath, err := os.Executable()
@@ -239,9 +233,15 @@ func (ue *Engine) handleGo(args []string) {
 
 		if _, err := os.Stat(bookPath); err == nil {
 			bookFiles = []string{bookPath}
-			ue.debugLogger.Printf("BOOK: Found opening book at: %s", bookPath)
+			if !ue.bookLogged {
+				ue.debugLogger.Printf("BOOK: Found opening book at: %s", bookPath)
+				ue.bookLogged = true
+			}
 		} else {
-			ue.debugLogger.Printf("BOOK-ERROR: Opening book not found at: %s", bookPath)
+			if !ue.bookLogged {
+				ue.debugLogger.Printf("BOOK-ERROR: Opening book not found at: %s", bookPath)
+				ue.bookLogged = true
+			}
 		}
 	}
 
@@ -255,7 +255,6 @@ func (ue *Engine) handleGo(args []string) {
 		BookWeightThreshold: 1,
 		LMRMinDepth:         3,
 		LMRMinMoves:         4,
-		NumThreads:          threadCount,
 	}
 
 	if params.Depth > 0 {
@@ -289,6 +288,8 @@ func (ue *Engine) handleGo(args []string) {
 
 	ue.moveNumber++
 
+	// Capture FEN before search for debugging
+	searchFEN := ue.engine.GetCurrentFEN()
 	searchStart := time.Now()
 	var result ai.SearchResult
 	var searchDuration time.Duration
@@ -297,8 +298,8 @@ func (ue *Engine) handleGo(args []string) {
 		defer func() {
 			if r := recover(); r != nil {
 				ue.debugLogger.Printf("PANIC CAUGHT: Search panicked for move %d: %v", ue.moveNumber, r)
-				ue.debugLogger.Printf("PANIC CONTEXT: Position=%s, Player=%s, ThreadCount=%d",
-					ue.engine.GetCurrentFEN(), player, config.NumThreads)
+				ue.debugLogger.Printf("PANIC CONTEXT: Position=%s, Player=%s",
+					ue.engine.GetCurrentFEN(), player)
 
 				result = ai.SearchResult{
 					BestMove: board.Move{
@@ -333,8 +334,8 @@ func (ue *Engine) handleGo(args []string) {
 		moveOrderPct = float64(result.Stats.FirstMoveCutoffs) / float64(result.Stats.TotalCutoffs) * 100
 	}
 
-	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | Time: %.3fs | Book: %t | %s",
-		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, searchDuration.Seconds(), result.Stats.BookMoveUsed, ttStatsStr)
+	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | Time: %.3fs | Book: %t | %s | FEN: %s",
+		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, searchDuration.Seconds(), result.Stats.BookMoveUsed, ttStatsStr, searchFEN)
 
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
@@ -378,11 +379,6 @@ func (ue *Engine) handleSetOption(args []string) string {
 				minimaxEngine.SetTranspositionTableSize(hashSizeMB)
 			}
 		}
-	case "Threads":
-		var threadCount int
-		if _, err := fmt.Sscanf(value, "%d", &threadCount); err != nil || threadCount <= 0 || threadCount > 32 {
-			ue.debugLogger.Printf("Invalid thread count: %s (must be 1-32)", value)
-		}
 	}
 
 	return ""
@@ -396,6 +392,15 @@ func (ue *Engine) handleNewGame() string {
 	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
 		minimaxEngine.ClearSearchState()
 	}
+
+	hashSize := 128
+	if hashStr, exists := ue.options["Hash"]; exists {
+		if _, err := fmt.Sscanf(hashStr, "%d", &hashSize); err != nil || hashSize < 1 {
+			hashSize = 128
+		}
+	}
+
+	ue.debugLogger.Printf("ENGINE CONFIG: Hash=%dMB", hashSize)
 
 	return ""
 }

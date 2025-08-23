@@ -24,7 +24,6 @@ func main() {
 		searchTime  = flag.Duration("time", 10*time.Second, "Search time per position")
 		cpuProfile  = flag.String("cpuprofile", "", "Write CPU profile to file")
 		memProfile  = flag.String("memprofile", "", "Write memory profile to file")
-		threads     = flag.Int("threads", 1, "Number of search threads")
 		ttSize      = flag.Int("tt", 256, "Transposition table size in MB")
 		showDetails = flag.Bool("details", false, "Show detailed search information")
 	)
@@ -63,7 +62,7 @@ func main() {
 		}
 		fmt.Printf("\n")
 	}
-	fmt.Printf("Search time: %v, Threads: %d, TT: %dMB\n\n", *searchTime, *threads, *ttSize)
+	fmt.Printf("Search time: %v, TT: %dMB\n\n", *searchTime, *ttSize)
 
 	// Use the parsed board
 	b := epdPos.Board
@@ -93,9 +92,8 @@ func main() {
 
 	// Configure search
 	config := ai.SearchConfig{
-		MaxDepth:   999,
-		MaxTime:    *searchTime,
-		NumThreads: *threads,
+		MaxDepth: 999,
+		MaxTime:  *searchTime,
 	}
 
 	// Run the search

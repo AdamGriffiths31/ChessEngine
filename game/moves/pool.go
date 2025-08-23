@@ -6,7 +6,7 @@ import (
 )
 
 // MoveListPool manages a pool of reusable MoveList objects to reduce allocation overhead.
-// Uses sync.Pool for thread-safe object pooling with automatic garbage collection integration.
+// Uses sync.Pool for efficient object pooling with automatic garbage collection integration.
 type MoveListPool struct {
 	pool sync.Pool
 }

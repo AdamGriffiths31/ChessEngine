@@ -31,9 +31,8 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 		Piece: board.WhiteKing,
 	}
 	// Store killer moves using the public API
-	threadState := engine.getThreadLocalState()
-	engine.storeKiller(killerMove1, 0, threadState)
-	engine.storeKiller(killerMove2, 0, threadState)
+	engine.storeKiller(killerMove1, 0)
+	engine.storeKiller(killerMove2, 0)
 
 	// Simulate history table with some moves having good scores
 	historyMove1 := board.Move{
@@ -62,9 +61,9 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 			} else {
 				badCaptures = append(badCaptures, move)
 			}
-		} else if engine.isKillerMove(move, 0, threadState) {
+		} else if engine.isKillerMove(move, 0) {
 			killers = append(killers, move)
-		} else if engine.getHistoryScore(move, threadState) > 1000 {
+		} else if engine.getHistoryScore(move) > 1000 {
 			historyMoves = append(historyMoves, move)
 		} else {
 			quietMoves = append(quietMoves, move)
@@ -80,8 +79,7 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 	t.Logf("  Quiet moves: %d", len(quietMoves))
 
 	// Order the moves
-	// threadState already available from above
-	engine.orderMoves(b, legalMoves, 0, board.Move{}, threadState)
+	engine.orderMoves(b, legalMoves, 0, board.Move{})
 	orderedMoves := engine.GetLastMoveOrder()
 
 	// Verify ordering by checking positions
@@ -110,12 +108,12 @@ func TestCompleteTacticalMoveOrdering(t *testing.T) {
 			} else {
 				category = "Terrible Capture"
 			}
-		} else if engine.isKillerMove(move, 0, threadState) {
+		} else if engine.isKillerMove(move, 0) {
 			category = "Killer Move"
 			score = 500000
-		} else if engine.getHistoryScore(move, threadState) > 1000 {
+		} else if engine.getHistoryScore(move) > 1000 {
 			category = "History Move"
-			score = int(engine.getHistoryScore(move, threadState))
+			score = int(engine.getHistoryScore(move))
 		} else {
 			category = "Quiet Move"
 			score = 0

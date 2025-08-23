@@ -31,6 +31,7 @@ type BenchmarkResult struct {
 	TTHits        uint64
 	TTMisses      uint64
 	TTHitRate     float64
+	NodesPerSec   float64
 }
 
 var standardPositions = []BenchmarkPosition{
@@ -127,6 +128,8 @@ func runBenchmark(positions []BenchmarkPosition, depth, timeoutSecs, ttSizeMB in
 			ttHits, ttMisses, _, ttHitRate = engine.GetTranspositionTableStats()
 		}
 
+		nodesPerSec := float64(result.Stats.NodesSearched) / searchTime.Seconds()
+
 		benchResult := BenchmarkResult{
 			Position:      pos,
 			BestMove:      result.BestMove,
@@ -137,12 +140,13 @@ func runBenchmark(positions []BenchmarkPosition, depth, timeoutSecs, ttSizeMB in
 			TTHits:        ttHits,
 			TTMisses:      ttMisses,
 			TTHitRate:     ttHitRate,
+			NodesPerSec:   nodesPerSec,
 		}
 		results = append(results, benchResult)
 
 		fmt.Printf("  Best Move: %s%s\n", result.BestMove.From.String(), result.BestMove.To.String())
 		fmt.Printf("  Score: %d\n", result.Score)
-		fmt.Printf("  Nodes: %d\n", result.Stats.NodesSearched)
+		fmt.Printf("  Nodes: %d (%.0f nodes/sec)\n", result.Stats.NodesSearched, nodesPerSec)
 		fmt.Printf("  Time: %v\n", searchTime)
 		if ttSizeMB > 0 {
 			fmt.Printf("  TT Hit Rate: %.1f%%\n", ttHitRate)

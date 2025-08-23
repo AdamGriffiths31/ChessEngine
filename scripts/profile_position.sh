@@ -4,7 +4,6 @@
 STS_FILE="testdata/STS1.epd"
 POSITION=1
 SEARCH_TIME="10s"
-THREADS=1
 TT_SIZE=256
 
 # Parse arguments
@@ -22,10 +21,6 @@ while [[ $# -gt 0 ]]; do
             SEARCH_TIME="$2"
             shift 2
             ;;
-        --threads)
-            THREADS="$2"
-            shift 2
-            ;;
         --tt)
             TT_SIZE="$2"
             shift 2
@@ -36,7 +31,6 @@ while [[ $# -gt 0 ]]; do
             echo "  -f, --file FILE       STS file to use (default: testdata/STS1.epd)"
             echo "  -p, --position NUM    Position number in file (default: 1)"
             echo "  -t, --time DURATION   Search time (default: 10s)"
-            echo "  --threads NUM         Number of threads (default: 1)"
             echo "  --tt SIZE            TT size in MB (default: 256)"
             echo "  -h, --help           Show this help"
             exit 0
@@ -57,7 +51,7 @@ CPU_PROFILE="profiles/cpu_${TIMESTAMP}.prof"
 MEM_PROFILE="profiles/mem_${TIMESTAMP}.prof"
 
 echo "Running profile for position $POSITION in $STS_FILE"
-echo "Search time: $SEARCH_TIME, Threads: $THREADS, TT: ${TT_SIZE}MB"
+echo "Search time: $SEARCH_TIME, TT: ${TT_SIZE}MB"
 echo "CPU profile: $CPU_PROFILE"
 echo "Memory profile: $MEM_PROFILE"
 echo ""
@@ -69,7 +63,6 @@ go build -o cmd/profile/profile cmd/profile/main.go || exit 1
     -file="$STS_FILE" \
     -pos="$POSITION" \
     -time="$SEARCH_TIME" \
-    -threads="$THREADS" \
     -tt="$TT_SIZE" \
     -cpuprofile="$CPU_PROFILE" \
     -memprofile="$MEM_PROFILE" \

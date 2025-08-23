@@ -7,7 +7,6 @@
 DEPTH=999
 TIMEOUT=5
 MAX_POSITIONS=10  # Per file - total will be MAX_POSITIONS * number of files
-THREADS=1         # Number of threads for parallel search
 VERBOSE=true
 EPD_DIR="testdata"
 RESULTS_FILE="sts_history.md"
@@ -25,10 +24,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         -m|--max)
             MAX_POSITIONS="$2"
-            shift 2
-            ;;
-        -j|--threads)
-            THREADS="$2"
             shift 2
             ;;
         --dir)
@@ -49,16 +44,15 @@ while [[ $# -gt 0 ]]; do
             echo "  -d, --depth N        Search depth (default: $DEPTH)"
             echo "  -t, --timeout N      Timeout per position in seconds (default: ${TIMEOUT}s)"
             echo "  -m, --max N          Max positions per file (default: $MAX_POSITIONS)"
-            echo "  -j, --threads N      Number of search threads (default: $THREADS)"
             echo "  --dir PATH           EPD directory path (default: $EPD_DIR)"
             echo "  -o, --output PATH    Results file path (default: $RESULTS_FILE)"
             echo "  -q, --quiet          Disable verbose output"
             echo "  -h, --help           Show this help"
             echo ""
             echo "Examples:"
-            echo "  $0                   # Run with defaults: 10 pos/file × 6 files = 60 total, 1 thread"
+            echo "  $0                   # Run with defaults: 10 pos/file × 6 files = 60 total"
             echo "  $0 -t 3 -m 5         # 3s timeout, 5 pos/file × 6 files = 30 total"
-            echo "  $0 -j 4 -t 10        # 4 threads, 10s timeout"
+            echo "  $0 -t 10             # 10s timeout"
             echo "  $0 -t 10 -m 20       # 10s timeout, 20 pos/file × 6 files = 120 total"
             exit 0
             ;;
@@ -71,17 +65,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Interactive prompts if not provided via command line
-if [[ ! " $* " =~ " -t " ]] && [[ ! " $* " =~ " --timeout " ]] && [[ ! " $* " =~ " -j " ]] && [[ ! " $* " =~ " --threads " ]]; then
+if [[ ! " $* " =~ " -t " ]] && [[ ! " $* " =~ " --timeout " ]]; then
     echo "STS Benchmark Runner with Results Recording"
     echo "==========================================="
     echo ""
     read -p "Enter timeout per position in seconds (default: ${TIMEOUT}): " USER_TIMEOUT
     if [[ -n "$USER_TIMEOUT" && "$USER_TIMEOUT" =~ ^[0-9]+$ ]]; then
         TIMEOUT=$USER_TIMEOUT
-    fi
-    read -p "Enter number of search threads (default: ${THREADS}): " USER_THREADS
-    if [[ -n "$USER_THREADS" && "$USER_THREADS" =~ ^[0-9]+$ ]]; then
-        THREADS=$USER_THREADS
     fi
     echo ""
 else
@@ -92,7 +82,6 @@ echo "Configuration:"
 echo "  Search Depth: $DEPTH"
 echo "  Timeout: ${TIMEOUT}s per position"
 echo "  Max Positions: $MAX_POSITIONS per file"
-echo "  Search Threads: $THREADS"
 echo "  EPD Directory: $EPD_DIR"
 echo "  Results File: $RESULTS_FILE"
 echo "  Verbose: $VERBOSE"
@@ -158,7 +147,7 @@ for EPD_FILE in "${EPD_FILES[@]}"; do
     echo "=================================="
     
     # Run command with tee to show real-time output and capture it
-    ./bin/sts -depth "$DEPTH" -timeout "$TIMEOUT" -max "$MAX_POSITIONS" -threads "$THREADS" -file "$EPD_FILE" $VERBOSE_FLAG 2>&1 | tee "$TEMP_OUTPUT"
+    ./bin/sts -depth "$DEPTH" -timeout "$TIMEOUT" -max "$MAX_POSITIONS" -file "$EPD_FILE" $VERBOSE_FLAG 2>&1 | tee "$TEMP_OUTPUT"
     EXIT_CODE=${PIPESTATUS[0]}
     
     if [ $EXIT_CODE -ne 0 ]; then
@@ -252,15 +241,15 @@ if [ ! -f "$RESULTS_FILE" ]; then
     echo "" >> "$RESULTS_FILE"
     echo "## Results Summary" >> "$RESULTS_FILE"
     echo "" >> "$RESULTS_FILE"
-    echo "| Date | Commit | EPD File | Positions | Score | Max | Percent | STS Rating | Correct | Depth | Timeout | Threads | Avg Time | Total Time | NPS | Avg Depth | Notes |" >> "$RESULTS_FILE"
-    echo "|------|--------|----------|-----------|-------|-----|---------|------------|---------|-------|---------|---------|----------|------------|-----|-----------|-------|" >> "$RESULTS_FILE"
+    echo "| Date | Commit | EPD File | Positions | Score | Max | Percent | STS Rating | Correct | Depth | Timeout | Avg Time | Total Time | NPS | Avg Depth | Notes |" >> "$RESULTS_FILE"
+    echo "|------|--------|----------|-----------|-------|-----|---------|------------|---------|-------|---------|----------|------------|-----|-----------|-------|" >> "$RESULTS_FILE"
 fi
 
 # Prepare notes field (can be customized)
-NOTES="depth=$DEPTH, timeout=${TIMEOUT}s, ${MAX_POSITIONS} per file, ${#EPD_FILES[@]} files, ${THREADS} threads"
+NOTES="depth=$DEPTH, timeout=${TIMEOUT}s, ${MAX_POSITIONS} per file, ${#EPD_FILES[@]} files"
 
 # Add new result to the file
-echo "| $TIMESTAMP | $GIT_COMMIT | $EPD_DESCRIPTION | $POSITIONS_TESTED | $SCORE | $MAX_SCORE | ${SCORE_PERCENT}% | $STS_RATING | $CORRECT_MOVES | $DEPTH | ${TIMEOUT}s | $THREADS | $AVG_TIME | ${TOTAL_TIME}s | $NPS_RAW | $AVG_DEPTH | $NOTES |" >> "$RESULTS_FILE"
+echo "| $TIMESTAMP | $GIT_COMMIT | $EPD_DESCRIPTION | $POSITIONS_TESTED | $SCORE | $MAX_SCORE | ${SCORE_PERCENT}% | $STS_RATING | $CORRECT_MOVES | $DEPTH | ${TIMEOUT}s | $AVG_TIME | ${TOTAL_TIME}s | $NPS_RAW | $AVG_DEPTH | $NOTES |" >> "$RESULTS_FILE"
 
 # Display aggregated summary
 echo "Aggregated STS Results Summary"
@@ -270,7 +259,6 @@ echo "Total positions: $POSITIONS_TESTED"
 echo "Total score: $SCORE/$MAX_SCORE (${SCORE_PERCENT}%)"
 echo "Correct moves: $CORRECT_MOVES/$POSITIONS_TESTED"
 echo "STS Rating: $STS_RATING"
-echo "Search threads: $THREADS"
 echo "Total time: ${TOTAL_TIME}s"
 echo "Average time per position: $AVG_TIME"
 echo "Average depth: $AVG_DEPTH"
