@@ -15,7 +15,7 @@ import (
 
 const (
 	// MinEval represents the minimum possible evaluation score
-	MinEval = ai.EvaluationScore(-1000000)
+	MinEval = ai.EvaluationScore(-32000)
 	// MaxKillerDepth is the maximum depth for killer move tables
 	MaxKillerDepth = 128
 	// MateDistanceThreshold is the threshold for detecting mate distances
@@ -350,7 +350,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	if m.transpositionTable != nil {
 		hash := b.GetHash()
 		if entry, found := m.transpositionTable.Probe(hash); found {
-			rootTTMove = entry.BestMove
+			rootTTMove = entry.GetMove()
 		}
 	}
 
@@ -538,7 +538,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	if m.transpositionTable != nil {
 		if entry, found := m.transpositionTable.Probe(hash); found {
-			ttMove = entry.BestMove
+			ttMove = entry.GetMove()
 
 			if ttMove.From.File >= 0 && ttMove.From.File <= 7 &&
 				ttMove.To.File >= 0 && ttMove.To.File <= 7 {
@@ -1157,6 +1157,14 @@ func (m *MinimaxEngine) GetDetailedTranspositionTableStats() (hits, misses, coll
 		return m.transpositionTable.GetDetailedStats()
 	}
 	return 0, 0, 0, 0, 0, 0, 0
+}
+
+// GetTwoBucketStats returns statistics specific to the two-bucket collision resolution
+func (m *MinimaxEngine) GetTwoBucketStats() (secondBucketUse uint64, secondBucketRate float64) {
+	if m.transpositionTable != nil {
+		return m.transpositionTable.GetTwoBucketStats()
+	}
+	return 0, 0
 }
 
 // GetName returns the engine name

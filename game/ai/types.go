@@ -77,15 +77,15 @@ const (
 )
 
 // EvaluationScore represents the score of a position
-type EvaluationScore int32
+type EvaluationScore int16
 
 const (
 	// MateScore represents a checkmate position value
-	MateScore EvaluationScore = 10000000
+	MateScore EvaluationScore = 30000
 	// DrawScore represents a drawn position value
 	DrawScore EvaluationScore = 0
 	// UnknownScore represents an unknown or invalid position value
-	UnknownScore EvaluationScore = -1000000
+	UnknownScore EvaluationScore = -32000
 )
 
 // SearchResult contains the result of a search

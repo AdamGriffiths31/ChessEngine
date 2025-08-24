@@ -324,8 +324,9 @@ func (ue *Engine) handleGo(args []string) {
 	var ttStatsStr string
 	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
 		hits, misses, collisions, hitRate := minimaxEngine.GetTranspositionTableStats()
-		ttStatsStr = fmt.Sprintf("TT: %d hits, %d misses, %d collisions, %.1f%% hit rate",
-			hits, misses, collisions, hitRate)
+		secondBucketUse, secondBucketRate := minimaxEngine.GetTwoBucketStats()
+		ttStatsStr = fmt.Sprintf("TT: %d hits, %d misses, %d collisions, %.1f%% hit rate | 2B: %d uses, %.1f%% rate",
+			hits, misses, collisions, hitRate, secondBucketUse, secondBucketRate)
 	}
 
 	// Calculate move ordering percentage
@@ -340,9 +341,10 @@ func (ue *Engine) handleGo(args []string) {
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
 			hits, misses, collisions, hitRate := minimaxEngine.GetTranspositionTableStats()
+			secondBucketUse, secondBucketRate := minimaxEngine.GetTwoBucketStats()
 			if hits > 0 || misses > 0 {
-				if _, err := fmt.Fprintf(ue.output, "info string TT: %d hits, %d misses, %d collisions, %.1f%% hit rate\n",
-					hits, misses, collisions, hitRate); err != nil {
+				if _, err := fmt.Fprintf(ue.output, "info string TT: %d hits, %d misses, %d collisions, %.1f%% hit rate | Second bucket: %d uses, %.1f%% rate\n",
+					hits, misses, collisions, hitRate, secondBucketUse, secondBucketRate); err != nil {
 					ue.debugLogger.Printf("UCI-ERROR: Failed to write TT stats: %v", err)
 				}
 			}
