@@ -57,6 +57,26 @@ func (bmg *BitboardMoveGenerator) GenerateAllMovesBitboard(b *board.Board, playe
 	return moveList
 }
 
+// GeneratePseudoLegalMoves generates pseudo-legal moves without king safety validation.
+// Callers must verify moves don't leave their own king in check before execution.
+// This method is optimized for search algorithms that use lazy move validation.
+func (bmg *BitboardMoveGenerator) GeneratePseudoLegalMoves(b *board.Board, player Player) *MoveList {
+
+	moveList := GetMoveList()
+
+	// Generate moves for each piece type using bitboard operations
+	bmg.generatePawnMovesBitboard(b, player, moveList)
+	bmg.GenerateKnightMovesBitboard(b, player, moveList)
+	bmg.generateBishopMovesBitboard(b, player, moveList)
+	bmg.generateRookMovesBitboard(b, player, moveList)
+	bmg.generateQueenMovesBitboard(b, player, moveList)
+	bmg.generateKingMovesBitboard(b, player, moveList)
+
+	// No legal move filtering - pseudo-legal moves may leave king in check
+
+	return moveList
+}
+
 // generatePawnMovesBitboard generates pawn moves using bitboard shifts and attack patterns
 func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var pawnPiece board.Piece

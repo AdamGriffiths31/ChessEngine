@@ -133,7 +133,6 @@ func TestSEE_ComplexExchanges(t *testing.T) {
 	}
 }
 
-
 func TestSEE_EnPassant(t *testing.T) {
 	// Set up en passant position
 	b := board.NewBoard()

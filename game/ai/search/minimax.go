@@ -327,10 +327,10 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 // runIterativeDeepening runs the core iterative deepening search
 func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Board, player moves.Player, config ai.SearchConfig, startTime time.Time) ai.SearchResult {
 
-	legalMoves := m.generator.GenerateAllMoves(b, player)
-	defer moves.ReleaseMoveList(legalMoves)
+	pseudoMoves := m.generator.GeneratePseudoLegalMoves(b, player)
+	defer moves.ReleaseMoveList(pseudoMoves)
 
-	if legalMoves.Count == 0 {
+	if pseudoMoves.Count == 0 {
 		isCheck := m.generator.IsKingInCheck(b, player)
 		if isCheck {
 			return ai.SearchResult{
@@ -354,9 +354,9 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		}
 	}
 
-	m.orderMoves(b, legalMoves, 0, rootTTMove)
+	m.orderMoves(b, pseudoMoves, 0, rootTTMove)
 
-	lastCompletedBestMove := legalMoves.Moves[0]
+	lastCompletedBestMove := pseudoMoves.Moves[0]
 	lastCompletedScore := ai.EvaluationScore(0)
 	lastCompletedDepth := 0
 	var finalStats ai.SearchStats
@@ -403,14 +403,20 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			tempBestMove := board.Move{}
 			moveIndex := 0
 
-			for _, move := range legalMoves.Moves[:legalMoves.Count] {
+			for _, move := range pseudoMoves.Moves[:pseudoMoves.Count] {
 				if m.searchState.searchCancelled {
 					break
 				}
 
 				undo, err := b.MakeMoveWithUndo(move)
 				if err != nil {
-					panic(fmt.Sprintf("MakeMoveWithUndo failed in iterative deepening: %v", err))
+					continue // Skip invalid move
+				}
+
+				// Check if king is in check after move (illegal)
+				if m.generator.IsKingInCheck(b, player) {
+					b.UnmakeMove(undo)
+					continue // Skip illegal move
 				}
 
 				var score ai.EvaluationScore
@@ -631,34 +637,24 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		return m.quiescence(ctx, b, player, alpha, beta, originalMaxDepth-depth, stats)
 	}
 
-	legalMoves := m.generator.GenerateAllMoves(b, player)
-	defer moves.ReleaseMoveList(legalMoves)
+	pseudoMoves := m.generator.GeneratePseudoLegalMoves(b, player)
+	defer moves.ReleaseMoveList(pseudoMoves)
 
-	if legalMoves.Count == 0 {
-		if m.generator.IsKingInCheck(b, player) {
-			score := -ai.MateScore + ai.EvaluationScore(originalMaxDepth-depth)
-			if m.transpositionTable != nil {
-				m.transpositionTable.Store(hash, depth, score, EntryExact, board.Move{})
-			}
-			return score
-		}
-		if m.transpositionTable != nil {
-			m.transpositionTable.Store(hash, depth, ai.DrawScore, EntryExact, board.Move{})
-		}
-		return ai.DrawScore
+	if pseudoMoves.Count == 0 {
+		return m.handleNoLegalMoves(b, player, depth, originalMaxDepth, hash)
 	}
 
-	m.orderMoves(b, legalMoves, currentDepth, ttMove)
+	m.orderMoves(b, pseudoMoves, currentDepth, ttMove)
 
 	bestScore := -ai.MateScore - 1
 	bestMove := board.Move{}
-	moveCount := 0
+	legalMoveCount := 0
 
 	// Track if we improved alpha to determine correct entry type
 	alphaImproved := false
 
-	for i := 0; i < legalMoves.Count; i++ {
-		move := legalMoves.Moves[i]
+	for i := 0; i < pseudoMoves.Count; i++ {
+		move := pseudoMoves.Moves[i]
 
 		if m.searchState.searchCancelled {
 			break
@@ -666,16 +662,22 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
-			panic(fmt.Sprintf("MakeMoveWithUndo failed in negamax: %v", err))
+			continue // Skip invalid move
 		}
 
-		moveCount++
+		// Check if king is in check after move (illegal)
+		if m.generator.IsKingInCheck(b, player) {
+			b.UnmakeMove(undo)
+			continue // Skip illegal move
+		}
+
+		legalMoveCount++
 		var score ai.EvaluationScore
 
 		reduction := 0
 
 		if depth >= config.LMRMinDepth &&
-			moveCount > config.LMRMinMoves &&
+			legalMoveCount > config.LMRMinMoves &&
 			!inCheck &&
 			!move.IsCapture &&
 			move.Promotion == board.Empty &&
@@ -684,7 +686,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			givesCheck := board.MoveGivesCheck(b, move)
 
 			if !givesCheck {
-				reduction = int(math.Log(float64(min(depth, 15))) * math.Log(float64(min(moveCount, 63))) / m.searchState.searchParams.LMRDivisor)
+				reduction = int(math.Log(float64(min(depth, 15))) * math.Log(float64(min(legalMoveCount, 63))) / m.searchState.searchParams.LMRDivisor)
 
 				historyScore := m.getHistoryScore(move)
 				if historyScore > m.searchState.searchParams.HistoryHighThreshold {
@@ -743,7 +745,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			if alpha >= beta {
 				// Track move ordering statistics
 				m.searchState.searchStats.TotalCutoffs++
-				if moveCount == 1 {
+				if legalMoveCount == 1 {
 					m.searchState.searchStats.FirstMoveCutoffs++
 				}
 
@@ -766,7 +768,12 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		}
 	}
 
-	if moveCount == 0 && m.searchState.searchCancelled {
+	// Check if we had no legal moves
+	if legalMoveCount == 0 {
+		return m.handleNoLegalMoves(b, player, depth, originalMaxDepth, hash)
+	}
+
+	if legalMoveCount == 0 && m.searchState.searchCancelled {
 		return alpha
 	}
 	if m.transpositionTable != nil && !m.searchState.searchCancelled {
@@ -790,6 +797,24 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	}
 
 	return bestScore
+}
+
+// handleNoLegalMoves returns the appropriate score when no legal moves are available
+// Returns checkmate score if in check, stalemate score otherwise
+func (m *MinimaxEngine) handleNoLegalMoves(b *board.Board, player moves.Player, depth, originalMaxDepth int, hash uint64) ai.EvaluationScore {
+	if m.generator.IsKingInCheck(b, player) {
+		// Checkmate
+		score := -ai.MateScore + ai.EvaluationScore(originalMaxDepth-depth)
+		if m.transpositionTable != nil {
+			m.transpositionTable.Store(hash, depth, score, EntryExact, board.Move{})
+		}
+		return score
+	}
+	// Stalemate
+	if m.transpositionTable != nil {
+		m.transpositionTable.Store(hash, depth, ai.DrawScore, EntryExact, board.Move{})
+	}
+	return ai.DrawScore
 }
 
 // quiescence performs quiescence search
@@ -847,7 +872,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		}
 	}
 
-	allMoves := m.generator.GenerateAllMoves(b, player)
+	allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
 	defer moves.ReleaseMoveList(allMoves)
 
 	captureList := moves.GetMoveList()
@@ -909,7 +934,13 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 
 		undo, err := b.MakeMoveWithUndo(move)
 		if err != nil {
-			panic(fmt.Sprintf("MakeMoveWithUndo failed in quiescence: %v", err))
+			continue // Skip invalid move
+		}
+
+		// Check if king is in check after move (illegal)
+		if m.generator.IsKingInCheck(b, player) {
+			b.UnmakeMove(undo)
+			continue // Skip illegal move
 		}
 
 		score := -m.quiescence(ctx, b, oppositePlayer(player), -beta, -alpha, depthFromRoot+1, stats)
