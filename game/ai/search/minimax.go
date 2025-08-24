@@ -489,7 +489,9 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			break
 		}
 
-		if bestScore >= ai.MateScore-1000 || bestScore <= -ai.MateScore+1000 {
+		// Only break on mate if we found the shortest possible mate (mate in 1)
+		// This allows us to search deeper for accurate mate distance calculation
+		if bestScore >= ai.MateScore-1 || bestScore <= -ai.MateScore+1 {
 			break
 		}
 	}
@@ -789,8 +791,10 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 // Returns checkmate score if in check, stalemate score otherwise
 func (m *MinimaxEngine) handleNoLegalMoves(b *board.Board, player moves.Player, depth, originalMaxDepth int, hash uint64) ai.EvaluationScore {
 	if m.generator.IsKingInCheck(b, player) {
-		// Checkmate
-		score := -ai.MateScore + ai.EvaluationScore(originalMaxDepth-depth)
+		// Checkmate - the mate distance is how many plies from the root we are
+		// Negative score because it's mate AGAINST the current player
+		pliesFromRoot := originalMaxDepth - depth
+		score := -ai.MateScore + ai.EvaluationScore(pliesFromRoot)
 		if m.transpositionTable != nil {
 			m.transpositionTable.Store(hash, depth, score, EntryExact, board.Move{})
 		}
@@ -858,37 +862,68 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		}
 	}
 
-	allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
-	defer moves.ReleaseMoveList(allMoves)
+	// Generate moves based on whether we're in check
+	var movesToSearch *moves.MoveList
 
-	captureList := moves.GetMoveList()
-	defer moves.ReleaseMoveList(captureList)
+	if inCheck {
+		// When in check, we must consider ALL legal moves (including quiet escapes)
+		// This is the idiomatic approach used by strong chess engines
+		allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
+		movesToSearch = allMoves
+		
+	} else {
+		// Normal quiescence - only captures and promotions
+		allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
+		defer moves.ReleaseMoveList(allMoves)
 
-	for i := 0; i < allMoves.Count; i++ {
-		move := allMoves.Moves[i]
-		if move.IsCapture || move.Promotion != board.Empty {
-			captureList.AddMove(move)
+		captureList := moves.GetMoveList()
+		for i := 0; i < allMoves.Count; i++ {
+			move := allMoves.Moves[i]
+			if move.IsCapture || move.Promotion != board.Empty {
+				captureList.AddMove(move)
+			}
 		}
+		movesToSearch = captureList
 	}
 
-	if captureList.Count == 0 {
-		if inCheck {
-			return -ai.MateScore + ai.EvaluationScore(depthFromRoot)
-		}
-		return eval
+	defer moves.ReleaseMoveList(movesToSearch)
+
+	// Order moves appropriately
+	if inCheck {
+		m.orderMoves(b, movesToSearch, 0, board.Move{}) // Order all moves when in check
+	} else {
+		m.orderCaptures(b, movesToSearch) // Order captures in normal quiescence
 	}
 
-	m.orderCaptures(b, captureList)
-
+	// Check if we have any legal moves when in check
+	legalMoveCount := 0
 	bestScore := eval
-	for i := 0; i < captureList.Count; i++ {
-		move := captureList.Moves[i]
+
+	for i := 0; i < movesToSearch.Count; i++ {
+		move := movesToSearch.Moves[i]
 
 		if m.searchState.searchCancelled {
 			break
 		}
 
-		if !inCheck {
+		// Try the move to see if it's legal
+		undo, err := b.MakeMoveWithUndo(move)
+		if err != nil {
+			continue // Skip invalid move
+		}
+
+		// Check if king is in check after move (illegal)
+		if m.generator.IsKingInCheck(b, player) {
+			b.UnmakeMove(undo)
+			continue // Skip illegal move
+		}
+
+		legalMoveCount++
+		
+
+		// Apply pruning only when not in check and only for captures
+		if !inCheck && move.IsCapture {
+			// Delta pruning - skip captures that can't improve alpha significantly
 			captureValue := ai.EvaluationScore(0)
 			switch move.Captured {
 			case board.WhitePawn, board.BlackPawn:
@@ -908,27 +943,18 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 			margin := ai.EvaluationScore(200)
 			if eval+captureValue+margin < alpha {
 				m.searchState.searchStats.DeltaPruned++
+				b.UnmakeMove(undo)
 				continue
 			}
-		}
 
-		if !inCheck && move.IsCapture {
+			// SEE pruning - skip bad captures
 			if seeScore := m.seeCalculator.SEE(b, move); seeScore < -100 {
+				b.UnmakeMove(undo)
 				continue
 			}
 		}
 
-		undo, err := b.MakeMoveWithUndo(move)
-		if err != nil {
-			continue // Skip invalid move
-		}
-
-		// Check if king is in check after move (illegal)
-		if m.generator.IsKingInCheck(b, player) {
-			b.UnmakeMove(undo)
-			continue // Skip illegal move
-		}
-
+		// Move is already made and verified as legal above
 		score := -m.quiescence(ctx, b, oppositePlayer(player), -beta, -alpha, depthFromRoot+1, stats)
 		b.UnmakeMove(undo)
 
@@ -942,6 +968,19 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 				break
 			}
 		}
+	}
+
+	// Handle the case where we have no legal moves
+	if inCheck && legalMoveCount == 0 {
+		// Checkmate - no legal moves when in check
+		// The mate distance should be how many plies from the original search root
+		// In quiescence, depthFromRoot represents the distance from the search root
+		return -ai.MateScore + ai.EvaluationScore(depthFromRoot)
+	}
+
+	// If not in check and we had no moves to search (no captures), return static eval
+	if !inCheck && legalMoveCount == 0 {
+		return eval
 	}
 
 	if m.transpositionTable != nil && !m.searchState.searchCancelled {
@@ -1227,3 +1266,4 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 	}
 	return m.historyTable.GetHistoryScore(move)
 }
+
