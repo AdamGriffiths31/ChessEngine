@@ -285,19 +285,19 @@ func TestSlidingPieceAttacksConsistency(t *testing.T) {
 		for _, occupancy := range occupancies {
 			// Test rook attacks
 			magicRookAttacks := GetRookAttacks(square, occupancy)
-			onTheFlyRookAttacks := rookAttacksOnTheFly(square, occupancy)
+			calculatedRookAttacks := calculateRookAttacks(square, occupancy)
 
-			if magicRookAttacks != onTheFlyRookAttacks {
-				t.Errorf("Rook magic attacks don't match on-the-fly calculation for square %s",
+			if magicRookAttacks != calculatedRookAttacks {
+				t.Errorf("Rook magic attacks don't match calculated attacks for square %s",
 					SquareToString(square))
 			}
 
 			// Test bishop attacks
 			magicBishopAttacks := GetBishopAttacks(square, occupancy)
-			onTheFlyBishopAttacks := bishopAttacksOnTheFly(square, occupancy)
+			calculatedBishopAttacks := calculateBishopAttacks(square, occupancy)
 
-			if magicBishopAttacks != onTheFlyBishopAttacks {
-				t.Errorf("Bishop magic attacks don't match on-the-fly calculation for square %s",
+			if magicBishopAttacks != calculatedBishopAttacks {
+				t.Errorf("Bishop magic attacks don't match calculated attacks for square %s",
 					SquareToString(square))
 			}
 		}
@@ -388,18 +388,18 @@ func BenchmarkQueenAttacks(b *testing.B) {
 	}
 }
 
-func BenchmarkRookAttacksOnTheFly(b *testing.B) {
+func BenchmarkCalculateRookAttacks(b *testing.B) {
 	occupancy := Bitboard(0x123456789ABCDEF0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = rookAttacksOnTheFly(E4, occupancy)
+		_ = calculateRookAttacks(E4, occupancy)
 	}
 }
 
-func BenchmarkBishopAttacksOnTheFly(b *testing.B) {
+func BenchmarkCalculateBishopAttacks(b *testing.B) {
 	occupancy := Bitboard(0x123456789ABCDEF0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = bishopAttacksOnTheFly(E4, occupancy)
+		_ = calculateBishopAttacks(E4, occupancy)
 	}
 }
