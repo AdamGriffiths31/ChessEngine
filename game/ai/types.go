@@ -45,10 +45,8 @@ type SearchConfig struct {
 	DebugMode bool
 
 	// Opening book configuration
-	UseOpeningBook      bool
-	BookFiles           []string
-	BookSelectMode      BookSelectionMode
-	BookWeightThreshold uint16
+	UseOpeningBook bool
+	BookFiles      []string
 
 	// Late Move Reductions (LMR) configuration
 	LMRMinDepth int // Minimum depth to apply LMR (default: 3)
@@ -61,20 +59,6 @@ type SearchConfig struct {
 	DisableRazoring     bool    // If true, disables razoring for comparison testing
 	RazoringMarginScale float64 // Scale factor for margins (default 1.0)
 }
-
-// BookSelectionMode defines how to select moves from opening books
-type BookSelectionMode int
-
-const (
-	// BookSelectBest always chooses the highest-weighted move
-	BookSelectBest BookSelectionMode = iota
-
-	// BookSelectRandom chooses randomly (equal probability)
-	BookSelectRandom
-
-	// BookSelectWeightedRandom uses weighted random selection based on move weights
-	BookSelectWeightedRandom
-)
 
 // EvaluationScore represents the score of a position
 type EvaluationScore int16

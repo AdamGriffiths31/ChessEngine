@@ -422,14 +422,12 @@ func TestEngineWithValidation(t *testing.T) {
 			}
 
 			config := ai.SearchConfig{
-				MaxDepth:            maxDepth,
-				MaxTime:             tt.timeout,
-				DebugMode:           false,
-				UseOpeningBook:      false, // Disable for deterministic testing
-				BookSelectMode:      ai.BookSelectWeightedRandom,
-				BookWeightThreshold: 1,
-				LMRMinDepth:         3,
-				LMRMinMoves:         4,
+				MaxDepth:       maxDepth,
+				MaxTime:        tt.timeout,
+				DebugMode:      false,
+				UseOpeningBook: false, // Disable for deterministic testing
+				LMRMinDepth:    3,
+				LMRMinMoves:    4,
 			}
 
 			// Create context with timeout

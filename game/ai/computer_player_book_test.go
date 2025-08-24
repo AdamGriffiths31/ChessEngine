@@ -73,16 +73,9 @@ func TestComputerPlayerOpeningBook(t *testing.T) {
 		t.Errorf("Expected book files [%s], got %v", bookPath, bookFiles)
 	}
 
-	// Test selection mode configuration
-	player.SetBookSelectionMode(BookSelectBest)
-	if player.config.BookSelectMode != BookSelectBest {
-		t.Error("Expected book selection mode to be updated")
-	}
-
-	// Test weight threshold configuration
-	player.SetBookWeightThreshold(50)
-	if player.config.BookWeightThreshold != 50 {
-		t.Error("Expected book weight threshold to be updated")
+	// Book is now configured, test that it's properly set
+	if !player.IsUsingOpeningBook() {
+		t.Error("Expected opening book to be enabled")
 	}
 
 	// Test that the player can make moves with book enabled
@@ -126,7 +119,6 @@ func TestComputerPlayerBookWithStats(t *testing.T) {
 	}
 
 	player.SetOpeningBook(true, []string{bookPath})
-	player.SetBookSelectionMode(BookSelectWeightedRandom)
 
 	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	if err != nil {
@@ -208,39 +200,18 @@ func TestComputerPlayerBookModes(t *testing.T) {
 		t.Fatalf("Failed to create board from FEN: %v", err)
 	}
 
-	// Test different selection modes
-	modes := []struct {
-		mode BookSelectionMode
-		name string
-	}{
-		{BookSelectBest, "Best"},
-		{BookSelectRandom, "Random"},
-		{BookSelectWeightedRandom, "WeightedRandom"},
+	// Test that the book provides valid moves
+	move, err := player.GetMove(b, moves.White, 100*time.Millisecond)
+	if err != nil {
+		t.Fatalf("Failed to get move: %v", err)
 	}
 
-	for _, tc := range modes {
-		t.Run(tc.name, func(t *testing.T) {
-			player.SetBookSelectionMode(tc.mode)
-
-			// Make multiple moves to see if there's variation (for random modes)
-			testMoves := make([]board.Move, 3)
-			for i := 0; i < 3; i++ {
-				move, err := player.GetMove(b, moves.White, 100*time.Millisecond)
-				if err != nil {
-					t.Fatalf("Failed to get move: %v", err)
-				}
-				testMoves[i] = move
-			}
-
-			// Just verify we get valid moves
-			for i, move := range testMoves {
-				if move.From.File < 0 || move.From.File > 7 {
-					t.Errorf("Move %d has invalid from file: %d", i, move.From.File)
-				}
-			}
-
-			t.Logf("Mode %s: Got moves %v", tc.name, testMoves)
-		})
+	// Verify we get a valid move
+	if move.From.File < 0 || move.From.File > 7 {
+		t.Errorf("Move has invalid from file: %d", move.From.File)
+	}
+	if move.To.File < 0 || move.To.File > 7 {
+		t.Errorf("Move has invalid to file: %d", move.To.File)
 	}
 }
 

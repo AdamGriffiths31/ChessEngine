@@ -48,13 +48,11 @@ func TestMinimaxEngineWithOpeningBook(t *testing.T) {
 
 	// Test with opening book enabled
 	configWithBook := ai.SearchConfig{
-		MaxDepth:            3,
-		MaxTime:             time.Second,
-		UseOpeningBook:      true,
-		BookFiles:           []string{bookPath},
-		BookSelectMode:      ai.BookSelectWeightedRandom,
-		BookWeightThreshold: 1,
-		DebugMode:           true,
+		MaxDepth:       3,
+		MaxTime:        time.Second,
+		UseOpeningBook: true,
+		BookFiles:      []string{bookPath},
+		DebugMode:      true,
 	}
 
 	resultWithBook := engine.FindBestMove(ctx, b, moves.White, configWithBook)
@@ -83,42 +81,27 @@ func TestMinimaxEngineBookMoveSelection(t *testing.T) {
 		t.Fatalf("Failed to create starting board: %v", err)
 	}
 
-	testCases := []struct {
-		name string
-		mode ai.BookSelectionMode
-	}{
-		{"Best Move", ai.BookSelectBest},
-		{"Random Move", ai.BookSelectRandom},
-		{"Weighted Random", ai.BookSelectWeightedRandom},
+	// Test with simplified book configuration
+	config := ai.SearchConfig{
+		MaxDepth:       2,
+		MaxTime:        100 * time.Millisecond,
+		UseOpeningBook: true,
+		BookFiles:      []string{bookPath},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			config := ai.SearchConfig{
-				MaxDepth:            2,
-				MaxTime:             100 * time.Millisecond,
-				UseOpeningBook:      true,
-				BookFiles:           []string{bookPath},
-				BookSelectMode:      tc.mode,
-				BookWeightThreshold: 1,
-			}
+	ctx := context.Background()
+	result := engine.FindBestMove(ctx, b, moves.White, config)
 
-			ctx := context.Background()
-			result := engine.FindBestMove(ctx, b, moves.White, config)
-
-			// Should get a valid move regardless of whether it comes from book or search
-			if result.BestMove.From.File < 0 || result.BestMove.From.File > 7 ||
-				result.BestMove.From.Rank < 0 || result.BestMove.From.Rank > 7 {
-				t.Errorf("Invalid move returned: %+v", result.BestMove)
-			}
-
-			t.Logf("Mode %s: Move %c%d-%c%d, Nodes: %d, Time: %v",
-				tc.name,
-				'a'+result.BestMove.From.File, result.BestMove.From.Rank+1,
-				'a'+result.BestMove.To.File, result.BestMove.To.Rank+1,
-				result.Stats.NodesSearched, result.Stats.Time)
-		})
+	// Should get a valid move regardless of whether it comes from book or search
+	if result.BestMove.From.File < 0 || result.BestMove.From.File > 7 ||
+		result.BestMove.From.Rank < 0 || result.BestMove.From.Rank > 7 {
+		t.Errorf("Invalid move returned: %+v", result.BestMove)
 	}
+
+	t.Logf("Move %c%d-%c%d, Nodes: %d, Time: %v",
+		'a'+result.BestMove.From.File, result.BestMove.From.Rank+1,
+		'a'+result.BestMove.To.File, result.BestMove.To.Rank+1,
+		result.Stats.NodesSearched, result.Stats.Time)
 }
 
 func TestMinimaxEngineBookInitialization(t *testing.T) {

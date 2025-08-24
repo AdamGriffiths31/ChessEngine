@@ -249,30 +249,17 @@ func (m *MinimaxEngine) hasAdjacentCapturingPawn(b *board.Board, epTarget *board
 	return false
 }
 
-// initializeBookService initializes the opening book service based on configuration
+// initializeBookService initializes the opening book service with simple configuration
 func (m *MinimaxEngine) initializeBookService(config ai.SearchConfig) error {
 	if !config.UseOpeningBook || len(config.BookFiles) == 0 {
 		m.bookService = nil
 		return nil
 	}
 
-	var selectionMode openings.SelectionMode
-	switch config.BookSelectMode {
-	case ai.BookSelectBest:
-		selectionMode = openings.SelectBest
-	case ai.BookSelectRandom:
-		selectionMode = openings.SelectRandom
-	case ai.BookSelectWeightedRandom:
-		selectionMode = openings.SelectWeightedRandom
-	default:
-		selectionMode = openings.SelectWeightedRandom
-	}
-
 	bookConfig := openings.BookConfig{
-		Enabled:         true,
-		BookFiles:       config.BookFiles,
-		SelectionMode:   selectionMode,
-		WeightThreshold: config.BookWeightThreshold,
+		Enabled:       true,
+		BookFiles:     config.BookFiles,
+		SelectionMode: openings.SelectBest, // Always pick best move
 	}
 
 	service := openings.NewBookLookupService(bookConfig)
@@ -282,7 +269,6 @@ func (m *MinimaxEngine) initializeBookService(config ai.SearchConfig) error {
 	}
 
 	m.bookService = service
-
 	return nil
 }
 
