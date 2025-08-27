@@ -870,7 +870,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		// This is the idiomatic approach used by strong chess engines
 		allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
 		movesToSearch = allMoves
-		
+
 	} else {
 		// Normal quiescence - only captures and promotions
 		allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
@@ -919,7 +919,6 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		}
 
 		legalMoveCount++
-		
 
 		// Apply pruning only when not in check and only for captures
 		if !inCheck && move.IsCapture {
@@ -1266,4 +1265,3 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 	}
 	return m.historyTable.GetHistoryScore(move)
 }
-

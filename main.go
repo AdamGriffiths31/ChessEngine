@@ -8,13 +8,30 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/game/modes"
 )
 
+func showBanner() {
+	fmt.Print(`
+   ╔═════════════════════════════════════════════════════╗
+   ║                                                     ║
+   ║   ██████   ██████  █    █  ██████  ██████  ██████   ║
+   ║   █        █       █    █  █       █       █        ║
+   ║   █  ████  █       ██████  █████   ██████  ██████   ║
+   ║   █    █   █       █    █  █            █       █   ║
+   ║   ██████   ██████  █    █  ██████  ██████  ██████   ║
+   ║                                                     ║
+   ║     ♔ ♕ ♖ ♗ ♘ ♙    Chess Engine    ♙ ♘ ♗ ♖ ♕ ♔      ║
+   ║                                                     ║
+   ╚═════════════════════════════════════════════════════╝
+`)
+}
+
 func main() {
-	fmt.Println("Chess Engine")
-	fmt.Println("============")
-	fmt.Println("\nSelect game mode:")
-	fmt.Println("1. Manual Play (Player vs Player)")
-	fmt.Println("2. Player vs Computer")
-	fmt.Print("\nEnter choice (1 or 2): ")
+	showBanner()
+	fmt.Println("Select game mode:")
+	fmt.Println("1. Benchmark Engine")
+	fmt.Println("2. STS Benchmark")
+	fmt.Println("3. Player vs Computer")
+	fmt.Println("4. Manual Play (Player vs Player)")
+	fmt.Print("\nEnter choice (1, 2, 3, or 4): ")
 
 	var choice int
 	if _, err := fmt.Scanln(&choice); err != nil {
@@ -25,11 +42,17 @@ func main() {
 	var err error
 	switch choice {
 	case 1:
-		manualMode := modes.NewManualMode()
-		err = manualMode.Run()
+		benchmarkMode := modes.NewBenchmarkMode()
+		err = benchmarkMode.Run()
 	case 2:
+		stsMode := modes.NewSTSMode()
+		err = stsMode.Run()
+	case 3:
 		computerMode := modes.NewComputerMode()
 		err = computerMode.Run()
+	case 4:
+		manualMode := modes.NewManualMode()
+		err = manualMode.Run()
 	default:
 		fmt.Println("Invalid choice")
 		os.Exit(1)

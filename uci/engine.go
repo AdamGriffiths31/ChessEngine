@@ -246,13 +246,13 @@ func (ue *Engine) handleGo(args []string) {
 	}
 
 	config := ai.SearchConfig{
-		MaxDepth:            999,
+		MaxDepth:       999,
 		MaxTime:        5 * time.Second,
 		DebugMode:      false,
 		UseOpeningBook: len(bookFiles) > 0,
 		BookFiles:      bookFiles,
-		LMRMinDepth:         3,
-		LMRMinMoves:         4,
+		LMRMinDepth:    3,
+		LMRMinMoves:    4,
 	}
 
 	if params.Depth > 0 {

@@ -240,3 +240,96 @@ func (p *Prompter) ShowSearchStats(move string, stats ai.SearchStats, score ai.E
 
 	fmt.Println()
 }
+
+// ShowBenchmarkWelcome displays the welcome message for benchmark mode
+func (p *Prompter) ShowBenchmarkWelcome() {
+	fmt.Println("Chess Engine - Benchmark Mode")
+	fmt.Println("=============================")
+	fmt.Println()
+	fmt.Println("This mode allows you to benchmark ChessEngine against other engines")
+	fmt.Println("using various time controls and game counts.")
+	fmt.Println()
+}
+
+// PromptForText prompts the user to enter free text input
+func (p *Prompter) PromptForText(prompt string, defaultValue string) (string, error) {
+	if defaultValue != "" {
+		fmt.Printf("%s (default: %s): ", prompt, defaultValue)
+	} else {
+		fmt.Printf("%s: ", prompt)
+	}
+
+	if !p.scanner.Scan() {
+		return "", fmt.Errorf("failed to read input")
+	}
+
+	input := strings.TrimSpace(p.scanner.Text())
+	if input == "" && defaultValue != "" {
+		return defaultValue, nil
+	}
+
+	return input, nil
+}
+
+// PromptForNumber prompts the user to enter a number
+func (p *Prompter) PromptForNumber(prompt string, min, max int) (int, error) {
+	for {
+		fmt.Printf("%s (%d-%d): ", prompt, min, max)
+
+		if !p.scanner.Scan() {
+			return 0, fmt.Errorf("failed to read input")
+		}
+
+		input := strings.TrimSpace(p.scanner.Text())
+
+		var number int
+		_, err := fmt.Sscanf(input, "%d", &number)
+		if err != nil || number < min || number > max {
+			fmt.Printf("Invalid input. Please enter a number between %d and %d.\n", min, max)
+			continue
+		}
+
+		return number, nil
+	}
+}
+
+// PromptForConfirmation prompts the user for a yes/no confirmation
+func (p *Prompter) PromptForConfirmation(prompt string, defaultYes bool) (bool, error) {
+	var suffix string
+	if defaultYes {
+		suffix = " (Y/n): "
+	} else {
+		suffix = " (y/N): "
+	}
+
+	fmt.Print(prompt + suffix)
+
+	if !p.scanner.Scan() {
+		return false, fmt.Errorf("failed to read input")
+	}
+
+	input := strings.ToLower(strings.TrimSpace(p.scanner.Text()))
+
+	if input == "" {
+		return defaultYes, nil
+	}
+
+	return input == "y" || input == "yes", nil
+}
+
+// ShowBenchmarkSummary displays the benchmark configuration summary
+func (p *Prompter) ShowBenchmarkSummary(opponent, timeControl string, gameCount int, notes string, recordData bool) {
+	fmt.Println("\nBenchmark Configuration Summary:")
+	fmt.Println("================================")
+	fmt.Printf("Opponent: %s\n", opponent)
+	fmt.Printf("Time Control: %s\n", timeControl)
+	fmt.Printf("Game Count: %d\n", gameCount)
+	fmt.Printf("Notes: %s\n", notes)
+	fmt.Printf("Record Results: %s\n", map[bool]string{true: "Yes", false: "No"}[recordData])
+	fmt.Println()
+}
+
+// ShowBenchmarkProgress displays progress information during benchmark execution
+func (p *Prompter) ShowBenchmarkProgress(message string) {
+	fmt.Printf(">>> %s\n", message)
+}
