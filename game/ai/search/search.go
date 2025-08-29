@@ -192,9 +192,9 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 
 		var rook board.Piece
 		if move.From.Rank == 0 {
-			rook = board.BlackRook
-		} else {
 			rook = board.WhiteRook
+		} else {
+			rook = board.BlackRook
 		}
 		rookIndex := m.zobrist.GetPieceIndex(rook)
 		hashDelta ^= m.zobrist.GetPieceKey(rookFrom, rookIndex)
@@ -211,10 +211,10 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 		(oldState.EnPassantTarget != nil && b.GetEnPassantTarget() != nil &&
 			oldState.EnPassantTarget.File != b.GetEnPassantTarget().File) {
 
-		if oldState.EnPassantTarget != nil && m.hasAdjacentCapturingPawn(b, oldState.EnPassantTarget, oldState.SideToMove) {
+		if oldState.EnPassantTarget != nil && m.hasAdjacentCapturingPawn(b, oldState.EnPassantTarget, getOppositeSide(oldState.SideToMove)) {
 			hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantTarget.File)
 		}
-		if b.GetEnPassantTarget() != nil && m.hasAdjacentCapturingPawn(b, b.GetEnPassantTarget(), b.GetSideToMove()) {
+		if b.GetEnPassantTarget() != nil && m.hasAdjacentCapturingPawn(b, b.GetEnPassantTarget(), getOppositeSide(b.GetSideToMove())) {
 			hashDelta ^= m.zobrist.GetEnPassantKey(b.GetEnPassantTarget().File)
 		}
 	}
@@ -236,9 +236,11 @@ func (m *MinimaxEngine) hasAdjacentCapturingPawn(b *board.Board, epTarget *board
 	if sideToMove == "b" {
 		pawnRank = 4
 		pawnPiece = board.BlackPawn
-	} else {
+	} else if sideToMove == "w" {
 		pawnRank = 3
 		pawnPiece = board.WhitePawn
+	} else {
+		panic("invalid sideToMove: " + sideToMove)
 	}
 
 	epFile := epTarget.File
@@ -253,6 +255,14 @@ func (m *MinimaxEngine) hasAdjacentCapturingPawn(b *board.Board, epTarget *board
 	}
 
 	return false
+}
+
+// getOppositeSide returns the opposite side
+func getOppositeSide(side string) string {
+	if side == "w" {
+		return "b"
+	}
+	return "w"
 }
 
 // initializeBookService initializes the opening book service with simple configuration
