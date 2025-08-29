@@ -20,6 +20,8 @@ const (
 	MaxKillerDepth = 128
 	// MateDistanceThreshold is the threshold for detecting mate distances
 	MateDistanceThreshold = 1000
+	// MaxGamePly is the maximum number of plies to track for repetition detection
+	MaxGamePly = 1024
 )
 
 // LMRTable is a pre-calculated reduction table for Late Move Reductions
@@ -101,6 +103,10 @@ type MinimaxEngine struct {
 	seeCalculator      *evaluation.SEECalculator
 	debugMoveOrdering  bool
 	searchState        State
+
+	// Repetition detection
+	zobristHistory    [MaxGamePly]uint64
+	zobristHistoryPly uint16
 }
 
 // moveScore holds move index and score for ordering
@@ -297,6 +303,9 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 	b.SetHashUpdater(m)
 	b.InitializeHashFromPosition(m.zobrist.HashPosition)
 
+	// Setup repetition detection with root position
+	m.setupRepetitionHistory(b.GetHash())
+
 	startTime := time.Now()
 
 	if m.transpositionTable != nil {
@@ -405,6 +414,9 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 					continue // Skip illegal move
 				}
 
+				// Add position to repetition history
+				m.addHistory(b.GetHash())
+
 				var score ai.EvaluationScore
 				var moveStats ai.SearchStats
 
@@ -419,6 +431,9 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				}
 
 				b.UnmakeMove(undo)
+
+				// Remove position from repetition history
+				m.removeHistory()
 
 				if score > tempBestScore {
 					tempBestScore = score
@@ -529,6 +544,11 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	var ttMove board.Move
 	hash := b.GetHash()
+
+	// Check for draw by repetition
+	if m.isDrawByRepetition(hash) {
+		return ai.DrawScore
+	}
 
 	if m.transpositionTable != nil {
 		if entry, found := m.transpositionTable.Probe(hash); found {
@@ -659,6 +679,9 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			continue // Skip illegal move
 		}
 
+		// Add position to repetition history
+		m.addHistory(b.GetHash())
+
 		legalMoveCount++
 		var score ai.EvaluationScore
 
@@ -720,6 +743,9 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		}
 
 		b.UnmakeMove(undo)
+
+		// Remove position from repetition history
+		m.removeHistory()
 
 		if score > bestScore {
 			bestScore = score
@@ -1237,6 +1263,9 @@ func (m *MinimaxEngine) ClearSearchState() {
 	m.searchState.moveOrderBuffer = make([]moveScore, 0, 256)
 	m.searchState.searchCancelled = false
 
+	// Clear repetition history
+	m.zobristHistoryPly = 0
+
 	if m.transpositionTable != nil {
 		m.transpositionTable.Clear()
 	}
@@ -1264,4 +1293,44 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 		return 0
 	}
 	return m.historyTable.GetHistoryScore(move)
+}
+
+// setupRepetitionHistory initializes repetition detection with the root position hash.
+// This should be called at the start of each search to establish the baseline for
+// repetition detection during the current search tree exploration.
+func (m *MinimaxEngine) setupRepetitionHistory(rootHash uint64) {
+	m.zobristHistoryPly = 0
+	m.zobristHistory[m.zobristHistoryPly] = rootHash
+}
+
+// addHistory adds a position hash to the repetition detection history.
+// Called when making a move during search to track the path from root to current node.
+// Prevents buffer overflow by checking against MaxGamePly capacity.
+func (m *MinimaxEngine) addHistory(hash uint64) {
+	if m.zobristHistoryPly < MaxGamePly-1 {
+		m.zobristHistoryPly++
+		m.zobristHistory[m.zobristHistoryPly] = hash
+	}
+}
+
+// removeHistory removes the latest hash from repetition detection history.
+// Called when unmaking a move during search to maintain correct history state.
+// Prevents underflow by checking that history is not empty.
+func (m *MinimaxEngine) removeHistory() {
+	if m.zobristHistoryPly > 0 {
+		m.zobristHistoryPly--
+	}
+}
+
+// isDrawByRepetition checks if the current position hash appears in the search history.
+// Returns true if the position repeats any position from the current search path,
+// indicating a draw by repetition according to chess rules. Only checks positions
+// in the current search tree, not the full game history.
+func (m *MinimaxEngine) isDrawByRepetition(currentHash uint64) bool {
+	for repPly := uint16(0); repPly < m.zobristHistoryPly; repPly++ {
+		if m.zobristHistory[repPly] == currentHash {
+			return true
+		}
+	}
+	return false
 }
