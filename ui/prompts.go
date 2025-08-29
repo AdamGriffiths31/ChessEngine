@@ -230,14 +230,6 @@ func (p *Prompter) ShowSearchStats(move string, stats ai.SearchStats, score ai.E
 	nodesPerSecond := float64(stats.NodesSearched) / stats.Time.Seconds()
 	fmt.Printf("   Search efficiency: %.0f nodes/second\n", nodesPerSecond)
 
-	// Show debug information if available
-	if len(stats.DebugInfo) > 0 {
-		fmt.Println("   Debug info:")
-		for _, info := range stats.DebugInfo {
-			fmt.Printf("     %s\n", info)
-		}
-	}
-
 	fmt.Println()
 }
 

@@ -589,7 +589,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	}
 
 	staticEval := m.evaluator.Evaluate(b)
-	if !config.DisableNullMove && depth >= 3 &&
+	if depth >= 3 &&
 		staticEval >= beta &&
 		beta < ai.MateScore-MateDistanceThreshold &&
 		beta > -ai.MateScore+MateDistanceThreshold {
@@ -618,8 +618,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	}
 
 	// Simplest approach - razor based on static eval only
-	if !config.DisableRazoring &&
-		m.searchState.searchParams.RazoringEnabled &&
+	if m.searchState.searchParams.RazoringEnabled &&
 		!inCheck &&
 		depth <= m.searchState.searchParams.RazoringMaxDepth &&
 		depth > 0 {

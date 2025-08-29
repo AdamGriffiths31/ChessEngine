@@ -12,8 +12,7 @@ type SearchStats struct {
 	Depth              int
 	Time               time.Duration
 	PrincipalVariation []board.Move
-	BookMoveUsed       bool     // True if move came from opening book
-	DebugInfo          []string // Debug messages (when DebugMode is enabled)
+	BookMoveUsed       bool // True if move came from opening book
 
 	// Late Move Reductions (LMR) statistics
 	LMRReductions   int64 // Number of moves reduced
@@ -41,7 +40,6 @@ type SearchStats struct {
 type SearchConfig struct {
 	MaxDepth  int
 	MaxTime   time.Duration
-	MaxNodes  int64
 	DebugMode bool
 
 	// Opening book configuration
@@ -51,13 +49,6 @@ type SearchConfig struct {
 	// Late Move Reductions (LMR) configuration
 	LMRMinDepth int // Minimum depth to apply LMR (default: 3)
 	LMRMinMoves int // Number of moves to search at full depth (default: 4)
-
-	// Null move pruning configuration
-	DisableNullMove bool // If true, disables null move pruning for comparison testing
-
-	// Razoring configuration
-	DisableRazoring     bool    // If true, disables razoring for comparison testing
-	RazoringMarginScale float64 // Scale factor for margins (default 1.0)
 }
 
 // EvaluationScore represents the score of a position

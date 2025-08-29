@@ -193,54 +193,31 @@ func TestNullMovePruning(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Test with null moves enabled
-	configWithNull := ai.SearchConfig{
-		MaxDepth:        4,
-		MaxTime:         time.Second,
-		DisableNullMove: false,
+	// Test that search with null move pruning works
+	config := ai.SearchConfig{
+		MaxDepth: 4,
+		MaxTime:  time.Second,
 	}
 
-	startTime := time.Now()
-	resultWithNull := engine.FindBestMove(ctx, b, moves.White, configWithNull)
-	timeWithNull := time.Since(startTime)
+	result := engine.FindBestMove(ctx, b, moves.White, config)
 
-	// Test with null moves disabled
-	configWithoutNull := ai.SearchConfig{
-		MaxDepth:        4,
-		MaxTime:         time.Second,
-		DisableNullMove: true,
+	// Should find a valid move
+	if result.BestMove.From.File == -1 {
+		t.Error("Search should find a valid move")
 	}
 
-	startTime = time.Now()
-	resultWithoutNull := engine.FindBestMove(ctx, b, moves.White, configWithoutNull)
-	timeWithoutNull := time.Since(startTime)
-
-	// Both should find a valid move
-	if resultWithNull.BestMove.From.File == -1 {
-		t.Error("Search with null moves should find a valid move")
-	}
-	if resultWithoutNull.BestMove.From.File == -1 {
-		t.Error("Search without null moves should find a valid move")
+	// Should search some nodes
+	if result.Stats.NodesSearched == 0 {
+		t.Error("Search should visit some nodes")
 	}
 
-	// Null move version should typically be faster (more pruning)
-	// Allow some variance but expect significant speedup in most cases
-	if timeWithNull > timeWithoutNull*2 {
-		t.Logf("Warning: Null move search took %v, without null moves took %v. Expected null moves to be faster.",
-			timeWithNull, timeWithoutNull)
-		// Not failing the test as performance can vary, but logging for observation
+	// Should use some null moves in this position
+	if result.Stats.NullMoves == 0 {
+		t.Error("Expected some null moves to be tried in this position")
 	}
 
-	// Both should search some nodes
-	if resultWithNull.Stats.NodesSearched == 0 {
-		t.Error("Search with null moves should search some nodes")
-	}
-	if resultWithoutNull.Stats.NodesSearched == 0 {
-		t.Error("Search without null moves should search some nodes")
-	}
-
-	t.Logf("Null move search: %d nodes in %v", resultWithNull.Stats.NodesSearched, timeWithNull)
-	t.Logf("Without null move: %d nodes in %v", resultWithoutNull.Stats.NodesSearched, timeWithoutNull)
+	t.Logf("Search: %d nodes, %d null moves, %d null cutoffs",
+		result.Stats.NodesSearched, result.Stats.NullMoves, result.Stats.NullCutoffs)
 }
 
 func TestNullMoveInCheck(t *testing.T) {
@@ -254,9 +231,8 @@ func TestNullMoveInCheck(t *testing.T) {
 
 	ctx := context.Background()
 	config := ai.SearchConfig{
-		MaxDepth:        3,
-		MaxTime:         time.Second,
-		DisableNullMove: false,
+		MaxDepth: 3,
+		MaxTime:  time.Second,
 	}
 
 	// This should not crash or cause issues, even with null moves enabled
@@ -279,8 +255,7 @@ func TestNullMoveDeepSearch(t *testing.T) {
 
 	ctx := context.Background()
 	config := ai.SearchConfig{
-		MaxDepth:        4, // Deep enough to trigger adaptive null move reduction
-		DisableNullMove: false,
+		MaxDepth: 4, // Deep enough to trigger adaptive null move reduction
 	}
 
 	result := engine.FindBestMove(ctx, b, moves.White, config)
@@ -308,8 +283,7 @@ func TestNullMoveWithTranspositionTable(t *testing.T) {
 
 	ctx := context.Background()
 	config := ai.SearchConfig{
-		MaxDepth:        4,
-		DisableNullMove: false,
+		MaxDepth: 4,
 	}
 
 	result := engine.FindBestMove(ctx, b, moves.White, config)
