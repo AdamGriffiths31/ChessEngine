@@ -29,10 +29,7 @@ func NewHistoryTable() *HistoryTable {
 // UpdateHistory increases the history score for a move that caused a beta cutoff
 // The move is considered successful and should be tried earlier in future searches
 func (h *HistoryTable) UpdateHistory(move board.Move, depth int) {
-	if move.From.File < 0 || move.From.File > 7 || move.From.Rank < 0 || move.From.Rank > 7 {
-		return
-	}
-	if move.To.File < 0 || move.To.File > 7 || move.To.Rank < 0 || move.To.Rank > 7 {
+	if !isValidSquare(move.From) || !isValidSquare(move.To) {
 		return
 	}
 
@@ -56,10 +53,7 @@ func (h *HistoryTable) UpdateHistory(move board.Move, depth int) {
 // GetHistoryScore returns the history score for a move
 // Higher scores indicate moves that have been more successful in the past
 func (h *HistoryTable) GetHistoryScore(move board.Move) int32 {
-	if move.From.File < 0 || move.From.File > 7 || move.From.Rank < 0 || move.From.Rank > 7 {
-		return 0
-	}
-	if move.To.File < 0 || move.To.File > 7 || move.To.Rank < 0 || move.To.Rank > 7 {
+	if !isValidSquare(move.From) || !isValidSquare(move.To) {
 		return 0
 	}
 
@@ -103,6 +97,11 @@ func (h *HistoryTable) Age() {
 // Used for normalizing history scores for LMR reduction calculations
 func (h *HistoryTable) GetMaxScore() int32 {
 	return MaxHistoryScore
+}
+
+// isValidSquare checks if a square is within board boundaries
+func isValidSquare(square board.Square) bool {
+	return square.File >= 0 && square.File <= 7 && square.Rank >= 0 && square.Rank <= 7
 }
 
 // squareToIndex converts a board square to an index (0-63)

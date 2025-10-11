@@ -68,10 +68,13 @@ func (tt *TranspositionTable) Clear() {
 	tt.age = 0
 }
 
+// packDepthAge packs depth (5 bits), entry type (2 bits), and age (1 bit) into a single byte.
+// Bit layout: [depth:5][type:2][age:1]
 func packDepthAge(depth int, entryType EntryType, age uint32) uint8 {
 	return uint8((depth&0x1F)<<3) | uint8((entryType&0x3)<<1) | uint8(age&0x1)
 }
 
+// unpackDepthAge extracts depth, entry type, and age from a packed byte.
 func unpackDepthAge(depthAge uint8) (depth int, entryType EntryType, age uint32) {
 	depth = int((depthAge >> 3) & 0x1F)
 	entryType = EntryType((depthAge >> 1) & 0x3)
@@ -79,6 +82,9 @@ func unpackDepthAge(depthAge uint8) (depth int, entryType EntryType, age uint32)
 	return
 }
 
+// packMove compresses a board.Move into 32 bits for efficient storage.
+// Encodes from square, to square, move type, and special flags (promotion/en passant).
+// Note: Piece and Captured fields are not stored and must be derived from board position.
 func packMove(move board.Move) uint32 {
 	from := uint32(move.From.Rank*8 + move.From.File)
 	to := uint32(move.To.Rank*8 + move.To.File)
@@ -126,6 +132,9 @@ func packMove(move board.Move) uint32 {
 	return packed
 }
 
+// unpackMove decompresses a 32-bit packed move back into a board.Move structure.
+// Reconstructs from square, to square, move type, and special flags.
+// Piece and Captured fields remain empty and must be filled from board context.
 func unpackMove(packed uint32) board.Move {
 	from := int((packed >> 26) & 0x3F)
 	to := int((packed >> 20) & 0x3F)
@@ -263,9 +272,8 @@ func (tt *TranspositionTable) shouldReplace(entry *TranspositionEntry, hash uint
 		return depth > curDepth
 	}
 
-	if entry.Hash != 0 {
-		tt.collisions++
-	}
+	// At this point we have a hash collision - different position wants this slot
+	tt.collisions++
 
 	return (tt.age & 1) != curAge
 }
