@@ -146,12 +146,12 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 
 	seeValue := m.seeCalculator.SEE(b, move)
 
-	victimValue := evaluation.PieceValues[move.Captured]
+	victimValue := evaluation.GetPieceValue(move.Captured)
 	if victimValue < 0 {
 		victimValue = -victimValue
 	}
 
-	attackerValue := evaluation.PieceValues[move.Piece]
+	attackerValue := evaluation.GetPieceValue(move.Piece)
 	if attackerValue < 0 {
 		attackerValue = -attackerValue
 	}

@@ -50,12 +50,18 @@ func (g *Generator) GeneratePseudoLegalMoves(b *board.Board, player Player) *Mov
 // IsKingInCheck checks if the king of the given player is currently in check.
 // Returns false if board is nil or king is not found.
 func (g *Generator) IsKingInCheck(b *board.Board, player Player) bool {
-	kingSquare := g.findKing(b, player)
-	if kingSquare.File == -1 {
+	if b == nil {
 		return false
 	}
 
-	return g.attackDetector.IsSquareAttacked(b, kingSquare, player)
+	var color board.BitboardColor
+	if player == White {
+		color = board.BitboardWhite
+	} else {
+		color = board.BitboardBlack
+	}
+
+	return b.IsInCheck(color)
 }
 
 // findKing finds the king's position for the given player.

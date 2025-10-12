@@ -144,14 +144,11 @@ func (see *SEECalculator) getPieceValue(piece board.Piece) int {
 		return 10000
 	}
 
-	if value, ok := PieceValues[piece]; ok {
-		if value < 0 {
-			return -value
-		}
-		return value
+	value := GetPieceValue(piece)
+	if value < 0 {
+		return -value
 	}
-
-	return 0
+	return value
 }
 
 // getPieceOrderForSide returns pieces in order from least to most valuable
