@@ -47,10 +47,20 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	lastCompletedDepth := 0
 	var finalStats ai.SearchStats
 
+	maxPlyDepth := config.MaxDepth + 20
+	pv := make([][]board.Move, maxPlyDepth)
+	for i := range pv {
+		pv[i] = make([]board.Move, maxPlyDepth)
+	}
+
 	startingDepth := 1
 
 	for currentDepth := startingDepth; currentDepth <= config.MaxDepth; currentDepth++ {
 		m.searchState.searchCancelled = false
+
+		for i := range pv {
+			pv[i][0] = board.Move{}
+		}
 
 		select {
 		case <-ctx.Done():
@@ -111,12 +121,12 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				var score ai.EvaluationScore
 
 				if moveIndex == 0 {
-					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &finalStats)
+					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &finalStats, pv)
 				} else {
-					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -alpha-1, -alpha, currentDepth, config, &finalStats)
+					score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -alpha-1, -alpha, currentDepth, config, &finalStats, pv)
 
 					if score > alpha && score < beta {
-						score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &finalStats)
+						score = -m.negamax(ctx, b, oppositePlayer(player), currentDepth-1, -beta, -alpha, currentDepth, config, &finalStats, pv)
 					}
 				}
 
@@ -131,6 +141,19 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 
 					if score > alpha {
 						alpha = score
+					}
+
+					pv[0][0] = move
+					pvLen := 1
+					for i := 0; i < len(pv[1]) && pv[1][i] != (board.Move{}); i++ {
+						pv[0][pvLen] = pv[1][i]
+						pvLen++
+						if pvLen >= len(pv[0]) {
+							break
+						}
+					}
+					if pvLen < len(pv[0]) {
+						pv[0][pvLen] = board.Move{}
 					}
 				}
 
@@ -190,6 +213,11 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			lastCompletedBestMove = bestMove
 			lastCompletedScore = bestScore
 			lastCompletedDepth = currentDepth
+
+			finalStats.PrincipalVariation = make([]board.Move, 0, currentDepth)
+			for i := 0; i < len(pv[0]) && pv[0][i] != (board.Move{}); i++ {
+				finalStats.PrincipalVariation = append(finalStats.PrincipalVariation, pv[0][i])
+			}
 		}
 
 		// Only break on mate if we found the shortest possible mate (mate in 1)

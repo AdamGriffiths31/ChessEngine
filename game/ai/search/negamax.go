@@ -10,7 +10,7 @@ import (
 )
 
 // negamax performs negamax search with alpha-beta pruning and optimizations
-func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, config ai.SearchConfig, stats *ai.SearchStats) ai.EvaluationScore {
+func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player moves.Player, depth int, alpha, beta ai.EvaluationScore, originalMaxDepth int, config ai.SearchConfig, stats *ai.SearchStats, pv [][]board.Move) ai.EvaluationScore {
 	m.searchState.searchStats.NodesSearched++
 
 	currentDepth := originalMaxDepth - depth
@@ -94,7 +94,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			nullUndo := b.MakeNullMove()
 
 			nullScore := -m.negamax(ctx, b, oppositePlayer(player),
-				depth-1-nullReduction, -beta, -beta+1, originalMaxDepth, config, stats)
+				depth-1-nullReduction, -beta, -beta+1, originalMaxDepth, config, stats, nil)
 
 			b.UnmakeNullMove(nullUndo)
 
@@ -175,6 +175,10 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		legalMoveCount++
 		var score ai.EvaluationScore
 
+		if pv != nil && currentDepth+1 < len(pv) {
+			pv[currentDepth+1][0] = board.Move{}
+		}
+
 		// Late Move Reductions: Search later moves at reduced depth since
 		// move ordering should place best moves first
 		reduction := m.calculateLMRReduction(b, depth, legalMoveCount, inCheck, move, currentDepth, config)
@@ -183,17 +187,17 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			m.searchState.searchStats.LMRReductions++
 
 			score = -m.negamax(ctx, b, oppositePlayer(player),
-				depth-1-reduction, -alpha-1, -alpha, originalMaxDepth, config, stats)
+				depth-1-reduction, -alpha-1, -alpha, originalMaxDepth, config, stats, nil)
 
 			if score > alpha {
 				m.searchState.searchStats.LMRReSearches++
 
 				score = -m.negamax(ctx, b, oppositePlayer(player),
-					depth-1, -beta, -alpha, originalMaxDepth, config, stats)
+					depth-1, -beta, -alpha, originalMaxDepth, config, stats, pv)
 			}
 		} else {
 			score = -m.negamax(ctx, b, oppositePlayer(player),
-				depth-1, -beta, -alpha, originalMaxDepth, config, stats)
+				depth-1, -beta, -alpha, originalMaxDepth, config, stats, pv)
 		}
 
 		b.UnmakeMove(undo)
@@ -209,6 +213,23 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		if score > alpha {
 			alpha = score
 			alphaImproved = true
+
+			if pv != nil && currentDepth < len(pv) {
+				pv[currentDepth][0] = move
+				pvLen := 1
+				if currentDepth+1 < len(pv) {
+					for i := 0; i < len(pv[currentDepth+1]) && pv[currentDepth+1][i] != (board.Move{}); i++ {
+						pv[currentDepth][pvLen] = pv[currentDepth+1][i]
+						pvLen++
+						if pvLen >= len(pv[currentDepth]) {
+							break
+						}
+					}
+				}
+				if pvLen < len(pv[currentDepth]) {
+					pv[currentDepth][pvLen] = board.Move{}
+				}
+			}
 
 			if alpha >= beta {
 				// Track move ordering statistics

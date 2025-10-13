@@ -317,6 +317,21 @@ func (ue *Engine) handleGo(args []string) {
 	}()
 
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
+
+	pvString := ""
+	if len(result.Stats.PrincipalVariation) > 0 {
+		pvMoves := make([]string, len(result.Stats.PrincipalVariation))
+		for i, move := range result.Stats.PrincipalVariation {
+			pvMoves[i] = ue.converter.ToUCI(move)
+		}
+		pvString = strings.Join(pvMoves, " ")
+	}
+
+	infoMessage := ue.protocol.FormatInfo(result.Stats.Depth, int(result.Score), result.Stats.NodesSearched, searchDuration, pvString)
+	if _, err := fmt.Fprintf(ue.output, "%s\n", infoMessage); err != nil {
+		ue.debugLogger.Printf("UCI-ERROR: Failed to write info: %v", err)
+	}
+
 	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI)
 
 	var ttStatsStr string
@@ -333,8 +348,12 @@ func (ue *Engine) handleGo(args []string) {
 		moveOrderPct = float64(result.Stats.FirstMoveCutoffs) / float64(result.Stats.TotalCutoffs) * 100
 	}
 
-	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | Time: %.3fs | Book: %t | %s | FEN: %s",
-		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, searchDuration.Seconds(), result.Stats.BookMoveUsed, ttStatsStr, searchFEN)
+	pvLog := "none"
+	if pvString != "" {
+		pvLog = pvString
+	}
+	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | Time: %.3fs | Book: %t | PV: %s | %s | FEN: %s",
+		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, searchDuration.Seconds(), result.Stats.BookMoveUsed, pvLog, ttStatsStr, searchFEN)
 
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
