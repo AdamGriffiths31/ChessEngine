@@ -60,10 +60,12 @@ func getParams() Params {
 		HistoryMedThreshold:  500,
 		HistoryLowThreshold:  -500,
 
-		// Stockfish-aligned razoring margins - targeting 10-15% attempt rate
+		// Razoring: Like Stockfish, only apply at depth 1
+		// Applying at deeper depths is too risky in tactical positions
+		// Margin of 125cp is conservative enough to avoid pruning tactics
 		RazoringEnabled:  true,
-		RazoringMargins:  [5]ai.EvaluationScore{0, 100, 150, 200, 250},
-		RazoringMaxDepth: 3,
+		RazoringMargins:  [5]ai.EvaluationScore{0, 125, 175, 225, 275},
+		RazoringMaxDepth: 1,
 
 		// Standard futility pruning
 		FutilityMargins: [5]ai.EvaluationScore{0, 100, 200, 300, 400},

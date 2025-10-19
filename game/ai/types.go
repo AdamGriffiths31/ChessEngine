@@ -34,6 +34,21 @@ type SearchStats struct {
 	RazoringAttempts int64 // Number of razoring attempts
 	RazoringCutoffs  int64 // Successful razoring cutoffs
 	RazoringFailed   int64 // Razoring attempts that failed verification
+
+	// Move ordering effectiveness
+	CutoffsByMoveIndex [64]int64 // Histogram of which move caused beta cutoff
+
+	// Transposition table effectiveness
+	TTProbes int64 // Total TT lookups attempted
+	TTHits   int64 // Successful TT hits
+
+	// Effective branching factor calculation
+	NodesByDepth [100]int64 // Nodes searched at each depth from root
+
+	// Node type distribution
+	PVNodes  int64 // Principal variation nodes (best move found)
+	CutNodes int64 // Nodes that caused beta cutoff
+	AllNodes int64 // Nodes where all moves were searched
 }
 
 // SearchConfig configures the search parameters

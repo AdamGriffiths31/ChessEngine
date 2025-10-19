@@ -27,3 +27,4 @@ This file tracks the performance of ChessEngine against various opponents over t
 | 2025-08-19 18:19 | Weak Stockfish v3 | Bullet (2+2) | 3 | 1 | 1 | 1 | 50% | - |
 | 2025-08-20 19:49 | Weak Stockfish v3 | Bullet (2+2) | 1 | 1 | 0 | 0 | 100% | - |
 | 2025-08-23 15:58 | Weak Stockfish v3 | Bullet (2+2) | ChessEngine | 3 | 2 | 1 | 0 | 66% | - |
+| 2025-10-19 18:14 | Weak Stockfish v3 | Bullet (2+2) - 2 minutes + 2 second increment | 3 | 1 | 2 | 0 | 33% | - |

@@ -18,6 +18,10 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		stats.Depth = currentDepth
 	}
 
+	if currentDepth >= 0 && currentDepth < len(m.searchState.searchStats.NodesByDepth) {
+		m.searchState.searchStats.NodesByDepth[currentDepth]++
+	}
+
 	select {
 	case <-ctx.Done():
 		m.searchState.searchCancelled = true
@@ -39,7 +43,9 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	}
 
 	if m.transpositionTable != nil {
+		m.searchState.searchStats.TTProbes++
 		if entry, found := m.transpositionTable.Probe(hash); found {
+			m.searchState.searchStats.TTHits++
 			ttMove = entry.GetMove()
 
 			if ttMove.From.File >= 0 && ttMove.From.File <= 7 &&
@@ -109,10 +115,13 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 
 	// Razoring: If static eval + margin is below alpha at low depths,
 	// verify with quiescence search and potentially prune
+	// Only apply at depth 1 and far from mate (like Stockfish)
 	if m.searchState.searchParams.RazoringEnabled &&
 		!inCheck &&
 		depth <= m.searchState.searchParams.RazoringMaxDepth &&
-		depth > 0 {
+		depth > 0 &&
+		alpha < ai.MateScore-MateDistanceThreshold &&
+		alpha > -ai.MateScore+MateDistanceThreshold {
 
 		razoringMargin := m.searchState.searchParams.RazoringMargins[depth]
 
@@ -237,6 +246,10 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 				if legalMoveCount == 1 {
 					m.searchState.searchStats.FirstMoveCutoffs++
 				}
+				if legalMoveCount-1 < len(m.searchState.searchStats.CutoffsByMoveIndex) {
+					m.searchState.searchStats.CutoffsByMoveIndex[legalMoveCount-1]++
+				}
+				m.searchState.searchStats.CutNodes++
 
 				if !move.IsCapture {
 					m.storeKiller(move, currentDepth)
@@ -260,6 +273,13 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	// Check if we had no legal moves
 	if legalMoveCount == 0 {
 		return m.handleNoLegalMoves(b, player, depth, originalMaxDepth, hash)
+	}
+
+	// Track node types for search statistics
+	if alphaImproved {
+		m.searchState.searchStats.PVNodes++
+	} else {
+		m.searchState.searchStats.AllNodes++
 	}
 
 	if m.transpositionTable != nil && !m.searchState.searchCancelled {

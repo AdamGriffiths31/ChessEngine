@@ -54,6 +54,14 @@ func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, dep
 
 			if !move.IsCapture && move.Promotion == board.Empty {
 				score += int(m.getHistoryScore(move))
+
+				if m.moveAttacksEnemyPiece(b, move) {
+					score += 100000
+				}
+
+				if m.moveAttacksKingZone(b, move) {
+					score += 50000
+				}
 			}
 		}
 
@@ -135,10 +143,14 @@ func (m *MinimaxEngine) orderCaptures(b *board.Board, moveList *moves.MoveList) 
 //  2. Good captures (SEE > 0): 1,000,000+
 //  3. Equal exchanges (SEE = 0): 900,000
 //  4. Killer moves: 500,000
-//  5. Good history moves: up to ~50,000
-//  6. Slightly bad captures (SEE >= -100): 50,000+
-//  7. Terrible captures (SEE < -100): 25,000+
-//  8. Quiet moves: 0
+//  5. Tactical quiet moves (attacks piece + king zone): 150,000
+//  6. Tactical quiet moves (attacks piece): 100,000
+//  7. Tactical quiet moves (attacks king zone): 50,000
+//  8. Slightly bad captures (SEE >= -100): 50,000+
+//  9. Terrible captures (SEE < -100): 25,000+
+//
+// 10. Quiet moves with history: 0-10,000
+// 11. Other quiet moves: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
 		return 0
@@ -174,4 +186,41 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 		return 0
 	}
 	return m.historyTable.GetHistoryScore(move)
+}
+
+// moveAttacksEnemyPiece checks if a move attacks an enemy piece from its destination square
+func (m *MinimaxEngine) moveAttacksEnemyPiece(b *board.Board, move board.Move) bool {
+	toSquare := move.To.Rank*8 + move.To.File
+	attacks := b.GetPieceAttacks(move.Piece, toSquare)
+
+	var enemyPieces board.Bitboard
+	if move.Piece >= board.WhitePawn && move.Piece <= board.WhiteKing {
+		enemyPieces = b.BlackPieces
+	} else {
+		enemyPieces = b.WhitePieces
+	}
+
+	return (attacks & enemyPieces) != 0
+}
+
+// moveAttacksKingZone checks if a move attacks squares near the enemy king
+func (m *MinimaxEngine) moveAttacksKingZone(b *board.Board, move board.Move) bool {
+	toSquare := move.To.Rank*8 + move.To.File
+	attacks := b.GetPieceAttacks(move.Piece, toSquare)
+
+	var enemyKing board.Bitboard
+	if move.Piece >= board.WhitePawn && move.Piece <= board.WhiteKing {
+		enemyKing = b.GetPieceBitboard(board.BlackKing)
+	} else {
+		enemyKing = b.GetPieceBitboard(board.WhiteKing)
+	}
+
+	if enemyKing == 0 {
+		return false
+	}
+
+	kingSquare, _ := enemyKing.PopLSB()
+	kingZone := board.GetKingAttacks(kingSquare)
+
+	return (attacks & kingZone) != 0
 }

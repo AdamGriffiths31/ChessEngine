@@ -35,7 +35,9 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	var rootTTMove board.Move
 	if m.transpositionTable != nil {
 		hash := b.GetHash()
+		m.searchState.searchStats.TTProbes++
 		if entry, found := m.transpositionTable.Probe(hash); found {
+			m.searchState.searchStats.TTHits++
 			rootTTMove = entry.GetMove()
 		}
 	}
@@ -208,6 +210,13 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		finalStats.RazoringAttempts = m.searchState.searchStats.RazoringAttempts
 		finalStats.RazoringCutoffs = m.searchState.searchStats.RazoringCutoffs
 		finalStats.RazoringFailed = m.searchState.searchStats.RazoringFailed
+		finalStats.TTProbes = m.searchState.searchStats.TTProbes
+		finalStats.TTHits = m.searchState.searchStats.TTHits
+		finalStats.PVNodes = m.searchState.searchStats.PVNodes
+		finalStats.CutNodes = m.searchState.searchStats.CutNodes
+		finalStats.AllNodes = m.searchState.searchStats.AllNodes
+		finalStats.CutoffsByMoveIndex = m.searchState.searchStats.CutoffsByMoveIndex
+		finalStats.NodesByDepth = m.searchState.searchStats.NodesByDepth
 
 		if !m.searchState.searchCancelled && (config.MaxTime == 0 || time.Since(startTime) < config.MaxTime) {
 			lastCompletedBestMove = bestMove

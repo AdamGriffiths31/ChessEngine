@@ -26,7 +26,9 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 
 	hash := b.GetHash()
 	if m.transpositionTable != nil {
+		m.searchState.searchStats.TTProbes++
 		if entry, found := m.transpositionTable.Probe(hash); found {
+			m.searchState.searchStats.TTHits++
 			if entry.GetDepth() >= 0 {
 				switch entry.GetType() {
 				case EntryExact:
