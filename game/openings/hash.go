@@ -60,8 +60,8 @@ func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 		}
 	}
 
-	ep := b.GetEnPassantTarget()
-	if ep != nil {
+	ep, hasEnPassant := b.GetEnPassantTarget()
+	if hasEnPassant {
 		epFile := ep.File
 		side := b.GetSideToMove()
 		var pawnRank int

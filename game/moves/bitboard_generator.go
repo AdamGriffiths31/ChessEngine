@@ -253,8 +253,8 @@ func (bmg *BitboardMoveGenerator) generatePawnCapturesBitboard(b *board.Board, p
 
 // generateEnPassantCapturesBitboard generates en passant captures
 func (bmg *BitboardMoveGenerator) generateEnPassantCapturesBitboard(b *board.Board, player Player, pawns board.Bitboard, moveList *MoveList) {
-	enPassantTarget := b.GetEnPassantTarget()
-	if enPassantTarget == nil {
+	enPassantTarget, hasEnPassant := b.GetEnPassantTarget()
+	if !hasEnPassant {
 		return
 	}
 

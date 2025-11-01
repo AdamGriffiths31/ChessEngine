@@ -343,7 +343,8 @@ func TestUnmakeMoveStateRestoration(t *testing.T) {
 
 	// Store original state
 	origCastling := board.castlingRights
-	origEnPassant := board.enPassantTarget
+	origEnPassantSquare := board.enPassantSquare
+	origHasEnPassant := board.hasEnPassant
 	origHalfMove := board.halfMoveClock
 	origFullMove := board.fullMoveNumber
 	origSideToMove := board.sideToMove
@@ -389,7 +390,7 @@ func TestUnmakeMoveStateRestoration(t *testing.T) {
 		t.Errorf("Side to move not restored: expected %s, got %s",
 			origSideToMove, board.sideToMove)
 	}
-	if !equalEnPassant(board.enPassantTarget, origEnPassant) {
+	if !equalEnPassant(board.enPassantSquare, board.hasEnPassant, origEnPassantSquare, origHasEnPassant) {
 		t.Error("En passant target not restored")
 	}
 }
@@ -493,14 +494,14 @@ func TestUnmakeMoveComplexPosition(t *testing.T) {
 }
 
 // Helper function to compare en passant targets
-func equalEnPassant(a, b *Square) bool {
-	if a == nil && b == nil {
+func equalEnPassant(aSquare Square, aHas bool, bSquare Square, bHas bool) bool {
+	if !aHas && !bHas {
 		return true
 	}
-	if a == nil || b == nil {
+	if aHas != bHas {
 		return false
 	}
-	return a.File == b.File && a.Rank == b.Rank
+	return aSquare.File == bSquare.File && aSquare.Rank == bSquare.Rank
 }
 
 func TestUnmakeMoveSequence(t *testing.T) {
@@ -670,7 +671,8 @@ func TestNullMove(t *testing.T) {
 			// Store original state
 			origSideToMove := board.sideToMove
 			origCastling := board.castlingRights
-			origEnPassant := board.enPassantTarget
+			origEnPassantSquare := board.enPassantSquare
+			origHasEnPassant := board.hasEnPassant
 			origHalfMove := board.halfMoveClock
 			origFullMove := board.fullMoveNumber
 
@@ -703,8 +705,8 @@ func TestNullMove(t *testing.T) {
 			}
 
 			// En passant target should be cleared
-			if board.enPassantTarget != nil {
-				t.Errorf("Expected en passant target to be cleared, got %v", board.enPassantTarget)
+			if board.hasEnPassant {
+				t.Errorf("Expected en passant target to be cleared, got %v", board.enPassantSquare)
 			}
 
 			// Castling rights should be preserved
@@ -725,13 +727,13 @@ func TestNullMove(t *testing.T) {
 				t.Errorf("Expected castling rights to be restored to %q, got %q",
 					origCastling, board.castlingRights)
 			}
-			if (board.enPassantTarget == nil) != (origEnPassant == nil) {
+			if board.hasEnPassant != origHasEnPassant {
 				t.Errorf("Expected en passant target restoration mismatch")
 			}
-			if board.enPassantTarget != nil && origEnPassant != nil {
-				if *board.enPassantTarget != *origEnPassant {
+			if board.hasEnPassant && origHasEnPassant {
+				if board.enPassantSquare != origEnPassantSquare {
 					t.Errorf("Expected en passant target to be restored to %v, got %v",
-						*origEnPassant, *board.enPassantTarget)
+						origEnPassantSquare, board.enPassantSquare)
 				}
 			}
 			if board.halfMoveClock != origHalfMove {

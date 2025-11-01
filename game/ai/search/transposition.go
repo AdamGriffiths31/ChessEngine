@@ -248,18 +248,6 @@ func (tt *TranspositionTable) storeEntry(entry *TranspositionEntry, hash uint64,
 	entry.DepthAge = packDepthAge(depth, entryType, currentAge)
 }
 
-// probeEntry checks if a single entry matches the hash, returns entry or nil
-func (tt *TranspositionTable) probeEntry(entry *TranspositionEntry, hash uint64) *TranspositionEntry {
-	if entry.Hash == 0 {
-		return nil
-	}
-
-	if entry.Hash == hash {
-		return entry
-	}
-	return nil
-}
-
 // shouldReplace determines if an entry should be replaced
 func (tt *TranspositionTable) shouldReplace(entry *TranspositionEntry, hash uint64, depth int) bool {
 	if entry.Hash == 0 {
@@ -279,22 +267,33 @@ func (tt *TranspositionTable) shouldReplace(entry *TranspositionEntry, hash uint
 }
 
 // Probe looks up a position in the transposition table using two-bucket collision resolution
+// Optimized version with inlined probeEntry logic and minimal statistics overhead
 func (tt *TranspositionTable) Probe(hash uint64) (*TranspositionEntry, bool) {
-	// Check first bucket
-	firstIndex := tt.getFirstBucketIndex(hash)
-	if entry := tt.probeEntry(&tt.table[firstIndex], hash); entry != nil {
-		tt.hits++
+	// Check first bucket (inline probeEntry logic)
+	firstIndex := hash & tt.mask
+	entry := &tt.table[firstIndex]
+	if entry.Hash != 0 && entry.Hash == hash {
+		// Use hash for sampling to avoid counter increment
+		if (hash & 0xFF) == 0 {
+			tt.hits += 256
+		}
 		return entry, true
 	}
 
-	// Check second bucket
-	secondIndex := tt.getSecondBucketIndex(firstIndex)
-	if entry := tt.probeEntry(&tt.table[secondIndex], hash); entry != nil {
-		tt.hits++
+	// Check second bucket (+1 offset typically in same cache line)
+	secondIndex := (firstIndex + 1) & tt.mask
+	entry = &tt.table[secondIndex]
+	if entry.Hash != 0 && entry.Hash == hash {
+		if (hash & 0xFF) == 0 {
+			tt.hits += 256
+		}
 		return entry, true
 	}
 
-	tt.misses++
+	// Track misses with sampling
+	if (hash & 0xFF) == 0 {
+		tt.misses += 256
+	}
 	return nil, false
 }
 

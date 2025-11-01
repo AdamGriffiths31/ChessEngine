@@ -24,7 +24,8 @@ type MoveUndo struct {
 	Move            Move
 	CapturedPiece   Piece
 	CastlingRights  string
-	EnPassantTarget *Square
+	EnPassantSquare Square // en passant target square
+	HasEnPassant    bool   // whether en passant was possible
 	HalfMoveClock   int
 	FullMoveNumber  int
 	SideToMove      string
@@ -90,7 +91,8 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 		Move:            move, // This now has the correct piece
 		CapturedPiece:   capturedPiece,
 		CastlingRights:  b.castlingRights,
-		EnPassantTarget: b.enPassantTarget,
+		EnPassantSquare: b.enPassantSquare,
+		HasEnPassant:    b.hasEnPassant,
 		HalfMoveClock:   b.halfMoveClock,
 		FullMoveNumber:  b.fullMoveNumber,
 		SideToMove:      b.sideToMove,
@@ -122,7 +124,8 @@ func (b *Board) MakeNullMove() MoveUndo {
 		Move:            NullMove,
 		CapturedPiece:   Empty,
 		CastlingRights:  b.castlingRights,
-		EnPassantTarget: b.enPassantTarget,
+		EnPassantSquare: b.enPassantSquare,
+		HasEnPassant:    b.hasEnPassant,
 		HalfMoveClock:   b.halfMoveClock,
 		FullMoveNumber:  b.fullMoveNumber,
 		SideToMove:      b.sideToMove,
@@ -141,7 +144,7 @@ func (b *Board) MakeNullMove() MoveUndo {
 	b.halfMoveClock++
 
 	// Clear en passant target (opportunity expires when turn passes)
-	b.enPassantTarget = nil
+	b.hasEnPassant = false
 
 	// Castling rights remain unchanged (no pieces moved)
 
@@ -158,7 +161,8 @@ func (b *Board) MakeNullMove() MoveUndo {
 func (b *Board) UnmakeNullMove(undo MoveUndo) {
 	// Restore all board state (no pieces to move since it was a null move)
 	b.castlingRights = undo.CastlingRights
-	b.enPassantTarget = undo.EnPassantTarget
+	b.enPassantSquare = undo.EnPassantSquare
+	b.hasEnPassant = undo.HasEnPassant
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
 	b.sideToMove = undo.SideToMove
@@ -185,7 +189,7 @@ func (b *Board) MakeMove(move Move) error {
 		targetPiece := b.GetPiece(move.To.Rank, move.To.File)
 		// If pawn moves diagonally to empty square and en passant target matches
 		if targetPiece == Empty && move.From.File != move.To.File {
-			if b.enPassantTarget != nil && b.enPassantTarget.File == move.To.File && b.enPassantTarget.Rank == move.To.Rank {
+			if b.hasEnPassant && b.enPassantSquare.File == move.To.File && b.enPassantSquare.Rank == move.To.Rank {
 				move.IsEnPassant = true
 			}
 		}
@@ -321,15 +325,15 @@ func (b *Board) updateCastlingRights(move Move, piece Piece) {
 
 func (b *Board) updateEnPassantTarget(move Move, piece Piece) {
 	// Clear previous en passant target
-	b.enPassantTarget = nil
+	b.hasEnPassant = false
 
 	// Set en passant target if pawn moved two squares
 	if piece == WhitePawn && move.From.Rank == 1 && move.To.Rank == 3 {
-		square := Square{File: move.From.File, Rank: 2}
-		b.enPassantTarget = &square
+		b.enPassantSquare = Square{File: move.From.File, Rank: 2}
+		b.hasEnPassant = true
 	} else if piece == BlackPawn && move.From.Rank == 6 && move.To.Rank == 4 {
-		square := Square{File: move.From.File, Rank: 5}
-		b.enPassantTarget = &square
+		b.enPassantSquare = Square{File: move.From.File, Rank: 5}
+		b.hasEnPassant = true
 	}
 }
 
@@ -459,7 +463,8 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 
 	// Restore all board state
 	b.castlingRights = undo.CastlingRights
-	b.enPassantTarget = undo.EnPassantTarget
+	b.enPassantSquare = undo.EnPassantSquare
+	b.hasEnPassant = undo.HasEnPassant
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
 	b.sideToMove = undo.SideToMove
@@ -547,8 +552,8 @@ func (b *Board) ToFEN() string {
 		fen.WriteString("-")
 	}
 	fen.WriteString(" ")
-	if b.enPassantTarget != nil {
-		fen.WriteString(b.enPassantTarget.String())
+	if b.hasEnPassant {
+		fen.WriteString(b.enPassantSquare.String())
 	} else {
 		fen.WriteString("-")
 	}

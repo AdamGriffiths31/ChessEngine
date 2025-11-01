@@ -174,8 +174,8 @@ func (mc *MoveConverter) isEnPassantMove(move board.Move, piece board.Piece, b *
 		return false
 	}
 
-	enPassantTarget := b.GetEnPassantTarget()
-	if enPassantTarget != nil &&
+	enPassantTarget, hasEnPassant := b.GetEnPassantTarget()
+	if hasEnPassant &&
 		move.To.File == enPassantTarget.File &&
 		move.To.Rank == enPassantTarget.Rank {
 		return true

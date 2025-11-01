@@ -63,8 +63,9 @@ type Square struct {
 
 // Board represents a chess board with piece positions and game state
 type Board struct {
-	castlingRights  string  // KQkq format
-	enPassantTarget *Square // nil if no en passant
+	castlingRights  string // KQkq format
+	enPassantSquare Square // en passant target square (only valid if hasEnPassant is true)
+	hasEnPassant    bool   // true if en passant is possible
 	halfMoveClock   int
 	fullMoveNumber  int
 	sideToMove      string // "w" or "b"
@@ -109,11 +110,11 @@ func init() {
 // NewBoard creates a new chess board with the standard starting position
 func NewBoard() *Board {
 	board := &Board{
-		castlingRights:  "KQkq",
-		enPassantTarget: nil,
-		halfMoveClock:   0,
-		fullMoveNumber:  1,
-		sideToMove:      "w",
+		castlingRights: "KQkq",
+		hasEnPassant:   false,
+		halfMoveClock:  0,
+		fullMoveNumber: 1,
+		sideToMove:     "w",
 	}
 
 	// Initialize bitboards (all empty)
@@ -179,7 +180,8 @@ type HashUpdater interface {
 // State captures the board state before a move for hash calculation
 type State struct {
 	CastlingRights  string
-	EnPassantTarget *Square
+	EnPassantSquare Square
+	HasEnPassant    bool
 	SideToMove      string
 }
 
@@ -203,7 +205,8 @@ func (b *Board) SetHashUpdater(updater HashUpdater) {
 func (b *Board) GetCurrentBoardState() State {
 	return State{
 		CastlingRights:  b.castlingRights,
-		EnPassantTarget: b.enPassantTarget,
+		EnPassantSquare: b.enPassantSquare,
+		HasEnPassant:    b.hasEnPassant,
 		SideToMove:      b.sideToMove,
 	}
 }
@@ -432,8 +435,8 @@ func FromFEN(fen string) (*Board, error) {
 			file := int(enPassantStr[0] - 'a')
 			rank := int(enPassantStr[1] - '1')
 			if file >= 0 && file <= 7 && rank >= 0 && rank <= 7 {
-				square := Square{File: file, Rank: rank}
-				board.enPassantTarget = &square
+				board.enPassantSquare = Square{File: file, Rank: rank}
+				board.hasEnPassant = true
 			}
 		}
 	}
@@ -480,8 +483,8 @@ func (b *Board) GetCastlingRights() string {
 }
 
 // GetEnPassantTarget returns the current en passant target square if any
-func (b *Board) GetEnPassantTarget() *Square {
-	return b.enPassantTarget
+func (b *Board) GetEnPassantTarget() (Square, bool) {
+	return b.enPassantSquare, b.hasEnPassant
 }
 
 // GetHalfMoveClock returns the current half-move clock for the 50-move rule
@@ -577,8 +580,9 @@ func (b *Board) SetCastlingRights(rights string) {
 }
 
 // SetEnPassantTarget sets the en passant target square
-func (b *Board) SetEnPassantTarget(target *Square) {
-	b.enPassantTarget = target
+func (b *Board) SetEnPassantTarget(target Square, hasEnPassant bool) {
+	b.enPassantSquare = target
+	b.hasEnPassant = hasEnPassant
 }
 
 // SetHalfMoveClock sets the half-move clock for the 50-move rule

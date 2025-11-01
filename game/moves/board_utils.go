@@ -8,11 +8,13 @@ type MoveExecutor struct{}
 
 // MakeMove executes a move on the board and returns history for undoing
 func (me *MoveExecutor) MakeMove(b *board.Board, move board.Move, updateBoardState func(*board.Board, board.Move)) *MoveHistory {
+	enPassantSquare, hasEnPassant := b.GetEnPassantTarget()
 	history := &MoveHistory{
 		Move:            move,
 		CapturedPiece:   board.Empty,
 		CastlingRights:  b.GetCastlingRights(),
-		EnPassantTarget: b.GetEnPassantTarget(),
+		EnPassantSquare: enPassantSquare,
+		HasEnPassant:    hasEnPassant,
 		HalfMoveClock:   b.GetHalfMoveClock(),
 		FullMoveNumber:  b.GetFullMoveNumber(),
 		WasEnPassant:    move.IsEnPassant,
@@ -97,7 +99,7 @@ func (me *MoveExecutor) UnmakeMove(b *board.Board, history *MoveHistory) {
 	}
 
 	b.SetCastlingRights(history.CastlingRights)
-	b.SetEnPassantTarget(history.EnPassantTarget)
+	b.SetEnPassantTarget(history.EnPassantSquare, history.HasEnPassant)
 	b.SetHalfMoveClock(history.HalfMoveClock)
 	b.SetFullMoveNumber(history.FullMoveNumber)
 }

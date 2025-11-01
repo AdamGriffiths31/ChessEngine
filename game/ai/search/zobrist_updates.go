@@ -83,15 +83,16 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 		hashDelta ^= oldRights ^ newRights
 	}
 
-	if (oldState.EnPassantTarget == nil) != (b.GetEnPassantTarget() == nil) ||
-		(oldState.EnPassantTarget != nil && b.GetEnPassantTarget() != nil &&
-			oldState.EnPassantTarget.File != b.GetEnPassantTarget().File) {
+	newEP, newHasEP := b.GetEnPassantTarget()
 
-		if oldState.EnPassantTarget != nil && hasAdjacentCapturingPawn(b, oldState.EnPassantTarget, getOppositeSide(oldState.SideToMove)) {
-			hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantTarget.File)
+	if oldState.HasEnPassant != newHasEP ||
+		(oldState.HasEnPassant && newHasEP && oldState.EnPassantSquare.File != newEP.File) {
+
+		if oldState.HasEnPassant && hasAdjacentCapturingPawn(b, oldState.EnPassantSquare, getOppositeSide(oldState.SideToMove)) {
+			hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantSquare.File)
 		}
-		if b.GetEnPassantTarget() != nil && hasAdjacentCapturingPawn(b, b.GetEnPassantTarget(), getOppositeSide(b.GetSideToMove())) {
-			hashDelta ^= m.zobrist.GetEnPassantKey(b.GetEnPassantTarget().File)
+		if newHasEP && hasAdjacentCapturingPawn(b, newEP, getOppositeSide(b.GetSideToMove())) {
+			hashDelta ^= m.zobrist.GetEnPassantKey(newEP.File)
 		}
 	}
 
@@ -105,7 +106,7 @@ func (m *MinimaxEngine) GetNullMoveDelta() uint64 {
 
 // hasAdjacentCapturingPawn checks if there's a pawn adjacent to the en passant target that can capture
 // This implements the same logic as the full HashPosition function
-func hasAdjacentCapturingPawn(b *board.Board, epTarget *board.Square, sideToMove string) bool {
+func hasAdjacentCapturingPawn(b *board.Board, epTarget board.Square, sideToMove string) bool {
 	var pawnRank int
 	var pawnPiece board.Piece
 

@@ -54,7 +54,8 @@ type MoveHistory struct {
 	Move            board.Move
 	CapturedPiece   board.Piece
 	CastlingRights  string
-	EnPassantTarget *board.Square
+	EnPassantSquare board.Square
+	HasEnPassant    bool
 	HalfMoveClock   int
 	FullMoveNumber  int
 	WasEnPassant    bool

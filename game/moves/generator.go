@@ -130,13 +130,13 @@ func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
 	if piece == board.WhitePawn || piece == board.BlackPawn {
 		if abs(move.To.Rank-move.From.Rank) == 2 {
 			targetRank := (move.From.Rank + move.To.Rank) / 2
-			enPassantTarget := &board.Square{File: move.From.File, Rank: targetRank}
-			b.SetEnPassantTarget(enPassantTarget)
+			enPassantTarget := board.Square{File: move.From.File, Rank: targetRank}
+			b.SetEnPassantTarget(enPassantTarget, true)
 		} else {
-			b.SetEnPassantTarget(nil)
+			b.SetEnPassantTarget(board.Square{}, false)
 		}
 	} else {
-		b.SetEnPassantTarget(nil)
+		b.SetEnPassantTarget(board.Square{}, false)
 	}
 
 	halfMoveClock := b.GetHalfMoveClock()

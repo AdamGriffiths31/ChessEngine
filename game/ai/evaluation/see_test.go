@@ -137,9 +137,9 @@ func TestSEE_EnPassant(t *testing.T) {
 	// Set up en passant position
 	b := board.NewBoard()
 	// Place white pawn on e5 and black pawn on d5 (that just moved two squares)
-	b.SetPiece(4, 4, board.WhitePawn)                     // e5
-	b.SetPiece(4, 3, board.BlackPawn)                     // d5
-	b.SetEnPassantTarget(&board.Square{Rank: 5, File: 3}) // d6
+	b.SetPiece(4, 4, board.WhitePawn)                          // e5
+	b.SetPiece(4, 3, board.BlackPawn)                          // d5
+	b.SetEnPassantTarget(board.Square{Rank: 5, File: 3}, true) // d6
 
 	move := board.Move{
 		From:        board.Square{Rank: 4, File: 4}, // e5

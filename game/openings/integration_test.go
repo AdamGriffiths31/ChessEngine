@@ -92,7 +92,7 @@ func setUpStartingPosition(b *board.Board) error {
 
 	b.SetSideToMove("w")
 	b.SetCastlingRights("KQkq")
-	b.SetEnPassantTarget(nil)
+	b.SetEnPassantTarget(board.Square{}, false)
 	b.SetHalfMoveClock(0)
 	b.SetFullMoveNumber(1)
 

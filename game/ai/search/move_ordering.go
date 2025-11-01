@@ -14,6 +14,19 @@ type moveScore struct {
 	score int // Calculated ordering score (higher = better)
 }
 
+// sortMoveScores sorts move scores in descending order (highest score first)
+func sortMoveScores(moves []moveScore) {
+	for i := 1; i < len(moves); i++ {
+		key := moves[i]
+		j := i - 1
+		for j >= 0 && moves[j].score < key.score {
+			moves[j+1] = moves[j]
+			j--
+		}
+		moves[j+1] = key
+	}
+}
+
 // orderMoves orders moves for search
 func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, depth int, ttMove board.Move) {
 	if moveList.Count <= 1 {
@@ -55,29 +68,16 @@ func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, dep
 			if !move.IsCapture && move.Promotion == board.Empty {
 				score += int(m.getHistoryScore(move))
 
-				if m.moveAttacksEnemyPiece(b, move) {
-					score += 100000
-				}
-
-				if m.moveAttacksKingZone(b, move) {
-					score += 50000
-				}
+				tacticalBonus := m.getTacticalBonus(b, move)
+				score += tacticalBonus
 			}
 		}
 
 		m.searchState.moveOrderBuffer[i] = moveScore{index: i, score: score}
 	}
 
-	// Insertion sort - O(n²) worst case but O(n) best case, better cache locality
-	for i := 1; i < moveList.Count; i++ {
-		key := m.searchState.moveOrderBuffer[i]
-		j := i - 1
-		for j >= 0 && m.searchState.moveOrderBuffer[j].score < key.score {
-			m.searchState.moveOrderBuffer[j+1] = m.searchState.moveOrderBuffer[j]
-			j--
-		}
-		m.searchState.moveOrderBuffer[j+1] = key
-	}
+	// Sort using optimized insertion sort (avoids reflection overhead)
+	sortMoveScores(m.searchState.moveOrderBuffer)
 
 	if cap(m.searchState.reorderBuffer) < moveList.Count {
 		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
@@ -111,16 +111,7 @@ func (m *MinimaxEngine) orderCaptures(b *board.Board, moveList *moves.MoveList) 
 		m.searchState.moveOrderBuffer[i] = moveScore{index: i, score: score}
 	}
 
-	// Insertion sort - O(n²) worst case but O(n) best case, better cache locality
-	for i := 1; i < moveList.Count; i++ {
-		key := m.searchState.moveOrderBuffer[i]
-		j := i - 1
-		for j >= 0 && m.searchState.moveOrderBuffer[j].score < key.score {
-			m.searchState.moveOrderBuffer[j+1] = m.searchState.moveOrderBuffer[j]
-			j--
-		}
-		m.searchState.moveOrderBuffer[j+1] = key
-	}
+	sortMoveScores(m.searchState.moveOrderBuffer)
 
 	if cap(m.searchState.reorderBuffer) < moveList.Count {
 		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
@@ -188,39 +179,35 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 	return m.historyTable.GetHistoryScore(move)
 }
 
-// moveAttacksEnemyPiece checks if a move attacks an enemy piece from its destination square
-func (m *MinimaxEngine) moveAttacksEnemyPiece(b *board.Board, move board.Move) bool {
+// getTacticalBonus calculates bonus score for moves that attack enemy pieces or king zone
+// This combines both checks into one to avoid duplicate GetPieceAttacks calls
+func (m *MinimaxEngine) getTacticalBonus(b *board.Board, move board.Move) int {
 	toSquare := move.To.Rank*8 + move.To.File
 	attacks := b.GetPieceAttacks(move.Piece, toSquare)
 
 	var enemyPieces board.Bitboard
-	if move.Piece >= board.WhitePawn && move.Piece <= board.WhiteKing {
-		enemyPieces = b.BlackPieces
-	} else {
-		enemyPieces = b.WhitePieces
-	}
-
-	return (attacks & enemyPieces) != 0
-}
-
-// moveAttacksKingZone checks if a move attacks squares near the enemy king
-func (m *MinimaxEngine) moveAttacksKingZone(b *board.Board, move board.Move) bool {
-	toSquare := move.To.Rank*8 + move.To.File
-	attacks := b.GetPieceAttacks(move.Piece, toSquare)
-
 	var enemyKing board.Bitboard
 	if move.Piece >= board.WhitePawn && move.Piece <= board.WhiteKing {
+		enemyPieces = b.BlackPieces
 		enemyKing = b.GetPieceBitboard(board.BlackKing)
 	} else {
+		enemyPieces = b.WhitePieces
 		enemyKing = b.GetPieceBitboard(board.WhiteKing)
 	}
 
-	if enemyKing == 0 {
-		return false
+	bonus := 0
+
+	if (attacks & enemyPieces) != 0 {
+		bonus += 100000
 	}
 
-	kingSquare, _ := enemyKing.PopLSB()
-	kingZone := board.GetKingAttacks(kingSquare)
+	if enemyKing != 0 {
+		kingSquare, _ := enemyKing.PopLSB()
+		kingZone := board.GetKingAttacks(kingSquare)
+		if (attacks & kingZone) != 0 {
+			bonus += 50000
+		}
+	}
 
-	return (attacks & kingZone) != 0
+	return bonus
 }
