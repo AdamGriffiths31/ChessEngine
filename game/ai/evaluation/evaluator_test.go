@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
+	"github.com/AdamGriffiths31/ChessEngine/game/ai/evaluation/values"
 )
 
 func TestNewEvaluator(t *testing.T) {
@@ -234,10 +235,47 @@ func TestGetPositionalBonus(t *testing.T) {
 			}
 
 			// Test the positional bonus function
-			got := getPositionalBonus(tt.piece, tt.rank, tt.file)
+			got := values.GetPositionalBonus(values.Piece(tt.piece), tt.rank, tt.file)
 			if got != tt.expected {
-				t.Errorf("getPositionalBonus(%v, %d, %d) = %d, want %d", tt.piece, tt.rank, tt.file, got, tt.expected)
+				t.Errorf("values.GetPositionalBonus(%v, %d, %d) = %d, want %d", tt.piece, tt.rank, tt.file, got, tt.expected)
 			}
 		})
+	}
+}
+
+// Benchmark incremental evaluation performance
+func BenchmarkEvaluateStartingPosition(b *testing.B) {
+	board, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		b.Fatal(err)
+	}
+	evaluator := NewEvaluator()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = evaluator.Evaluate(board)
+	}
+}
+
+func BenchmarkEvaluateMiddlegame(b *testing.B) {
+	board, err := board.FromFEN("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+	if err != nil {
+		b.Fatal(err)
+	}
+	evaluator := NewEvaluator()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = evaluator.Evaluate(board)
+	}
+}
+
+func BenchmarkEvaluateMaterialAndPST(b *testing.B) {
+	board, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	if err != nil {
+		b.Fatal(err)
+	}
+	evaluator := NewEvaluator()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = evaluator.evaluateMaterialAndPST(board)
 	}
 }

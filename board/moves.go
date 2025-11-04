@@ -102,6 +102,9 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 	// Push current hash to history for undo
 	b.PushHash()
 
+	// Push current evaluation state to history for undo
+	b.PushEvalState()
+
 	// Capture old state for incremental hash update
 	oldState := b.GetCurrentBoardState()
 
@@ -471,6 +474,9 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 
 	// Restore hash from history
 	b.PopHash()
+
+	// Restore evaluation state from history
+	b.PopEvalState()
 }
 
 // undoCastling reverses the rook movement in castling

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/AdamGriffiths31/ChessEngine/game/ai/evaluation/values"
 )
 
 // Piece represents a chess piece using standard FEN notation
@@ -61,6 +63,13 @@ type Square struct {
 	Rank int // 0-7 (1-8)
 }
 
+// EvalState stores incremental evaluation scores for undo operations.
+// These scores are maintained incrementally during moves and restored during unmake.
+type EvalState struct {
+	MaterialScore int
+	PSTScore      int
+}
+
 // Board represents a chess board with piece positions and game state
 type Board struct {
 	castlingRights  string // KQkq format
@@ -85,6 +94,11 @@ type Board struct {
 	currentHash uint64
 	hashHistory []uint64    // Stack for unmake operations
 	hashUpdater HashUpdater // For incremental hash updates
+
+	// Incremental evaluation scores (from White's perspective)
+	materialScore int         // Sum of all piece values
+	pstScore      int         // Sum of all positional bonuses
+	evalHistory   []EvalState // Stack for unmake operations
 }
 
 // Define square color masks if not already available
@@ -134,6 +148,11 @@ func NewBoard() *Board {
 	board.currentHash = 0
 	board.hashHistory = make([]uint64, 0)
 
+	// Initialize evaluation fields
+	board.materialScore = 0
+	board.pstScore = 0
+	board.evalHistory = make([]EvalState, 0)
+
 	return board
 }
 
@@ -165,10 +184,78 @@ func (b *Board) PopHash() {
 	}
 }
 
+// GetMaterialScore returns the current incrementally maintained material score.
+// This value is updated automatically by SetPiece and represents the sum of all
+// piece values from White's perspective (positive for White, negative for Black).
+func (b *Board) GetMaterialScore() int {
+	return b.materialScore
+}
+
+// GetPSTScore returns the current incrementally maintained piece-square table score.
+// This value is updated automatically by SetPiece and represents the sum of all
+// positional bonuses from White's perspective.
+func (b *Board) GetPSTScore() int {
+	return b.pstScore
+}
+
+// PushEvalState saves current evaluation state to history for later restoration.
+// This should be called before making a move to enable proper unmake operations.
+func (b *Board) PushEvalState() {
+	b.evalHistory = append(b.evalHistory, EvalState{
+		MaterialScore: b.materialScore,
+		PSTScore:      b.pstScore,
+	})
+}
+
+// PopEvalState restores evaluation state from history during move unmake.
+// This reverts the evaluation scores to their state before the last PushEvalState call.
+func (b *Board) PopEvalState() {
+	if len(b.evalHistory) > 0 {
+		state := b.evalHistory[len(b.evalHistory)-1]
+		b.materialScore = state.MaterialScore
+		b.pstScore = state.PSTScore
+		b.evalHistory = b.evalHistory[:len(b.evalHistory)-1]
+	}
+}
+
+// updateEvalScoresForPiece updates the incremental scores after a piece placement/removal
+// This is an internal helper called by SetPiece
+func (b *Board) updateEvalScoresForPiece(rank, file int, oldPiece, newPiece Piece) {
+	// Remove old piece contribution
+	if oldPiece != Empty {
+		b.materialScore -= values.GetPieceValue(values.Piece(oldPiece))
+		b.pstScore -= values.GetPositionalBonus(values.Piece(oldPiece), rank, file)
+	}
+
+	// Add new piece contribution
+	if newPiece != Empty {
+		b.materialScore += values.GetPieceValue(values.Piece(newPiece))
+		b.pstScore += values.GetPositionalBonus(values.Piece(newPiece), rank, file)
+	}
+}
+
 // InitializeHashFromPosition initializes the board's hash using an external hash calculator
 // This should be called once when the board is set up to establish the baseline hash
 func (b *Board) InitializeHashFromPosition(hashFunc func(*Board) uint64) {
 	b.currentHash = hashFunc(b)
+}
+
+// InitializeEvalScoresFromPosition calculates initial evaluation scores from the current position.
+// This should be called once after board setup (e.g., after FromFEN) to establish the baseline
+// scores that will be maintained incrementally during subsequent moves.
+func (b *Board) InitializeEvalScoresFromPosition() {
+	b.materialScore = 0
+	b.pstScore = 0
+
+	for rank := 0; rank < 8; rank++ {
+		for file := 0; file < 8; file++ {
+			piece := b.GetPiece(rank, file)
+			if piece != Empty {
+				b.materialScore += values.GetPieceValue(values.Piece(piece))
+				b.pstScore += values.GetPositionalBonus(values.Piece(piece), rank, file)
+			}
+		}
+	}
 }
 
 // HashUpdater interface for providing zobrist key updates
@@ -349,6 +436,9 @@ func (b *Board) SetPiece(rank, file int, piece Piece) {
 	// Get old piece from mailbox
 	oldPiece := b.Mailbox[square]
 
+	// Update incremental evaluation scores
+	b.updateEvalScoresForPiece(rank, file, oldPiece, piece)
+
 	// Update mailbox
 	b.Mailbox[square] = piece
 
@@ -450,6 +540,9 @@ func FromFEN(fen string) (*Board, error) {
 			board.fullMoveNumber = fullMove
 		}
 	}
+
+	// Initialize incremental evaluation scores
+	board.InitializeEvalScoresFromPosition()
 
 	return board, nil
 }

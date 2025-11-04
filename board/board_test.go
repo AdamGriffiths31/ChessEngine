@@ -477,3 +477,250 @@ func BenchmarkGetColorBitboard(b *testing.B) {
 		_ = board.GetColorBitboard(BitboardWhite)
 	}
 }
+
+// Incremental evaluation tests
+
+func TestIncrementalEvalInitialization(t *testing.T) {
+	testCases := []struct {
+		name             string
+		fen              string
+		expectedMaterial int
+		expectedPST      int
+	}{
+		{
+			name:             "empty board",
+			fen:              "8/8/8/8/8/8/8/8 w - - 0 1",
+			expectedMaterial: 0,
+			expectedPST:      0,
+		},
+		{
+			name:             "starting position",
+			fen:              "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			expectedMaterial: 0, // Symmetric position
+			expectedPST:      0, // Symmetric PST bonuses
+		},
+		{
+			name:             "white advantage",
+			fen:              "8/8/8/8/8/8/4P3/8 w - - 0 1", // White pawn on e2
+			expectedMaterial: 100,
+			expectedPST:      -20, // e2 pawn gets -20 from PST
+		},
+		{
+			name:             "black advantage",
+			fen:              "8/4p3/8/8/8/8/8/8 w - - 0 1", // Black pawn on e7
+			expectedMaterial: -100,
+			expectedPST:      20, // e7 black pawn gets bonus (flipped)
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			board, err := FromFEN(tc.fen)
+			if err != nil {
+				t.Fatalf("Failed to parse FEN: %v", err)
+			}
+
+			if board.GetMaterialScore() != tc.expectedMaterial {
+				t.Errorf("Expected material score %d, got %d", tc.expectedMaterial, board.GetMaterialScore())
+			}
+
+			if board.GetPSTScore() != tc.expectedPST {
+				t.Errorf("Expected PST score %d, got %d", tc.expectedPST, board.GetPSTScore())
+			}
+		})
+	}
+}
+
+func TestIncrementalEvalSetPiece(t *testing.T) {
+	board := NewBoard()
+
+	// Initially empty - scores should be 0
+	if board.GetMaterialScore() != 0 || board.GetPSTScore() != 0 {
+		t.Errorf("Empty board should have 0 scores, got material=%d pst=%d",
+			board.GetMaterialScore(), board.GetPSTScore())
+	}
+
+	// Add a white knight to e4 (rank=3, file=4)
+	board.SetPiece(3, 4, WhiteKnight)
+
+	// Knight value is 320, e4 knight PST bonus is 20
+	expectedMaterial := 320
+	expectedPST := 20
+
+	if board.GetMaterialScore() != expectedMaterial {
+		t.Errorf("After adding knight, expected material %d, got %d",
+			expectedMaterial, board.GetMaterialScore())
+	}
+
+	if board.GetPSTScore() != expectedPST {
+		t.Errorf("After adding knight, expected PST %d, got %d",
+			expectedPST, board.GetPSTScore())
+	}
+
+	// Replace with black queen
+	board.SetPiece(3, 4, BlackQueen)
+
+	// Black queen value is -900, e4 black queen PST is -5
+	expectedMaterial = -900
+	expectedPST = -5
+
+	if board.GetMaterialScore() != expectedMaterial {
+		t.Errorf("After replacing with queen, expected material %d, got %d",
+			expectedMaterial, board.GetMaterialScore())
+	}
+
+	if board.GetPSTScore() != expectedPST {
+		t.Errorf("After replacing with queen, expected PST %d, got %d",
+			expectedPST, board.GetPSTScore())
+	}
+
+	// Remove piece
+	board.SetPiece(3, 4, Empty)
+
+	if board.GetMaterialScore() != 0 || board.GetPSTScore() != 0 {
+		t.Errorf("After removing piece, should have 0 scores, got material=%d pst=%d",
+			board.GetMaterialScore(), board.GetPSTScore())
+	}
+}
+
+func TestIncrementalEvalMoveUnmake(t *testing.T) {
+	// Start with a simple position
+	board, err := FromFEN("8/8/8/8/8/8/4P3/8 w - - 0 1") // White pawn on e2
+	if err != nil {
+		t.Fatalf("Failed to parse FEN: %v", err)
+	}
+
+	initialMaterial := board.GetMaterialScore()
+	initialPST := board.GetPSTScore()
+
+	// Make a move: e2 to e4
+	move := Move{
+		From:  Square{Rank: 1, File: 4},
+		To:    Square{Rank: 3, File: 4},
+		Piece: WhitePawn,
+	}
+
+	undo, err := board.MakeMoveWithUndo(move)
+	if err != nil {
+		t.Fatalf("Failed to make move: %v", err)
+	}
+
+	// After move, pawn is on e4 - different PST value
+	// e2 has PST -20, e4 has PST 25
+	expectedMaterialAfter := 100 // Still same material
+	expectedPSTAfter := 25       // New PST value for e4
+
+	if board.GetMaterialScore() != expectedMaterialAfter {
+		t.Errorf("After move, expected material %d, got %d",
+			expectedMaterialAfter, board.GetMaterialScore())
+	}
+
+	if board.GetPSTScore() != expectedPSTAfter {
+		t.Errorf("After move, expected PST %d, got %d",
+			expectedPSTAfter, board.GetPSTScore())
+	}
+
+	// Unmake the move
+	board.UnmakeMove(undo)
+
+	// Should restore original scores
+	if board.GetMaterialScore() != initialMaterial {
+		t.Errorf("After unmake, expected material %d, got %d",
+			initialMaterial, board.GetMaterialScore())
+	}
+
+	if board.GetPSTScore() != initialPST {
+		t.Errorf("After unmake, expected PST %d, got %d",
+			initialPST, board.GetPSTScore())
+	}
+}
+
+func TestIncrementalEvalCaptures(t *testing.T) {
+	// Position with potential capture
+	board, err := FromFEN("8/8/8/8/4p3/8/4P3/8 w - - 0 1") // White pawn on e2, black pawn on e4
+	if err != nil {
+		t.Fatalf("Failed to parse FEN: %v", err)
+	}
+
+	// Verify initial state is balanced (100 - 100)
+	if board.GetMaterialScore() != 0 {
+		t.Errorf("Initial material should be 0, got %d", board.GetMaterialScore())
+	}
+
+	// White pawn captures black pawn (illegal in real chess, but tests the mechanics)
+	// Manually simulate: remove black pawn, move white pawn
+	board.SetPiece(3, 4, Empty)     // Remove black pawn from e4
+	board.SetPiece(1, 4, Empty)     // Remove white pawn from e2
+	board.SetPiece(3, 4, WhitePawn) // Place white pawn on e4
+
+	// After capture: only white pawn remains
+	expectedMaterial := 100
+	expectedPST := 25 // e4 white pawn PST
+
+	if board.GetMaterialScore() != expectedMaterial {
+		t.Errorf("After capture, expected material %d, got %d",
+			expectedMaterial, board.GetMaterialScore())
+	}
+
+	if board.GetPSTScore() != expectedPST {
+		t.Errorf("After capture, expected PST %d, got %d",
+			expectedPST, board.GetPSTScore())
+	}
+}
+
+func TestIncrementalEvalComplexPosition(t *testing.T) {
+	// Test a complex position with multiple pieces
+	fen := "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
+	board, err := FromFEN(fen)
+	if err != nil {
+		t.Fatalf("Failed to parse FEN: %v", err)
+	}
+
+	// Calculate expected material manually by iterating
+	expectedMaterial := 0
+
+	for rank := 0; rank < 8; rank++ {
+		for file := 0; file < 8; file++ {
+			piece := board.GetPiece(rank, file)
+			if piece != Empty {
+				// Helper to calculate piece value
+				pieceValue := 0
+				switch piece {
+				case WhitePawn:
+					pieceValue = 100
+				case WhiteKnight:
+					pieceValue = 320
+				case WhiteBishop:
+					pieceValue = 330
+				case WhiteRook:
+					pieceValue = 500
+				case WhiteQueen:
+					pieceValue = 900
+				case BlackPawn:
+					pieceValue = -100
+				case BlackKnight:
+					pieceValue = -320
+				case BlackBishop:
+					pieceValue = -330
+				case BlackRook:
+					pieceValue = -500
+				case BlackQueen:
+					pieceValue = -900
+				}
+				expectedMaterial += pieceValue
+			}
+		}
+	}
+
+	// Verify the material is tracked correctly
+	if board.GetMaterialScore() != expectedMaterial {
+		t.Errorf("Complex position material mismatch: expected %d, got %d",
+			expectedMaterial, board.GetMaterialScore())
+	}
+
+	// Verify that material + PST gives a non-zero total in this asymmetric position
+	totalScore := board.GetMaterialScore() + board.GetPSTScore()
+	if totalScore == 0 {
+		t.Log("Warning: total score is 0 in asymmetric position")
+	}
+}
