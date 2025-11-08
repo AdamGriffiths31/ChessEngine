@@ -32,9 +32,15 @@ A high-performance chess engine written in Go, featuring advanced search algorit
 
 ### Performance Optimizations
 - **Object Pooling** for move lists to reduce garbage collection
-- **Pre-computed Tables** for piece attacks and evaluation
-- **Lazy Evaluation** with early cutoffs
-- **Memory-efficient** transposition table with aging
+- **Pre-computed Tables** for piece attacks, knight mobility, and evaluation
+- **Incremental Updates** for Zobrist hashing, material balance, and piece-square table scores
+- **Two-bucket Transposition Table** with collision resolution and age-based replacement
+- **32-bit Packed Moves** in transposition table (compressed from 80 to 32 bits)
+- **Pawn Hash Table** for caching expensive pawn structure evaluations
+- **Lazy Evaluation** with early cutoffs at 1000cp and 500cp thresholds
+- **SEE-based Move Ordering** for accurate capture evaluation
+- **Tactical Move Bonuses** for attacks on valuable pieces and king zones
+- **Sampled TT Statistics** to reduce overhead (updated every 256th probe)
 
 ## Architecture
 
@@ -43,19 +49,28 @@ A high-performance chess engine written in Go, featuring advanced search algorit
 board/          # Board representation and bitboard operations
 game/
   ├── ai/         # Search algorithms and evaluation
-  ├── moves/      # Move generation and validation
-  └── openings/   # Opening book support
+  │   ├── search/     # Negamax, iterative deepening, quiescence, transposition tables
+  │   └── evaluation/ # Position evaluation with pawn hash table
+  ├── moves/      # Move generation and validation with object pooling
+  ├── openings/   # Polyglot opening book support
+  └── modes/      # Game mode implementations (manual, vs AI, benchmark)
 uci/            # UCI protocol implementation
+epd/            # EPD file parsing and STS scoring
+benchmark/      # Benchmark infrastructure and engine comparison
+ui/             # Board rendering and user interface
 cmd/            # Command-line applications
-├── uci/        # UCI interface
-├── benchmark/  # Performance benchmarking
-└── sts/        # Strategic Test Suite runner
+  ├── uci/        # UCI interface for chess GUIs
+  ├── benchmark/  # Performance benchmarking with/without TT comparison
+  ├── sts/        # Strategic Test Suite runner with scoring
+  └── profile/    # CPU and memory profiling tool
 ```
 
 ### Key Components
-- **Search Engine** (`game/ai/search/`) - Minimax with advanced pruning techniques
-- **Evaluator** (`game/ai/evaluation/`) - Comprehensive position evaluation
-- **Move Generator** (`game/moves/`) - Legal move generation with magic bitboards
+- **Search Engine** (`game/ai/search/`) - Negamax with alpha-beta, LMR, null move pruning, quiescence search
+- **Transposition Table** (`game/ai/search/transposition.go`) - Two-bucket TT with 32-bit packed moves
+- **Evaluator** (`game/ai/evaluation/`) - Lazy evaluation with pawn hash table
+- **Move Generator** (`game/moves/`) - Legal move generation with magic bitboards and object pooling
+- **Move Ordering** (`game/ai/search/move_ordering.go`) - SEE-based ordering with killer moves and history heuristic
 - **Opening Book** (`game/openings/`) - Polyglot opening book integration
 - **UCI Interface** (`uci/`) - Universal Chess Interface protocol support
 
@@ -83,27 +98,33 @@ go build -o chessengine .
 
 ### Benchmarking
 ```bash
-# Run performance benchmarks
+# Run performance benchmarks (with/without TT comparison)
 go build -o benchmark ./cmd/benchmark
 ./benchmark
 
 # Run Strategic Test Suite (STS)
 go build -o sts ./cmd/sts
-./sts
+./sts -file testdata/STS1.epd -timeout 5 -max 100
+
+# Run CPU/memory profiling
+go build -o profile ./cmd/profile
+./profile
 ```
 
 ## Testing & Validation
 
 ### Comprehensive Test Suite
-- **Unit Tests** for all major components with >80% coverage
-- **Perft Tests** for move generation validation at various depths
+- **Unit Tests** for all major components (32 test files, 133+ test functions)
+- **Perft Tests** for move generation validation at depths 1-6
 - **Integration Tests** for UCI protocol and game flow
-- **Strategic Test Suite (STS)** for positional evaluation validation
+- **Strategic Test Suite (STS)** with 600 test positions for positional evaluation validation
+- **EPD Test Support** for custom test position files
 
 ### Performance Testing
-- **Benchmark Suite** comparing against established engines
-- **Profiling Tools** for performance optimization
-- **Memory Usage** analysis and optimization
+- **Benchmark Suite** comparing search with/without transposition tables
+- **Profiling Tools** for CPU and memory profiling (pprof format)
+- **STS Rating System** with approximate ELO estimation
+- **Node Performance Analysis** including NPS, effective branching factor, and TT hit rates
 
 ### Run Tests
 ```bash
@@ -123,31 +144,42 @@ go test -run TestPerft ./game/moves
 ## Performance
 
 ### Search Performance
-- **Node rate**: ~500K-1M nodes/second (hardware dependent)
-- **Search depth**: Typically 6-12 ply in tournament time controls
-- **Memory usage**: ~50-200MB for transposition tables
+- **Node rate**: ~1.3-1.6M nodes/second (hardware dependent, verified via STS benchmarks)
+- **Search depth**: Typically 8-12 ply in tournament time controls
+- **Memory usage**: ~50-200MB for transposition tables, ~256KB for pawn hash table
+- **TT hit rate**: ~70-80% in mid-game positions
 
 ### Engine Strength
-- Validated against standard test suites (STS, EPD)
-- Competitive performance against engines of similar complexity
-- Estimated playing strength: ~1800-2200 ELO (hardware dependent)
+- **STS Score**: 424/600 (71%) - STS Rating: ~3000
+- **Positional Understanding**: IM+ level (based on STS categories)
+- **Estimated Playing Strength**: ~2000-2200 ELO (hardware dependent)
+- **Match Results**: 33-66% win rate against weak Stockfish variants in bullet (2+2) time controls
+- Validated against Strategic Test Suite (STS1-6) with comprehensive positional tests
 
 ## Technical Details
 
 ### Search Algorithm Features
 - **Iterative Deepening** with time management
-- **Principal Variation Search** (PVS)
-- **Late Move Reductions** (LMR) for non-critical moves
-- **Aspiration Windows** for efficient root search
-- **Null Move Pruning** for forward pruning
-- **Razoring** for forward pruning in losing positions at shallow depths
+- **Principal Variation Search** (PVS) at root level
+- **Late Move Reductions** (LMR) with pre-calculated table and history heuristic adjustments
+- **Aspiration Windows** with dynamic widening for efficient root search
+- **Null Move Pruning** with adaptive R (2-3 based on depth)
+- **Razoring** at depth 1 with conservative 125cp margin
+- **Check Extensions** for automatic depth extension when in check
+- **Quiescence Search** with delta pruning and SEE-based capture filtering
 
 ### Evaluation Features
-- **Tapered Evaluation** blending middle game and endgame scores
-- **Piece-Square Tables** for positional evaluation
-- **King Safety** patterns and pawn shields
-- **Mobility** evaluation for all piece types
-- **Passed Pawn** evaluation with advancement bonuses
+- **Phase-based Evaluation** with endgame detection (< 14 pieces threshold)
+- **Piece-Square Tables** with incremental updates for positional evaluation
+- **Pawn Hash Table** with 16K entries for caching pawn structure evaluations
+- **Pawn Structure** analysis including passed, isolated, doubled, connected, and backward pawns
+- **King Safety** with castling bonus, pawn shelter, open file detection, and king zone threat evaluation
+- **Piece Mobility** with pre-computed tables for knights and attack-based evaluation for bishops, rooks, and queens
+- **Knight Outposts** with defended square detection in enemy territory
+- **Bishop Pair** bonus
+- **Rook Evaluation** including open files and 7th rank bonus
+- **Passed Pawn** evaluation with exponential advancement bonuses by rank
+- **Lazy Evaluation** with early cutoffs to avoid expensive calculations
 
 ## Performance History
 
