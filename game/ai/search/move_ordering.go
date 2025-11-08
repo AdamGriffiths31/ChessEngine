@@ -27,6 +27,31 @@ func sortMoveScores(moves []moveScore) {
 	}
 }
 
+// getAbsPieceValue returns the absolute value of a piece
+func getAbsPieceValue(piece board.Piece) int {
+	value := evaluation.GetPieceValue(piece)
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+// applyMoveOrdering reorders the move list based on sorted scores in moveOrderBuffer
+func (m *MinimaxEngine) applyMoveOrdering(moveList *moves.MoveList) {
+	if cap(m.searchState.reorderBuffer) < moveList.Count {
+		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
+	} else {
+		m.searchState.reorderBuffer = m.searchState.reorderBuffer[:moveList.Count]
+	}
+
+	for i := 0; i < moveList.Count; i++ {
+		origIndex := m.searchState.moveOrderBuffer[i].index
+		m.searchState.reorderBuffer[i] = moveList.Moves[origIndex]
+	}
+
+	copy(moveList.Moves[:moveList.Count], m.searchState.reorderBuffer)
+}
+
 // orderMoves orders moves for search
 func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, depth int, ttMove board.Move) {
 	if moveList.Count <= 1 {
@@ -79,22 +104,11 @@ func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, dep
 	// Sort using optimized insertion sort (avoids reflection overhead)
 	sortMoveScores(m.searchState.moveOrderBuffer)
 
-	if cap(m.searchState.reorderBuffer) < moveList.Count {
-		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
-	} else {
-		m.searchState.reorderBuffer = m.searchState.reorderBuffer[:moveList.Count]
-	}
-
-	for i := 0; i < moveList.Count; i++ {
-		origIndex := m.searchState.moveOrderBuffer[i].index
-		m.searchState.reorderBuffer[i] = moveList.Moves[origIndex]
-	}
-
-	copy(moveList.Moves[:moveList.Count], m.searchState.reorderBuffer)
+	m.applyMoveOrdering(moveList)
 }
 
-// orderCaptures orders captures using SEE scores
-func (m *MinimaxEngine) orderCaptures(b *board.Board, moveList *moves.MoveList) {
+// orderCaptures orders captures using MVV-LVA
+func (m *MinimaxEngine) orderCaptures(moveList *moves.MoveList) {
 	if moveList.Count <= 1 {
 		return
 	}
@@ -107,24 +121,17 @@ func (m *MinimaxEngine) orderCaptures(b *board.Board, moveList *moves.MoveList) 
 
 	for i := 0; i < moveList.Count; i++ {
 		move := moveList.Moves[i]
-		score := m.seeCalculator.SEE(b, move)
+
+		victimValue := getAbsPieceValue(move.Captured)
+		attackerValue := getAbsPieceValue(move.Piece)
+
+		score := (victimValue * 10) - attackerValue
 		m.searchState.moveOrderBuffer[i] = moveScore{index: i, score: score}
 	}
 
 	sortMoveScores(m.searchState.moveOrderBuffer)
 
-	if cap(m.searchState.reorderBuffer) < moveList.Count {
-		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
-	} else {
-		m.searchState.reorderBuffer = m.searchState.reorderBuffer[:moveList.Count]
-	}
-
-	for i := 0; i < moveList.Count; i++ {
-		origIndex := m.searchState.moveOrderBuffer[i].index
-		m.searchState.reorderBuffer[i] = moveList.Moves[origIndex]
-	}
-
-	copy(moveList.Moves[:moveList.Count], m.searchState.reorderBuffer)
+	m.applyMoveOrdering(moveList)
 }
 
 // getCaptureScore calculates the capture score using SEE for accurate evaluation
@@ -147,19 +154,18 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 		return 0
 	}
 
-	seeValue := m.seeCalculator.SEE(b, move)
-
-	victimValue := evaluation.GetPieceValue(move.Captured)
-	if victimValue < 0 {
-		victimValue = -victimValue
-	}
-
-	attackerValue := evaluation.GetPieceValue(move.Piece)
-	if attackerValue < 0 {
-		attackerValue = -attackerValue
-	}
+	victimValue := getAbsPieceValue(move.Captured)
+	attackerValue := getAbsPieceValue(move.Piece)
 
 	mvvLvaScore := (victimValue * 10) - attackerValue
+
+	// Skip SEE for obviously good captures (capture higher value piece)
+	if victimValue > attackerValue {
+		return 1000000 + mvvLvaScore
+	}
+
+	// For equal/lower value captures, use SEE
+	seeValue := m.seeCalculator.SEE(b, move)
 
 	if seeValue > 0 {
 		return 1000000 + seeValue + mvvLvaScore

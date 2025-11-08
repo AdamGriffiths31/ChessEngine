@@ -99,7 +99,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	if inCheck {
 		m.orderMoves(b, movesToSearch, 0, board.Move{}) // Order all moves when in check
 	} else {
-		m.orderCaptures(b, movesToSearch) // Order captures in normal quiescence
+		m.orderCaptures(movesToSearch) // Order captures in normal quiescence
 	}
 
 	legalMoveCount := 0
