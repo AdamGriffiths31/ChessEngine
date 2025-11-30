@@ -54,16 +54,17 @@ func (ph *ProtocolHandler) ParsePosition(args []string) (fen string, moves []str
 		return "", nil, fmt.Errorf("position command requires arguments")
 	}
 
-	if args[0] == "startpos" {
+	switch args[0] {
+	case "startpos":
 		fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 		args = args[1:]
-	} else if args[0] == "fen" {
+	case "fen":
 		if len(args) < 7 {
 			return "", nil, fmt.Errorf("fen position requires 6 parts")
 		}
 		fen = strings.Join(args[1:7], " ")
 		args = args[7:]
-	} else {
+	default:
 		return "", nil, fmt.Errorf("position must start with 'startpos' or 'fen'")
 	}
 

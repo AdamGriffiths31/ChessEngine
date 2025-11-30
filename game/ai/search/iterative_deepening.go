@@ -42,7 +42,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		}
 	}
 
-	m.orderMoves(b, pseudoMoves, 0, rootTTMove)
+	m.orderMovesAtRoot(b, pseudoMoves, rootTTMove)
 
 	lastCompletedBestMove := pseudoMoves.Moves[0]
 	lastCompletedScore := ai.EvaluationScore(0)

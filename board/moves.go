@@ -422,11 +422,12 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	var movedPiece Piece
 	if move.Promotion != Empty && move.Promotion != 0 {
 		// For promotion moves, restore the original pawn
-		if move.To.Rank == 7 { // White promotion (to rank 8)
+		switch move.To.Rank {
+		case 7: // White promotion (to rank 8)
 			movedPiece = WhitePawn
-		} else if move.To.Rank == 0 { // Black promotion (to rank 1)
+		case 0: // Black promotion (to rank 1)
 			movedPiece = BlackPawn
-		} else {
+		default:
 			movedPiece = move.Piece
 		}
 	} else {

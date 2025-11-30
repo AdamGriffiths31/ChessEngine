@@ -7,24 +7,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/game/moves"
 )
 
-// moveScore is a temporary structure used during move ordering to pair each move
-// with its calculated score, allowing moves to be sorted by priority before search.
 type moveScore struct {
-	index int // Original index in the move list
-	score int // Calculated ordering score (higher = better)
-}
-
-// sortMoveScores sorts move scores in descending order (highest score first)
-func sortMoveScores(moves []moveScore) {
-	for i := 1; i < len(moves); i++ {
-		key := moves[i]
-		j := i - 1
-		for j >= 0 && moves[j].score < key.score {
-			moves[j+1] = moves[j]
-			j--
-		}
-		moves[j+1] = key
-	}
+	score int
 }
 
 // getAbsPieceValue returns the absolute value of a piece
@@ -36,33 +20,52 @@ func getAbsPieceValue(piece board.Piece) int {
 	return value
 }
 
-// applyMoveOrdering reorders the move list based on sorted scores in moveOrderBuffer
-func (m *MinimaxEngine) applyMoveOrdering(moveList *moves.MoveList) {
-	if cap(m.searchState.reorderBuffer) < moveList.Count {
-		m.searchState.reorderBuffer = make([]board.Move, moveList.Count)
-	} else {
-		m.searchState.reorderBuffer = m.searchState.reorderBuffer[:moveList.Count]
-	}
-
-	for i := 0; i < moveList.Count; i++ {
-		origIndex := m.searchState.moveOrderBuffer[i].index
-		m.searchState.reorderBuffer[i] = moveList.Moves[origIndex]
-	}
-
-	copy(moveList.Moves[:moveList.Count], m.searchState.reorderBuffer)
-}
-
-// orderMoves orders moves for search
-func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, depth int, ttMove board.Move) {
-	if moveList.Count <= 1 {
+// pickNextMove finds the highest-scored move from startIndex onwards and swaps it to startIndex
+func (m *MinimaxEngine) pickNextMove(moveList *moves.MoveList, startIndex, ply int) {
+	if startIndex >= moveList.Count-1 {
 		return
 	}
 
-	if cap(m.searchState.moveOrderBuffer) < moveList.Count {
-		m.searchState.moveOrderBuffer = make([]moveScore, moveList.Count)
-	} else {
-		m.searchState.moveOrderBuffer = m.searchState.moveOrderBuffer[:moveList.Count]
+	if ply < 0 || ply >= MaxKillerDepth {
+		return
 	}
+
+	buffer := m.searchState.moveOrderBuffers[ply]
+	bestIdx := startIndex
+	bestScore := buffer[startIndex].score
+
+	for i := startIndex + 1; i < moveList.Count; i++ {
+		if buffer[i].score > bestScore {
+			bestScore = buffer[i].score
+			bestIdx = i
+		}
+	}
+
+	if bestIdx != startIndex {
+		moveList.Moves[startIndex], moveList.Moves[bestIdx] =
+			moveList.Moves[bestIdx], moveList.Moves[startIndex]
+		buffer[startIndex], buffer[bestIdx] =
+			buffer[bestIdx], buffer[startIndex]
+	}
+}
+
+// scoreMoves assigns scores to all moves for later pick-best selection
+func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *moves.MoveList, depth, ply int, ttMove board.Move) {
+	if moveList.Count == 0 {
+		return
+	}
+
+	if ply < 0 || ply >= MaxKillerDepth {
+		return
+	}
+
+	if cap(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
+		m.searchState.moveOrderBuffers[ply] = make([]moveScore, moveList.Count)
+	} else if len(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
+		m.searchState.moveOrderBuffers[ply] = m.searchState.moveOrderBuffers[ply][:moveList.Count]
+	}
+
+	buffer := m.searchState.moveOrderBuffers[ply]
 
 	for i := 0; i < moveList.Count; i++ {
 		move := moveList.Moves[i]
@@ -98,26 +101,35 @@ func (m *MinimaxEngine) orderMoves(b *board.Board, moveList *moves.MoveList, dep
 			}
 		}
 
-		m.searchState.moveOrderBuffer[i] = moveScore{index: i, score: score}
+		buffer[i] = moveScore{score: score}
 	}
-
-	// Sort using optimized insertion sort (avoids reflection overhead)
-	sortMoveScores(m.searchState.moveOrderBuffer)
-
-	m.applyMoveOrdering(moveList)
 }
 
-// orderCaptures orders captures using MVV-LVA
-func (m *MinimaxEngine) orderCaptures(moveList *moves.MoveList) {
-	if moveList.Count <= 1 {
+// orderMovesAtRoot scores and fully sorts moves for the root node
+func (m *MinimaxEngine) orderMovesAtRoot(b *board.Board, moveList *moves.MoveList, ttMove board.Move) {
+	m.scoreMoves(b, moveList, 0, 0, ttMove)
+	for i := 0; i < moveList.Count-1; i++ {
+		m.pickNextMove(moveList, i, 0)
+	}
+}
+
+// scoreCaptures scores captures using MVV-LVA for later pick-best selection
+func (m *MinimaxEngine) scoreCaptures(moveList *moves.MoveList, ply int) {
+	if moveList.Count == 0 {
 		return
 	}
 
-	if cap(m.searchState.moveOrderBuffer) < moveList.Count {
-		m.searchState.moveOrderBuffer = make([]moveScore, moveList.Count)
-	} else {
-		m.searchState.moveOrderBuffer = m.searchState.moveOrderBuffer[:moveList.Count]
+	if ply < 0 || ply >= MaxKillerDepth {
+		return
 	}
+
+	if cap(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
+		m.searchState.moveOrderBuffers[ply] = make([]moveScore, moveList.Count)
+	} else if len(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
+		m.searchState.moveOrderBuffers[ply] = m.searchState.moveOrderBuffers[ply][:moveList.Count]
+	}
+
+	buffer := m.searchState.moveOrderBuffers[ply]
 
 	for i := 0; i < moveList.Count; i++ {
 		move := moveList.Moves[i]
@@ -126,16 +138,13 @@ func (m *MinimaxEngine) orderCaptures(moveList *moves.MoveList) {
 		attackerValue := getAbsPieceValue(move.Piece)
 
 		score := (victimValue * 10) - attackerValue
-		m.searchState.moveOrderBuffer[i] = moveScore{index: i, score: score}
+		buffer[i] = moveScore{score: score}
 	}
-
-	sortMoveScores(m.searchState.moveOrderBuffer)
-
-	m.applyMoveOrdering(moveList)
 }
 
-// getCaptureScore calculates the capture score using SEE for accurate evaluation
-// Higher scores indicate more valuable captures (better moves to try first)
+// getCaptureScore calculates the capture score using SEE for accurate evaluation.
+// Higher scores indicate more valuable captures (better moves to try first).
+//
 // Move ordering priorities:
 //  1. TT moves: 3,000,000+
 //  2. Good captures (SEE > 0): 1,000,000+
@@ -146,7 +155,6 @@ func (m *MinimaxEngine) orderCaptures(moveList *moves.MoveList) {
 //  7. Tactical quiet moves (attacks king zone): 50,000
 //  8. Slightly bad captures (SEE >= -100): 50,000+
 //  9. Terrible captures (SEE < -100): 25,000+
-//
 // 10. Quiet moves with history: 0-10,000
 // 11. Other quiet moves: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
@@ -159,12 +167,10 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 
 	mvvLvaScore := (victimValue * 10) - attackerValue
 
-	// Skip SEE for obviously good captures (capture higher value piece)
 	if victimValue > attackerValue {
 		return 1000000 + mvvLvaScore
 	}
 
-	// For equal/lower value captures, use SEE
 	seeValue := m.seeCalculator.SEE(b, move)
 
 	if seeValue > 0 {
@@ -186,7 +192,6 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 }
 
 // getTacticalBonus calculates bonus score for moves that attack enemy pieces or king zone
-// This combines both checks into one to avoid duplicate GetPieceAttacks calls
 func (m *MinimaxEngine) getTacticalBonus(b *board.Board, move board.Move) int {
 	toSquare := move.To.Rank*8 + move.To.File
 	attacks := b.GetPieceAttacks(move.Piece, toSquare)

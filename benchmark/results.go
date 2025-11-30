@@ -38,7 +38,7 @@ func (rl *ResultsLogger) LogResults(result *Result) error {
 	if err != nil {
 		return fmt.Errorf("failed to open history file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if _, err := file.WriteString(entry + "\n"); err != nil {
 		return fmt.Errorf("failed to write to history file: %w", err)

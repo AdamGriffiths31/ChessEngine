@@ -110,13 +110,14 @@ func hasAdjacentCapturingPawn(b *board.Board, epTarget board.Square, sideToMove 
 	var pawnRank int
 	var pawnPiece board.Piece
 
-	if sideToMove == "b" {
+	switch sideToMove {
+	case "b":
 		pawnRank = 4
 		pawnPiece = board.BlackPawn
-	} else if sideToMove == "w" {
+	case "w":
 		pawnRank = 3
 		pawnPiece = board.WhitePawn
-	} else {
+	default:
 		panic("invalid sideToMove: " + sideToMove)
 	}
 

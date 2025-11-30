@@ -95,17 +95,25 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 
 	defer moves.ReleaseMoveList(movesToSearch)
 
-	// Order moves appropriately
+	// Score moves appropriately
+	// Use depthFromRoot as ply index for buffer selection
+	ply := depthFromRoot
+	if ply >= MaxKillerDepth {
+		ply = MaxKillerDepth - 1
+	}
+
 	if inCheck {
-		m.orderMoves(b, movesToSearch, 0, board.Move{}) // Order all moves when in check
+		m.scoreMoves(b, movesToSearch, 0, ply, board.Move{}) // Score all moves when in check
 	} else {
-		m.orderCaptures(movesToSearch) // Order captures in normal quiescence
+		m.scoreCaptures(movesToSearch, ply) // Score captures in normal quiescence
 	}
 
 	legalMoveCount := 0
 	bestScore := eval
 
 	for i := 0; i < movesToSearch.Count; i++ {
+		// Pick the best remaining move
+		m.pickNextMove(movesToSearch, i, ply)
 		move := movesToSearch.Moves[i]
 
 		if m.searchState.searchCancelled {

@@ -104,13 +104,14 @@ func (ucl *CommunicationLogger) LogPositionCommand(command string) {
 		return
 	}
 
-	if parts[1] == "startpos" {
+	switch parts[1] {
+	case "startpos":
 		ucl.logger.Printf("    [POSITION: Starting position]")
 		if len(parts) > 3 && parts[2] == "moves" {
 			moves := parts[3:]
 			ucl.logger.Printf("    [MOVES: %v (%d moves)]", moves, len(moves))
 		}
-	} else if parts[1] == "fen" {
+	case "fen":
 		// Extract FEN
 		fenEnd := 2
 		for i := 2; i < len(parts) && parts[i] != "moves"; i++ {

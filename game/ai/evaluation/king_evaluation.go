@@ -158,7 +158,8 @@ func evaluatePawnShelter(b *board.Board, kingSquare int, isWhite bool) int {
 	}
 
 	if isWhite {
-		if kingSquare == 6 {
+		switch kingSquare {
+		case 6:
 			if pawns.HasBit(15) {
 				score += KingShelterBonus
 			}
@@ -168,7 +169,7 @@ func evaluatePawnShelter(b *board.Board, kingSquare int, isWhite bool) int {
 			if pawns.HasBit(13) {
 				score += KingShelterBonus / 2
 			}
-		} else if kingSquare == 2 {
+		case 2:
 			if pawns.HasBit(9) {
 				score += KingShelterBonus
 			}
@@ -180,7 +181,8 @@ func evaluatePawnShelter(b *board.Board, kingSquare int, isWhite bool) int {
 			}
 		}
 	} else {
-		if kingSquare == 62 {
+		switch kingSquare {
+		case 62:
 			if pawns.HasBit(55) {
 				score += KingShelterBonus
 			}
@@ -190,7 +192,7 @@ func evaluatePawnShelter(b *board.Board, kingSquare int, isWhite bool) int {
 			if pawns.HasBit(53) {
 				score += KingShelterBonus / 2
 			}
-		} else if kingSquare == 58 {
+		case 58:
 			if pawns.HasBit(49) {
 				score += KingShelterBonus
 			}

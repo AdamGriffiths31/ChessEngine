@@ -151,7 +151,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		return m.handleNoLegalMoves(b, player, depth, originalMaxDepth, hash)
 	}
 
-	m.orderMoves(b, pseudoMoves, currentDepth, ttMove)
+	m.scoreMoves(b, pseudoMoves, currentDepth, currentDepth, ttMove)
 
 	bestScore := -ai.MateScore - 1
 	bestMove := board.Move{}
@@ -161,6 +161,8 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 	alphaImproved := false
 
 	for i := 0; i < pseudoMoves.Count; i++ {
+		// Pick the best remaining move
+		m.pickNextMove(pseudoMoves, i, currentDepth)
 		move := pseudoMoves.Moves[i]
 
 		if m.searchState.searchCancelled {

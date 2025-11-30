@@ -93,19 +93,18 @@ func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
 	castlingRights := b.GetCastlingRights()
 	piece := b.GetPiece(move.To.Rank, move.To.File)
 
-	if piece == board.WhiteKing {
+	switch piece {
+	case board.WhiteKing:
 		castlingRights = g.removeCastlingRights(castlingRights, "KQ")
-	} else if piece == board.BlackKing {
+	case board.BlackKing:
 		castlingRights = g.removeCastlingRights(castlingRights, "kq")
-	}
-
-	if piece == board.WhiteRook {
+	case board.WhiteRook:
 		if move.From.File == QueensideRookFromFile && move.From.Rank == 0 {
 			castlingRights = g.removeCastlingRights(castlingRights, "Q")
 		} else if move.From.File == KingsideRookFromFile && move.From.Rank == 0 {
 			castlingRights = g.removeCastlingRights(castlingRights, "K")
 		}
-	} else if piece == board.BlackRook {
+	case board.BlackRook:
 		if move.From.File == QueensideRookFromFile && move.From.Rank == 7 {
 			castlingRights = g.removeCastlingRights(castlingRights, "q")
 		} else if move.From.File == KingsideRookFromFile && move.From.Rank == 7 {

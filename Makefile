@@ -151,7 +151,7 @@ vet:
 .PHONY: lint
 lint: check-golangci-lint
 	@echo "Running linters..."
-	~/go/bin/golangci-lint run
+	golangci-lint run
 
 # Testing targets
 .PHONY: test

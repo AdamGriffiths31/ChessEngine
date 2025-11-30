@@ -15,12 +15,11 @@ import (
 
 // State contains transient state for a single search operation
 type State struct {
-	killerTable     [MaxKillerDepth][2]board.Move
-	moveOrderBuffer []moveScore
-	reorderBuffer   []board.Move
-	searchStats     ai.SearchStats
-	searchParams    Params
-	searchCancelled bool
+	killerTable      [MaxKillerDepth][2]board.Move
+	moveOrderBuffers [MaxKillerDepth][]moveScore // Per-ply buffers for move ordering
+	searchStats      ai.SearchStats
+	searchParams     Params
+	searchCancelled  bool
 }
 
 // MinimaxEngine implements negamax search with alpha-beta pruning, transposition table,
@@ -51,10 +50,8 @@ func NewMinimaxEngine() *MinimaxEngine {
 		historyTable:       NewHistoryTable(),
 		seeCalculator:      evaluation.NewSEECalculator(),
 		searchState: State{
-			killerTable:     [MaxKillerDepth][2]board.Move{},
-			moveOrderBuffer: make([]moveScore, 0, 512),
-			reorderBuffer:   make([]board.Move, 0, 512),
-			searchParams:    getParams(),
+			killerTable:  [MaxKillerDepth][2]board.Move{},
+			searchParams: getParams(),
 		},
 	}
 
@@ -173,9 +170,9 @@ func (m *MinimaxEngine) ClearSearchState() {
 	for i := 0; i < MaxKillerDepth; i++ {
 		m.searchState.killerTable[i][0] = board.Move{}
 		m.searchState.killerTable[i][1] = board.Move{}
+		m.searchState.moveOrderBuffers[i] = nil
 	}
 	m.searchState.searchStats = ai.SearchStats{}
-	m.searchState.moveOrderBuffer = make([]moveScore, 0, 256)
 	m.searchState.searchCancelled = false
 
 	// Clear repetition history

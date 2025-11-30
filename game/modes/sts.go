@@ -355,7 +355,7 @@ func (sm *STSMode) saveResults(results *STSResults) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	timestamp := time.Now().Format("2006-01-02 15:04")
 	epdDescription := fmt.Sprintf("STS1-%d (%d files)", len(results.Files), len(results.Files))
@@ -391,7 +391,7 @@ func (sm *STSMode) createResultsFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	header := `# STS Benchmark Results History
 
