@@ -31,7 +31,8 @@ func main() {
 	fmt.Println("2. STS Benchmark")
 	fmt.Println("3. Player vs Computer")
 	fmt.Println("4. Manual Play (Player vs Player)")
-	fmt.Print("\nEnter choice (1, 2, 3, or 4): ")
+	fmt.Println("5. Elo Benchmark")
+	fmt.Print("\nEnter choice (1-5): ")
 
 	var choice int
 	if _, err := fmt.Scanln(&choice); err != nil {
@@ -53,6 +54,9 @@ func main() {
 	case 4:
 		manualMode := modes.NewManualMode()
 		err = manualMode.Run()
+	case 5:
+		eloMode := modes.NewEloBenchmarkMode()
+		err = eloMode.Run()
 	default:
 		fmt.Println("Invalid choice")
 		os.Exit(1)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/AdamGriffiths31/ChessEngine/benchmark"
 	"github.com/AdamGriffiths31/ChessEngine/ui"
@@ -220,17 +221,20 @@ func (bm *BenchmarkMode) selectGameCount() (int, error) {
 // checkDependencies verifies that required dependencies are available
 func (bm *BenchmarkMode) checkDependencies() error {
 	cutechessPath := filepath.Join(bm.rootPath, "tools", "engines", "cutechess-cli")
-	if _, err := os.Stat(cutechessPath); os.IsNotExist(err) {
-		return fmt.Errorf("cutechess-cli not found at %s", cutechessPath)
+	if runtime.GOOS == "windows" {
+		cutechessPath += ".exe"
 	}
 
-	// Check if cutechess-cli is executable
 	info, err := os.Stat(cutechessPath)
-	if err != nil {
+	if os.IsNotExist(err) {
+		return fmt.Errorf("cutechess-cli not found at %s", cutechessPath)
+	} else if err != nil {
 		return fmt.Errorf("failed to stat cutechess-cli: %w", err)
 	}
 
-	if info.Mode()&0111 == 0 {
+	// Windows has no Unix-style executable bit; os.Stat never reports one,
+	// so only enforce the check on platforms where it's meaningful.
+	if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 		return fmt.Errorf("cutechess-cli is not executable at %s", cutechessPath)
 	}
 
@@ -248,5 +252,5 @@ func (bm *BenchmarkMode) showIllegalMoveInfo(result *benchmark.Result) {
 	fmt.Printf("  - Timestamp: %s\n", result.Timestamp)
 	fmt.Println()
 	fmt.Println("Please check the logs and PGN file to investigate the issue.")
-	fmt.Println("Look for recent UCI debug logs in /tmp/ and game engine logs.")
+	fmt.Printf("Look for recent UCI debug logs in %s and game engine logs.\n", filepath.Join(os.TempDir(), "chess"))
 }

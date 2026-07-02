@@ -27,6 +27,8 @@ Thumbs.db
 # Tools directory - exclude large binaries and generated files
 bin/
 tools/bin/
+.gotmp/
+.gocache/
 tools/results/
 tools/engines/
 tools/cutechess.AppImage
@@ -44,6 +46,7 @@ testdata/
 
 # Claude Code documentation
 CLAUDE.md
+docs/*
 
 # Configuration files
 *.yml

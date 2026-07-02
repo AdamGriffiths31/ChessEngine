@@ -21,6 +21,18 @@ TOOLS_DIR := tools
 COVERAGE_DIR := coverage
 DIST_DIR := dist
 
+# Go needs a writable temp dir and build cache. Some shells (e.g. MSYS2
+# make on Windows) strip TMP/TEMP/LocalAppData from the recipe environment,
+# which makes `go` fall back to an unwritable system dir (or fail outright
+# looking for %LocalAppData%). Point both at project-local directories
+# instead so builds work regardless of the inherited environment. Kept
+# relative (not $(CURDIR)-prefixed) since CURDIR may contain spaces, which
+# breaks unquoted Makefile recipes; go resolves relative paths against the
+# cwd make already runs recipes in.
+export GOTMPDIR := .gotmp
+GOCACHE_DIR := .gocache
+export GOCACHE := $(abspath $(GOCACHE_DIR))
+
 # OS and architecture detection
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
@@ -80,27 +92,27 @@ help:
 build: deps fmt vet lint main uci benchmark sts profile
 
 .PHONY: main
-main: $(BUILD_DIR)
+main: $(BUILD_DIR) $(GOTMPDIR) $(GOCACHE_DIR)
 	@echo "Building main chess engine..."
 	$(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY) ./main.go
 
 .PHONY: uci
-uci: $(TOOLS_DIR)/bin
+uci: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
 	@echo "Building UCI binary..."
 	$(GO) build $(GOBUILDFLAGS) -o $(UCI_BINARY) ./cmd/uci
 
 .PHONY: benchmark
-benchmark: $(TOOLS_DIR)/bin
+benchmark: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
 	@echo "Building benchmark binary..."
 	$(GO) build $(GOBUILDFLAGS) -o $(BENCHMARK_BINARY) ./cmd/benchmark
 
 .PHONY: sts
-sts: $(TOOLS_DIR)/bin
+sts: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
 	@echo "Building STS binary..."
 	$(GO) build $(GOBUILDFLAGS) -o $(STS_BINARY) ./cmd/sts
 
 .PHONY: profile
-profile: $(TOOLS_DIR)/bin
+profile: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
 	@echo "Building profile binary..."
 	$(GO) build $(GOBUILDFLAGS) -o $(PROFILE_BINARY) ./cmd/profile
 
@@ -210,6 +222,8 @@ clean:
 	rm -f coverage.out
 	rm -rf $(COVERAGE_DIR)
 	rm -rf $(DIST_DIR)
+	rm -rf $(GOTMPDIR)
+	rm -rf $(GOCACHE_DIR)
 
 .PHONY: clean-all
 clean-all: clean
@@ -239,6 +253,7 @@ check-deps:
 	@echo "Checking required dependencies..."
 	@command -v go >/dev/null 2>&1 || (echo "Go is not installed" && exit 1)
 	@command -v golangci-lint >/dev/null 2>&1 || echo "Warning: golangci-lint not found. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+	@command -v zip >/dev/null 2>&1 || echo "Warning: zip not found (only needed for 'make dist'). On Git Bash/MSYS2: pacman -S zip"
 	@test -f $(TOOLS_DIR)/engines/cutechess-cli || echo "Warning: cutechess-cli not found at $(TOOLS_DIR)/engines/cutechess-cli"
 	@test -f $(TOOLS_DIR)/engines/stockfish || echo "Warning: stockfish not found at $(TOOLS_DIR)/engines/stockfish"
 	@echo "Dependency check complete."
@@ -254,6 +269,12 @@ $(BUILD_DIR):
 $(TOOLS_DIR)/bin:
 	mkdir -p $(TOOLS_DIR)/bin
 
+$(GOTMPDIR):
+	mkdir -p $(GOTMPDIR)
+
+$(GOCACHE_DIR):
+	mkdir -p $(GOCACHE_DIR)
+
 coverage-dir:
 	mkdir -p $(COVERAGE_DIR)
 
@@ -263,6 +284,7 @@ dist-dir:
 # Distribution targets
 .PHONY: dist
 dist: dist-dir build-all-platforms
+	@command -v zip >/dev/null 2>&1 || (echo "zip is required for 'make dist' (packages the Windows artifact). On Git Bash/MSYS2: pacman -S zip" && exit 1)
 	@echo "Creating distribution packages..."
 	# Linux
 	tar -czf $(DIST_DIR)/chess-engine-linux-amd64.tar.gz -C $(BUILD_DIR) $(MAIN_BINARY)-linux-amd64 -C ../$(TOOLS_DIR)/bin uci-linux-amd64

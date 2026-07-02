@@ -6,6 +6,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/board"
 	"github.com/AdamGriffiths31/ChessEngine/game/moves"
+	"github.com/AdamGriffiths31/ChessEngine/game/openings"
 )
 
 // Player represents which side is to move in the game.
@@ -30,14 +31,16 @@ type State struct {
 	MoveCount int
 	GameOver  bool
 	Winner    Player
+	IsDraw    bool
 	EnPassant *board.Square
 }
 
 // Engine manages the chess game state and move execution.
 type Engine struct {
-	state     *State
-	generator *moves.Generator
-	validator *moves.Validator
+	state       *State
+	generator   *moves.Generator
+	validator   *moves.Validator
+	hashHistory []uint64
 }
 
 // NewEngine creates a new chess engine with starting position.
@@ -54,8 +57,9 @@ func NewEngine() *Engine {
 			GameOver:  false,
 			EnPassant: nil,
 		},
-		generator: moves.NewGenerator(),
-		validator: moves.NewValidator(),
+		generator:   moves.NewGenerator(),
+		validator:   moves.NewValidator(),
+		hashHistory: []uint64{openings.GetPolyglotHash().HashPosition(initialBoard)},
 	}
 }
 
@@ -74,8 +78,14 @@ func (e *Engine) GetState() *State {
 
 // MakeMove applies a move to the game board.
 func (e *Engine) MakeMove(move board.Move) error {
-	if e.state.GameOver {
-		return nil
+	// board.Board.MakeMove only falls back to looking up the moving piece
+	// when move.Piece == board.Empty; a zero-value (unset) Piece field is
+	// used as-is and silently corrupts the board. Mirror the defensive
+	// lookup that board.Board.MakeMoveWithUndo already performs so callers
+	// that only supply From/To/Promotion (as game.Engine's own tests do)
+	// behave correctly.
+	if move.Piece == board.Empty || move.Piece == 0 {
+		move.Piece = e.state.Board.GetPiece(move.From.Rank, move.From.File)
 	}
 
 	err := e.state.Board.MakeMove(move)
@@ -84,7 +94,56 @@ func (e *Engine) MakeMove(move board.Move) error {
 	}
 
 	e.state.MoveCount = e.state.Board.GetFullMoveNumber()
+	e.updateGameOverState()
 	return nil
+}
+
+// updateGameOverState checks for checkmate, stalemate, the 50-move rule,
+// and threefold repetition, populating State.GameOver/Winner/IsDraw.
+func (e *Engine) updateGameOverState() {
+	hash := openings.GetPolyglotHash().HashPosition(e.state.Board)
+	e.hashHistory = append(e.hashHistory, hash)
+
+	currentPlayer := e.GetCurrentPlayer()
+	legalMoves := e.generator.GenerateAllMoves(e.state.Board, moves.Player(currentPlayer))
+	legalCount := legalMoves.Count
+	moves.ReleaseMoveList(legalMoves)
+
+	switch {
+	case legalCount == 0:
+		e.state.GameOver = true
+		if e.generator.IsKingInCheck(e.state.Board, moves.Player(currentPlayer)) {
+			e.state.Winner = opponentOf(currentPlayer)
+		} else {
+			e.state.IsDraw = true
+		}
+	case e.state.Board.GetHalfMoveClock() >= 100:
+		e.state.GameOver = true
+		e.state.IsDraw = true
+	case e.occursThreeTimes(hash):
+		e.state.GameOver = true
+		e.state.IsDraw = true
+	}
+}
+
+// occursThreeTimes reports whether hash has appeared at least three times
+// in the game's position history (threefold repetition).
+func (e *Engine) occursThreeTimes(hash uint64) bool {
+	count := 0
+	for _, h := range e.hashHistory {
+		if h == hash {
+			count++
+		}
+	}
+	return count >= 3
+}
+
+// opponentOf returns the other player.
+func opponentOf(p Player) Player {
+	if p == White {
+		return Black
+	}
+	return White
 }
 
 // Reset returns the engine to the starting position.
@@ -100,6 +159,7 @@ func (e *Engine) Reset() {
 		GameOver:  false,
 		EnPassant: nil,
 	}
+	e.hashHistory = []uint64{openings.GetPolyglotHash().HashPosition(initialBoard)}
 }
 
 // GetCurrentFEN returns the current position in FEN notation.
@@ -115,6 +175,9 @@ func (e *Engine) LoadFromFEN(fen string) error {
 	}
 
 	e.state.Board = newBoard
+	e.state.GameOver = false
+	e.state.IsDraw = false
+	e.hashHistory = []uint64{openings.GetPolyglotHash().HashPosition(newBoard)}
 	return nil
 }
 

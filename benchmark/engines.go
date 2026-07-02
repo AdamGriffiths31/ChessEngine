@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // EngineManager handles loading and managing chess engine configurations.
@@ -99,4 +100,18 @@ func (em *EngineManager) FormatEngineOptions(engine *Engine) []string {
 	}
 
 	return options
+}
+
+// FindEngineByCommandSubstring returns the first configured engine whose
+// Command contains substr (case-insensitive).
+func (em *EngineManager) FindEngineByCommandSubstring(substr string) (*Engine, error) {
+	lowerSubstr := strings.ToLower(substr)
+
+	for _, engine := range em.GetAvailableEngines() {
+		if strings.Contains(strings.ToLower(engine.Command), lowerSubstr) {
+			return &engine, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no engine found with command containing %q", substr)
 }

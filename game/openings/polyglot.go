@@ -176,33 +176,65 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 		return board.Move{}, fmt.Errorf("no piece at from square %c%d", 'a'+fromFile, fromRank+1)
 	}
 
+	// Polyglot encodes castling as the king moving to its OWN rook's square
+	// (e.g. White kingside is e1-h1, not e1-g1). Detect that pattern and
+	// remap it to the king's actual destination with IsCastling set, so
+	// board.Board.MakeMove executes a real castle instead of treating it
+	// as the king capturing its own rook.
+	isCastling := false
+	if (movingPiece == board.WhiteKing || movingPiece == board.BlackKing) && fromFile == 4 {
+		switch {
+		case fromRank == 0 && toRank == 0 && toFile == 7: // White kingside e1-h1
+			toFile, isCastling = 6, true
+		case fromRank == 0 && toRank == 0 && toFile == 0: // White queenside e1-a1
+			toFile, isCastling = 2, true
+		case fromRank == 7 && toRank == 7 && toFile == 7: // Black kingside e8-h8
+			toFile, isCastling = 6, true
+		case fromRank == 7 && toRank == 7 && toFile == 0: // Black queenside e8-a8
+			toFile, isCastling = 2, true
+		}
+	}
+
 	capturedPiece := b.GetPiece(toRank, toFile)
+	if isCastling {
+		capturedPiece = board.Empty
+	}
 
 	move := board.Move{
-		From:      board.Square{File: fromFile, Rank: fromRank},
-		To:        board.Square{File: toFile, Rank: toRank},
-		Piece:     movingPiece,
-		Captured:  capturedPiece,
-		IsCapture: capturedPiece != board.Empty,
-		Promotion: board.Empty,
+		From:       board.Square{File: fromFile, Rank: fromRank},
+		To:         board.Square{File: toFile, Rank: toRank},
+		Piece:      movingPiece,
+		Captured:   capturedPiece,
+		IsCapture:  capturedPiece != board.Empty,
+		IsCastling: isCastling,
+		Promotion:  board.Empty,
 	}
 
 	if promotionPiece > 0 {
+		isWhite := movingPiece >= 'A' && movingPiece <= 'Z'
 		switch promotionPiece {
 		case PromotionKnight:
-			move.Promotion = board.WhiteKnight
+			move.Promotion = pieceForColor(isWhite, board.WhiteKnight, board.BlackKnight)
 		case PromotionBishop:
-			move.Promotion = board.WhiteBishop
+			move.Promotion = pieceForColor(isWhite, board.WhiteBishop, board.BlackBishop)
 		case PromotionRook:
-			move.Promotion = board.WhiteRook
+			move.Promotion = pieceForColor(isWhite, board.WhiteRook, board.BlackRook)
 		case PromotionQueen:
-			move.Promotion = board.WhiteQueen
+			move.Promotion = pieceForColor(isWhite, board.WhiteQueen, board.BlackQueen)
 		default:
 			return board.Move{}, fmt.Errorf("invalid promotion piece: %d", promotionPiece)
 		}
 	}
 
 	return move, nil
+}
+
+// pieceForColor returns whitePiece if isWhite, otherwise blackPiece.
+func pieceForColor(isWhite bool, whitePiece, blackPiece board.Piece) board.Piece {
+	if isWhite {
+		return whitePiece
+	}
+	return blackPiece
 }
 
 // WriteEntry writes a single entry to a writer (for creating test books)

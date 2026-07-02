@@ -58,7 +58,7 @@ func NewUCIEngine() *Engine {
 
 func createDebugLogger() *log.Logger {
 	logLocations := []string{
-		"/tmp/chess",
+		filepath.Join(os.TempDir(), "chess"),
 	}
 
 	for _, dir := range logLocations {

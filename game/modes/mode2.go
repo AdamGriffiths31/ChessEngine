@@ -207,9 +207,12 @@ func (cm *ComputerMode) handleSpecialCommand(command string) {
 
 // handleGameOver handles the end of the game
 func (cm *ComputerMode) handleGameOver(state *game.State) {
-	if state.Winner == cm.humanColor {
+	switch {
+	case state.IsDraw:
+		fmt.Println("Game drawn.")
+	case state.Winner == cm.humanColor:
 		fmt.Println("Congratulations! You won!")
-	} else {
+	default:
 		fmt.Println("Computer wins! Better luck next time.")
 	}
 }

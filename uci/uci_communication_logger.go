@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -22,7 +23,7 @@ type CommunicationLogger struct {
 // NewUCICommunicationLogger creates a new UCI communication logger
 func NewUCICommunicationLogger() *CommunicationLogger {
 	timestamp := time.Now().Format("20060102_150405")
-	filename := fmt.Sprintf("/tmp/uci_communication_%s.log", timestamp)
+	filename := filepath.Join(os.TempDir(), fmt.Sprintf("uci_communication_%s.log", timestamp))
 
 	logFile, err := os.Create(filename) // #nosec G304 - log file path is controlled by application
 	if err != nil {

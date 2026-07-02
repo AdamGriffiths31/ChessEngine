@@ -155,6 +155,7 @@ func (m *MinimaxEngine) scoreCaptures(moveList *moves.MoveList, ply int) {
 //  7. Tactical quiet moves (attacks king zone): 50,000
 //  8. Slightly bad captures (SEE >= -100): 50,000+
 //  9. Terrible captures (SEE < -100): 25,000+
+//
 // 10. Quiet moves with history: 0-10,000
 // 11. Other quiet moves: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
