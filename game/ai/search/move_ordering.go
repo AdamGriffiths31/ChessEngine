@@ -49,8 +49,10 @@ func (m *MinimaxEngine) pickNextMove(moveList *moves.MoveList, startIndex, ply i
 	}
 }
 
-// scoreMoves assigns scores to all moves for later pick-best selection
-func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *moves.MoveList, depth, ply int, ttMove board.Move) {
+// scoreMoves assigns scores to all moves for later pick-best selection.
+// ply is the distance from the search root; it selects both the ordering
+// buffer and the killer-move slots.
+func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *moves.MoveList, ply int, ttMove board.Move) {
 	if moveList.Count == 0 {
 		return
 	}
@@ -89,7 +91,7 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *moves.MoveList, dep
 				}
 			}
 
-			if !move.IsCapture && m.isKillerMove(move, depth) {
+			if !move.IsCapture && m.isKillerMove(move, ply) {
 				score = 500000
 			}
 
@@ -107,7 +109,7 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *moves.MoveList, dep
 
 // orderMovesAtRoot scores and fully sorts moves for the root node
 func (m *MinimaxEngine) orderMovesAtRoot(b *board.Board, moveList *moves.MoveList, ttMove board.Move) {
-	m.scoreMoves(b, moveList, 0, 0, ttMove)
+	m.scoreMoves(b, moveList, 0, ttMove)
 	for i := 0; i < moveList.Count-1; i++ {
 		m.pickNextMove(moveList, i, 0)
 	}

@@ -38,6 +38,9 @@ tools/engines.json
 *.tmp
 *.log
 
+# Blunder scanner output (regenerated from elo_results.jsonl)
+blunders.epd
+
 # Profiling data
 profiles/
 

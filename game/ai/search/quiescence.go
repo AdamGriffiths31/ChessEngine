@@ -30,22 +30,23 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		if entry, found := m.transpositionTable.Probe(hash); found {
 			m.searchState.searchStats.TTHits++
 			if entry.GetDepth() >= 0 {
+				ttScore := scoreFromTT(entry.Score, depthFromRoot)
 				switch entry.GetType() {
 				case EntryExact:
-					return entry.Score
+					return ttScore
 				case EntryLowerBound:
-					if entry.Score >= beta {
-						return entry.Score
+					if ttScore >= beta {
+						return ttScore
 					}
-					if entry.Score > alpha {
-						alpha = entry.Score
+					if ttScore > alpha {
+						alpha = ttScore
 					}
 				case EntryUpperBound:
-					if entry.Score <= alpha {
-						return entry.Score
+					if ttScore <= alpha {
+						return ttScore
 					}
-					if entry.Score < beta {
-						beta = entry.Score
+					if ttScore < beta {
+						beta = ttScore
 					}
 				}
 			}
@@ -103,7 +104,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	}
 
 	if inCheck {
-		m.scoreMoves(b, movesToSearch, 0, ply, board.Move{}) // Score all moves when in check
+		m.scoreMoves(b, movesToSearch, ply, board.Move{}) // Score all moves when in check
 	} else {
 		m.scoreCaptures(movesToSearch, ply) // Score captures in normal quiescence
 	}
@@ -205,7 +206,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 		} else {
 			entryType = EntryExact
 		}
-		m.transpositionTable.Store(hash, 0, bestScore, entryType, board.Move{})
+		m.transpositionTable.Store(hash, 0, scoreToTT(bestScore, depthFromRoot), entryType, board.Move{})
 	}
 
 	return bestScore

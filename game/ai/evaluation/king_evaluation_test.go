@@ -22,7 +22,7 @@ func TestEvaluateKings(t *testing.T) {
 		{
 			name:        "white_castled_kingside",
 			fen:         "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQ1RK1 w kq - 0 1",
-			expected:    75, // Actual observed value: castled + shelter
+			expected:    65, // Castled (15) + shelter f2/g2/h2 (20+20+10); Black keeps kq rights so no penalty
 			description: "White king castled kingside with good shelter",
 		},
 		{

@@ -88,22 +88,24 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 		score += KnightMobilityTable[square] * KnightMobilityUnit
 
 		if outpostRanks[rank] {
-			isOutpost := true
+			// Only enemy pawns in front of the knight can ever attack it;
+			// pawns level with or behind it are past the square for good
+			var aheadMask board.Bitboard
+			if isWhite {
+				aheadMask = board.Bitboard(^uint64(0)) << ((rank + 1) * 8)
+			} else {
+				aheadMask = board.Bitboard(uint64(1)<<(rank*8) - 1)
+			}
 
-			// Check if enemy pawns can attack this outpost square
+			var adjacentFiles board.Bitboard
 			if file > 0 {
-				leftFileMask := board.FileMask(file - 1)
-				if (enemyPawns & leftFileMask) != 0 {
-					isOutpost = false
-				}
+				adjacentFiles |= board.FileMask(file - 1)
+			}
+			if file < 7 {
+				adjacentFiles |= board.FileMask(file + 1)
 			}
 
-			if file < 7 && isOutpost {
-				rightFileMask := board.FileMask(file + 1)
-				if (enemyPawns & rightFileMask) != 0 {
-					isOutpost = false
-				}
-			}
+			isOutpost := (enemyPawns & adjacentFiles & aheadMask) == 0
 
 			// Check if knight is defended by friendly pawns
 			if isOutpost {

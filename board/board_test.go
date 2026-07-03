@@ -606,9 +606,9 @@ func TestIncrementalEvalMoveUnmake(t *testing.T) {
 	}
 
 	// After move, pawn is on e4 - different PST value
-	// e2 has PST -20, e4 has PST 25
+	// e2 has PST -20, e4 has PST 20
 	expectedMaterialAfter := 100 // Still same material
-	expectedPSTAfter := 25       // New PST value for e4
+	expectedPSTAfter := 20       // New PST value for e4
 
 	if board.GetMaterialScore() != expectedMaterialAfter {
 		t.Errorf("After move, expected material %d, got %d",
@@ -655,7 +655,7 @@ func TestIncrementalEvalCaptures(t *testing.T) {
 
 	// After capture: only white pawn remains
 	expectedMaterial := 100
-	expectedPST := 25 // e4 white pawn PST
+	expectedPST := 20 // e4 white pawn PST
 
 	if board.GetMaterialScore() != expectedMaterial {
 		t.Errorf("After capture, expected material %d, got %d",

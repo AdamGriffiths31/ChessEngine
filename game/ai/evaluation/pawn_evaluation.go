@@ -44,17 +44,20 @@ func evaluatePawnStructure(b *board.Board) int {
 	pawnHash := b.GetPawnHash()
 	hashIndex := pawnHash & 16383
 
+	// Entries store hash XOR score so a torn read (hash and score from
+	// different positions) fails validation instead of returning garbage.
 	entry := &PawnHashTable[hashIndex]
-	if entry.hash == pawnHash {
-		return entry.score
+	cachedScore := entry.score
+	if entry.hash^uint64(int64(cachedScore)) == pawnHash {
+		return cachedScore
 	}
 
 	whitePawns := b.GetPieceBitboard(board.WhitePawn)
 	blackPawns := b.GetPieceBitboard(board.BlackPawn)
 	score := evaluatePawnsSimple(whitePawns, blackPawns)
 
-	entry.hash = pawnHash
 	entry.score = score
+	entry.hash = pawnHash ^ uint64(int64(score))
 
 	return score
 }
@@ -101,9 +104,11 @@ func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool
 
 		if isIsolatedPawn(friendlyPawns, file) {
 			score += IsolatedPawnPenalty
+		} else if isBackwardPawn(square, friendlyPawns, enemyPawns, isWhite) {
+			score += BackwardPawnPenalty
 		}
 
-		if isConnectedPawn(friendlyPawns, square) {
+		if isConnectedPawn(friendlyPawns, square, isWhite) {
 			score += ConnectedPawnBonus
 		}
 	}
@@ -157,25 +162,72 @@ func isIsolatedPawn(friendlyPawns board.Bitboard, file int) bool {
 }
 
 // isConnectedPawn checks if a pawn is protected by another friendly pawn
-// Only checks backward diagonals - pawns in front cannot provide protection
-func isConnectedPawn(friendlyPawns board.Bitboard, square int) bool {
+// Support comes from behind relative to the pawn's direction of travel:
+// rank-1 for White, rank+1 for Black
+func isConnectedPawn(friendlyPawns board.Bitboard, square int, isWhite bool) bool {
 	file := square % 8
 	rank := square / 8
 
-	// Check left diagonal support (backward)
-	if file > 0 && rank > 0 {
-		supportSquare := (rank-1)*8 + (file - 1)
-		if friendlyPawns.HasBit(supportSquare) {
-			return true
+	supportRank := rank - 1
+	if !isWhite {
+		supportRank = rank + 1
+	}
+	if supportRank < 0 || supportRank > 7 {
+		return false
+	}
+
+	if file > 0 && friendlyPawns.HasBit(supportRank*8+(file-1)) {
+		return true
+	}
+
+	if file < 7 && friendlyPawns.HasBit(supportRank*8+(file+1)) {
+		return true
+	}
+
+	return false
+}
+
+// isBackwardPawn checks if a pawn has fallen behind its neighbors and cannot
+// advance safely: no friendly pawn on an adjacent file is level with it or
+// behind it, and its stop square is covered by an enemy pawn
+func isBackwardPawn(square int, friendlyPawns, enemyPawns board.Bitboard, isWhite bool) bool {
+	file := square % 8
+	rank := square / 8
+
+	// A pawn that can still be supported from behind is not backward
+	for _, f := range [2]int{file - 1, file + 1} {
+		if f < 0 || f > 7 {
+			continue
+		}
+		adjacentPawns := friendlyPawns & board.FileMask(f)
+		for adjacentPawns != 0 {
+			adjSquare, remaining := adjacentPawns.PopLSB()
+			adjacentPawns = remaining
+			adjRank := adjSquare / 8
+			if (isWhite && adjRank <= rank) || (!isWhite && adjRank >= rank) {
+				return false
+			}
 		}
 	}
 
-	// Check right diagonal support (backward)
-	if file < 7 && rank > 0 {
-		supportSquare := (rank-1)*8 + (file + 1)
-		if friendlyPawns.HasBit(supportSquare) {
-			return true
-		}
+	// Backward only if the stop square is covered by an enemy pawn
+	var stopRank, attackerRank int
+	if isWhite {
+		stopRank = rank + 1
+		attackerRank = stopRank + 1
+	} else {
+		stopRank = rank - 1
+		attackerRank = stopRank - 1
+	}
+	if stopRank < 0 || stopRank > 7 || attackerRank < 0 || attackerRank > 7 {
+		return false
+	}
+
+	if file > 0 && enemyPawns.HasBit(attackerRank*8+(file-1)) {
+		return true
+	}
+	if file < 7 && enemyPawns.HasBit(attackerRank*8+(file+1)) {
+		return true
 	}
 
 	return false

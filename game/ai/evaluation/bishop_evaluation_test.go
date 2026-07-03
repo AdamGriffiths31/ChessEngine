@@ -34,7 +34,7 @@ func TestEvaluateBishops(t *testing.T) {
 		{
 			name:        "fianchetto_bishops",
 			fen:         "rnbqkb1r/pppppp1p/6pn/8/8/1P3NP1/P1PPPB1P/RNBQK2R w KQkq - 0 1",
-			expected:    -44, // Actual observed value
+			expected:    -28, // Black bishop pair (-50) + mobility/bad-bishop balance (+22)
 			description: "White bishop on fianchetto square g2",
 		},
 	}
@@ -175,8 +175,8 @@ func TestEvaluateBadBishop(t *testing.T) {
 		{
 			name:        "bad_light_bishop",
 			fen:         "8/8/8/2P1P3/1P1B1P2/2P1P3/8/8 w - - 0 1",
-			expected:    0, // Actual observed value
-			description: "Light squared bishop blocked by own pawns on light squares",
+			expected:    -48, // Bishop on d4 (dark) with all 6 pawns on dark squares: 6 * -8
+			description: "Dark squared bishop blocked by own pawns on dark squares",
 		},
 		{
 			name:        "good_bishop_different_colors",
@@ -187,7 +187,7 @@ func TestEvaluateBadBishop(t *testing.T) {
 		{
 			name:        "bad_dark_bishop",
 			fen:         "8/8/1p2p3/p1b1p3/1p2p3/8/8/8 w - - 0 1",
-			expected:    -16, // Actual observed value (2 black pawns on dark squares * -8)
+			expected:    -32, // Bishop on c5 (dark) with pawns b6/a5/e5/b4 on dark squares: 4 * -8
 			description: "Dark squared bishop blocked by own pawns on dark squares",
 		},
 	}

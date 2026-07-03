@@ -16,6 +16,32 @@ const (
 	EntryUpperBound
 )
 
+// scoreToTT converts a root-relative mate score into a node-relative one for
+// storage. Mate scores must be stored relative to the storing node because an
+// entry can be probed from a different ply (or a later search) than it was
+// stored at; non-mate scores pass through unchanged.
+func scoreToTT(score ai.EvaluationScore, ply int) ai.EvaluationScore {
+	if score >= ai.MateScore-MateDistanceThreshold {
+		return score + ai.EvaluationScore(ply)
+	}
+	if score <= -ai.MateScore+MateDistanceThreshold {
+		return score - ai.EvaluationScore(ply)
+	}
+	return score
+}
+
+// scoreFromTT converts a stored node-relative mate score back into a
+// root-relative score at the probing node's ply.
+func scoreFromTT(score ai.EvaluationScore, ply int) ai.EvaluationScore {
+	if score >= ai.MateScore-MateDistanceThreshold {
+		return score - ai.EvaluationScore(ply)
+	}
+	if score <= -ai.MateScore+MateDistanceThreshold {
+		return score + ai.EvaluationScore(ply)
+	}
+	return score
+}
+
 // TranspositionEntry represents a single entry in the transposition table
 type TranspositionEntry struct {
 	Hash     uint64

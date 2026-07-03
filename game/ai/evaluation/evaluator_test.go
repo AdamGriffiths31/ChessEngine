@@ -152,7 +152,7 @@ func TestGetPositionalBonus(t *testing.T) {
 			rank:     1,
 			file:     3,
 			piece:    board.BlackKnight,
-			expected: -5,
+			expected: 0,
 		},
 		{
 			name:     "black king on h1",

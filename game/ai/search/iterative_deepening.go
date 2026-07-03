@@ -55,6 +55,10 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		pv[i] = make([]board.Move, maxPlyDepth)
 	}
 
+	// Per-move scores from the current iteration, used to re-order root moves
+	// between depths (indexed in step with pseudoMoves.Moves)
+	rootScores := make([]ai.EvaluationScore, pseudoMoves.Count)
+
 	startingDepth := 1
 
 	for currentDepth := startingDepth; currentDepth <= config.MaxDepth; currentDepth++ {
@@ -83,25 +87,32 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		bestScore := -ai.MateScore - 1
 		var bestMove board.Move
 
-		alpha := -ai.MateScore - 1
-		beta := ai.MateScore + 1
-
 		// Use aspiration windows for depths > 1
 		useAspirationWindow := currentDepth > 1
 		window := ai.EvaluationScore(50)
 
-		if useAspirationWindow {
-			alpha = lastCompletedScore - window
-			beta = lastCompletedScore + window
-		}
-
 		// Keep trying with wider windows until we get a score within bounds
 		for {
+			// Reset both bounds on every attempt: a failed pass leaves alpha
+			// raised above the window, and re-searching with one-sided bounds
+			// can accept an upper-bound score as exact
+			alpha := -ai.MateScore - 1
+			beta := ai.MateScore + 1
+			if useAspirationWindow {
+				alpha = lastCompletedScore - window
+				beta = lastCompletedScore + window
+			}
+
 			tempBestScore := -ai.MateScore - 1
 			tempBestMove := board.Move{}
 			moveIndex := 0
 
-			for _, move := range pseudoMoves.Moves[:pseudoMoves.Count] {
+			for i := range rootScores {
+				rootScores[i] = -ai.MateScore - 1
+			}
+
+			for moveIdx := 0; moveIdx < pseudoMoves.Count; moveIdx++ {
+				move := pseudoMoves.Moves[moveIdx]
 				if m.searchState.searchCancelled {
 					break
 				}
@@ -136,6 +147,8 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 
 				// Remove position from repetition history
 				m.removeHistory()
+
+				rootScores[moveIdx] = score
 
 				if score > tempBestScore {
 					tempBestScore = score
@@ -174,24 +187,12 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				break
 			}
 
-			// Aspiration window failed - widen and retry
-			if tempBestScore <= lastCompletedScore-window {
-				// Fail low - score is worse than expected
-				window *= 2
-				alpha = lastCompletedScore - window
-				// Keep beta the same to avoid re-searching moves that already failed high
-			} else if tempBestScore >= lastCompletedScore+window {
-				// Fail high - score is better than expected
-				window *= 2
-				beta = lastCompletedScore + window
-				// Keep alpha at the current best score found
-			}
+			// Aspiration window failed - widen and retry with fresh bounds
+			window *= 2
 
-			// Safety: if window gets too large, disable aspiration
+			// Safety: if window gets too large, drop to a full-width search
 			if window > 1000 {
 				useAspirationWindow = false
-				alpha = -ai.MateScore - 1
-				beta = ai.MateScore + 1
 			}
 		}
 
@@ -223,6 +224,11 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			lastCompletedScore = bestScore
 			lastCompletedDepth = currentDepth
 
+			// Re-order root moves by this iteration's scores so the best move
+			// is searched first at the next depth - PVS gives only the first
+			// move a full window and aspiration assumes the score carries over
+			reorderRootMoves(pseudoMoves, rootScores)
+
 			finalStats.PrincipalVariation = make([]board.Move, 0, currentDepth)
 			for i := 0; i < len(pv[0]) && pv[0][i] != (board.Move{}); i++ {
 				finalStats.PrincipalVariation = append(finalStats.PrincipalVariation, pv[0][i])
@@ -243,5 +249,28 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		BestMove: lastCompletedBestMove,
 		Score:    lastCompletedScore,
 		Stats:    finalStats,
+	}
+}
+
+// reorderRootMoves stably sorts the first moveList.Count moves in descending
+// order of scores, keeping the two slices index-aligned. Insertion sort is
+// used for stability: moves with equal scores keep their relative order, and
+// unscored moves (illegal or unsearched, recorded as -MateScore-1) sink to
+// the back without being shuffled among themselves.
+func reorderRootMoves(moveList *moves.MoveList, scores []ai.EvaluationScore) {
+	count := moveList.Count
+	if count > len(scores) {
+		count = len(scores)
+	}
+	for i := 1; i < count; i++ {
+		mv, sc := moveList.Moves[i], scores[i]
+		j := i - 1
+		for j >= 0 && scores[j] < sc {
+			moveList.Moves[j+1] = moveList.Moves[j]
+			scores[j+1] = scores[j]
+			j--
+		}
+		moveList.Moves[j+1] = mv
+		scores[j+1] = sc
 	}
 }

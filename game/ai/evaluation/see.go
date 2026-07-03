@@ -44,6 +44,12 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
 	occupied = occupied.ClearBit(fromSquare)
 
+	if move.IsEnPassant {
+		// The captured pawn sits beside the target square, not on it
+		capturedPawnSquare := board.FileRankToSquare(move.To.File, move.From.Rank)
+		occupied = occupied.ClearBit(capturedPawnSquare)
+	}
+
 	see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, fromSquare, occupied)
 
 	sideToMove := see.getOppositeSide(move.Piece)
@@ -131,8 +137,10 @@ func (see *SEECalculator) getLeastValuableAttacker(b *board.Board, attackers *bo
 func (see *SEECalculator) updateAttackersAfterMove(b *board.Board, whiteAttackers, blackAttackers *board.Bitboard, target board.Square, _ int, occupied board.Bitboard) {
 	targetSquareIndex := board.FileRankToSquare(target.File, target.Rank)
 
-	newWhiteAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardWhite) & occupied
-	newBlackAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardBlack) & occupied
+	// Recompute sliding attacks against the reduced occupancy so pieces standing
+	// behind a removed attacker (X-rays) are discovered as new attackers.
+	newWhiteAttackers := b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardWhite, occupied) & occupied
+	newBlackAttackers := b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardBlack, occupied) & occupied
 
 	*whiteAttackers = newWhiteAttackers
 	*blackAttackers = newBlackAttackers

@@ -114,7 +114,7 @@ func evaluateBishopsSimple(b *board.Board, bishops board.Bitboard, isWhite bool)
 
 // evaluateBadBishop calculates penalty for bishops restricted by own pawns
 func evaluateBadBishop(bishopSquare int, ownPawns board.Bitboard) int {
-	bishopOnLightSquare := ((bishopSquare/8 + bishopSquare%8) % 2) == 0
+	bishopOnLightSquare := board.LightSquares.HasBit(bishopSquare)
 
 	var pawnsOnSameColor int
 	if bishopOnLightSquare {

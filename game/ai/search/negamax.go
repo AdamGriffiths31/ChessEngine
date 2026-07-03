@@ -58,24 +58,25 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			}
 
 			if entry.GetDepth() >= depth {
+				ttScore := scoreFromTT(entry.Score, currentDepth)
 				switch entry.GetType() {
 				case EntryExact:
 					m.searchState.searchStats.TTCutoffs++
-					return entry.Score
+					return ttScore
 				case EntryLowerBound:
-					if entry.Score >= beta {
+					if ttScore >= beta {
 						m.searchState.searchStats.TTCutoffs++
-						return entry.Score
+						return ttScore
 					}
-					if entry.Score > alpha {
-						alpha = entry.Score
+					if ttScore > alpha {
+						alpha = ttScore
 					}
 				case EntryUpperBound:
-					if entry.Score <= alpha {
-						return entry.Score
+					if ttScore <= alpha {
+						return ttScore
 					}
-					if entry.Score < beta {
-						beta = entry.Score
+					if ttScore < beta {
+						beta = ttScore
 					}
 				}
 			}
@@ -151,7 +152,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 		return m.handleNoLegalMoves(b, player, depth, originalMaxDepth, hash)
 	}
 
-	m.scoreMoves(b, pseudoMoves, currentDepth, currentDepth, ttMove)
+	m.scoreMoves(b, pseudoMoves, currentDepth, ttMove)
 
 	bestScore := -ai.MateScore - 1
 	bestMove := board.Move{}
@@ -264,7 +265,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 				}
 
 				if m.transpositionTable != nil && !m.searchState.searchCancelled {
-					m.transpositionTable.Store(hash, depth, bestScore, EntryLowerBound, move)
+					m.transpositionTable.Store(hash, depth, scoreToTT(bestScore, currentDepth), EntryLowerBound, move)
 				}
 
 				return beta
@@ -301,7 +302,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, b *board.Board, player move
 			entryType = EntryUpperBound
 		}
 
-		m.transpositionTable.Store(hash, depth, bestScore, entryType, bestMove)
+		m.transpositionTable.Store(hash, depth, scoreToTT(bestScore, currentDepth), entryType, bestMove)
 	}
 
 	return bestScore
@@ -316,7 +317,8 @@ func (m *MinimaxEngine) handleNoLegalMoves(b *board.Board, player moves.Player, 
 		pliesFromRoot := originalMaxDepth - depth
 		score := -ai.MateScore + ai.EvaluationScore(pliesFromRoot)
 		if m.transpositionTable != nil {
-			m.transpositionTable.Store(hash, depth, score, EntryExact, board.Move{})
+			// Node-relative: mated on this node's square is always -MateScore
+			m.transpositionTable.Store(hash, depth, scoreToTT(score, pliesFromRoot), EntryExact, board.Move{})
 		}
 		return score
 	}

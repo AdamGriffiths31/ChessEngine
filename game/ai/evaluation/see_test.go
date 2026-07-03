@@ -15,6 +15,28 @@ func TestNewSEECalculator(t *testing.T) {
 	}
 }
 
+func TestSEE_XRayBattery(t *testing.T) {
+	// Doubled white rooks on the d-file vs a pawn defended by a rook.
+	// Rxd5 Rxd5 Rxd5 wins a pawn, but only if SEE discovers the d1 rook
+	// X-raying through the d2 rook after it makes the first capture.
+	fen := "3r3k/8/8/3p4/8/8/3R4/3R3K w - - 0 1"
+	move := board.Move{
+		From:      board.Square{Rank: 1, File: 3}, // d2
+		To:        board.Square{Rank: 4, File: 3}, // d5
+		Piece:     board.WhiteRook,
+		Captured:  board.BlackPawn,
+		IsCapture: true,
+	}
+
+	b := createBoardFromFEN(t, fen)
+	calc := NewSEECalculator()
+
+	result := calc.SEE(b, move)
+	if result != 100 {
+		t.Errorf("X-ray battery capture: expected 100, got %d", result)
+	}
+}
+
 func TestSEE_SimpleCaptures(t *testing.T) {
 	tests := []struct {
 		name     string

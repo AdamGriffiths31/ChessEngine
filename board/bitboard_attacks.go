@@ -115,15 +115,19 @@ func (b *Board) isSquareAttackedByKing(square int, color BitboardColor) bool {
 
 // GetAttackersToSquare returns a bitboard of all pieces of the given color that attack the square
 func (b *Board) GetAttackersToSquare(square int, color BitboardColor) Bitboard {
+	return b.GetAttackersToSquareWithOccupancy(square, color, b.AllPieces)
+}
+
+// GetAttackersToSquareWithOccupancy returns a bitboard of all pieces of the given color that
+// attack the square, computing sliding attacks against the supplied occupancy instead of the
+// board's current occupancy. This lets callers (e.g. SEE) reveal X-ray attackers by removing
+// pieces from the occupancy without mutating the board.
+func (b *Board) GetAttackersToSquareWithOccupancy(square int, color BitboardColor, occupancy Bitboard) Bitboard {
 	var attackers Bitboard
 
 	if square < 0 || square > 63 {
 		return attackers
 	}
-
-	// Ensure tables are initialized
-
-	occupancy := b.AllPieces
 
 	// Pawn attackers
 	oppositeColor := OppositeBitboardColor(color)

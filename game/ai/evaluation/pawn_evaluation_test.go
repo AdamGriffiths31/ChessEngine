@@ -244,6 +244,7 @@ func TestIsConnectedPawn(t *testing.T) {
 		name          string
 		friendlyPawns []int
 		pawnSquare    int
+		isWhite       bool
 		expected      bool
 		description   string
 	}{
@@ -251,6 +252,7 @@ func TestIsConnectedPawn(t *testing.T) {
 			name:          "connected_diagonal_support",
 			friendlyPawns: []int{20, 11}, // e3, d2
 			pawnSquare:    20,            // e3
+			isWhite:       true,
 			expected:      true,
 			description:   "Pawn supported by diagonal pawn behind",
 		},
@@ -258,6 +260,7 @@ func TestIsConnectedPawn(t *testing.T) {
 			name:          "not_connected_no_support",
 			friendlyPawns: []int{20}, // e3 only
 			pawnSquare:    20,        // e3
+			isWhite:       true,
 			expected:      false,
 			description:   "Pawn with no diagonal support",
 		},
@@ -265,6 +268,7 @@ func TestIsConnectedPawn(t *testing.T) {
 			name:          "connected_right_diagonal",
 			friendlyPawns: []int{20, 13}, // e3, f2
 			pawnSquare:    20,            // e3
+			isWhite:       true,
 			expected:      true,
 			description:   "Pawn supported by right diagonal pawn",
 		},
@@ -272,6 +276,7 @@ func TestIsConnectedPawn(t *testing.T) {
 			name:          "edge_pawn_no_connection",
 			friendlyPawns: []int{16}, // a3
 			pawnSquare:    16,        // a3
+			isWhite:       true,
 			expected:      false,
 			description:   "Edge pawn with no possible diagonal support",
 		},
@@ -279,6 +284,7 @@ func TestIsConnectedPawn(t *testing.T) {
 			name:          "not_connected_forward_left_diagonal",
 			friendlyPawns: []int{20, 27}, // e3, d4 (pawn in front diagonally)
 			pawnSquare:    20,            // e3
+			isWhite:       true,
 			expected:      false,
 			description:   "Pawn not connected by forward-left diagonal pawn",
 		},
@@ -286,8 +292,25 @@ func TestIsConnectedPawn(t *testing.T) {
 			name:          "not_connected_forward_right_diagonal",
 			friendlyPawns: []int{20, 29}, // e3, f4 (right diagonal in front)
 			pawnSquare:    20,            // e3
+			isWhite:       true,
 			expected:      false,
 			description:   "Pawn not connected by forward-right diagonal pawn",
+		},
+		{
+			name:          "black_connected_support_from_above",
+			friendlyPawns: []int{44, 53}, // e6, f7 (black: f7 defends e6)
+			pawnSquare:    44,            // e6
+			isWhite:       false,
+			expected:      true,
+			description:   "Black pawn supported by diagonal pawn behind (higher rank)",
+		},
+		{
+			name:          "black_not_connected_pawn_in_front",
+			friendlyPawns: []int{44, 35}, // e6, d5 (d5 is in front of a black pawn)
+			pawnSquare:    44,            // e6
+			isWhite:       false,
+			expected:      false,
+			description:   "Black pawn not supported by pawn in front of it",
 		},
 	}
 
@@ -298,7 +321,7 @@ func TestIsConnectedPawn(t *testing.T) {
 				friendlyPawns = friendlyPawns.SetBit(square)
 			}
 
-			result := isConnectedPawn(friendlyPawns, tt.pawnSquare)
+			result := isConnectedPawn(friendlyPawns, tt.pawnSquare, tt.isWhite)
 			if result != tt.expected {
 				t.Errorf("%s: expected %t, got %t", tt.description, tt.expected, result)
 			}

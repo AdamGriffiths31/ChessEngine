@@ -18,7 +18,9 @@ type EloGameResult struct {
 	AnchorElo    int
 	Color        string // "white" or "black"
 	OpeningIndex int
-	Result       float64 // 1.0 win, 0.5 draw, 0.0 loss
+	Result       float64  // 1.0 win, 0.5 draw, 0.0 loss
+	Termination  string   // how the game ended: checkmate, draw, time-forfeit, max-plies, engine-error
+	Moves        []string // UCI move list for the full game, including preset opening plies
 	Plies        int
 	Nodes        uint64
 	AvgDepth     int

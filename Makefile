@@ -111,6 +111,11 @@ sts: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
 	@echo "Building STS binary..."
 	$(GO) build $(GOBUILDFLAGS) -o $(STS_BINARY) ./cmd/sts
 
+.PHONY: blunders
+blunders: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
+	@echo "Building blunders binary..."
+	$(GO) build $(GOBUILDFLAGS) -o $(TOOLS_DIR)/bin/blunders ./cmd/blunders
+
 .PHONY: profile
 profile: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
 	@echo "Building profile binary..."

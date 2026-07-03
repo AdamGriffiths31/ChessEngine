@@ -65,6 +65,7 @@ func (r *EloRunner) Run(config EloConfig) (*EloResult, error) {
 		}
 
 		if err := configureStockfish(client, anchorElo); err != nil {
+			fmt.Printf("\n--- stockfish configure failure, recent UCI traffic ---\n%s\n--- end ---\n", client.TrafficDump(40))
 			_ = client.Close()
 			return nil, fmt.Errorf("failed to configure stockfish for anchor %d: %w", anchorElo, err)
 		}
@@ -79,8 +80,8 @@ func (r *EloRunner) Run(config EloConfig) (*EloResult, error) {
 				return nil, fmt.Errorf("aborting benchmark: anchor %d game %d: %w", anchorElo, g+1, err)
 			}
 			games = append(games, result)
-			fmt.Printf("Game %d/%d (anchor %d, %s): %s (%d plies, depth %d)\n",
-				len(games), totalGames, anchorElo, result.Color, outcomeLabel(result.Result), result.Plies, result.AvgDepth)
+			fmt.Printf("Game %d/%d (anchor %d, %s): %s by %s (%d plies, depth %d)\n",
+				len(games), totalGames, anchorElo, result.Color, outcomeLabel(result.Result), result.Termination, result.Plies, result.AvgDepth)
 		}
 
 		_ = client.Close()
@@ -201,7 +202,8 @@ func playEloGame(client *StockfishClient, anchorElo int, chessEngineWhite bool, 
 	}
 
 	if err := startNewGame(client); err != nil {
-		return EloGameResult{}, fmt.Errorf("failed to start new game with stockfish: %w", err)
+		return EloGameResult{}, stockfishFailure(client, 0, 0, 0, nil,
+			fmt.Errorf("failed to start new game with stockfish: %w", err))
 	}
 
 	engine := game.NewEngine()
@@ -233,6 +235,11 @@ func playEloGame(client *StockfishClient, anchorElo int, chessEngineWhite bool, 
 		state := engine.GetState()
 		if state.GameOver {
 			result.Result = scoreFromGameOver(state, chessEngineWhite)
+			if state.IsDraw {
+				result.Termination = "draw"
+			} else {
+				result.Termination = "checkmate"
+			}
 			resultSet = true
 			break
 		}
@@ -255,12 +262,18 @@ func playEloGame(client *StockfishClient, anchorElo int, chessEngineWhite bool, 
 
 			searchResult, err := computer.GetMoveWithStats(state.Board, movesPlayer, budget)
 			if err != nil {
+				fmt.Printf("WARNING: ChessEngine search failed at ply %d (budget %v): %v - scoring as loss\n", ply, budget, err)
 				result.Result = 0.0
+				result.Termination = "engine-error"
 				resultSet = true
 				break
 			}
 			if err := engine.MakeMove(searchResult.BestMove); err != nil {
+				fmt.Printf("WARNING: ChessEngine produced an unplayable move %s at ply %d: %v - scoring as loss\n",
+					converter.ToUCI(searchResult.BestMove), ply, err)
+				fmt.Printf("         position: %s\n", buildPositionCommand(moveHistory))
 				result.Result = 0.0
+				result.Termination = "engine-error"
 				resultSet = true
 				break
 			}
@@ -270,10 +283,12 @@ func playEloGame(client *StockfishClient, anchorElo int, chessEngineWhite bool, 
 			searchMoves++
 		} else {
 			if err := client.Send(buildPositionCommand(moveHistory)); err != nil {
-				return EloGameResult{}, fmt.Errorf("failed to send position to stockfish: %w", err)
+				return EloGameResult{}, stockfishFailure(client, ply, wtime, btime, moveHistory,
+					fmt.Errorf("failed to send position to stockfish: %w", err))
 			}
 			if err := client.Send(fmt.Sprintf("go wtime %d btime %d winc %d binc %d", wtime, btime, config.IncMs, config.IncMs)); err != nil {
-				return EloGameResult{}, fmt.Errorf("failed to send go command to stockfish: %w", err)
+				return EloGameResult{}, stockfishFailure(client, ply, wtime, btime, moveHistory,
+					fmt.Errorf("failed to send go command to stockfish: %w", err))
 			}
 
 			remaining := remainingFor(currentPlayer, wtime, btime)
@@ -282,19 +297,23 @@ func playEloGame(client *StockfishClient, anchorElo int, chessEngineWhite bool, 
 			line, err := client.WaitFor(ctx, "bestmove")
 			cancel()
 			if err != nil {
-				return EloGameResult{}, fmt.Errorf("stockfish did not respond with bestmove: %w", err)
+				return EloGameResult{}, stockfishFailure(client, ply, wtime, btime, moveHistory,
+					fmt.Errorf("stockfish did not respond with bestmove within %v: %w", deadline, err))
 			}
 
 			fields := strings.Fields(line)
 			if len(fields) < 2 {
-				return EloGameResult{}, fmt.Errorf("malformed bestmove line from stockfish: %q", line)
+				return EloGameResult{}, stockfishFailure(client, ply, wtime, btime, moveHistory,
+					fmt.Errorf("malformed bestmove line from stockfish: %q", line))
 			}
 			move, err := converter.FromUCI(fields[1], state.Board)
 			if err != nil {
-				return EloGameResult{}, fmt.Errorf("failed to parse stockfish's move %q: %w", fields[1], err)
+				return EloGameResult{}, stockfishFailure(client, ply, wtime, btime, moveHistory,
+					fmt.Errorf("failed to parse stockfish's move %q: %w", fields[1], err))
 			}
 			if err := engine.MakeMove(move); err != nil {
-				return EloGameResult{}, fmt.Errorf("stockfish sent an illegal move %q: %w", fields[1], err)
+				return EloGameResult{}, stockfishFailure(client, ply, wtime, btime, moveHistory,
+					fmt.Errorf("stockfish sent an illegal move %q: %w", fields[1], err))
 			}
 			moveHistory = append(moveHistory, fields[1])
 		}
@@ -308,11 +327,13 @@ func playEloGame(client *StockfishClient, anchorElo int, chessEngineWhite bool, 
 
 		if wtime <= 0 {
 			result.Result = boolToScore(!chessEngineWhite)
+			result.Termination = "time-forfeit (white)"
 			resultSet = true
 			break
 		}
 		if btime <= 0 {
 			result.Result = boolToScore(chessEngineWhite)
+			result.Termination = "time-forfeit (black)"
 			resultSet = true
 			break
 		}
@@ -320,15 +341,32 @@ func playEloGame(client *StockfishClient, anchorElo int, chessEngineWhite bool, 
 
 	if !resultSet {
 		result.Result = 0.5 // MaxPlies safety cap reached: treat as a draw.
+		result.Termination = "max-plies"
 	}
 
 	result.Plies = len(moveHistory)
+	result.Moves = moveHistory
 	result.Nodes = totalNodes
 	if searchMoves > 0 {
 		result.AvgDepth = totalDepth / searchMoves
 	}
 
 	return result, nil
+}
+
+// stockfishFailure prints a diagnostics block for a Stockfish protocol
+// failure - game clocks, the exact position command (replayable by hand
+// against the same binary) and the most recent UCI traffic including engine
+// stderr - then returns the error enriched with the same key context.
+func stockfishFailure(client *StockfishClient, ply, wtime, btime int, moveHistory []string, err error) error {
+	fmt.Printf("\n--- stockfish failure diagnostics ---\n")
+	fmt.Printf("error    : %v\n", err)
+	fmt.Printf("ply      : %d\n", ply)
+	fmt.Printf("clocks   : wtime=%dms btime=%dms\n", wtime, btime)
+	fmt.Printf("position : %s\n", buildPositionCommand(moveHistory))
+	fmt.Printf("recent UCI traffic (oldest first, -> sent, <- stdout, !! stderr):\n%s\n", client.TrafficDump(60))
+	fmt.Printf("--- end diagnostics ---\n\n")
+	return fmt.Errorf("ply %d (wtime=%dms btime=%dms): %w", ply, wtime, btime, err)
 }
 
 func colorName(chessEngineWhite bool) string {

@@ -1,6 +1,8 @@
 package evaluation
 
 import (
+	"strings"
+
 	"github.com/AdamGriffiths31/ChessEngine/board"
 )
 
@@ -119,20 +121,19 @@ func evaluateKingSafety(b *board.Board, kingSquare int, isWhite bool) int {
 		return 0
 	}
 	score := 0
-	rank := kingSquare / 8
 
 	if isWhite {
 		if kingSquare == 6 || kingSquare == 2 {
 			score += HasCastledBonus
 			score += evaluatePawnShelter(b, kingSquare, isWhite)
-		} else if rank == 0 {
+		} else if !hasCastlingRights(b, isWhite) {
 			score += LostCastlingRights
 		}
 	} else {
 		if kingSquare == 62 || kingSquare == 58 {
 			score += HasCastledBonus
 			score += evaluatePawnShelter(b, kingSquare, isWhite)
-		} else if rank == 7 {
+		} else if !hasCastlingRights(b, isWhite) {
 			score += LostCastlingRights
 		}
 	}
@@ -141,6 +142,15 @@ func evaluateKingSafety(b *board.Board, kingSquare int, isWhite bool) int {
 	score += evaluateBasicThreats(b, kingSquare, isWhite)
 
 	return score
+}
+
+// hasCastlingRights reports whether the given side can still castle either way
+func hasCastlingRights(b *board.Board, isWhite bool) bool {
+	rights := b.GetCastlingRights()
+	if isWhite {
+		return strings.ContainsAny(rights, "KQ")
+	}
+	return strings.ContainsAny(rights, "kq")
 }
 
 // evaluatePawnShelter provides simple pawn shelter evaluation for castled kings
@@ -237,12 +247,19 @@ func evaluateBasicThreats(b *board.Board, kingSquare int, isWhite bool) int {
 	score := 0
 	zone := KingSafetyZone[kingSquare] // Use pre-computed safety zone
 
-	// Get enemy pieces
+	// Only attacking pieces count as threats - enemy pawns and the enemy king
+	// near our king (e.g. locked pawn chains) are not an attack
 	var enemyPieces board.Bitboard
 	if isWhite {
-		enemyPieces = b.GetColorBitboard(board.BitboardBlack)
+		enemyPieces = b.GetPieceBitboard(board.BlackKnight) |
+			b.GetPieceBitboard(board.BlackBishop) |
+			b.GetPieceBitboard(board.BlackRook) |
+			b.GetPieceBitboard(board.BlackQueen)
 	} else {
-		enemyPieces = b.GetColorBitboard(board.BitboardWhite)
+		enemyPieces = b.GetPieceBitboard(board.WhiteKnight) |
+			b.GetPieceBitboard(board.WhiteBishop) |
+			b.GetPieceBitboard(board.WhiteRook) |
+			b.GetPieceBitboard(board.WhiteQueen)
 	}
 
 	// Count enemies near king (fast bitboard operation)
