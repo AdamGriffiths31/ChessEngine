@@ -47,6 +47,17 @@ func (g *Generator) GeneratePseudoLegalMoves(b *board.Board, player Player) *Mov
 	return g.bitboardGenerator.GeneratePseudoLegalMoves(b, player)
 }
 
+// GenerateCaptures generates pseudo-legal captures and promotions only.
+// Intended for quiescence search; quiet non-promotion moves are not generated.
+// Returns an empty list if board is nil.
+func (g *Generator) GenerateCaptures(b *board.Board, player Player) *MoveList {
+	if b == nil {
+		return GetMoveList()
+	}
+
+	return g.bitboardGenerator.GenerateCaptures(b, player)
+}
+
 // IsKingInCheck checks if the king of the given player is currently in check.
 // Returns false if board is nil or king is not found.
 func (g *Generator) IsKingInCheck(b *board.Board, player Player) bool {

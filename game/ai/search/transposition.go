@@ -42,11 +42,13 @@ func scoreFromTT(score ai.EvaluationScore, ply int) ai.EvaluationScore {
 	return score
 }
 
-// TranspositionEntry represents a single entry in the transposition table
+// TranspositionEntry represents a single entry in the transposition table.
+// Field order matters: Move (4-byte aligned) before Score/DepthAge keeps the
+// struct at 16 bytes, so four entries share a 64-byte cache line.
 type TranspositionEntry struct {
 	Hash     uint64
-	Score    ai.EvaluationScore
 	Move     uint32
+	Score    ai.EvaluationScore
 	DepthAge uint8
 }
 
@@ -65,7 +67,7 @@ type TranspositionTable struct {
 
 // NewTranspositionTable creates a new transposition table with the given size in MB
 func NewTranspositionTable(sizeMB int) *TranspositionTable {
-	entrySize := uint64(20) // Updated for 32-bit move field: 8+2+4+1 = 15, aligned to 20 bytes
+	entrySize := uint64(16) // 8+4+2+1 = 15, padded to 16 bytes
 	numEntries := (uint64(sizeMB) * 1024 * 1024) / entrySize
 
 	size := uint64(1)

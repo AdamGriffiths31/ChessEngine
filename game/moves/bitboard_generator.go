@@ -77,6 +77,118 @@ func (bmg *BitboardMoveGenerator) GeneratePseudoLegalMoves(b *board.Board, playe
 	return moveList
 }
 
+// GenerateCaptures generates pseudo-legal captures and promotions only.
+// This is the move set quiescence search examines; quiet non-promotion moves
+// are never generated, avoiding the cost of building and discarding them.
+func (bmg *BitboardMoveGenerator) GenerateCaptures(b *board.Board, player Player) *MoveList {
+	moveList := GetMoveList()
+
+	var pawnPiece, knightPiece, bishopPiece, rookPiece, queenPiece, kingPiece board.Piece
+	var enemyColor board.BitboardColor
+	var promotionRank int
+
+	if player == White {
+		pawnPiece = board.WhitePawn
+		knightPiece = board.WhiteKnight
+		bishopPiece = board.WhiteBishop
+		rookPiece = board.WhiteRook
+		queenPiece = board.WhiteQueen
+		kingPiece = board.WhiteKing
+		enemyColor = board.BitboardBlack
+		promotionRank = 7
+	} else {
+		pawnPiece = board.BlackPawn
+		knightPiece = board.BlackKnight
+		bishopPiece = board.BlackBishop
+		rookPiece = board.BlackRook
+		queenPiece = board.BlackQueen
+		kingPiece = board.BlackKing
+		enemyColor = board.BitboardWhite
+		promotionRank = 0
+	}
+
+	enemyPieces := b.GetColorBitboard(enemyColor)
+	occupancy := b.AllPieces
+
+	// Pawn captures (including capture promotions) and en passant
+	pawns := b.GetPieceBitboard(pawnPiece)
+	if pawns != 0 {
+		bmg.generatePawnCapturesBitboard(b, player, pawns, enemyPieces, moveList, promotionRank)
+		bmg.generateEnPassantCapturesBitboard(b, player, pawns, moveList)
+
+		// Quiet promotions: single pushes onto the promotion rank
+		emptySquares := ^occupancy
+		var promotionPushes board.Bitboard
+		if player == White {
+			promotionPushes = pawns.ShiftNorth() & emptySquares & board.RankMask(promotionRank)
+		} else {
+			promotionPushes = pawns.ShiftSouth() & emptySquares & board.RankMask(promotionRank)
+		}
+		for promotionPushes != 0 {
+			toSquare, newBitboard := promotionPushes.PopLSB()
+			promotionPushes = newBitboard
+
+			var fromSquare int
+			if player == White {
+				fromSquare = toSquare - 8
+			} else {
+				fromSquare = toSquare + 8
+			}
+			bmg.addPromotionMoves(moveList, fromSquare, toSquare, pawnPiece, board.Empty, player)
+		}
+	}
+
+	// Knight captures
+	knights := b.GetPieceBitboard(knightPiece)
+	for knights != 0 {
+		fromSquare, newBitboard := knights.PopLSB()
+		knights = newBitboard
+
+		captures := board.GetKnightAttacks(fromSquare) & enemyPieces
+		bmg.addSlidingPieceMoves(b, moveList, fromSquare, captures, enemyPieces, knightPiece)
+	}
+
+	// Bishop captures
+	bishops := b.GetPieceBitboard(bishopPiece)
+	for bishops != 0 {
+		fromSquare, newBitboard := bishops.PopLSB()
+		bishops = newBitboard
+
+		captures := board.GetBishopAttacks(fromSquare, occupancy) & enemyPieces
+		bmg.addSlidingPieceMoves(b, moveList, fromSquare, captures, enemyPieces, bishopPiece)
+	}
+
+	// Rook captures
+	rooks := b.GetPieceBitboard(rookPiece)
+	for rooks != 0 {
+		fromSquare, newBitboard := rooks.PopLSB()
+		rooks = newBitboard
+
+		captures := board.GetRookAttacks(fromSquare, occupancy) & enemyPieces
+		bmg.addSlidingPieceMoves(b, moveList, fromSquare, captures, enemyPieces, rookPiece)
+	}
+
+	// Queen captures
+	queens := b.GetPieceBitboard(queenPiece)
+	for queens != 0 {
+		fromSquare, newBitboard := queens.PopLSB()
+		queens = newBitboard
+
+		captures := (board.GetRookAttacks(fromSquare, occupancy) | board.GetBishopAttacks(fromSquare, occupancy)) & enemyPieces
+		bmg.addSlidingPieceMoves(b, moveList, fromSquare, captures, enemyPieces, queenPiece)
+	}
+
+	// King captures (castling is never a capture)
+	kings := b.GetPieceBitboard(kingPiece)
+	if kings != 0 {
+		fromSquare := kings.LSB()
+		captures := board.GetKingAttacks(fromSquare) & enemyPieces
+		bmg.addSlidingPieceMoves(b, moveList, fromSquare, captures, enemyPieces, kingPiece)
+	}
+
+	return moveList
+}
+
 // generatePawnMovesBitboard generates pawn moves using bitboard shifts and attack patterns
 func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var pawnPiece board.Piece

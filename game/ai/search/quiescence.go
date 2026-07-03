@@ -76,22 +76,10 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, b *board.Board, player m
 	if inCheck {
 		// When in check, we must consider ALL legal moves (including quiet escapes)
 		// This is the idiomatic approach used by strong chess engines
-		allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
-		movesToSearch = allMoves
-
+		movesToSearch = m.generator.GeneratePseudoLegalMoves(b, player)
 	} else {
 		// Normal quiescence - only captures and promotions
-		allMoves := m.generator.GeneratePseudoLegalMoves(b, player)
-		defer moves.ReleaseMoveList(allMoves)
-
-		captureList := moves.GetMoveList()
-		for i := 0; i < allMoves.Count; i++ {
-			move := allMoves.Moves[i]
-			if move.IsCapture || move.Promotion != board.Empty {
-				captureList.AddMove(move)
-			}
-		}
-		movesToSearch = captureList
+		movesToSearch = m.generator.GenerateCaptures(b, player)
 	}
 
 	defer moves.ReleaseMoveList(movesToSearch)
