@@ -5,15 +5,18 @@
 GO := go
 GOFLAGS := -ldflags="-s -w"
 GOBUILDFLAGS := $(GOFLAGS) -trimpath
-GOTESTFLAGS := -race -coverprofile=coverage.out
+# -timeout 30m: internal/movegen (deep perft) exceeds go test's default 10m
+# per-binary timeout under -race + coverage instrumentation on this
+# hardware. Task 2.7 gates deep perft behind testing.Short(); revisit then.
+GOTESTFLAGS := -race -coverprofile=coverage.out -timeout 30m
 MODULE := github.com/AdamGriffiths31/ChessEngine
+# Short commit SHA used to name saved benchmark result files (bench-save).
+GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 # Binary names
 MAIN_BINARY := chess-engine
 UCI_BINARY := tools/bin/uci
-BENCHMARK_BINARY := tools/bin/benchmark
-STS_BINARY := tools/bin/sts
-PROFILE_BINARY := tools/bin/profile
+BENCH_BINARY := tools/bin/bench
 
 # Directories
 BUILD_DIR := bin
@@ -25,11 +28,15 @@ DIST_DIR := dist
 # make on Windows) strip TMP/TEMP/LocalAppData from the recipe environment,
 # which makes `go` fall back to an unwritable system dir (or fail outright
 # looking for %LocalAppData%). Point both at project-local directories
-# instead so builds work regardless of the inherited environment. Kept
-# relative (not $(CURDIR)-prefixed) since CURDIR may contain spaces, which
-# breaks unquoted Makefile recipes; go resolves relative paths against the
-# cwd make already runs recipes in.
-export GOTMPDIR := .gotmp
+# instead so builds work regardless of the inherited environment.
+# The *_DIR variables stay relative because make target/prerequisite names
+# cannot contain spaces (CURDIR may); the exported env vars must be
+# absolute because go subprocesses run with the package directory -- not
+# the repo root -- as cwd (e.g. coverage builds of packages with no test
+# files, and test binaries resolving t.TempDir), where a relative .gotmp
+# does not exist.
+GOTMPDIR_DIR := .gotmp
+export GOTMPDIR := $(abspath $(GOTMPDIR_DIR))
 GOCACHE_DIR := .gocache
 export GOCACHE := $(abspath $(GOCACHE_DIR))
 
@@ -52,15 +59,15 @@ help:
 	@echo "  build         - Build all binaries"
 	@echo "  main          - Build main chess engine binary"
 	@echo "  uci           - Build UCI protocol binary"
-	@echo "  benchmark     - Build internal benchmark binary"
-	@echo "  sts           - Build STS test suite binary"
-	@echo "  profile       - Build profiling binary"
+	@echo "  benchbin      - Build bench multi-tool binary (sts/profile)"
 	@echo ""
 	@echo "Development Targets:"
 	@echo "  test          - Run all tests with coverage"
 	@echo "  test-verbose  - Run tests with verbose output"
 	@echo "  test-short    - Run short tests only"
 	@echo "  bench         - Run Go benchmarks"
+	@echo "  bench-save    - Save movegen/eval/search benchmarks to tools/results/bench_<sha>.txt"
+	@echo "  bench-compare - Compare two bench-save results: OLD=<file> NEW=<file> (needs benchstat)"
 	@echo "  lint          - Run linters (golangci-lint)"
 	@echo "  fmt           - Format code"
 	@echo "  vet           - Run go vet"
@@ -89,55 +96,40 @@ help:
 
 # Build targets
 .PHONY: build
-build: deps fmt vet lint main uci benchmark sts profile
+build: deps fmt vet lint main uci benchbin
 
 .PHONY: main
-main: $(BUILD_DIR) $(GOTMPDIR) $(GOCACHE_DIR)
+main: $(BUILD_DIR) $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Building main chess engine..."
-	$(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY) ./main.go
+	$(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY) ./cmd/gchess
 
 .PHONY: uci
-uci: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
+uci: $(TOOLS_DIR)/bin $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Building UCI binary..."
 	$(GO) build $(GOBUILDFLAGS) -o $(UCI_BINARY) ./cmd/uci
 
-.PHONY: benchmark
-benchmark: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
-	@echo "Building benchmark binary..."
-	$(GO) build $(GOBUILDFLAGS) -o $(BENCHMARK_BINARY) ./cmd/benchmark
-
-.PHONY: sts
-sts: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
-	@echo "Building STS binary..."
-	$(GO) build $(GOBUILDFLAGS) -o $(STS_BINARY) ./cmd/sts
-
-.PHONY: blunders
-blunders: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
-	@echo "Building blunders binary..."
-	$(GO) build $(GOBUILDFLAGS) -o $(TOOLS_DIR)/bin/blunders ./cmd/blunders
-
-.PHONY: profile
-profile: $(TOOLS_DIR)/bin $(GOTMPDIR) $(GOCACHE_DIR)
-	@echo "Building profile binary..."
-	$(GO) build $(GOBUILDFLAGS) -o $(PROFILE_BINARY) ./cmd/profile
+.PHONY: benchbin
+benchbin: $(TOOLS_DIR)/bin $(GOTMPDIR_DIR) $(GOCACHE_DIR)
+	@echo "Building bench binary..."
+	$(GO) build $(GOBUILDFLAGS) -o $(BENCH_BINARY) ./cmd/bench
 
 # Cross-compilation targets
 .PHONY: build-linux
 build-linux:
 	@echo "Building for Linux..."
-	GOOS=linux GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY)-linux-amd64 ./main.go
+	GOOS=linux GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY)-linux-amd64 ./cmd/gchess
 	GOOS=linux GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(TOOLS_DIR)/bin/uci-linux-amd64 ./cmd/uci
 
 .PHONY: build-windows
 build-windows:
 	@echo "Building for Windows..."
-	GOOS=windows GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY)-windows-amd64.exe ./main.go
+	GOOS=windows GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY)-windows-amd64.exe ./cmd/gchess
 	GOOS=windows GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(TOOLS_DIR)/bin/uci-windows-amd64.exe ./cmd/uci
 
 .PHONY: build-macos
 build-macos:
 	@echo "Building for macOS..."
-	GOOS=darwin GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY)-darwin-amd64 ./main.go
+	GOOS=darwin GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(BUILD_DIR)/$(MAIN_BINARY)-darwin-amd64 ./cmd/gchess
 	GOOS=darwin GOARCH=amd64 $(GO) build $(GOBUILDFLAGS) -o $(TOOLS_DIR)/bin/uci-darwin-amd64 ./cmd/uci
 
 .PHONY: build-all-platforms
@@ -166,35 +158,51 @@ vet:
 	$(GO) vet ./...
 
 .PHONY: lint
-lint: check-golangci-lint
+lint: check-golangci-lint $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Running linters..."
-	golangci-lint run
+	golangci-lint run ./...
 
 # Testing targets
 .PHONY: test
-test:
+test: $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Running tests with coverage..."
 	$(GO) test $(GOTESTFLAGS) ./...
 
 .PHONY: test-verbose
-test-verbose:
+test-verbose: $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Running tests with verbose output..."
 	$(GO) test -v $(GOTESTFLAGS) ./...
 
 .PHONY: test-short
-test-short:
+test-short: $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Running short tests..."
 	$(GO) test -short ./...
 
 .PHONY: bench
-bench:
+bench: $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Running benchmarks..."
 	$(GO) test -bench=. -benchmem ./...
 
+.PHONY: bench-save
+bench-save: $(TOOLS_DIR)/results $(GOTMPDIR_DIR) $(GOCACHE_DIR)
+	@echo "Running benchmark suite (movegen/eval/search, count=10) for commit $(GIT_SHA)..."
+	$(GO) test -bench . -benchmem -count 10 ./internal/movegen ./internal/eval ./internal/search > $(TOOLS_DIR)/results/bench_$(GIT_SHA).txt
+	@echo "Saved to $(TOOLS_DIR)/results/bench_$(GIT_SHA).txt"
+
+.PHONY: bench-compare
+bench-compare:
+	@if [ -z "$(OLD)" ] || [ -z "$(NEW)" ]; then \
+		echo "Usage: make bench-compare OLD=<old-results.txt> NEW=<new-results.txt>"; \
+		echo "  (result files are produced by 'make bench-save', e.g. tools/results/bench_<sha>.txt)"; \
+		exit 1; \
+	fi
+	@command -v benchstat >/dev/null 2>&1 || (echo "benchstat not found. Install with: go install golang.org/x/perf/cmd/benchstat@latest" && exit 1)
+	benchstat $(OLD) $(NEW)
+
 .PHONY: perft
-perft:
+perft: $(GOTMPDIR_DIR) $(GOCACHE_DIR)
 	@echo "Running perft tests..."
-	$(GO) test -run TestPerft -v ./game/moves
+	$(GO) test -run TestPerft -v ./internal/movegen
 
 # Coverage targets
 .PHONY: coverage
@@ -212,22 +220,20 @@ coverage-html: test coverage-dir
 .PHONY: install
 install: build
 	@echo "Installing binaries..."
-	$(GO) install ./main.go
+	$(GO) install ./cmd/gchess
 	$(GO) install ./cmd/uci
-	$(GO) install ./cmd/benchmark
-	$(GO) install ./cmd/sts
-	$(GO) install ./cmd/profile
+	$(GO) install ./cmd/bench
 
 .PHONY: clean
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf $(BUILD_DIR)
-	rm -rf $(TOOLS_DIR)/bin/chess_engine $(TOOLS_DIR)/bin/uci $(TOOLS_DIR)/bin/benchmark $(TOOLS_DIR)/bin/sts $(TOOLS_DIR)/bin/profile
+	rm -rf $(TOOLS_DIR)/bin/chess_engine $(TOOLS_DIR)/bin/uci $(TOOLS_DIR)/bin/bench
 	rm -rf $(TOOLS_DIR)/bin/*-linux-amd64* $(TOOLS_DIR)/bin/*-windows-amd64* $(TOOLS_DIR)/bin/*-darwin-amd64*
 	rm -f coverage.out
 	rm -rf $(COVERAGE_DIR)
 	rm -rf $(DIST_DIR)
-	rm -rf $(GOTMPDIR)
+	rm -rf $(GOTMPDIR_DIR)
 	rm -rf $(GOCACHE_DIR)
 
 .PHONY: clean-all
@@ -257,7 +263,7 @@ clean-results:
 check-deps:
 	@echo "Checking required dependencies..."
 	@command -v go >/dev/null 2>&1 || (echo "Go is not installed" && exit 1)
-	@command -v golangci-lint >/dev/null 2>&1 || echo "Warning: golangci-lint not found. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+	@command -v golangci-lint >/dev/null 2>&1 || echo "Warning: golangci-lint not found. Install with: GOTOOLCHAIN=go1.26.4 go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8"
 	@command -v zip >/dev/null 2>&1 || echo "Warning: zip not found (only needed for 'make dist'). On Git Bash/MSYS2: pacman -S zip"
 	@test -f $(TOOLS_DIR)/engines/cutechess-cli || echo "Warning: cutechess-cli not found at $(TOOLS_DIR)/engines/cutechess-cli"
 	@test -f $(TOOLS_DIR)/engines/stockfish || echo "Warning: stockfish not found at $(TOOLS_DIR)/engines/stockfish"
@@ -265,7 +271,7 @@ check-deps:
 
 .PHONY: check-golangci-lint
 check-golangci-lint:
-	@command -v golangci-lint >/dev/null 2>&1 || (echo "golangci-lint not found. Installing..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
+	@command -v golangci-lint >/dev/null 2>&1 || (echo "golangci-lint not found. Installing..." && GOTOOLCHAIN=go1.26.4 go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8)
 
 # Directory creation
 $(BUILD_DIR):
@@ -274,8 +280,11 @@ $(BUILD_DIR):
 $(TOOLS_DIR)/bin:
 	mkdir -p $(TOOLS_DIR)/bin
 
-$(GOTMPDIR):
-	mkdir -p $(GOTMPDIR)
+$(TOOLS_DIR)/results:
+	mkdir -p $(TOOLS_DIR)/results
+
+$(GOTMPDIR_DIR):
+	mkdir -p $(GOTMPDIR_DIR)
 
 $(GOCACHE_DIR):
 	mkdir -p $(GOCACHE_DIR)
@@ -304,7 +313,7 @@ dist: dist-dir build-all-platforms
 chess: clean all run
 
 .PHONY: dev
-dev: clean fmt vet test build
+dev: clean fmt vet lint test build
 
 .PHONY: quick
 quick: fmt build
@@ -321,21 +330,21 @@ run-uci: uci
 .PHONY: debug
 debug:
 	@echo "Building with debug symbols..."
-	$(GO) build -gcflags="-N -l" -o $(BUILD_DIR)/$(MAIN_BINARY)-debug ./main.go
+	$(GO) build -gcflags="-N -l" -o $(BUILD_DIR)/$(MAIN_BINARY)-debug ./cmd/gchess
 
 .PHONY: race
 race:
 	@echo "Building with race detector..."
-	$(GO) build -race -o $(BUILD_DIR)/$(MAIN_BINARY)-race ./main.go
+	$(GO) build -race -o $(BUILD_DIR)/$(MAIN_BINARY)-race ./cmd/gchess
 
 # Profiling helpers
 .PHONY: profile-cpu
-profile-cpu: profile
-	./$(PROFILE_BINARY) -cpuprofile=cpu.prof
+profile-cpu: benchbin
+	./$(BENCH_BINARY) profile -cpuprofile=cpu.prof
 
 .PHONY: profile-mem
-profile-mem: profile
-	./$(PROFILE_BINARY) -memprofile=mem.prof
+profile-mem: benchbin
+	./$(BENCH_BINARY) profile -memprofile=mem.prof
 
 # Git helpers
 .PHONY: pre-commit

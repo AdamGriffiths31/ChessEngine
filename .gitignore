@@ -29,7 +29,9 @@ bin/
 tools/bin/
 .gotmp/
 .gocache/
-tools/results/
+tools/results/*.pgn
+tools/results/*.log
+tools/results/*.jsonl
 tools/engines/
 tools/cutechess.AppImage
 tools/engines.json
@@ -38,14 +40,19 @@ tools/engines.json
 *.tmp
 *.log
 
-# Blunder scanner output (regenerated from elo_results.jsonl)
-blunders.epd
-
 # Profiling data
 profiles/
 
 # Test data - large EPD files
 testdata/
+
+# ...except the small, checked-in golden node-count file that gates search
+# refactors (internal/search/golden_test.go). Both the directory and the file
+# need explicit negation: a trailing-slash ignore of testdata/ excludes the
+# directory itself, and git won't recurse into an excluded directory to
+# evaluate file-level negations unless the directory is un-ignored too.
+!internal/search/testdata/
+!internal/search/testdata/search_golden.json
 
 # Claude Code documentation
 CLAUDE.md
@@ -54,3 +61,7 @@ docs/*
 # Configuration files
 *.yml
 *.yaml
+!/.golangci.yml
+
+# Coverage report output
+coverage/

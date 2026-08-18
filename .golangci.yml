@@ -1,0 +1,46 @@
+# golangci-lint v1 config. Requires a golangci-lint binary built with
+# Go >= 1.26 (module toolchain); rebuild via:
+#   GOTOOLCHAIN=go1.26.4 go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+run:
+  go: "1.24"
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - revive
+    - gocyclo
+    - misspell
+    - forbidigo
+    - unused
+    - ineffassign
+    - gosimple
+
+linters-settings:
+  gocyclo:
+    min-complexity: 25
+  errcheck:
+    # cmd/* and internal/ui print to stdout/stderr as their primary purpose;
+    # checking every Print error return there is noise, not a bug class.
+    exclude-functions:
+      - fmt.Println
+      - fmt.Printf
+      - fmt.Print
+  forbidigo:
+    forbid:
+      - 'fmt\.Print.*'
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: ^cmd/
+      linters:
+        - forbidigo
+    - path: ^internal/ui/
+      linters:
+        - forbidigo

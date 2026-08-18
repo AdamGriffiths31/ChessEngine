@@ -46,33 +46,35 @@ A high-performance chess engine written in Go, featuring advanced search algorit
 
 ### Package Structure
 ```
-board/          # Board representation and bitboard operations
-game/
-  ├── ai/         # Search algorithms and evaluation
-  │   ├── search/     # Negamax, iterative deepening, quiescence, transposition tables
-  │   └── evaluation/ # Position evaluation with pawn hash table
-  ├── moves/      # Move generation and validation with object pooling
-  ├── openings/   # Polyglot opening book support
-  └── modes/      # Game mode implementations (manual, vs AI, benchmark)
-uci/            # UCI protocol implementation
-epd/            # EPD file parsing and STS scoring
-benchmark/      # Benchmark infrastructure and engine comparison
-ui/             # Board rendering and user interface
-cmd/            # Command-line applications
-  ├── uci/        # UCI interface for chess GUIs
-  ├── benchmark/  # Performance benchmarking with/without TT comparison
-  ├── sts/        # Strategic Test Suite runner with scoring
-  └── profile/    # CPU and memory profiling tool
+cmd/
+  ├── gchess/     # Benchmark launcher entry point
+  │   └── modes/  # Benchmark mode implementations (STS, Elo)
+  ├── uci/        # UCI engine binary for chess GUIs
+  └── bench/      # Bench multi-tool: sts/profile/report subcommands
+internal/
+  ├── board/      # Board representation and bitboard operations
+  ├── movegen/    # Legal move generation with magic bitboards and object pooling
+  ├── search/     # Negamax, iterative deepening, quiescence, transposition tables
+  ├── eval/       # Position evaluation with pawn hash table
+  │   └── values/ # Piece values and piece-square tables
+  ├── book/       # Polyglot opening book support
+  ├── player/     # Player implementations, including the computer player
+  ├── epd/        # EPD file parsing and STS scoring
+  ├── bench/      # Benchmark infrastructure for STS/Elo comparison
+  ├── uci/        # UCI protocol implementation
+  ├── game/       # Game state management and move parsing
+  ├── ui/         # Board rendering and user interface
+  └── testutil/   # Shared test helpers
 ```
 
 ### Key Components
-- **Search Engine** (`game/ai/search/`) - Negamax with alpha-beta, LMR, null move pruning, quiescence search
-- **Transposition Table** (`game/ai/search/transposition.go`) - Two-bucket TT with 32-bit packed moves
-- **Evaluator** (`game/ai/evaluation/`) - Lazy evaluation with pawn hash table
-- **Move Generator** (`game/moves/`) - Legal move generation with magic bitboards and object pooling
-- **Move Ordering** (`game/ai/search/move_ordering.go`) - SEE-based ordering with killer moves and history heuristic
-- **Opening Book** (`game/openings/`) - Polyglot opening book integration
-- **UCI Interface** (`uci/`) - Universal Chess Interface protocol support
+- **Search Engine** (`internal/search/`) - Negamax with alpha-beta, LMR, null move pruning, quiescence search
+- **Transposition Table** (`internal/search/transposition.go`) - Two-bucket TT with 32-bit packed moves
+- **Evaluator** (`internal/eval/`) - Lazy evaluation with pawn hash table
+- **Move Generator** (`internal/movegen/`) - Legal move generation with magic bitboards and object pooling
+- **Move Ordering** (`internal/search/move_ordering.go`) - SEE-based ordering with killer moves and history heuristic
+- **Opening Book** (`internal/book/`) - Polyglot opening book integration
+- **UCI Interface** (`internal/uci/`) - Universal Chess Interface protocol support
 
 ## Usage
 
@@ -85,31 +87,34 @@ go build -o chessengine-uci ./cmd/uci
 ./chessengine-uci
 ```
 
-### Interactive Play
+### Benchmark Launcher
 ```bash
-# Build and run interactive mode
-go build -o chessengine .
+# Build and run the gchess benchmark launcher
+go build -o chessengine ./cmd/gchess
 ./chessengine
 
-# Choose game mode:
-# 1. Manual Play (Player vs Player)
-# 2. Player vs Computer
+# Choose mode:
+# 1. STS Benchmark
+# 2. Elo Benchmark
 ```
 
 ### Benchmarking
 ```bash
-# Run performance benchmarks (with/without TT comparison)
-go build -o benchmark ./cmd/benchmark
-./benchmark
+# Build the bench multi-tool (sts/profile/report subcommands)
+go build -o bench ./cmd/bench
 
 # Run Strategic Test Suite (STS)
-go build -o sts ./cmd/sts
-./sts -file testdata/STS1.epd -timeout 5 -max 100
+./bench sts -file testdata/STS1.epd -timeout 5 -max 100
 
 # Run CPU/memory profiling
-go build -o profile ./cmd/profile
-./profile
+./bench profile -file testdata/STS1.epd
 ```
+
+**Dev note:** `make bench-save` runs the Go benchmark suite for
+`internal/movegen`/`internal/eval`/`internal/search` (`-count 10`) and saves
+it to `tools/results/bench_<git-sha>.txt`; `make bench-compare OLD=<file>
+NEW=<file>` diffs two such saves with
+[benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat).
 
 ## Testing & Validation
 
@@ -138,7 +143,7 @@ go test -v -race -coverprofile=coverage.out ./...
 go test -bench=. ./...
 
 # Validate move generation with Perft
-go test -run TestPerft ./game/moves
+go test -run TestPerft ./internal/movegen
 ```
 
 ## Performance
@@ -184,5 +189,5 @@ go test -run TestPerft ./game/moves
 ## Performance History
 
 ### Development Progress
-- **Benchmark History** - See [history.md](history.md) for detailed match results against various opponents
-- **STS Performance** - See [sts_history.md](sts_history.md) for Strategic Test Suite validation results over time
+- **Benchmark History** - See [history.md](tools/results/history.md) for detailed match results against various opponents
+- **STS Performance** - See [sts_history.md](tools/results/sts_history.md) for Strategic Test Suite validation results over time
