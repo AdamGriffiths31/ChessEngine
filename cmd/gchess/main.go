@@ -31,8 +31,7 @@ func main() {
 	showBanner()
 	fmt.Println("Select mode:")
 	fmt.Println("1. STS Benchmark")
-	fmt.Println("2. Elo Benchmark")
-	fmt.Print("\nEnter choice (1-2): ")
+	fmt.Print("\nEnter choice (1): ")
 
 	var choice int
 	if _, err := fmt.Scanln(&choice); err != nil {
@@ -45,9 +44,6 @@ func main() {
 	case 1:
 		stsMode := modes.NewSTSMode()
 		err = stsMode.Run()
-	case 2:
-		eloMode := modes.NewEloBenchmarkMode()
-		err = eloMode.Run()
 	default:
 		fmt.Println("Invalid choice")
 		os.Exit(1)

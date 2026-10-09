@@ -15,9 +15,7 @@ import (
 
 // PositionRecord is one JSONL line describing a single analyzed position. It
 // is written by the STS runner to tools/results/sts_<timestamp>.jsonl (one
-// line per scored EPD position) and by the Elo runner to
-// tools/results/elo_moves_<timestamp>.jsonl (one line per move ChessEngine
-// played across all games in a run).
+// line per scored EPD position).
 type PositionRecord struct {
 	FEN      string              `json:"fen"`
 	Expected string              `json:"expected"`
@@ -37,20 +35,6 @@ func NewSTSPositionRecord(r epd.STSResult) PositionRecord {
 		Chosen:   r.EngineMoveStr,
 		Score:    r.Score,
 		Stats:    &stats,
-	}
-}
-
-// NewEloMovePositionRecord builds a JSONL position record for one move
-// ChessEngine played during an Elo benchmark game. Score is the search's
-// raw evaluation (not an STS 0-10 score); Expected is left blank since
-// there is no reference best move for a live game.
-func NewEloMovePositionRecord(fen, move string, score int, stats search.SearchStats, source string) PositionRecord {
-	return PositionRecord{
-		FEN:    fen,
-		Chosen: move,
-		Score:  score,
-		Stats:  &stats,
-		Source: source,
 	}
 }
 
@@ -155,12 +139,6 @@ func newJSONLWriter(rootPath, prefix string) (*JSONLWriter, error) {
 // rootPath.
 func NewSTSResultsWriter(rootPath string) (*JSONLWriter, error) {
 	return newJSONLWriter(rootPath, "sts")
-}
-
-// NewEloMoveResultsWriter creates tools/results/elo_moves_<timestamp>.jsonl
-// under rootPath.
-func NewEloMoveResultsWriter(rootPath string) (*JSONLWriter, error) {
-	return newJSONLWriter(rootPath, "elo_moves")
 }
 
 // WriteLine marshals v as JSON and appends it as one line.

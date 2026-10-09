@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-// GenerateReport regenerates the STS and Elo history tables from the JSONL
+// GenerateReport regenerates the STS history table from the JSONL
 // result files under resultsDir (tools/results by default), replacing the
-// hand-maintained sts_history.md/elo.md tables with data derived straight
-// from tools/results/sts_*.jsonl and tools/results/elo_results.jsonl.
+// hand-maintained sts_history.md table with data derived straight from
+// tools/results/sts_*.jsonl.
 //
 // Only JSONL-era runs are reproduced: historical rows that predate per-run
 // JSONL output are not present in the source files and so cannot appear
@@ -24,17 +24,11 @@ func GenerateReport(resultsDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	eloTable, err := GenerateEloHistoryTable(resultsDir)
-	if err != nil {
-		return "", err
-	}
 
 	var b strings.Builder
 	b.WriteString("# ChessEngine Benchmark History (regenerated)\n\n")
 	fmt.Fprintf(&b, "Regenerated from %s at %s.\n\n", resultsDir, time.Now().Format("2006-01-02 15:04"))
 	b.WriteString(stsTable)
-	b.WriteString("\n")
-	b.WriteString(eloTable)
 	return b.String(), nil
 }
 
@@ -122,44 +116,6 @@ func formatSTSHistoryRow(s STSSummaryRecord) string {
 		s.AverageDepth,
 		s.Notes,
 	)
-}
-
-// GenerateEloHistoryTable builds a markdown table (one row per recorded
-// run) from tools/results/elo_results.jsonl, in the same column layout as
-// the hand-maintained tools/results/elo.md.
-func GenerateEloHistoryTable(resultsDir string) (string, error) {
-	path := filepath.Join(resultsDir, "elo_results.jsonl")
-
-	var b strings.Builder
-	b.WriteString("## Elo Benchmark Results History\n\n")
-	b.WriteString("This table tracks ChessEngine's estimated playing strength over time.\n")
-	b.WriteString("Regenerated from tools/results/elo_results.jsonl.\n\n")
-	b.WriteString("| Date | Elo | Score | Anchors | TC | Games | Avg Depth | Nodes |\n")
-	b.WriteString("|------|-----|-------|---------|-------|-------|-----------|-------|\n")
-
-	data, err := os.ReadFile(path) // #nosec G304 - fixed filename under the results directory
-	if err != nil {
-		if os.IsNotExist(err) {
-			return b.String(), nil
-		}
-		return "", fmt.Errorf("failed to read %s: %w", path, err)
-	}
-
-	logger := NewEloResultsLogger("")
-	for lineNum, line := range strings.Split(string(data), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		var result EloResult
-		if err := json.Unmarshal([]byte(line), &result); err != nil {
-			slog.Warn("bench report: skipping unparseable elo run", "path", path, "line", lineNum+1, "error", err)
-			continue
-		}
-		b.WriteString(logger.formatMarkdownEntry(&result))
-		b.WriteString("\n")
-	}
-
-	return b.String(), nil
 }
 
 // formatNodeCount renders a nodes-per-second figure compactly (e.g.

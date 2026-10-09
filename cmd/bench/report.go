@@ -8,12 +8,12 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/bench"
 )
 
-// runReport regenerates the STS and Elo history tables from the JSONL
-// result files under tools/results (sts_*.jsonl and elo_results.jsonl),
-// replacing the hand-maintained sts_history.md/elo.md tables.
+// runReport regenerates the STS history table from the JSONL
+// result files under tools/results (sts_*.jsonl),
+// replacing the hand-maintained sts_history.md table.
 func runReport(args []string) error {
 	fs := flag.NewFlagSet("bench report", flag.ExitOnError)
-	dir := fs.String("dir", "tools/results", "directory containing sts_*.jsonl and elo_results.jsonl")
+	dir := fs.String("dir", "tools/results", "directory containing sts_*.jsonl")
 	output := fs.String("o", "", "write the report to this file instead of stdout")
 	if err := fs.Parse(args); err != nil {
 		return err

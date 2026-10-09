@@ -48,7 +48,7 @@ A high-performance chess engine written in Go, featuring advanced search algorit
 ```
 cmd/
   ├── gchess/     # Benchmark launcher entry point
-  │   └── modes/  # Benchmark mode implementations (STS, Elo)
+  │   └── modes/  # Benchmark mode implementations (STS)
   ├── uci/        # UCI engine binary for chess GUIs
   └── bench/      # Bench multi-tool: sts/profile/report subcommands
 internal/
@@ -60,7 +60,7 @@ internal/
   ├── book/       # Polyglot opening book support
   ├── player/     # Player implementations, including the computer player
   ├── epd/        # EPD file parsing and STS scoring
-  ├── bench/      # Benchmark infrastructure for STS/Elo comparison
+  ├── bench/      # Benchmark infrastructure for STS comparison
   ├── uci/        # UCI protocol implementation
   ├── game/       # Game state management and move parsing
   ├── ui/         # Board rendering and user interface
@@ -95,7 +95,6 @@ go build -o chessengine ./cmd/gchess
 
 # Choose mode:
 # 1. STS Benchmark
-# 2. Elo Benchmark
 ```
 
 ### Benchmarking

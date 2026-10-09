@@ -86,10 +86,10 @@ func TestSearchDeterminism_ClearSearchStateResetsAllState(t *testing.T) {
 
 // TestFindBestMove_StatsAreNotCumulativeAcrossCalls reproduces the reuse
 // pattern of a whole game played on one engine instance without
-// ClearSearchState between moves (the Elo benchmark runner and the live UCI
-// adapter both only call ClearSearchState on a brand new game, never between
-// individual moves of the same game -- TT/history/repetition state
-// deliberately persist across a game's moves). Regardless of that reuse,
+// ClearSearchState between moves (the live UCI adapter only calls
+// ClearSearchState on a brand new game, never between individual moves of the
+// same game -- TT/history/repetition state deliberately persist across a
+// game's moves). Regardless of that reuse,
 // SearchStats must always describe only the most recent FindBestMove call:
 // before FindBestMove reset searchStats itself, NodesSearched (and every
 // other counter field) silently accumulated across every move of a game,
