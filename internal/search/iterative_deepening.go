@@ -125,6 +125,16 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 
 				m.addHistory(b.GetHash())
 
+				// Clear the row each root move's search will build into before
+				// evaluating it, mirroring negamax's own per-move
+				// `pv.clearPly(pvPly + 1)`. Without this, a root move whose
+				// own negamax call never improves its (possibly very narrow,
+				// for a null-window scout) alpha never calls pv.store itself,
+				// leaving row 1 holding a PREVIOUS root move's stale line -
+				// which a later move's fail-high (score >= beta, skipping the
+				// full re-search below) can then read and promote into pv[0].
+				pv.clearPly(1)
+
 				var score eval.EvaluationScore
 
 				// The root move has been made on the board, so these negamax
@@ -133,16 +143,16 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				if moveIndex == 0 {
 					m.searchState.player = oppositePlayer(player)
 					m.searchState.collectPV = true
-					score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1)
+					score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1, 1)
 				} else {
 					m.searchState.player = oppositePlayer(player)
 					m.searchState.collectPV = true
-					score = -m.negamax(ctx, currentDepth-1, -alpha-1, -alpha, 1)
+					score = -m.negamax(ctx, currentDepth-1, -alpha-1, -alpha, 1, 1)
 
 					if score > alpha && score < beta {
 						m.searchState.player = oppositePlayer(player)
 						m.searchState.collectPV = true
-						score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1)
+						score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1, 1)
 					}
 				}
 
@@ -193,6 +203,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		finalStats.LMRNodesSkipped = m.searchState.searchStats.LMRNodesSkipped
 		finalStats.NullMoves = m.searchState.searchStats.NullMoves
 		finalStats.NullCutoffs = m.searchState.searchStats.NullCutoffs
+		finalStats.NullMoveZugzwangSkipped = m.searchState.searchStats.NullMoveZugzwangSkipped
 		finalStats.QNodes = m.searchState.searchStats.QNodes
 		finalStats.TTCutoffs = m.searchState.searchStats.TTCutoffs
 		finalStats.FirstMoveCutoffs = m.searchState.searchStats.FirstMoveCutoffs
@@ -201,6 +212,8 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		finalStats.RazoringAttempts = m.searchState.searchStats.RazoringAttempts
 		finalStats.RazoringCutoffs = m.searchState.searchStats.RazoringCutoffs
 		finalStats.RazoringFailed = m.searchState.searchStats.RazoringFailed
+		finalStats.FutilityPrunes = m.searchState.searchStats.FutilityPrunes
+		finalStats.LMPPrunes = m.searchState.searchStats.LMPPrunes
 		finalStats.TTProbes = m.searchState.searchStats.TTProbes
 		finalStats.TTHits = m.searchState.searchStats.TTHits
 		finalStats.PVNodes = m.searchState.searchStats.PVNodes

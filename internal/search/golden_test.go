@@ -22,9 +22,8 @@ var update = flag.Bool("update", false, "regenerate the golden file (testdata/se
 // package directory (which is also `go test`'s working directory).
 const goldenFilePath = "testdata/search_golden.json"
 
-// goldenDepth is the fixed search depth used for every golden position.
-// Depth 5 with the transposition table enabled keeps the full ~20-position
-// suite well under the 30s budget (see TestSearchGolden's doc comment).
+// goldenDepth: deep enough to exercise LMR and aspiration-window paths,
+// shallow enough that the whole golden suite finishes in seconds.
 const goldenDepth = 5
 
 // goldenSearchConfig is shared by every position in the golden suite: no
@@ -112,27 +111,18 @@ var goldenTestFENs = []string{
 // searches a fixed set of ~20 positions at a fixed depth (5) with a fixed
 // transposition table size and no time cutoff, and asserts that
 // (bestmove, score, nodes) for every position exactly match a checked-in
-// golden file (testdata/search_golden.json).
+// golden file (testdata/search_golden.json). Determinism at fixed depth -
+// the precondition this relies on - is established by
+// TestSearchDeterminism_ClearSearchStateResetsAllState; this test follows
+// that pattern so node counts are stable across runs and search orders.
 //
-// Determinism at fixed depth - the precondition this test relies on - is
-// established by TestSearchDeterminism_ClearSearchStateResetsAllState in
-// determinism_test.go: identical (BestMove, Score, NodesSearched) across
-// repeated searches of the same position on the same engine, provided
-// ClearSearchState() is called between searches. This test follows exactly
-// that pattern (one shared engine, ClearSearchState() before each position,
-// a fresh board parsed from FEN each time) so that node counts are stable
-// both across repeated runs and across the order in which positions are
-// searched.
-//
-// Any refactor that changes search behavior in an observable way (move
-// ordering, pruning conditions, evaluation, etc.) is expected to change
-// NodesSearched and/or the chosen move for at least one of these 20
-// positions; regenerate the golden file with:
+// Any refactor that observably changes search behavior will shift nodes
+// counts/moves here; regenerate the golden file with:
 //
 //	go test ./internal/search -run TestSearchGolden -update
 //
-// and manually confirm the new node counts/moves are the intended effect of
-// the refactor before committing the updated golden file.
+// and manually confirm the new values are the intended effect before
+// committing the updated golden file.
 func TestSearchGolden(t *testing.T) {
 	engine := NewMinimaxEngine()
 	engine.SetTranspositionTableSize(64)

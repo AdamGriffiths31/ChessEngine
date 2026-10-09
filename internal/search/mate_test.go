@@ -125,9 +125,16 @@ var mateCases = []mateCase{
 
 	// --- mate in 2, white to move: quiet key move, mate on the 2nd ---
 	{
+		// Pure zugzwang mate: after 1.Ra6! Black's a7-pawn is PINNED (axb6
+		// would expose Ka8 to the a6-rook), so Black's only tries are bxa6,
+		// met by 2.b7#, or a bishop retreat, met by 2.Rxa7#. This position
+		// doubles as a null-move-pruning sentinel: letting Black "pass"
+		// refutes the mate entirely, so any NMP cutoff that fires here hides
+		// a real mate. It caught exactly that failure mode once SEE-corrected
+		// move ordering changed which nodes NMP fired at.
 		name:      "mate2_white_rook_sac_pawn_mate",
 		fen:       "kbK5/pp6/1P6/8/8/8/8/R7 w - - 0 1",
-		line:      "1.Ra6! bxa6 2.b7#  (3 plies, only the mating move checks)",
+		line:      "1.Ra6! bxa6 2.b7#  (3 plies; zugzwang - every Black move loses)",
 		wantScore: eval.MateScore - 2,
 	},
 	{

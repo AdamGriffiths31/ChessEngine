@@ -430,6 +430,54 @@ func TestShouldReplace_CollisionGatedByAgeNotDepth(t *testing.T) {
 	}
 }
 
+// TestShouldReplace_AgingSurvivesTwoGenerations pins the reason age got a
+// second bit. With 1-bit aging, generation N and generation N+2 shared the
+// same parity, so a table filled during search 0 became un-evictable again
+// during search 2: collisions never replaced anything and fresh stores were
+// silently dropped for entire searches. Ages now cycle over 4 generations,
+// so entries two generations apart MUST collide-replace.
+func TestShouldReplace_AgingSurvivesTwoGenerations(t *testing.T) {
+	tt := NewTranspositionTable(1)
+	tableSize := tt.mask + 1
+
+	hashA := uint64(7)
+	hashD := hashA + tableSize // same first-bucket index as hashA
+
+	tt.Store(hashA, 5, 100, EntryExact, board.Move{}) // generation 0
+
+	// Jump straight to generation 2 - the parity trap of the old 1-bit scheme.
+	tt.IncrementAge()
+	tt.IncrementAge()
+
+	tt.Store(hashD, 1, 200, EntryExact, board.Move{})
+
+	if _, found := tt.Probe(hashA); found {
+		t.Error("hashA from generation 0 survived a generation-2 colliding store; aging is frozen every other search")
+	}
+	entryD, foundD := tt.Probe(hashD)
+	if !foundD || entryD.Score != 200 {
+		t.Fatalf("hashD was not stored anywhere: found=%v entry=%+v", foundD, entryD)
+	}
+}
+
+// TestPackDepthAge_ClampsDeepDepths verifies the 4-bit depth field saturates
+// instead of wrapping: a depth-40 store must come back as depth 15, not as
+// some small value that probes and evicts incorrectly (the old 5-bit field
+// silently truncated 32 -> 0).
+func TestPackDepthAge_ClampsDeepDepths(t *testing.T) {
+	packed := packDepthAge(40, EntryExact, 2)
+	depth, entryType, age := unpackDepthAge(packed)
+	if depth != 15 {
+		t.Errorf("depth 40 packed as %d, want clamped 15", depth)
+	}
+	if entryType != EntryExact {
+		t.Errorf("entry type corrupted by packing: %v", entryType)
+	}
+	if age != 2 {
+		t.Errorf("age corrupted by packing: %d", age)
+	}
+}
+
 // TestUnpackMove_RoundTrip exercises packMove/unpackMove for every move shape
 // the packed format distinguishes. Piece/Captured are never packed (derived
 // from board position by the caller), so they are intentionally absent from

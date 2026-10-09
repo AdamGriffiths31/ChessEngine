@@ -96,17 +96,22 @@ func (tt *TranspositionTable) Clear() {
 	tt.age = 0
 }
 
-// packDepthAge packs depth (5 bits), entry type (2 bits), and age (1 bit) into a single byte.
-// Bit layout: [depth:5][type:2][age:1]
+// packDepthAge packs depth (4 bits, clamped to 15), entry type (2 bits), and
+// age (2 bits) into a single byte. Bit layout: [depth:4][type:2][age:2].
+// Age needs 2 bits: with 1-bit aging and one IncrementAge per search,
+// collision eviction only worked on alternating searches.
 func packDepthAge(depth int, entryType EntryType, age uint32) uint8 {
-	return uint8((depth&0x1F)<<3) | uint8((entryType&0x3)<<1) | uint8(age&0x1)
+	if depth > 0x0F {
+		depth = 0x0F
+	}
+	return uint8((depth&0x0F)<<4) | uint8((entryType&0x3)<<2) | uint8(age&0x3)
 }
 
 // unpackDepthAge extracts depth, entry type, and age from a packed byte.
 func unpackDepthAge(depthAge uint8) (depth int, entryType EntryType, age uint32) {
-	depth = int((depthAge >> 3) & 0x1F)
-	entryType = EntryType((depthAge >> 1) & 0x3)
-	age = uint32(depthAge & 0x1)
+	depth = int((depthAge >> 4) & 0x0F)
+	entryType = EntryType((depthAge >> 2) & 0x3)
+	age = uint32(depthAge & 0x3)
 	return
 }
 
@@ -266,7 +271,7 @@ func (tt *TranspositionTable) getSecondBucketIndex(firstIndex uint64) uint64 {
 
 func (tt *TranspositionTable) storeEntry(entry *TranspositionEntry, hash uint64, depth int,
 	score eval.EvaluationScore, entryType EntryType, bestMove board.Move) {
-	currentAge := tt.age & 1
+	currentAge := tt.age & 3
 
 	entry.Hash = hash
 	entry.Score = score
@@ -288,7 +293,7 @@ func (tt *TranspositionTable) shouldReplace(entry *TranspositionEntry, hash uint
 	// At this point we have a hash collision - different position wants this slot
 	tt.collisions++
 
-	return (tt.age & 1) != curAge
+	return (tt.age & 3) != curAge
 }
 
 // Probe looks up a position in the transposition table using two-bucket collision resolution

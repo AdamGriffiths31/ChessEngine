@@ -4,17 +4,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Pawn evaluation - streamlined for performance with focus on key factors
-//
-// Design Philosophy:
-// 1. Passed pawns are the dominant pawn factor (exponential bonus by rank)
-// 2. Pawn structure penalties (isolated, doubled, backward) are secondary
-// 3. Simple connected pawns bonus for pawn chains
-// 4. Pawn hash table for caching expensive pawn evaluations
-// 5. Eliminates complex calculations (pawn storms, candidate passed, weak squares)
-//
-// This approach focuses on the most impactful pawn features while using caching
-// to avoid recalculating identical pawn structures multiple times per search.
+// Pawn evaluation: passed-pawn bonuses by rank, isolated/doubled/backward
+// structure penalties, connected-pawn bonus, cached through PawnHashTable.
 
 const (
 	// Structure penalties

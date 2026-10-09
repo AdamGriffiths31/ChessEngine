@@ -21,8 +21,9 @@ type SearchStats struct {
 	LMRNodesSkipped int64 // Estimated nodes saved by LMR
 
 	// Null move pruning statistics
-	NullMoves   int64 // Number of null move attempts
-	NullCutoffs int64 // Number of successful null move cutoffs
+	NullMoves               int64 // Number of null move attempts
+	NullCutoffs             int64 // Number of successful null move cutoffs
+	NullMoveZugzwangSkipped int64 // Null move declined: side to move has no non-pawn material
 
 	QNodes           int64 // Quiescence search nodes
 	TTCutoffs        int64 // Beta cutoffs from transposition table
@@ -34,6 +35,10 @@ type SearchStats struct {
 	RazoringAttempts int64 // Number of razoring attempts
 	RazoringCutoffs  int64 // Successful razoring cutoffs
 	RazoringFailed   int64 // Razoring attempts that failed verification
+
+	// Quiet-move pruning statistics
+	FutilityPrunes int64 // Quiets skipped because eval + margin cannot reach alpha
+	LMPPrunes      int64 // Late quiets skipped outright (late move pruning)
 
 	// Move ordering effectiveness
 	CutoffsByMoveIndex [64]int64 // Histogram of which move caused beta cutoff
@@ -124,8 +129,9 @@ type searchStatsJSON struct {
 	LMRReSearches   int64 `json:"lmr_re_searches"`
 	LMRNodesSkipped int64 `json:"lmr_nodes_skipped"`
 
-	NullMoves   int64 `json:"null_moves"`
-	NullCutoffs int64 `json:"null_cutoffs"`
+	NullMoves               int64 `json:"null_moves"`
+	NullCutoffs             int64 `json:"null_cutoffs"`
+	NullMoveZugzwangSkipped int64 `json:"null_move_zugzwang_skipped"`
 
 	QNodes           int64 `json:"q_nodes"`
 	TTCutoffs        int64 `json:"tt_cutoffs"`
@@ -136,6 +142,9 @@ type searchStatsJSON struct {
 	RazoringAttempts int64 `json:"razoring_attempts"`
 	RazoringCutoffs  int64 `json:"razoring_cutoffs"`
 	RazoringFailed   int64 `json:"razoring_failed"`
+
+	FutilityPrunes int64 `json:"futility_prunes"`
+	LMPPrunes      int64 `json:"lmp_prunes"`
 
 	CutoffsByMoveIndex []int64 `json:"cutoffs_by_move_index"`
 
@@ -205,8 +214,9 @@ func (s SearchStats) MarshalJSON() ([]byte, error) {
 		LMRReSearches:   s.LMRReSearches,
 		LMRNodesSkipped: s.LMRNodesSkipped,
 
-		NullMoves:   s.NullMoves,
-		NullCutoffs: s.NullCutoffs,
+		NullMoves:               s.NullMoves,
+		NullCutoffs:             s.NullCutoffs,
+		NullMoveZugzwangSkipped: s.NullMoveZugzwangSkipped,
 
 		QNodes:           s.QNodes,
 		TTCutoffs:        s.TTCutoffs,
@@ -217,6 +227,9 @@ func (s SearchStats) MarshalJSON() ([]byte, error) {
 		RazoringAttempts: s.RazoringAttempts,
 		RazoringCutoffs:  s.RazoringCutoffs,
 		RazoringFailed:   s.RazoringFailed,
+
+		FutilityPrunes: s.FutilityPrunes,
+		LMPPrunes:      s.LMPPrunes,
 
 		CutoffsByMoveIndex: nonZeroPrefix(s.CutoffsByMoveIndex[:]),
 

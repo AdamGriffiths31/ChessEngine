@@ -4,16 +4,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Rook evaluation - optimized for speed with focus on what matters most
-//
-// Design Philosophy:
-// 1. Open files are 90% of rook evaluation (prioritize this)
-// 2. 7th rank penetration is the second most important factor
-// 3. Everything else (mobility, connections) provides marginal value
-// 4. Use pre-computed tables and simple checks to avoid expensive calculations
-//
-// This implementation trades some evaluation accuracy for significant speed gains,
-// making it suitable for positions evaluated during lazy evaluation cutoffs.
+// Rook evaluation: open/semi-open file control, seventh-rank penetration,
+// static rank mobility, connected-rooks bonus.
 
 const (
 	// RookOpenFileBonus awards rooks on completely open files

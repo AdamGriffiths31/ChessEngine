@@ -152,27 +152,17 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 // boardsEqual reports whether pre and post represent the same board state
 // and, if not, a human-readable description of what differs.
 //
-// It first tries a full structural comparison via reflect.DeepEqual on the
-// dereferenced *board.Board structs. Because pre/post are plain struct
-// copies (`snapshot := *b`) taken before/after a make+unmake round trip, this
-// is safe even though board.Board has unexported slice fields
-// (hashHistory/evalHistory): those slices are only ever grown by append and
-// shrunk by re-slicing in board's Push*/Pop* helpers, never mutated
-// in-place, so a copy of the slice header taken before the round trip
-// compares correctly against the header left after the round trip (same
-// length, same backing values in range) even though its backing array may
-// have been transiently grown and shrunk in between. reflect.DeepEqual also
-// compares unexported fields without issue (unlike Value.Interface(), which
-// would panic on them).
+// It first tries reflect.DeepEqual on the dereferenced structs. That is safe
+// despite board.Board's unexported slice fields (hashHistory/evalHistory):
+// those slices are only grown by append and shrunk by re-slicing in board's
+// Push*/Pop* helpers, never mutated in place, so the pre-round-trip slice
+// header compares correctly against the post-round-trip header.
 //
-// If the structural comparison fails, boardsEqual falls back to comparing
-// the semantically meaningful state via board's public accessors and
-// exported fields, to produce a useful diagnostic without resorting to
-// unsafe/reflect tricks to read unexported fields individually. If none of
-// those public accessors disagree, the mismatch must be in an unexported
-// bookkeeping field not reachable through them (e.g. a leaked
-// hash/eval-history stack entry, or the hashUpdater reference) -- itself a
-// real bug worth failing on, just not one this fallback can name precisely.
+// If DeepEqual disagrees, a fallback comparing public accessors and exported
+// fields produces a useful diagnostic. If none of them disagree, the mismatch
+// is in unexported bookkeeping they cannot reach (e.g. a leaked hash/eval
+// history entry) - itself a real bug worth failing on, just not one this
+// fallback can name precisely.
 func boardsEqual(pre, post *board.Board) (bool, string) {
 	if reflect.DeepEqual(*pre, *post) {
 		return true, ""

@@ -161,7 +161,7 @@ func TestTryNullMove_DeclinesInCheck(t *testing.T) {
 
 	// Outer conditions satisfied (depth>=3, staticEval>=beta, beta in range) but
 	// inCheck=true, so null move must decline without touching the null-move stat.
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, 100, 1, 0, 200, true)
+	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, 100, 1, 0, 1, 200, true)
 
 	if done {
 		t.Fatalf("null move must decline when in check")
@@ -180,7 +180,7 @@ func TestTryNullMove_DeclinesNearMateBound(t *testing.T) {
 
 	// beta at MateScore is outside the (beta < MateScore-threshold) guard, so the
 	// outer condition fails and null move is not attempted.
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.MateScore, 1, 0, eval.MateScore, false)
+	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.MateScore, 1, 0, 1, eval.MateScore, false)
 
 	if done {
 		t.Fatalf("null move must decline near mate bounds")
@@ -195,16 +195,19 @@ func TestTryNullMove_DeclinesNearMateBound(t *testing.T) {
 
 func TestTryNullMove_CutoffIncrementsCutNodes(t *testing.T) {
 	m := NewMinimaxEngine()
-	// White is up two queens with no other pieces on the board: giving Black a
-	// free move (the null move) still leaves Black hopelessly lost, so the
+	// Black is down its queen in an otherwise full board: giving Black a free
+	// move (the null move) still leaves Black hopelessly lost, so the
 	// reduced-depth verification search reliably fails high against a very
-	// low beta.
-	b := testutil.MustFromFEN(t, "6k1/8/8/8/8/8/8/QQ2K3 w - - 0 1")
+	// low beta. The board is deliberately DENSE (> NullMoveMaxPieces pieces):
+	// on sparse boards NMP cutoffs are now skipped outright by the
+	// sparse-position zugzwang guard (see params.go), so the old QQ-vs-K
+	// fixture no longer reaches the cutoff path this test exists to pin.
+	b := testutil.MustFromFEN(t, "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	m.searchState.board = b
 	staticEval := m.evaluator.Evaluate(b)
 
 	beforeCutoffs := m.searchState.searchStats.NullCutoffs
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.EvaluationScore(0), 1, 0, staticEval, false)
+	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.EvaluationScore(0), 1, 0, 1, staticEval, false)
 
 	if !done {
 		t.Fatalf("expected a null-move cutoff, got done=false (score=%d)", score)
@@ -214,6 +217,35 @@ func TestTryNullMove_CutoffIncrementsCutNodes(t *testing.T) {
 	}
 	if m.searchState.searchStats.CutNodes != 1 {
 		t.Errorf("CutNodes = %d, want 1 (a null-move cutoff is a fail-high, same node type as a move-loop beta cutoff)", m.searchState.searchStats.CutNodes)
+	}
+}
+
+func TestTryNullMove_DeclinesWithNoNonPawnMaterial(t *testing.T) {
+	m := NewMinimaxEngine()
+	// White has only a king and a pawn - no knight/bishop/rook/queen. This is
+	// exactly the zugzwang-prone material composition null-move pruning is
+	// known to misbehave in (giving Black a free move is not actually free
+	// when White has nothing but pawn moves and king moves left to make).
+	// Otherwise the outer conditions are satisfied (depth>=3, beta in range,
+	// staticEval should favor White's extra pawn), so without a zugzwang
+	// guard this would proceed to attempt the null move.
+	b := testutil.MustFromFEN(t, "6k1/8/8/8/8/8/P7/K7 w - - 0 1")
+	m.searchState.board = b
+	staticEval := m.evaluator.Evaluate(b)
+
+	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.EvaluationScore(0), 1, 0, 1, staticEval, false)
+
+	if done {
+		t.Fatalf("null move must decline with no non-pawn material (zugzwang risk), got done=true (score=%d)", score)
+	}
+	if score != 0 {
+		t.Errorf("declined null move score = %d, want 0", score)
+	}
+	if m.searchState.searchStats.NullMoves != 0 {
+		t.Errorf("NullMoves incremented with no non-pawn material: %d", m.searchState.searchStats.NullMoves)
+	}
+	if m.searchState.searchStats.NullMoveZugzwangSkipped != 1 {
+		t.Errorf("NullMoveZugzwangSkipped = %d, want 1 (so real games can confirm the guard actually fires)", m.searchState.searchStats.NullMoveZugzwangSkipped)
 	}
 }
 
@@ -272,7 +304,9 @@ func TestRecordCutoff_StoresKillerAndHistoryForQuietMove(t *testing.T) {
 		t.Fatalf("precondition: history score should start at 0")
 	}
 
-	m.recordCutoff(move, depth, ply, 1, stageTTHash, eval.EvaluationScore(50))
+	list := &movegen.MoveList{}
+	list.AddMove(move)
+	m.recordCutoff(move, depth, ply, 1, stageTTHash, eval.EvaluationScore(50), list, 0)
 
 	if !m.isKillerMove(move, ply) {
 		t.Errorf("quiet move not stored as killer at ply %d", ply)
@@ -291,6 +325,32 @@ func TestRecordCutoff_StoresKillerAndHistoryForQuietMove(t *testing.T) {
 	}
 }
 
+func TestRecordCutoff_MalusesEarlierQuietMoves(t *testing.T) {
+	m := newEngineWithTT()
+	const ply = 3
+	const depth = 4
+
+	hero := stageMove() // quiet, non-capture
+	earlier := board.Move{
+		From: board.Square{File: 0, Rank: 1}, // a2
+		To:   board.Square{File: 0, Rank: 2}, // a3
+		Piece:    board.WhitePawn,
+	}
+
+	list := &movegen.MoveList{}
+	list.AddMove(earlier)
+	list.AddMove(hero)
+
+	m.recordCutoff(hero, depth, ply, 2, stageTTHash, eval.EvaluationScore(50), list, 1)
+
+	if m.getHistoryScore(hero) <= 0 {
+		t.Errorf("cutoff move should earn a positive bonus, got %d", m.getHistoryScore(hero))
+	}
+	if m.getHistoryScore(earlier) >= 0 {
+		t.Errorf("earlier quiet move should take a negative malus, got %d", m.getHistoryScore(earlier))
+	}
+}
+
 func TestRecordCutoff_SkipsKillerAndHistoryForCapture(t *testing.T) {
 	m := newEngineWithTT()
 	move := stageMove()
@@ -298,7 +358,7 @@ func TestRecordCutoff_SkipsKillerAndHistoryForCapture(t *testing.T) {
 	const ply = 3
 	const depth = 4
 
-	m.recordCutoff(move, depth, ply, 2, stageTTHash, eval.EvaluationScore(50))
+	m.recordCutoff(move, depth, ply, 2, stageTTHash, eval.EvaluationScore(50), nil, 0)
 
 	if m.isKillerMove(move, ply) {
 		t.Errorf("capture must not be stored as killer")

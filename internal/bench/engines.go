@@ -95,7 +95,6 @@ func (em *EngineManager) FormatEngineOptions(engine *Engine) []string {
 
 	options := make([]string, 0, len(engine.Options))
 	for key, value := range engine.Options {
-		// All options use the same format for simplicity
 		options = append(options, fmt.Sprintf("option.%s=%s", key, value))
 	}
 

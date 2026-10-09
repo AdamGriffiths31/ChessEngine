@@ -16,21 +16,13 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
-// runProfile provides CPU and memory profiling utilities for the chess engine
-// (formerly cmd/profile).
+// runProfile provides CPU and memory profiling utilities for the chess engine.
 //
-// NOTE: the three log.Fatalf calls below (CPU profile start failure, memory
-// profile create failure, memory profile write failure) are intentionally
-// NOT converted to returned errors. By the time those calls execute, one or
-// two defers (closing the CPU profile file / stopping the CPU profiler) have
-// already been registered earlier in this function. Converting those three
-// call sites to `return err` would make this function return normally,
-// which would run those pending defers -- a behavior change from the
-// original (os.Exit skips defers) that goes beyond a trivial mechanical
-// conversion. The four earlier log.Fatal/log.Fatalf calls (missing -file,
-// read failure, parse failure, out-of-range position) and the CPU-profile
-// os.Create failure all occur before any defer is registered in this
-// function, so those were converted to returned errors as trivial.
+// NOTE: the CPU-profile start failure and memory-profile create/write
+// failures below deliberately stay log.Fatalf rather than returning errors:
+// by then, profile-cleanup defers are already registered, and a return would
+// run them - a behavior change from os.Exit semantics. Earlier failures have
+// no pending defers and do return errors.
 //
 //nolint:gocyclo // linear sequence of flag/mode branches in a CLI entrypoint;
 // see the defer-ordering note above for why it isn't split further

@@ -34,6 +34,18 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 		see.gain[depth] = 100
 	}
 
+	// Promotion-capture: the promoted piece is part of the exchange. Its
+	// arrival adds net material up front (promoted value minus the pawn), and
+	// it is the piece exposed to recapture on the target square - without
+	// this, exd8=Q met by Rxd8 was priced as winning a rook for a pawn
+	// instead of losing a queen. Both Empty ('.') and the zero value count
+	// as "no promotion": hand-built Move literals leave Promotion unset,
+	// which is not Empty.
+	promoted := move.Promotion
+	if promoted != board.Empty && promoted != 0 {
+		see.gain[depth] += see.getPieceValue(promoted) - see.getPieceValue(move.Piece)
+	}
+
 	occupied := b.AllPieces
 
 	targetSquareIndex := board.FileRankToSquare(target.File, target.Rank)
@@ -54,6 +66,11 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 
 	sideToMove := see.getOppositeSide(move.Piece)
 	attackingPiece := move.Piece
+	if promoted != board.Empty && promoted != 0 {
+		// A recapturer takes the promoted piece standing on the target
+		// square, not the pawn that moved there.
+		attackingPiece = promoted
+	}
 
 	for {
 		depth++
@@ -71,9 +88,24 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 			break
 		}
 
-		// Stop exchange before king capture (following Stockfish approach)
+		// King handling: a king recapture only happens when the target square
+		// is undefended by the opposing side; otherwise the king may not take
+		// and the exchange genuinely ends. Blindly stopping here overvalued
+		// captures like QxP where the enemy king was the pawn's sole guard:
+		// the code returned +100 while Kxd4 wins the queen (-800).
 		if nextAttacker.piece == board.WhiteKing || nextAttacker.piece == board.BlackKing {
-			break
+			occAfterKingCapture := occupied.ClearBit(nextAttacker.square)
+			var defenders board.Bitboard
+			if sideToMove == "w" {
+				defenders = b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardBlack, occAfterKingCapture) & occAfterKingCapture
+			} else {
+				defenders = b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardWhite, occAfterKingCapture) & occAfterKingCapture
+			}
+			if defenders != 0 {
+				break
+			}
+			// Legal king capture: fall through and apply it like any other;
+			// the opponent has no reply, so the next iteration ends cleanly.
 		}
 
 		capturedValue := see.getPieceValue(attackingPiece)

@@ -4,17 +4,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Bishop evaluation - streamlined for performance with focus on key factors
-//
-// Design Philosophy:
-// 1. Bishop pair bonus is the dominant factor (especially in endgames)
-// 2. Bad bishop penalty for pawns on same-color squares
-// 3. Pre-computed mobility table for O(1) lookups
-// 4. Fianchetto position recognition for positional bonuses
-// 5. Eliminates expensive calculations (X-ray attacks, complex diagonal analysis)
-//
-// This approach trades some evaluation precision for significant speed improvements,
-// making it ideal for positions evaluated during lazy evaluation with early cutoffs.
+// Bishop evaluation: bishop-pair bonus, bad-bishop penalty for own pawns
+// on the bishop's square color, static mobility and fianchetto tables.
 
 const (
 	// Bishop pair bonus - the most valuable bishop feature

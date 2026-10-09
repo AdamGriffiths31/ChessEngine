@@ -9,6 +9,21 @@ func (m *MinimaxEngine) setupRepetitionHistory(rootHash uint64) {
 	m.zobristHistory[m.zobristHistoryPly] = rootHash
 }
 
+// seedRepetitionHistory seeds the engine's repetition history with a
+// real-game hash sequence (oldest first, ending with the current position),
+// instead of collapsing it to just the current root. See
+// SearchConfig.RepetitionHistory for the full contract. Sequences longer
+// than the array capacity are truncated to their most recent MaxGamePly
+// entries; older positions cannot affect repetition detection near the
+// current search horizon.
+func (m *MinimaxEngine) seedRepetitionHistory(history []uint64) {
+	if len(history) > MaxGamePly {
+		history = history[len(history)-MaxGamePly:]
+	}
+	copy(m.zobristHistory[:len(history)], history)
+	m.zobristHistoryPly = uint16(len(history) - 1)
+}
+
 // addHistory adds a position hash to the repetition detection history.
 // Called when making a move during search to track the path from root to current node.
 // Prevents buffer overflow by checking against MaxGamePly capacity.

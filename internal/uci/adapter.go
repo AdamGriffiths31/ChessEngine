@@ -331,8 +331,8 @@ func (ue *Engine) handleGo(args []string) {
 	if pvString != "" {
 		pvLog = pvString
 	}
-	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | TTHit: %.0f%% | EBF: %.2f | Cutoffs: [%d,%d,%d] | NodeTypes: PV=%.0f%% Cut=%.0f%% All=%.0f%% | Time: %.3fs | Book: %t | PV: %s | %s | FEN: %s",
-		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, ttHitRate, ebf, cutoff1st, cutoff2nd, cutoff3rd, pvNodePct, cutNodePct, allNodePct, searchDuration.Seconds(), result.Stats.BookMoveUsed, pvLog, ttStatsStr, searchFEN)
+	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | ZZ: %d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | TTHit: %.0f%% | EBF: %.2f | Cutoffs: [%d,%d,%d] | NodeTypes: PV=%.0f%% Cut=%.0f%% All=%.0f%% | Time: %.3fs | Book: %t | PV: %s | %s | FEN: %s",
+		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.NullMoveZugzwangSkipped, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, ttHitRate, ebf, cutoff1st, cutoff2nd, cutoff3rd, pvNodePct, cutNodePct, allNodePct, searchDuration.Seconds(), result.Stats.BookMoveUsed, pvLog, ttStatsStr, searchFEN)
 
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
@@ -360,11 +360,12 @@ func (ue *Engine) buildSearchConfig(params SearchParams) search.SearchConfig {
 	}
 
 	config := search.SearchConfig{
-		MaxDepth:       DefaultMaxDepth,
-		MaxTime:        DefaultMoveTime,
-		DebugMode:      false,
-		UseOpeningBook: len(bookFiles) > 0,
-		BookFiles:      bookFiles,
+		MaxDepth:          DefaultMaxDepth,
+		MaxTime:           DefaultMoveTime,
+		DebugMode:         false,
+		UseOpeningBook:    len(bookFiles) > 0,
+		BookFiles:         bookFiles,
+		RepetitionHistory: ue.engine.HashHistory(),
 	}
 
 	if params.Depth > 0 {

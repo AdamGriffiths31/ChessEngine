@@ -1,34 +1,20 @@
 package eval
 
 import (
-	"strings"
-
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// King evaluation - streamlined for performance with focus on essential factors
-//
-// Design Philosophy:
-// 1. King safety is paramount in opening/middlegame (castling, shelter)
-// 2. King activity becomes important in endgames (centralization)
-// 3. Simple position-based checks avoid expensive attack calculations
-// 4. Pre-computed safety zones for efficient evaluation
-// 5. Eliminates complex king safety calculations (attack weights, pressure zones)
-//
-// This approach focuses on the most critical king factors while using simple
-// position-based heuristics instead of expensive attack generation.
+// King evaluation: open-file and nearby-threat safety. Endgame king
+// centralization comes from the phase-blended KingTableEndgame PST (see
+// evaluator.go), replacing the former hard <14-pieces switch that scored
+// endgame kings with the middlegame safety table. A castling/pawn-shelter
+// bonus was tried and removed - SPRT showed it cost ~80 Elo, since keying
+// it to the king's exact square created a large score cliff the instant a
+// castled king took one more step (see sprt-mobility-eval-fix session notes).
 
 const (
 	// King safety (simplified)
-	KingShelterBonus = 20  // Per pawn in front of castled king
 	OpenFileNearKing = -20
-
-	// Endgame king activity
-	KingCentralizationEndgame = 20
-
-	// Castling status
-	HasCastledBonus    = 15
-	LostCastlingRights = -10
 )
 
 // KingSafetyZone provides pre-computed 3x3 zones around each square
@@ -83,32 +69,12 @@ func evaluateKingSimple(b *board.Board, kingSquare int, isWhite bool) int {
 	if b == nil {
 		return 0
 	}
-	score := 0
 
-	whitePieces := b.GetColorBitboard(board.BitboardWhite)
-	blackPieces := b.GetColorBitboard(board.BitboardBlack)
-	totalPieces := (whitePieces | blackPieces).PopCount()
-	isEndgame := totalPieces < 14
-
-	if isEndgame {
-		score += evaluateKingEndgameActivity(kingSquare)
-	} else {
-		score += evaluateKingSafety(b, kingSquare, isWhite)
-	}
-
-	return score
-}
-
-func evaluateKingEndgameActivity(kingSquare int) int {
-	file := kingSquare % 8
-	rank := kingSquare / 8
-
-	fileDistance := absFloat(float64(file) - 3.5)
-	rankDistance := absFloat(float64(rank) - 3.5)
-	centerDistance := fileDistance + rankDistance
-
-	centralizationScore := int((7.0 - centerDistance) * 3)
-	return centralizationScore
+	// Safety terms run in all phases: shelter only fires at castled squares
+	// (which endgame kings have left), while open files and threats near the
+	// king stay meaningful. Positional centralization is handled by the
+	// tapered PST blend.
+	return evaluateKingSafety(b, kingSquare, isWhite)
 }
 
 func evaluateKingSafety(b *board.Board, kingSquare int, isWhite bool) int {
@@ -117,97 +83,8 @@ func evaluateKingSafety(b *board.Board, kingSquare int, isWhite bool) int {
 	}
 	score := 0
 
-	if isWhite {
-		if kingSquare == 6 || kingSquare == 2 {
-			score += HasCastledBonus
-			score += evaluatePawnShelter(b, kingSquare, isWhite)
-		} else if !hasCastlingRights(b, isWhite) {
-			score += LostCastlingRights
-		}
-	} else {
-		if kingSquare == 62 || kingSquare == 58 {
-			score += HasCastledBonus
-			score += evaluatePawnShelter(b, kingSquare, isWhite)
-		} else if !hasCastlingRights(b, isWhite) {
-			score += LostCastlingRights
-		}
-	}
-
 	score += evaluateOpenFilesNearKing(b, kingSquare)
 	score += evaluateBasicThreats(b, kingSquare, isWhite)
-
-	return score
-}
-
-// hasCastlingRights reports whether the given side can still castle either way
-func hasCastlingRights(b *board.Board, isWhite bool) bool {
-	rights := b.GetCastlingRights()
-	if isWhite {
-		return strings.ContainsAny(rights, "KQ")
-	}
-	return strings.ContainsAny(rights, "kq")
-}
-
-func evaluatePawnShelter(b *board.Board, kingSquare int, isWhite bool) int {
-	if b == nil {
-		return 0
-	}
-	score := 0
-	var pawns board.Bitboard
-
-	if isWhite {
-		pawns = b.GetPieceBitboard(board.WhitePawn)
-	} else {
-		pawns = b.GetPieceBitboard(board.BlackPawn)
-	}
-
-	if isWhite {
-		switch kingSquare {
-		case 6:
-			if pawns.HasBit(15) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(14) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(13) {
-				score += KingShelterBonus / 2
-			}
-		case 2:
-			if pawns.HasBit(9) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(10) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(11) {
-				score += KingShelterBonus / 2
-			}
-		}
-	} else {
-		switch kingSquare {
-		case 62:
-			if pawns.HasBit(55) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(54) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(53) {
-				score += KingShelterBonus / 2
-			}
-		case 58:
-			if pawns.HasBit(49) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(50) {
-				score += KingShelterBonus
-			}
-			if pawns.HasBit(51) {
-				score += KingShelterBonus / 2
-			}
-		}
-	}
 
 	return score
 }
@@ -261,11 +138,4 @@ func evaluateBasicThreats(b *board.Board, kingSquare int, isWhite bool) int {
 	}
 
 	return score
-}
-
-func absFloat(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

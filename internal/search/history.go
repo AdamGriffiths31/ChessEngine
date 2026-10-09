@@ -1,4 +1,3 @@
-// Package search provides chess move search algorithms and transposition table implementation.
 package search
 
 import (
@@ -9,16 +8,23 @@ import (
 
 // History table configuration constants
 const (
-	MaxHistoryScore    = 10000
-	HistoryDecayFactor = 4
-	HistoryBonus       = 1
+	// HistoryMaxScore bounds every entry via gravity clamping: updates follow
+	// entry += bonus - entry*|bonus|/HistoryMaxScore, so scores asymptotically
+	// approach +-HistoryMaxScore instead of hitting a hard clamp. This keeps
+	// frequently-repeated bonuses meaningful while allowing negative (malus)
+	// values, which the linear bonus/hard-cap scheme could never produce.
+	HistoryMaxScore = 16384
+
+	// HistoryDecayFactor halves all entries once per search (called from
+	// FindBestMove), so stale signal fades within a few moves instead of
+	// persisting across eight.
+	HistoryDecayFactor = 2
 )
 
 // HistoryTable tracks the success rate of moves based on from/to square combinations
 // Uses a butterfly table approach for better cache locality
 type HistoryTable struct {
 	table [64][64]atomic.Int32
-	age   atomic.Uint32
 }
 
 // NewHistoryTable creates a new history table
@@ -26,24 +32,41 @@ func NewHistoryTable() *HistoryTable {
 	return &HistoryTable{}
 }
 
-// UpdateHistory increases the history score for a move that caused a beta cutoff
-// The move is considered successful and should be tried earlier in future searches
-func (h *HistoryTable) UpdateHistory(move board.Move, depth int) {
-	if !isValidSquare(move.From) || !isValidSquare(move.To) {
+// historyBonus returns the per-update magnitude: quadratic in remaining depth,
+// so cutoffs found deeper in the tree (more evidence of a good move) shift
+// history more than shallow ones. Matches modern engine practice.
+func historyBonus(depth int) int32 {
+	if depth < 0 {
+		return 0
+	}
+	return int32(depth * depth) // #nosec G115 - depth is small, intentional conversion
+}
+
+// Bonus credits a quiet move that caused a beta cutoff.
+func (h *HistoryTable) Bonus(move board.Move, depth int) {
+	h.apply(move, historyBonus(depth))
+}
+
+// Malus penalizes a quiet move that was searched but did not cause the
+// cutoff. Negative entries are what make the LMR "reduce bad-history moves"
+// threshold (params.HistoryLowThreshold) reachable at all.
+func (h *HistoryTable) Malus(move board.Move, depth int) {
+	h.apply(move, -historyBonus(depth))
+}
+
+// apply adjusts one entry by bonus using the gravity formula above, bounding
+// the result to (-HistoryMaxScore, +HistoryMaxScore) without a hard clamp.
+func (h *HistoryTable) apply(move board.Move, bonus int32) {
+	if !isValidSquare(move.From) || !isValidSquare(move.To) || bonus == 0 {
 		return
 	}
 
 	from := squareToIndex(move.From)
 	to := squareToIndex(move.To)
 
-	bonus := HistoryBonus * int32(depth+1) // #nosec G115 - depth is small, intentional conversion
-
 	for {
 		current := h.table[from][to].Load()
-		newValue := current + bonus
-		if newValue > MaxHistoryScore {
-			newValue = MaxHistoryScore
-		}
+		newValue := current + bonus - (current*bonus)/HistoryMaxScore
 		if h.table[from][to].CompareAndSwap(current, newValue) {
 			break
 		}
@@ -51,7 +74,8 @@ func (h *HistoryTable) UpdateHistory(move board.Move, depth int) {
 }
 
 // GetHistoryScore returns the history score for a move
-// Higher scores indicate moves that have been more successful in the past
+// Higher scores indicate moves that have been more successful in the past;
+// negative scores mark moves that repeatedly failed to cause cutoffs.
 func (h *HistoryTable) GetHistoryScore(move board.Move) int32 {
 	if !isValidSquare(move.From) || !isValidSquare(move.To) {
 		return 0
@@ -70,33 +94,22 @@ func (h *HistoryTable) Clear() {
 			h.table[i][j].Store(0)
 		}
 	}
-	h.age.Store(0)
 }
 
 // Age applies decay to all history scores to prevent them from growing too large
 // and to give more weight to recent patterns
 func (h *HistoryTable) Age() {
-	currentAge := h.age.Add(1)
-
-	if currentAge%8 == 0 {
-		for i := 0; i < 64; i++ {
-			for j := 0; j < 64; j++ {
-				for {
-					current := h.table[i][j].Load()
-					newValue := current / HistoryDecayFactor
-					if h.table[i][j].CompareAndSwap(current, newValue) {
-						break
-					}
+	for i := 0; i < 64; i++ {
+		for j := 0; j < 64; j++ {
+			for {
+				current := h.table[i][j].Load()
+				newValue := current / HistoryDecayFactor
+				if h.table[i][j].CompareAndSwap(current, newValue) {
+					break
 				}
 			}
 		}
 	}
-}
-
-// GetMaxScore returns the maximum history score currently in the table
-// Used for normalizing history scores for LMR reduction calculations
-func (h *HistoryTable) GetMaxScore() int32 {
-	return MaxHistoryScore
 }
 
 func isValidSquare(square board.Square) bool {

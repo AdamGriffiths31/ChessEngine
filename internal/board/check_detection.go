@@ -23,7 +23,7 @@ func MoveGivesCheck(b *Board, move Move) bool {
 	fromSquare := move.From.Rank*8 + move.From.File
 
 	// 1. Direct check: Does the piece attack the king from its destination?
-	if isDirectCheck(b, piece, toSquare, kingSquare) {
+	if isDirectCheck(b, piece, toSquare, kingSquare, fromSquare) {
 		return true
 	}
 
@@ -34,7 +34,7 @@ func MoveGivesCheck(b *Board, move Move) bool {
 
 	// 3. Promotion check (special case)
 	if move.Promotion != Empty {
-		return isDirectCheck(b, move.Promotion, toSquare, kingSquare)
+		return isDirectCheck(b, move.Promotion, toSquare, kingSquare, fromSquare)
 	}
 
 	// 4. En passant discovered check (rare but possible)
@@ -45,29 +45,37 @@ func MoveGivesCheck(b *Board, move Move) bool {
 	return false
 }
 
-func isDirectCheck(b *Board, piece Piece, fromSquare, kingSquare int) bool {
+// isDirectCheck reports whether piece attacks the enemy king from attackFrom
+// (the move's destination square). moverOrigin is the square the moving piece
+// starts on; slider rays are computed with that square vacated so a piece
+// sliding along its own line attacks through its old square exactly as it
+// will once the move has been made. Without this, a slider retreating away
+// from the king along an open line looked blocked by its own pre-move square.
+func isDirectCheck(b *Board, piece Piece, attackFrom, kingSquare, moverOrigin int) bool {
+	occupancy := b.AllPieces.ClearBit(moverOrigin)
+
 	switch piece {
 	case WhitePawn:
-		pawnAttacks := GetPawnAttacks(fromSquare, BitboardWhite)
+		pawnAttacks := GetPawnAttacks(attackFrom, BitboardWhite)
 		return pawnAttacks.HasBit(kingSquare)
 	case BlackPawn:
-		pawnAttacks := GetPawnAttacks(fromSquare, BitboardBlack)
+		pawnAttacks := GetPawnAttacks(attackFrom, BitboardBlack)
 		return pawnAttacks.HasBit(kingSquare)
 
 	case WhiteKnight, BlackKnight:
-		return GetKnightAttacks(fromSquare).HasBit(kingSquare)
+		return GetKnightAttacks(attackFrom).HasBit(kingSquare)
 
 	case WhiteBishop, BlackBishop:
-		return GetBishopAttacks(fromSquare, b.AllPieces).HasBit(kingSquare)
+		return GetBishopAttacks(attackFrom, occupancy).HasBit(kingSquare)
 
 	case WhiteRook, BlackRook:
-		return GetRookAttacks(fromSquare, b.AllPieces).HasBit(kingSquare)
+		return GetRookAttacks(attackFrom, occupancy).HasBit(kingSquare)
 
 	case WhiteQueen, BlackQueen:
-		return GetQueenAttacks(fromSquare, b.AllPieces).HasBit(kingSquare)
+		return GetQueenAttacks(attackFrom, occupancy).HasBit(kingSquare)
 
 	case WhiteKing, BlackKing:
-		return GetKingAttacks(fromSquare).HasBit(kingSquare)
+		return GetKingAttacks(attackFrom).HasBit(kingSquare)
 	}
 
 	return false

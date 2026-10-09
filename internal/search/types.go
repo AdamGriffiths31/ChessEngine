@@ -19,6 +19,18 @@ type SearchConfig struct {
 	// Opening book configuration
 	UseOpeningBook bool
 	BookFiles      []string
+
+	// RepetitionHistory is the sequence of position hashes (board.Board.GetHash
+	// scheme) for the real game so far, oldest first, ending with the hash of
+	// the position being searched (b.GetHash()). Optional: when empty, the
+	// search's repetition detection only sees positions reachable within this
+	// search's own hypothetical lookahead from the current position, exactly
+	// as before this field existed - it cannot recognize that a position has
+	// already repeated via real moves played earlier in the actual game. When
+	// provided, it seeds that real history so a hypothetical recurrence found
+	// during search can be correctly recognized as completing a repetition
+	// that started before this search call.
+	RepetitionHistory []uint64
 }
 
 // SearchResult contains the result of a search

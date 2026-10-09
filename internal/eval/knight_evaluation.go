@@ -4,15 +4,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Knight evaluation - streamlined for performance with focus on key factors
-//
-// Design Philosophy:
-// 1. Outpost bonus is the dominant knight factor (defended squares in enemy territory)
-// 2. Pre-computed mobility table for O(1) lookups
-// 3. Eliminates expensive calculations (fork detection, complex mobility analysis, knight pair penalties)
-//
-// This approach trades some tactical awareness for significant speed improvements,
-// making it ideal for positions evaluated during lazy evaluation with early cutoffs.
+// Knight evaluation: edge-avoidance mobility table plus a bonus for
+// pawn-defended outposts in enemy territory.
 
 const (
 	// Outpost bonus (most important)

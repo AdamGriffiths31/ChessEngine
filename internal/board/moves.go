@@ -141,6 +141,18 @@ func (b *Board) MakeNullMove() MoveUndo {
 		Hash:            b.GetHash(),
 	}
 
+	// Increment half move clock (null moves don't reset 50-move rule)
+	b.halfMoveClock++
+
+	// Compute the hash delta while the pre-null state is still intact (EP
+	// target live, side-to-move unflipped), then mutate and apply it. See the
+	// HashUpdater.GetNullMoveDelta contract: a live, capturable EP target was
+	// contributing its file key to the hash, and this null move removes it.
+	var nullDelta uint64
+	if b.hashUpdater != nil {
+		nullDelta = b.hashUpdater.GetNullMoveDelta(b)
+	}
+
 	if b.sideToMove == "w" {
 		b.sideToMove = "b"
 	} else {
@@ -148,18 +160,13 @@ func (b *Board) MakeNullMove() MoveUndo {
 		b.fullMoveNumber++
 	}
 
-	// Increment half move clock (null moves don't reset 50-move rule)
-	b.halfMoveClock++
-
 	// Clear en passant target (opportunity expires when turn passes)
 	b.hasEnPassant = false
 
 	// Castling rights remain unchanged (no pieces moved)
 
-	// Update hash for null move - flip side to move bit
 	if b.hashUpdater != nil {
-		sideKey := b.hashUpdater.GetNullMoveDelta()
-		b.UpdateHash(sideKey)
+		b.UpdateHash(nullDelta)
 	}
 
 	return undo
@@ -278,12 +285,19 @@ func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
 		b.halfMoveClock++
 	}
 
-	b.updateCastlingRights(move, piece)
+	b.UpdateCastlingRights(move, piece)
 
 	b.updateEnPassantTarget(move, piece)
 }
 
-func (b *Board) updateCastlingRights(move Move, piece Piece) {
+// UpdateCastlingRights clears whichever castling rights move invalidates:
+// the king or rook moving, or a rook being captured on its home square by
+// any piece. Exported so movegen.Generator.updateBoardState (used by
+// perft, a different move-application path than MakeMove) can share this
+// logic instead of reimplementing it - the two implementations diverged
+// once already, and reimplementing this a second time would just create
+// the same drift risk again.
+func (b *Board) UpdateCastlingRights(move Move, piece Piece) {
 	switch piece {
 	case WhiteKing:
 		b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
@@ -306,6 +320,24 @@ func (b *Board) updateCastlingRights(move Move, piece Piece) {
 			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "") // queenside
 		} else if move.From.Rank == 7 && move.From.File == 7 {
 			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "") // kingside
+		}
+	}
+
+	// If a rook is captured on its home square, the corresponding right is
+	// gone too, regardless of what piece did the capturing. Without this, a
+	// captured rook's castling right survives indefinitely, and movegen
+	// later offers a "castle" with no rook to move - a corrupted, actually
+	// illegal position.
+	if move.IsCapture {
+		switch {
+		case move.To.Rank == 0 && move.To.File == 0:
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "") // white queenside
+		case move.To.Rank == 0 && move.To.File == 7:
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "") // white kingside
+		case move.To.Rank == 7 && move.To.File == 0:
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "") // black queenside
+		case move.To.Rank == 7 && move.To.File == 7:
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "") // black kingside
 		}
 	}
 

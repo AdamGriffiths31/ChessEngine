@@ -100,7 +100,7 @@ go build -o chessengine ./cmd/gchess
 
 ### Benchmarking
 ```bash
-# Build the bench multi-tool (sts/profile/report subcommands)
+# Build the bench multi-tool (sts/profile/report/sprt subcommands)
 go build -o bench ./cmd/bench
 
 # Run Strategic Test Suite (STS)
@@ -109,6 +109,9 @@ go build -o bench ./cmd/bench
 # Run CPU/memory profiling
 ./bench profile -file testdata/STS1.epd
 ```
+
+**SPRT regression testing** (statistical A/B between two engine builds via
+cutechess-cli): see [docs/sprt-testing.md](docs/sprt-testing.md).
 
 **Dev note:** `make bench-save` runs the Go benchmark suite for
 `internal/movegen`/`internal/eval`/`internal/search` (`-count 10`) and saves
@@ -162,6 +165,8 @@ go test -run TestPerft ./internal/movegen
 - Validated against Strategic Test Suite (STS1-6) with comprehensive positional tests
 
 ## Technical Details
+
+Comment conventions live in [docs/comment-guidelines.md](docs/comment-guidelines.md).
 
 ### Search Algorithm Features
 - **Iterative Deepening** with time management

@@ -352,8 +352,10 @@ func TestSearchStatsMarshalJSONFieldOrder(t *testing.T) {
 
 	want := `{"nodes_searched":0,"depth":0,"time_ms":0,"principal_variation":[],"book_move_used":false,` +
 		`"lmr_reductions":0,"lmr_re_searches":0,"lmr_nodes_skipped":0,"null_moves":0,"null_cutoffs":0,` +
+		`"null_move_zugzwang_skipped":0,` +
 		`"q_nodes":0,"tt_cutoffs":0,"first_move_cutoffs":0,"total_cutoffs":0,"delta_pruned":0,` +
-		`"razoring_attempts":0,"razoring_cutoffs":0,"razoring_failed":0,"cutoffs_by_move_index":[],` +
+		`"razoring_attempts":0,"razoring_cutoffs":0,"razoring_failed":0,` +
+		`"futility_prunes":0,"lmp_prunes":0,"cutoffs_by_move_index":[],` +
 		`"tt_probes":0,"tt_hits":0,"nodes_by_depth":[],"pv_nodes":0,"cut_nodes":0,"all_nodes":0,` +
 		`"ebf":0,"tt_hit_rate":0,"ordering_quality":0,"null_move_efficiency":0}`
 

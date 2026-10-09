@@ -64,28 +64,18 @@ func NewMinimaxEngine() *MinimaxEngine {
 	return engine
 }
 
-// tryMove makes move on the search board, verifies it is legal (does not
-// leave player's own king in check), and reports whether it may be searched.
-// On success it returns (undo, true) with the move applied to the board; the
-// caller must UnmakeMove(undo) once it is done searching the resulting
-// position. On illegal moves (player's king left in check) it unmakes the
-// move and returns (undo, false); this is an expected, frequent outcome of
-// scanning pseudo-legal moves and is not an error.
+// tryMove makes move on the search board and verifies it is legal (does not
+// leave the mover's own king in check). Illegal pseudo-legal moves unmake and
+// return (undo, false) - an expected outcome of scanning pseudo-legal moves,
+// not an error.
 //
-// player must be the side making move (the mover), not the side to move
-// afterward. Callers must pass their own locally-captured mover, NOT
-// m.searchState.player read at call time: that field is mutated as scratch
-// state by null-move pruning, razoring, and LMR research within the same
-// node, and is not restored between loop iterations, so a live read can name
-// the wrong side. Every former call site already captured the mover in a
-// local variable for exactly this reason.
+// player must be the side making move, captured in a local variable BEFORE
+// this call: m.searchState.player is scratch state mutated by null-move
+// pruning, razoring, and LMR research within a node, so a live read can name
+// the wrong side.
 //
-// If MakeMoveWithUndo itself errors, that means the move generator produced
-// a move the board rejects as malformed - a movegen bug, not an illegal-move
-// situation the search is expected to handle. That case panics loudly with
-// the offending move and the position's FEN rather than silently skipping
-// the move, so movegen regressions surface immediately instead of quietly
-// corrupting search results.
+// MakeMoveWithUndo errors mean the generator emitted a malformed move; that
+// panics loudly rather than silently skipping, so movegen regressions surface.
 func (m *MinimaxEngine) tryMove(move board.Move, player movegen.Player) (undo board.MoveUndo, ok bool) {
 	b := m.searchState.board
 
@@ -103,27 +93,29 @@ func (m *MinimaxEngine) tryMove(move board.Move, player movegen.Player) (undo bo
 }
 
 // FindBestMove searches for the best move using minimax. Opening book
-// probing is the caller's responsibility (see internal/book.Prober,
-// consulted by internal/player and internal/uci before this is called) -
+// probing is the caller's responsibility (see internal/book.Prober);
 // this always performs a full search.
 //
-// searchStats is reset here unconditionally, every call: it must always
-// describe just this search, never bleed across calls. Everything else
-// (transposition table, history table, repetition tracking) intentionally
-// persists across calls within the same game via ClearSearchState -
-// callers reset that separately (UCI on "ucinewgame", games elsewhere)
-// exactly when a genuinely new game starts, not per move. Before this
-// reset was added, NodesSearched and every Null/LMR/TT/Razoring/cutoff
-// counter accumulated for the entire game instead of the current move,
-// on any caller (Elo benchmark, live UCI play) that reuses one engine
-// across a game's moves without calling ClearSearchState between them.
+// searchStats is reset unconditionally every call - callers reuse one engine
+// across a whole game's moves, and stats must describe exactly one search.
+// The transposition and history tables intentionally persist across calls;
+// ClearSearchState resets them for a genuinely new game.
+//
+// Repetition history resets per call too unless the caller supplies
+// config.RepetitionHistory with the real game's hashes; without it the
+// search cannot recognize repetitions that happened before this call
+// (see that field's doc comment).
 func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config SearchConfig) SearchResult {
 	m.searchState.searchStats = SearchStats{}
 
 	b.SetHashUpdater(m)
 	b.InitializeHashFromPosition(m.zobrist.HashPosition)
 
-	m.setupRepetitionHistory(b.GetHash())
+	if len(config.RepetitionHistory) > 0 {
+		m.seedRepetitionHistory(config.RepetitionHistory)
+	} else {
+		m.setupRepetitionHistory(b.GetHash())
+	}
 
 	startTime := time.Now()
 

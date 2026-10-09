@@ -12,7 +12,7 @@ import (
 // negamax performs negamax search with alpha-beta pruning and optimizations
 //
 //nolint:gocyclo // refactored in Phase 4
-func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval.EvaluationScore, ply int) eval.EvaluationScore {
+func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval.EvaluationScore, ply, pvPly int) eval.EvaluationScore {
 	b := m.searchState.board
 	player := m.searchState.player
 	pv := m.searchState.pv
@@ -20,24 +20,20 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 	m.searchState.searchStats.NodesSearched++
 
-	// ply indexes this node by originalMaxDepth − depth: its distance from the root along the unreduced, unextended spine. Reductions inflate it and extensions hold it constant, so it is NOT true recursion depth. Callers thread it so that on
-	// entry ply == originalMaxDepth - depth (the quantity this code previously
-	// recomputed from the State field). Because a child is searched at
-	// depth' = depth - K (K = 1 plus any reduction, minus any extension applied
-	// here), its ply is ply + (depth - depth'); see the recursive calls below.
+	// ply is this node's distance from the root along the unreduced spine
+	// (originalMaxDepth - depth): held constant by check extensions, inflated
+	// by LMR reductions. Child calls pass ply + (depth - childDepth).
+	// pvPly instead counts true recursion depth (+1 per level), and the pv
+	// table is indexed ONLY by pvPly: indexing by ply aliased a
+	// check-extended child onto its parent's row, dropping moves from the PV.
 
 	if ply >= 0 && ply < len(m.searchState.searchStats.NodesByDepth) {
 		m.searchState.searchStats.NodesByDepth[ply]++
 	}
 
-	// Cancellation cadence: poll ctx only once per ~1024 node entries instead
-	// of on every node. NodesSearched was just incremented at node entry, so
-	// the mask fires when the (post-increment) counter is a multiple of 1024
-	// (1024, 2048, ...) — never at the very first node, and roughly every 1024
-	// nodes thereafter. The counter is shared with quiescence, so the combined
-	// negamax+quiescence node stream is what gets sampled. On cancellation we
-	// set searchCancelled (whose existing propagation via the move-loop breaks
-	// is untouched) and return alpha exactly as the former per-node check did.
+	// Poll ctx every ~1024 nodes rather than per node - per-node selects are
+	// measurable overhead. NodesSearched is shared with quiescence, so the
+	// mask samples the combined stream.
 	if m.searchState.searchStats.NodesSearched&1023 == 0 {
 		select {
 		case <-ctx.Done():
@@ -76,7 +72,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 	// Null move pruning: If our position is so good we can give opponent a free
 	// move and still achieve a beta cutoff, we can prune this branch.
-	if score, done := m.tryNullMove(ctx, b, player, depth, beta, ply, extended, staticEval, inCheck); done {
+	if score, done := m.tryNullMove(ctx, b, player, depth, beta, ply, extended, pvPly, staticEval, inCheck); done {
 		return score
 	}
 
@@ -108,6 +104,31 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 	bestMove := board.Move{}
 	legalMoveCount := 0
 
+	// Static eval from the side to move's perspective (Evaluate returns a
+	// White-relative score), for futility pruning comparisons against alpha.
+	stmStaticEval := staticEval
+	if player == movegen.Black {
+		stmStaticEval = -staticEval
+	}
+
+	// Quiet moves searched so far at this node, for late move pruning.
+	quietsSearched := 0
+
+	// Set when quiet-move pruning skips at least one legal move. If every
+	// move ends up pruned, reaching the post-loop check with
+	// legalMoveCount == 0 does NOT mean stalemate/checkmate - zero searched
+	// moves is not zero legal moves - so the terminal-score path must not
+	// fire (a false proven draw stored as EntryExact here poisons the TT).
+	quietMovesPruned := false
+
+	// Sparse-board guard for quiet-move pruning (same threshold and
+	// rationale as null move pruning's): on near-bare boards every quiet
+	// move matters equally - zugzwang and dead-drawn positions live here,
+	// and skipping "hopeless" quiets lets horizon eval noise stand in for a
+	// provable draw. Computed once; make/unmake during the loop restores
+	// this exact occupancy between moves.
+	sparseBoard := b.AllPieces.PopCount() <= NullMoveMaxPieces
+
 	// Track if we improved alpha to determine correct entry type
 	alphaImproved := false
 
@@ -119,9 +140,48 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 			break
 		}
 
+		// MoveGivesCheck reads the moving piece from move.From, so it must be
+		// evaluated BEFORE tryMove applies the move: on the post-move board the
+		// from-square is empty and every move looks like a non-check.
+		givesCheck := board.MoveGivesCheck(b, move)
+
 		undo, ok := m.tryMove(move, player)
 		if !ok {
 			continue
+		}
+
+		// Quiet-move pruning: internal futility and late move pruning. A
+		// quiet move is skipped outright when either (a) the static eval
+		// plus a depth-scaled margin still sits below alpha - the position
+		// would need an implausible swing for this move to matter at the
+		// remaining depth - or (b) under LMP, enough prior quiets have
+		// failed to raise alpha that the remainder are presumed hopeless.
+		// Exemptions: in-check nodes (evasions can be forced tactics),
+		// sparse boards (see sparseBoard), captures and promotions,
+		// giving-check moves, killer moves, and near-mate windows where
+		// pruning could mask a mate distance. The unmake happens here
+		// because a pruned move is never searched.
+		if !sparseBoard && !inCheck && !move.IsCapture && move.Promotion == board.Empty &&
+			!givesCheck && !m.isKillerMove(move, ply) &&
+			alpha > -eval.MateScore+MateDistanceThreshold &&
+			alpha < eval.MateScore-MateDistanceThreshold {
+
+			p := &m.searchState.searchParams
+			pruned := false
+			if p.FutilityEnabled && depth <= p.FutilityMaxDepth &&
+				stmStaticEval+p.FutilityMargins[min(depth, len(p.FutilityMargins)-1)] <= alpha {
+				m.searchState.searchStats.FutilityPrunes++
+				pruned = true
+			} else if p.LMPEnabled && depth <= p.LMPMaxDepth &&
+				quietsSearched >= 3+depth*depth {
+				m.searchState.searchStats.LMPPrunes++
+				pruned = true
+			}
+			if pruned {
+				b.UnmakeMove(undo)
+				quietMovesPruned = true
+				continue
+			}
 		}
 
 		m.addHistory(b.GetHash())
@@ -130,12 +190,12 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 		var score eval.EvaluationScore
 
 		if collectPV {
-			pv.clearPly(ply + 1)
+			pv.clearPly(pvPly + 1)
 		}
 
 		// Late Move Reductions: Search later moves at reduced depth since
 		// move ordering should place best moves first
-		reduction := m.calculateLMRReduction(b, depth, legalMoveCount, inCheck, move, ply)
+		reduction := m.calculateLMRReduction(depth, legalMoveCount, inCheck, givesCheck, move, ply)
 
 		if reduction > 0 {
 			m.searchState.searchStats.LMRReductions++
@@ -144,25 +204,29 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 			m.searchState.collectPV = false
 			// Reduced scout child ply = originalMaxDepth - (depth-1-reduction) =
 			// ply+1-extended+reduction (searched shallower, so a larger ply index).
-			score = -m.negamax(ctx, depth-1-reduction, -alpha-1, -alpha, ply+1-extended+reduction)
+			score = -m.negamax(ctx, depth-1-reduction, -alpha-1, -alpha, ply+1-extended+reduction, pvPly+1)
 
 			if score > alpha {
 				m.searchState.searchStats.LMRReSearches++
 
 				m.searchState.player = oppositePlayer(player)
 				m.searchState.collectPV = collectPV
-				score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1-extended)
+				score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1-extended, pvPly+1)
 			}
 		} else {
 			m.searchState.player = oppositePlayer(player)
 			m.searchState.collectPV = collectPV
 			// Child ply = originalMaxDepth - (depth-1) = ply+1-extended.
-			score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1-extended)
+			score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1-extended, pvPly+1)
 		}
 
 		b.UnmakeMove(undo)
 
 		m.removeHistory()
+
+		if !move.IsCapture && move.Promotion == board.Empty {
+			quietsSearched++
+		}
 
 		if score > bestScore {
 			bestScore = score
@@ -174,18 +238,26 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 			alphaImproved = true
 
 			if collectPV {
-				pv.store(ply, move)
+				pv.store(pvPly, move)
 			}
 
 			if alpha >= beta {
-				m.recordCutoff(move, depth, ply, legalMoveCount, hash, bestScore)
+				m.recordCutoff(move, depth, ply, legalMoveCount, hash, bestScore, pseudoMoves, i)
 				return beta
 			}
 		}
 	}
 
 	if legalMoveCount == 0 {
-		return m.handleNoLegalMoves(b, player, depth, ply, ply-extended, hash)
+		if !quietMovesPruned {
+			return m.handleNoLegalMoves(b, player, depth, ply, ply-extended, hash)
+		}
+		// Every legal move was quiet-pruned and none was searched. This is a
+		// fail-low with no information beyond the window itself: return alpha
+		// (a valid upper bound) without touching the TT. Falling through to
+		// handleNoLegalMoves here would claim stalemate/checkmate from zero
+		// SEARCHED moves and store a false proven draw as EntryExact.
+		return alpha
 	}
 
 	// Track node types for search statistics
@@ -281,40 +353,80 @@ func (m *MinimaxEngine) probeTT(hash uint64, depth, ply int, alpha, beta eval.Ev
 // verbatim body from negamax. A cutoff also increments CutNodes: it is a
 // fail-high, exactly the same node type the move-loop's own beta-cutoff path
 // (recordCutoff) classifies as.
-func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player movegen.Player, depth int, beta eval.EvaluationScore, ply, extended int, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
+func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player movegen.Player, depth int, beta eval.EvaluationScore, ply, extended, pvPly int, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
+	// Convert to side-to-move-relative before comparing against beta:
+	// StandardEvaluator.Evaluate returns White-relative scores (see
+	// internal/eval/evaluator.go), while beta is from the side to move's
+	// perspective. Without this, Black nodes gate on an inverted sign.
+	if player == movegen.Black {
+		staticEval = -staticEval
+	}
 	if m.searchState.searchParams.NullMoveEnabled &&
 		depth >= 3 &&
 		staticEval >= beta &&
 		beta < eval.MateScore-MateDistanceThreshold &&
 		beta > -eval.MateScore+MateDistanceThreshold {
 		if !inCheck {
-			m.searchState.searchStats.NullMoves++
+			if !hasNonPawnMaterial(b, player) {
+				m.searchState.searchStats.NullMoveZugzwangSkipped++
+			} else if b.AllPieces.PopCount() <= NullMoveMaxPieces {
+				// Zugzwang guard #2: hasNonPawnMaterial only protects the
+				// mover's OWN pieces, but a side holding even one minor can be
+				// in a fatal zugzwang if that piece is immobile (e.g. a bishop
+				// locked in by its own pawns). Sparse boards are where these
+				// positions live, so stop trusting NMP cutoffs there entirely.
+				// Real case caught: kbK5/pp6/1P6/8/8/8/8/R7 w - a pure
+				// zugzwang mate-in-2 that NMP silently pruned once
+				// SEE-corrected move ordering changed which nodes it fired at.
+				m.searchState.searchStats.NullMoveZugzwangSkipped++
+			} else {
+				nullReduction := m.searchState.searchParams.NullMoveReduction
+				if depth >= 6 && nullReduction < 3 {
+					nullReduction++
+				}
 
-			nullReduction := m.searchState.searchParams.NullMoveReduction
-			if depth >= 6 && nullReduction < 3 {
-				nullReduction++
-			}
+				m.searchState.searchStats.NullMoves++
 
-			nullUndo := b.MakeNullMove()
+				nullUndo := b.MakeNullMove()
 
-			m.searchState.player = oppositePlayer(player)
-			m.searchState.collectPV = false
-			// Child ply = originalMaxDepth - (depth-1-nullReduction). With
-			// originalMaxDepth = ply + depth - extended this is ply+1-extended+nullReduction.
-			nullScore := -m.negamax(ctx, depth-1-nullReduction, -beta, -beta+1, ply+1-extended+nullReduction)
+				m.searchState.player = oppositePlayer(player)
+				m.searchState.collectPV = false
+				// Child ply = originalMaxDepth - (depth-1-nullReduction). With
+				// originalMaxDepth = ply + depth - extended this is ply+1-extended+nullReduction.
+				nullScore := -m.negamax(ctx, depth-1-nullReduction, -beta, -beta+1, ply+1-extended+nullReduction, pvPly+1)
 
-			b.UnmakeNullMove(nullUndo)
+				b.UnmakeNullMove(nullUndo)
 
-			if nullScore >= beta {
-				if nullScore < eval.MateScore-MateDistanceThreshold {
-					m.searchState.searchStats.NullCutoffs++
-					m.searchState.searchStats.CutNodes++
-					return beta, true
+				if nullScore >= beta {
+					if nullScore < eval.MateScore-MateDistanceThreshold {
+						m.searchState.searchStats.NullCutoffs++
+						m.searchState.searchStats.CutNodes++
+						return beta, true
+					}
 				}
 			}
 		}
 	}
 	return 0, false
+}
+
+// hasNonPawnMaterial reports whether player has any knight, bishop, rook, or
+// queen on the board. Null-move pruning assumes giving the opponent a free
+// move can never help them, which is false in zugzwang positions - most
+// commonly bare king-and-pawn endings, where every move can only weaken the
+// position. Guarding on non-pawn material is the standard, cheap heuristic
+// for this: skip null-move pruning once a side is down to king and pawns.
+func hasNonPawnMaterial(b *board.Board, player movegen.Player) bool {
+	if player == movegen.White {
+		return b.GetPieceBitboard(board.WhiteKnight) != 0 ||
+			b.GetPieceBitboard(board.WhiteBishop) != 0 ||
+			b.GetPieceBitboard(board.WhiteRook) != 0 ||
+			b.GetPieceBitboard(board.WhiteQueen) != 0
+	}
+	return b.GetPieceBitboard(board.BlackKnight) != 0 ||
+		b.GetPieceBitboard(board.BlackBishop) != 0 ||
+		b.GetPieceBitboard(board.BlackRook) != 0 ||
+		b.GetPieceBitboard(board.BlackQueen) != 0
 }
 
 // tryRazoring performs razoring. At low depths far from mate, when static eval
@@ -325,6 +437,11 @@ func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player 
 // increments AllNodes: qScore <= alpha is a fail-low, the same node type the
 // move-loop's own !alphaImproved path classifies as.
 func (m *MinimaxEngine) tryRazoring(ctx context.Context, player movegen.Player, depth int, alpha, beta eval.EvaluationScore, ply, extended int, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
+	// Convert to side-to-move-relative before comparing against alpha: see
+	// tryNullMove. Razoring requires !inCheck so extended is 0 at the gate.
+	if player == movegen.Black {
+		staticEval = -staticEval
+	}
 	if m.searchState.searchParams.RazoringEnabled &&
 		!inCheck &&
 		depth <= m.searchState.searchParams.RazoringMaxDepth &&
@@ -355,10 +472,18 @@ func (m *MinimaxEngine) tryRazoring(ctx context.Context, player movegen.Player, 
 }
 
 // recordCutoff performs the bookkeeping for a beta cutoff: move-ordering stats,
-// killer/history updates for quiet moves, and the lower-bound TT store. The two
-// former `!move.IsCapture` blocks (killer, then history) are merged into a
-// single guard — same effects, same order. The caller returns beta after this.
-func (m *MinimaxEngine) recordCutoff(move board.Move, depth, ply, legalMoveCount int, hash uint64, bestScore eval.EvaluationScore) {
+// killer/history updates for quiet moves, and the lower-bound TT store.
+//
+// History gets the modern two-sided treatment: the cutoff move earns a
+// depth-squared bonus while every quiet move tried before it in this node
+// takes a matching malus - without maluses, moves that repeatedly fail keep
+// high scores from past luck and history loses its discriminating power.
+// moveList is the node's (pickNextMove-permuted) pseudo-legal list and
+// triedIndex is the cutoff move's position within it; entries before it are
+// exactly the moves this node already attempted. The two former
+// `!move.IsCapture` blocks (killer, then history) are merged into a single
+// guard — same effects, same order. The caller returns beta after this.
+func (m *MinimaxEngine) recordCutoff(move board.Move, depth, ply, legalMoveCount int, hash uint64, bestScore eval.EvaluationScore, moveList *movegen.MoveList, triedIndex int) {
 	// Track move ordering statistics
 	m.searchState.searchStats.TotalCutoffs++
 	if legalMoveCount == 1 {
@@ -371,14 +496,35 @@ func (m *MinimaxEngine) recordCutoff(move board.Move, depth, ply, legalMoveCount
 
 	if !move.IsCapture {
 		m.storeKiller(move, ply)
-		if m.historyTable != nil {
-			m.historyTable.UpdateHistory(move, depth)
+	}
+
+	if m.historyTable != nil {
+		if !move.IsCapture {
+			m.historyTable.Bonus(move, depth)
+		}
+		// Malus every earlier-attempted quiet except the cutoff move itself.
+		for j := 0; j < triedIndex; j++ {
+			earlier := moveList.Moves[j]
+			if earlier.IsCapture || hasPromotion(earlier) {
+				continue
+			}
+			if earlier.From == move.From && earlier.To == move.To && earlier.Promotion == move.Promotion {
+				continue
+			}
+			m.historyTable.Malus(earlier, depth)
 		}
 	}
 
 	if m.transpositionTable != nil && !m.searchState.searchCancelled {
 		m.transpositionTable.Store(hash, depth, scoreToTT(bestScore, ply), EntryLowerBound, move)
 	}
+}
+
+// hasPromotion reports whether a move promotes. Both Empty ('.') and the
+// zero value count as "no promotion": hand-built Move literals leave
+// Promotion unset, which is not Empty.
+func hasPromotion(move board.Move) bool {
+	return move.Promotion != board.Empty && move.Promotion != 0
 }
 
 // handleNoLegalMoves returns the appropriate score when no legal moves are available
@@ -417,7 +563,12 @@ func (m *MinimaxEngine) handleNoLegalMoves(b *board.Board, player movegen.Player
 // calculateLMRReduction calculates the Late Move Reduction amount for a move.
 // Returns the number of plies to reduce search depth by, based on depth, move count,
 // and history heuristic. Returns 0 if no reduction should be applied.
-func (m *MinimaxEngine) calculateLMRReduction(b *board.Board, depth, legalMoveCount int, inCheck bool, move board.Move, ply int) int {
+//
+// givesCheck must be computed by the caller on the PRE-move board: this
+// function runs after the move has been made, when the from-square is already
+// vacated and a board-side check test would always report false (see
+// board.MoveGivesCheck).
+func (m *MinimaxEngine) calculateLMRReduction(depth, legalMoveCount int, inCheck, givesCheck bool, move board.Move, ply int) int {
 	if !m.searchState.searchParams.LMREnabled ||
 		depth < m.searchState.searchParams.LMRMinDepth ||
 		legalMoveCount <= m.searchState.searchParams.LMRMinMoves ||
@@ -425,11 +576,6 @@ func (m *MinimaxEngine) calculateLMRReduction(b *board.Board, depth, legalMoveCo
 		move.IsCapture ||
 		move.Promotion != board.Empty ||
 		m.isKillerMove(move, ply) {
-		return 0
-	}
-
-	// Don't reduce moves that give check
-	if board.MoveGivesCheck(b, move) {
 		return 0
 	}
 
@@ -455,6 +601,14 @@ func (m *MinimaxEngine) calculateLMRReduction(b *board.Board, depth, legalMoveCo
 	}
 
 	reduction = max(0, min(reduction, depth-1))
+
+	// Giving-check moves are reduced only gently rather than exempted: modern
+	// engines reduce checks too and lean on the fail-high re-search for safety,
+	// because full exemption costs node count and effective depth (measured at
+	// roughly -26 Elo here). Cap matches Ethereal's "R -= check" spirit.
+	if givesCheck {
+		reduction = min(reduction, 1)
+	}
 
 	return reduction
 }

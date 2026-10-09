@@ -54,6 +54,18 @@ func NewEngine() *Engine {
 	}
 }
 
+// HashHistory returns the real-game position-hash sequence tracked
+// internally for threefold detection: oldest first, ending with the hash of
+// the current position. Reset to just the new starting position by Reset
+// and LoadFromFEN, appended to by MakeMove. Exported so callers (the UCI
+// adapter) can feed the actual game history into
+// search.SearchConfig.RepetitionHistory - without it, the search can only
+// see repetitions reachable within its own hypothetical lookahead from the
+// current position, blind to ones that already happened via real moves.
+func (e *Engine) HashHistory() []uint64 {
+	return e.hashHistory
+}
+
 // GetCurrentPlayer returns the current player based on board's side to move
 func (e *Engine) GetCurrentPlayer() Player {
 	if e.state.Board.GetSideToMove() == "w" {

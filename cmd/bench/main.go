@@ -4,6 +4,7 @@
 //	bench sts       - Strategic Test Suite benchmark (formerly cmd/sts)
 //	bench profile   - CPU/memory profiling utility (formerly cmd/profile)
 //	bench report    - regenerate the STS/Elo history tables from tools/results/*.jsonl
+//	bench sprt      - SPRT regression test between two UCI binaries
 package main
 
 import (
@@ -19,6 +20,7 @@ Subcommands:
   sts        Strategic Test Suite (STS) benchmark
   profile    CPU/memory profiling utility
   report     Regenerate the STS/Elo history tables from tools/results/*.jsonl
+  sprt       SPRT regression test between two UCI binaries
 
 Run "bench <subcommand> -h" for flags on a specific subcommand.`)
 }
@@ -39,6 +41,8 @@ func main() {
 		err = runProfile(os.Args[2:])
 	case "report":
 		err = runReport(os.Args[2:])
+	case "sprt":
+		err = runSPRT(os.Args[2:])
 	default:
 		usage()
 		os.Exit(2)

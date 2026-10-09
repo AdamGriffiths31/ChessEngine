@@ -109,6 +109,13 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, alpha, beta evalpkg.Eval
 
 	legalMoveCount := 0
 	bestScore := eval
+	if inCheck {
+		// Standing pat is illegal in check, so the node must not be floored at
+		// the static eval: start below every possible evasion score so the best
+		// (possibly losing) legal move is what gets returned/stored. Otherwise a
+		// mated-in-qsearch side could report its own positive eval.
+		bestScore = -evalpkg.MateScore - 1
+	}
 
 	for i := 0; i < movesToSearch.Count; i++ {
 		m.pickNextMove(movesToSearch, i, bufferPly)

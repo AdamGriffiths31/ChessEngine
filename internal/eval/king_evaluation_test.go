@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
+	"github.com/AdamGriffiths31/ChessEngine/internal/eval/values"
 )
 
 func TestEvaluateKings(t *testing.T) {
@@ -23,7 +24,7 @@ func TestEvaluateKings(t *testing.T) {
 		{
 			name:        "white_castled_kingside",
 			fen:         "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQ1RK1 w kq - 0 1",
-			expected:    65, // Castled (15) + shelter f2/g2/h2 (20+20+10); Black keeps kq rights so no penalty
+			expected:    0, // Castling/shelter bonus removed (see king_evaluation.go); no open files or threats here
 			description: "White king castled kingside with good shelter",
 		},
 		{
@@ -68,28 +69,29 @@ func TestEvaluateKingSimple(t *testing.T) {
 			name:        "white_king_castled_kingside",
 			fen:         "8/8/8/8/8/8/PPPPPPPP/RNBQ1RK1 w - - 0 1",
 			isWhite:     true,
-			expected:    65, // Castled + shelter bonuses
+			expected:    0, // Castling/shelter bonus removed (see king_evaluation.go)
 			description: "White king castled kingside",
 		},
 		{
 			name:        "white_king_not_castled",
 			fen:         "8/8/8/8/8/8/PPPPPPPP/RNBQK2R w - - 0 1",
 			isWhite:     true,
-			expected:    -10, // Lost castling rights
+			expected:    0, // Lost-castling-rights penalty removed (see king_evaluation.go)
 			description: "White king hasn't castled",
 		},
 		{
 			name:        "endgame_centralized_king",
 			fen:         "8/8/8/3K4/8/8/8/8 w - - 0 1",
 			isWhite:     true,
-			expected:    18, // Central king in endgame
+			expected:    -60, // Safety terms only: three open files (-60). No lost-rights penalty away
+			// from the home square/castled zone - see isInCastledZone.
 			description: "White king centralized in endgame",
 		},
 		{
 			name:        "black_king_castled_queenside",
 			fen:         "2kr1bnr/pppppppp/8/8/8/8/8/8 w - - 0 1",
 			isWhite:     false,
-			expected:    6, // Actual observed value: limited shelter with current pawn setup
+			expected:    0, // Castling/shelter bonus removed (see king_evaluation.go)
 			description: "Black king castled queenside",
 		},
 	}
@@ -118,104 +120,30 @@ func TestEvaluateKingSimple(t *testing.T) {
 	}
 }
 
-func TestEvaluateKingEndgameActivity(t *testing.T) {
+// TestKingTableEndgameCentralization verifies the endgame king table that
+// replaced the removed evaluateKingEndgameActivity: central squares score
+// highest, corners lowest, and the black-side flip mirrors correctly.
+func TestKingTableEndgameCentralization(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		kingSquare  int
-		expected    int
-		description string
+		name      string
+		piece     values.Piece
+		rank, fil int
+		expected  int
 	}{
-		{
-			name:        "king_in_center_d4",
-			kingSquare:  27, // d4
-			expected:    18, // Highly centralized
-			description: "King on central d4 square",
-		},
-		{
-			name:        "king_in_corner_a1",
-			kingSquare:  0, // a1
-			expected:    0, // Far from center
-			description: "King on corner a1 square",
-		},
-		{
-			name:        "king_semi_central_d2",
-			kingSquare:  11, // d2
-			expected:    12, // Actual observed value
-			description: "King on semi-central d2 square",
-		},
-		{
-			name:        "king_edge_h4",
-			kingSquare:  31, // h4
-			expected:    9,  // Actual observed value
-			description: "King on edge h4 square",
-		},
+		{"white_d4", values.WhiteKing, 3, 3, 40},
+		{"white_e5", values.WhiteKing, 4, 4, 40},
+		{"white_a1", values.WhiteKing, 0, 0, -50},
+		{"white_h1", values.WhiteKing, 0, 7, -50},
+		{"black_d5_mirrors_white_d4", values.BlackKing, 4, 3, -40},
+		{"black_a8_mirrors_white_a1", values.BlackKing, 7, 0, 50},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			score := evaluateKingEndgameActivity(tt.kingSquare)
-			if score != tt.expected {
-				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, score)
-			}
-		})
-	}
-}
-
-func TestEvaluatePawnShelter(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name        string
-		fen         string
-		kingSquare  int
-		isWhite     bool
-		expected    int
-		description string
-	}{
-		{
-			name:        "white_kingside_perfect_shelter",
-			fen:         "8/8/8/8/8/8/5PPP/6K1 w - - 0 1",
-			kingSquare:  6, // g1
-			isWhite:     true,
-			expected:    50, // Actual observed value
-			description: "White king with perfect kingside shelter",
-		},
-		{
-			name:        "white_kingside_partial_shelter",
-			fen:         "8/8/8/8/8/8/6PP/6K1 w - - 0 1",
-			kingSquare:  6, // g1
-			isWhite:     true,
-			expected:    40, // Actual observed value
-			description: "White king with partial kingside shelter",
-		},
-		{
-			name:        "black_queenside_perfect_shelter",
-			fen:         "2k5/ppp5/8/8/8/8/8/8 w - - 0 1",
-			kingSquare:  58, // c8
-			isWhite:     false,
-			expected:    40, // Actual observed value
-			description: "Black king with perfect queenside shelter",
-		},
-		{
-			name:        "no_shelter",
-			fen:         "2k5/8/8/8/8/8/8/8 w - - 0 1",
-			kingSquare:  58, // c8
-			isWhite:     false,
-			expected:    0, // No shelter pawns
-			description: "King with no pawn shelter",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b, err := board.FromFEN(tt.fen)
-			if err != nil {
-				t.Fatalf("Failed to create board from FEN: %v", err)
-			}
-
-			score := evaluatePawnShelter(b, tt.kingSquare, tt.isWhite)
-			if score != tt.expected {
-				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, score)
+			got := values.GetPositionalBonusEndgame(tt.piece, tt.rank, tt.fil)
+			if got != tt.expected {
+				t.Errorf("GetPositionalBonusEndgame(%v, %d, %d) = %d, want %d", tt.piece, tt.rank, tt.fil, got, tt.expected)
 			}
 		})
 	}

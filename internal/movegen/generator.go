@@ -103,41 +103,13 @@ func (g *Generator) findKing(b *board.Board, player Player) board.Square {
 //
 //nolint:gocyclo // refactored in Phase 4
 func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
-	castlingRights := b.GetCastlingRights()
 	piece := b.GetPiece(move.To.Rank, move.To.File)
 
-	switch piece {
-	case board.WhiteKing:
-		castlingRights = g.removeCastlingRights(castlingRights, "KQ")
-	case board.BlackKing:
-		castlingRights = g.removeCastlingRights(castlingRights, "kq")
-	case board.WhiteRook:
-		if move.From.File == QueensideRookFromFile && move.From.Rank == 0 {
-			castlingRights = g.removeCastlingRights(castlingRights, "Q")
-		} else if move.From.File == KingsideRookFromFile && move.From.Rank == 0 {
-			castlingRights = g.removeCastlingRights(castlingRights, "K")
-		}
-	case board.BlackRook:
-		if move.From.File == QueensideRookFromFile && move.From.Rank == 7 {
-			castlingRights = g.removeCastlingRights(castlingRights, "q")
-		} else if move.From.File == KingsideRookFromFile && move.From.Rank == 7 {
-			castlingRights = g.removeCastlingRights(castlingRights, "k")
-		}
-	}
-
-	if move.IsCapture {
-		if move.To.File == QueensideRookFromFile && move.To.Rank == 0 {
-			castlingRights = g.removeCastlingRights(castlingRights, "Q")
-		} else if move.To.File == KingsideRookFromFile && move.To.Rank == 0 {
-			castlingRights = g.removeCastlingRights(castlingRights, "K")
-		} else if move.To.File == QueensideRookFromFile && move.To.Rank == 7 {
-			castlingRights = g.removeCastlingRights(castlingRights, "q")
-		} else if move.To.File == KingsideRookFromFile && move.To.Rank == 7 {
-			castlingRights = g.removeCastlingRights(castlingRights, "k")
-		}
-	}
-
-	b.SetCastlingRights(castlingRights)
+	// Castling-rights bookkeeping is shared with board.Board.MakeMove via
+	// UpdateCastlingRights rather than reimplemented here - see that
+	// method's doc comment for why (this file used to have its own
+	// separate copy, and the two diverged).
+	b.UpdateCastlingRights(move, piece)
 
 	if piece == board.WhitePawn || piece == board.BlackPawn {
 		if abs(move.To.Rank-move.From.Rank) == 2 {
@@ -162,24 +134,4 @@ func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
 	if b.GetSideToMove() == "b" {
 		b.SetFullMoveNumber(b.GetFullMoveNumber() + 1)
 	}
-}
-
-func (g *Generator) removeCastlingRights(rights, toRemove string) string {
-	result := ""
-	for _, r := range rights {
-		remove := false
-		for _, removeR := range toRemove {
-			if r == removeR {
-				remove = true
-				break
-			}
-		}
-		if !remove {
-			result += string(r)
-		}
-	}
-	if result == "" {
-		return "-"
-	}
-	return result
 }

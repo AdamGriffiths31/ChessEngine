@@ -53,8 +53,18 @@ func GetPieceValue(piece Piece) int {
 	}
 }
 
-// GetPositionalBonus returns the PST bonus for a piece at a given position
+// GetPositionalBonus returns the middlegame PST bonus for a piece at a given position
 func GetPositionalBonus(piece Piece, rank, file int) int {
+	return positionalBonus(piece, rank, file, false)
+}
+
+// GetPositionalBonusEndgame returns the endgame PST bonus for a piece at a given position.
+// For pieces whose tables do not differ by phase this matches the middlegame value.
+func GetPositionalBonusEndgame(piece Piece, rank, file int) int {
+	return positionalBonus(piece, rank, file, true)
+}
+
+func positionalBonus(piece Piece, rank, file int, endgame bool) int {
 	switch piece {
 	case WhiteKnight:
 		return KnightTable[rank*8+file]
@@ -71,20 +81,32 @@ func GetPositionalBonus(piece Piece, rank, file int) int {
 	case BlackRook:
 		flippedRank := 7 - rank
 		return -RookTable[flippedRank*8+file]
-	case WhitePawn:
-		return PawnTable[rank*8+file]
-	case BlackPawn:
-		flippedRank := 7 - rank
-		return -PawnTable[flippedRank*8+file]
 	case WhiteQueen:
 		return QueenTable[rank*8+file]
 	case BlackQueen:
 		flippedRank := 7 - rank
 		return -QueenTable[flippedRank*8+file]
+	case WhitePawn:
+		if endgame {
+			return PawnTableEndgame[rank*8+file]
+		}
+		return PawnTable[rank*8+file]
+	case BlackPawn:
+		flippedRank := 7 - rank
+		if endgame {
+			return -PawnTableEndgame[flippedRank*8+file]
+		}
+		return -PawnTable[flippedRank*8+file]
 	case WhiteKing:
+		if endgame {
+			return KingTableEndgame[rank*8+file]
+		}
 		return KingTable[rank*8+file]
 	case BlackKing:
 		flippedRank := 7 - rank
+		if endgame {
+			return -KingTableEndgame[flippedRank*8+file]
+		}
 		return -KingTable[flippedRank*8+file]
 	default:
 		return 0
@@ -163,4 +185,34 @@ var PawnTable = [64]int{
 	10, 10, 20, 30, 30, 20, 10, 10,
 	50, 50, 50, 50, 50, 50, 50, 50,
 	0, 0, 0, 0, 0, 0, 0, 0,
+}
+
+// PawnTableEndgame contains endgame pawn bonuses: advancement dominates over
+// shape, so a passed pawn's march is worth far more than its file.
+// Oriented a1-first like PawnTable.
+var PawnTableEndgame = [64]int{
+	0, 0, 0, 0, 0, 0, 0, 0,
+	10, 10, 10, 10, 10, 10, 10, 10,
+	10, 10, 10, 10, 10, 10, 10, 10,
+	20, 20, 20, 20, 20, 20, 20, 20,
+	30, 30, 30, 30, 30, 30, 30, 30,
+	50, 50, 50, 50, 50, 50, 50, 50,
+	80, 80, 80, 80, 80, 80, 80, 80,
+	0, 0, 0, 0, 0, 0, 0, 0,
+}
+
+// KingTableEndgame contains endgame king bonuses: centralization. In the
+// middlegame the king scores from KingTable (safety corners); blending this
+// table in by game phase is what replaces the former hard <14-pieces switch
+// that scored endgame kings with the middlegame safety table.
+// Oriented a1-first like KingTable (symmetric under left-right flip).
+var KingTableEndgame = [64]int{
+	-50, -40, -30, -20, -20, -30, -40, -50,
+	-30, -20, -10, 0, 0, -10, -20, -30,
+	-20, -10, 20, 30, 30, 20, -10, -20,
+	-10, 0, 30, 40, 40, 30, 0, -10,
+	-10, 0, 30, 40, 40, 30, 0, -10,
+	-20, -10, 20, 30, 30, 20, -10, -20,
+	-30, -20, -10, 0, 0, -10, -20, -30,
+	-50, -40, -30, -20, -20, -30, -40, -50,
 }

@@ -22,6 +22,13 @@ const (
 	// PVArrayMargin is the extra headroom added to the deepest search depth when
 	// sizing the principal-variation array, to accommodate check extensions.
 	PVArrayMargin = 20
+
+	// NullMoveMaxPieces: above this many pieces on the board, null-move
+	// pruning is trusted. At or below it, NMP cutoffs are skipped: sparse
+	// positions are where zugzwang lives, and a side holding even one immobile
+	// minor piece (e.g. a bishop jailed by its own pawns) can lose to any
+	// forced tempo - a danger class hasNonPawnMaterial alone does not cover.
+	NullMoveMaxPieces = 8
 )
 
 // LMRTable is a pre-calculated reduction table for Late Move Reductions
@@ -52,6 +59,19 @@ type Params struct {
 	RazoringMargins  [5]eval.EvaluationScore // Margins for depths 1-4 (index 0 unused)
 	RazoringMaxDepth int                     // Maximum depth to apply razoring
 
+	// Internal futility pruning: at shallow depth, skip quiet moves when the
+	// static eval plus a depth-scaled margin still cannot reach alpha. The
+	// move cannot improve on alpha by enough to matter, so searching it is
+	// wasted work. Giving-check moves are exempt (they are free tactics).
+	FutilityEnabled  bool
+	FutilityMaxDepth int
+	FutilityMargins  [6]eval.EvaluationScore // Indexed by depth (index 0 unused)
+
+	// Late Move Pruning (LMP): in quiet nodes, once enough quiet moves have
+	// been searched without improving alpha, skip remaining quiets outright.
+	LMPEnabled  bool
+	LMPMaxDepth int
+
 	// Late Move Reductions (LMR) configuration
 	LMREnabled  bool // Whether LMR is applied at all (see calculateLMRReduction). Defaults to true.
 	LMRMinDepth int  // Minimum depth to apply LMR (default: 3)
@@ -74,6 +94,28 @@ func getParams() Params {
 		RazoringEnabled:  true,
 		RazoringMargins:  [5]eval.EvaluationScore{0, 125, 175, 225, 275},
 		RazoringMaxDepth: 1,
+
+		// Futility pruning: implemented but default-off. Probing showed its
+		// tactical safety is chaotic in this engine - identical margins both
+		// found and lost a known mate depending on exact values - because
+		// qsearch generates no quiet checking moves, making main-search
+		// quiets the only carrier of those tactics. Revisit alongside
+		// qsearch check generation; LMP alone delivers most of the node win.
+		FutilityEnabled:  false,
+		FutilityMaxDepth: 4,
+		FutilityMargins:  [6]eval.EvaluationScore{0, 150, 250, 350, 450},
+
+		// LMP: implemented but default-OFF. Empirically catastrophic in this
+		// engine despite textbook formulation: SPRT measured roughly -150 to
+		// -230 Elo at LMPMaxDepth 5, 2, and with the all-pruned-terminal bug
+		// fixed, while fixed-depth tactical probes stayed clean. Root cause:
+		// LMP presupposes late quiets are genuinely worse than early ones,
+		// which requires well-ranked quiet ordering - see the history-scale
+		// mismatch in move_ordering.go (history caps at 10k while tactical
+		// bonuses reach 150k+, leaving plain quiets nearly arbitrarily
+		// ordered). Revisit only after the history heuristic is reworked.
+		LMPEnabled:  false,
+		LMPMaxDepth: 5,
 
 		// Late Move Reductions: matches the UCI engine defaults.
 		LMREnabled:  true,

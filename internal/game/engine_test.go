@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
+	"github.com/AdamGriffiths31/ChessEngine/internal/book"
 )
 
 func TestNewEngine(t *testing.T) {
@@ -92,6 +93,42 @@ func TestEngineMakeMove(t *testing.T) {
 
 	if state.MoveCount != 2 {
 		t.Errorf("Expected move count to be 2 after black move, got %d", state.MoveCount)
+	}
+}
+
+// TestEngineHashHistoryTracksRealMoves verifies HashHistory() exposes the
+// real-game position-hash sequence (oldest first, ending with the current
+// position) that MakeMove already accumulates internally for threefold
+// detection - this is what internal/uci feeds into
+// search.SearchConfig.RepetitionHistory so the search can recognize
+// repetitions that started before its own hypothetical lookahead.
+func TestEngineHashHistoryTracksRealMoves(t *testing.T) {
+	engine := NewEngine()
+
+	if got := len(engine.HashHistory()); got != 1 {
+		t.Fatalf("HashHistory() length = %d after NewEngine, want 1 (just the starting position)", got)
+	}
+	startHash := engine.HashHistory()[0]
+
+	move := board.Move{
+		From:      board.Square{File: 4, Rank: 1}, // e2
+		To:        board.Square{File: 4, Rank: 3}, // e4
+		Promotion: board.Empty,
+	}
+	if err := engine.MakeMove(move); err != nil {
+		t.Fatalf("MakeMove failed: %v", err)
+	}
+
+	history := engine.HashHistory()
+	if len(history) != 2 {
+		t.Fatalf("HashHistory() length = %d after one move, want 2", len(history))
+	}
+	if history[0] != startHash {
+		t.Errorf("HashHistory()[0] changed after a move: got %d, want the original start hash %d", history[0], startHash)
+	}
+	wantCurrent := book.GetPolyglotHash().HashPosition(engine.GetState().Board)
+	if history[1] != wantCurrent {
+		t.Errorf("HashHistory()[1] = %d, want %d (hash of the current position)", history[1], wantCurrent)
 	}
 }
 

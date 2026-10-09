@@ -2,7 +2,7 @@ package board
 
 // Precomputed attack tables for chess pieces
 var (
-	// Basic file and rank masks (already defined in bitboard.go as constants)
+	// File and rank masks
 	FileMasks [8]Bitboard
 	RankMasks [8]Bitboard
 

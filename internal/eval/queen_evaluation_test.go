@@ -20,8 +20,8 @@ func TestEvaluateQueens(t *testing.T) {
 		},
 		{
 			fen:         "rnbqkbnr/pppppppp/8/8/8/3Q4/PPPPPPPP/RNB1KBNR w KQkq - 0 1",
-			description: "White queen developed early (penalty expected)",
-			expected:    -17, // Actual observed value
+			description: "White queen developed early",
+			expected:    8, // Actual observed value (early-move penalty removed)
 		},
 		{
 			fen:         "r1bqk2r/pppppppp/2n2n2/8/8/2N1PN2/PPPPPPPP/R1BQKB1R w KQkq - 0 1",
@@ -31,7 +31,7 @@ func TestEvaluateQueens(t *testing.T) {
 		{
 			fen:         "rnb1kbnr/pppppppp/8/3q4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			description: "Black queen developed early",
-			expected:    13, // Actual observed value
+			expected:    -12, // Actual observed value (early-move penalty removed)
 		},
 	}
 
@@ -164,75 +164,6 @@ func TestIsFileOpen(t *testing.T) {
 			result := isFileOpen(b, tt.file)
 			if result != tt.expected {
 				t.Errorf("%s: expected %t, got %t", tt.description, tt.expected, result)
-			}
-		})
-	}
-}
-
-func TestEvaluateEarlyDevelopment(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		fen         string
-		description string
-		isWhite     bool
-		expected    int
-	}{
-		{
-			fen:         "rnbqkbnr/pppppppp/8/8/8/3Q4/PPPPPPPP/RNB1KBNR w KQkq - 1 1",
-			description: "White queen developed early - no minor pieces moved",
-			isWhite:     true,
-			expected:    EarlyQueenMovePenalty, // -25
-		},
-		{
-			fen:         "r1bqkb1r/pppppppp/2n2n2/8/8/2N1QN2/PPPPPPPP/R1B1KB1R w KQkq - 1 3",
-			description: "White queen developed after minors",
-			isWhite:     true,
-			expected:    0, // No penalty - 4 minor pieces developed
-		},
-		{
-			fen:         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			description: "White queen on starting square",
-			isWhite:     true,
-			expected:    0, // No penalty - hasn't moved
-		},
-		{
-			fen:         "rnb1kbnr/pppppppp/3q4/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 1 2",
-			description: "Black queen developed early",
-			isWhite:     false,
-			expected:    EarlyQueenMovePenalty, // -25
-		},
-		{
-			fen:         "r1b1kb1r/pppppppp/1qn2n2/8/8/2N1PN2/PPPPPPPP/R1BQKB1R b KQkq - 1 6",
-			description: "Black queen developed after minors - move 6",
-			isWhite:     false,
-			expected:    0, // Move 6 > 5, so no early development check
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.description, func(t *testing.T) {
-			b, err := board.FromFEN(tt.fen)
-			if err != nil {
-				t.Fatalf("Failed to create board from FEN: %v", err)
-			}
-
-			var queensBitboard board.Bitboard
-			if tt.isWhite {
-				queensBitboard = b.GetPieceBitboard(board.WhiteQueen)
-			} else {
-				queensBitboard = b.GetPieceBitboard(board.BlackQueen)
-			}
-
-			if queensBitboard == 0 {
-				t.Fatalf("No queen found for color in position: %s", tt.fen)
-			}
-
-			queenSquare, _ := queensBitboard.PopLSB()
-			queenRank := queenSquare / 8
-
-			result := evaluateEarlyDevelopment(b, queenRank, tt.isWhite)
-			if result != tt.expected {
-				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, result)
 			}
 		})
 	}

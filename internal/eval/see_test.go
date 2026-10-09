@@ -185,6 +185,75 @@ func TestSEE_EnPassant(t *testing.T) {
 	}
 }
 
+func TestSEE_PromotionCaptures(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		fen      string
+		move     board.Move
+		expected int
+	}{
+		{
+			name: "Queen promotion capture, recaptured by rook",
+			// bxa8=Q is met by ...Rxa8 (a5 rook defends a8 up the open file):
+			// net = +rook(500) +promo(900-100) -queen(900) = +400. The buggy
+			// code priced the recapture as taking a pawn (+1200).
+			fen: "r3k3/1P6/8/r7/8/8/8/7K w - - 0 1",
+			move: board.Move{
+				From:      board.Square{Rank: 6, File: 1}, // b7
+				To:        board.Square{Rank: 7, File: 0}, // a8
+				Piece:     board.WhitePawn,
+				Captured:  board.BlackRook,
+				Promotion: board.WhiteQueen,
+				IsCapture: true,
+			},
+			expected: 400,
+		},
+		{
+			name: "Queen promotion capture, square undefended",
+			// bxa8=Q with no black reply: +knight(320) +promo(900-100) = +1120.
+			fen: "n3k3/1P6/8/8/8/8/8/7K w - - 0 1",
+			move: board.Move{
+				From:      board.Square{Rank: 6, File: 1}, // b7
+				To:        board.Square{Rank: 7, File: 0}, // a8
+				Piece:     board.WhitePawn,
+				Captured:  board.BlackKnight,
+				Promotion: board.WhiteQueen,
+				IsCapture: true,
+			},
+			expected: 1120,
+		},
+		{
+			name: "Underpromotion capture to knight, recaptured by king",
+			// bxc8=N with black king adjacent on d8: KxN follows, square
+			// undefended by white, so net = +bishop(330) +promo(320-100)
+			// -knight(320) = +230.
+			fen: "2bk4/1P6/8/8/8/8/8/7K w - - 0 1",
+			move: board.Move{
+				From:      board.Square{Rank: 6, File: 1}, // b7
+				To:        board.Square{Rank: 7, File: 2}, // c8
+				Piece:     board.WhitePawn,
+				Captured:  board.BlackBishop,
+				Promotion: board.WhiteKnight,
+				IsCapture: true,
+			},
+			expected: 230,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := createBoardFromFEN(t, tt.fen)
+			calc := NewSEECalculator()
+
+			result := calc.SEE(b, tt.move)
+			if result != tt.expected {
+				t.Errorf("SEE() = %d, expected %d", result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestSEE_NonCapture(t *testing.T) {
 	t.Parallel()
 	b := board.NewBoard()

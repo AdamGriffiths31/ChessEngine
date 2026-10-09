@@ -64,7 +64,8 @@ type Square struct {
 // These scores are maintained incrementally during moves and restored during unmake.
 type EvalState struct {
 	MaterialScore int
-	PSTScore      int
+	PSTScore      int // Middlegame PST sum
+	PSTScoreEG    int // Endgame PST sum (differs from MG only for pawns/kings)
 }
 
 // Board represents a chess board with piece positions and game state
@@ -94,7 +95,8 @@ type Board struct {
 
 	// Incremental evaluation scores (from White's perspective)
 	materialScore int         // Sum of all piece values
-	pstScore      int         // Sum of all positional bonuses
+	pstScore      int         // Sum of middlegame positional bonuses
+	pstScoreEG    int         // Sum of endgame positional bonuses
 	evalHistory   []EvalState // Stack for unmake operations
 }
 
@@ -143,6 +145,7 @@ func NewBoard() *Board {
 
 	board.materialScore = 0
 	board.pstScore = 0
+	board.pstScoreEG = 0
 	board.evalHistory = make([]EvalState, 0)
 
 	return board
@@ -183,11 +186,18 @@ func (b *Board) GetMaterialScore() int {
 	return b.materialScore
 }
 
-// GetPSTScore returns the current incrementally maintained piece-square table score.
+// GetPSTScore returns the current incrementally maintained middlegame
+// piece-square table score.
 // This value is updated automatically by SetPiece and represents the sum of all
 // positional bonuses from White's perspective.
 func (b *Board) GetPSTScore() int {
 	return b.pstScore
+}
+
+// GetPSTScoreEndgame returns the endgame PST score, maintained in parallel
+// with the middlegame score. The evaluator blends the two by game phase.
+func (b *Board) GetPSTScoreEndgame() int {
+	return b.pstScoreEG
 }
 
 // PushEvalState saves current evaluation state to history for later restoration.
@@ -196,6 +206,7 @@ func (b *Board) PushEvalState() {
 	b.evalHistory = append(b.evalHistory, EvalState{
 		MaterialScore: b.materialScore,
 		PSTScore:      b.pstScore,
+		PSTScoreEG:    b.pstScoreEG,
 	})
 }
 
@@ -206,6 +217,7 @@ func (b *Board) PopEvalState() {
 		state := b.evalHistory[len(b.evalHistory)-1]
 		b.materialScore = state.MaterialScore
 		b.pstScore = state.PSTScore
+		b.pstScoreEG = state.PSTScoreEG
 		b.evalHistory = b.evalHistory[:len(b.evalHistory)-1]
 	}
 }
@@ -214,11 +226,13 @@ func (b *Board) updateEvalScoresForPiece(rank, file int, oldPiece, newPiece Piec
 	if oldPiece != Empty {
 		b.materialScore -= values.GetPieceValue(values.Piece(oldPiece))
 		b.pstScore -= values.GetPositionalBonus(values.Piece(oldPiece), rank, file)
+		b.pstScoreEG -= values.GetPositionalBonusEndgame(values.Piece(oldPiece), rank, file)
 	}
 
 	if newPiece != Empty {
 		b.materialScore += values.GetPieceValue(values.Piece(newPiece))
 		b.pstScore += values.GetPositionalBonus(values.Piece(newPiece), rank, file)
+		b.pstScoreEG += values.GetPositionalBonusEndgame(values.Piece(newPiece), rank, file)
 	}
 }
 
@@ -234,6 +248,7 @@ func (b *Board) InitializeHashFromPosition(hashFunc func(*Board) uint64) {
 func (b *Board) InitializeEvalScoresFromPosition() {
 	b.materialScore = 0
 	b.pstScore = 0
+	b.pstScoreEG = 0
 
 	for rank := 0; rank < 8; rank++ {
 		for file := 0; file < 8; file++ {
@@ -241,6 +256,7 @@ func (b *Board) InitializeEvalScoresFromPosition() {
 			if piece != Empty {
 				b.materialScore += values.GetPieceValue(values.Piece(piece))
 				b.pstScore += values.GetPositionalBonus(values.Piece(piece), rank, file)
+				b.pstScoreEG += values.GetPositionalBonusEndgame(values.Piece(piece), rank, file)
 			}
 		}
 	}
@@ -249,7 +265,13 @@ func (b *Board) InitializeEvalScoresFromPosition() {
 // HashUpdater interface for providing zobrist key updates
 type HashUpdater interface {
 	GetHashDelta(b *Board, move Move, oldState State) uint64
-	GetNullMoveDelta() uint64 // Get hash delta for null move (just flip side-to-move)
+	// GetNullMoveDelta returns the hash delta for a null move about to be
+	// made from position b. Called BEFORE any state mutation, so the
+	// implementer sees the pre-null side-to-move and a still-live en-passant
+	// target: the delta must flip the side-to-move key AND XOR out the
+	// en-passant file key when that target was actually hashed (i.e. a
+	// capturing pawn existed), since MakeNullMove clears it.
+	GetNullMoveDelta(b *Board) uint64
 }
 
 // State captures the board state before a move for hash calculation

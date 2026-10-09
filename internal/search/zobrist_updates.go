@@ -102,9 +102,19 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 	return hashDelta
 }
 
-// GetNullMoveDelta returns the hash delta for a null move (flip side to move)
-func (m *MinimaxEngine) GetNullMoveDelta() uint64 {
-	return m.zobrist.GetSideKey()
+// GetNullMoveDelta returns the hash delta for a null move from position b.
+// Called before MakeNullMove mutates anything: b still has the mover's
+// side-to-move and a live en-passant target. The delta flips the
+// side-to-move key and, if the EP target was actually hashed (a capturing
+// pawn existed - the non-perturbation rule), removes its file key, since the
+// null move clears that target. Skipping the EP term here left a stale key
+// in every null subtree's hashes whenever NMP fired after a double push.
+func (m *MinimaxEngine) GetNullMoveDelta(b *board.Board) uint64 {
+	delta := m.zobrist.GetSideKey()
+	if ep, hasEP := b.GetEnPassantTarget(); hasEP && hasAdjacentCapturingPawn(b, ep, b.GetSideToMove()) {
+		delta ^= m.zobrist.GetEnPassantKey(ep.File)
+	}
+	return delta
 }
 
 // epCapturerRankAndPiece returns the rank index and pawn piece of the pawns

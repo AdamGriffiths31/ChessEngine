@@ -95,7 +95,11 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *movegen.MoveList, p
 			}
 
 			if !move.IsCapture && move.Promotion == board.Empty {
-				score += int(m.getHistoryScore(move))
+				// History is scaled up so a well-learned move competes with
+				// the tactical-guess tier instead of acting as its
+				// tiebreaker: +-16k raw x16 spans roughly the tactical bonus
+				// range, while staying below killers (500k).
+				score += int(m.getHistoryScore(move)) * 16
 
 				tacticalBonus := m.getTacticalBonus(b, move)
 				score += tacticalBonus
@@ -157,7 +161,8 @@ func (m *MinimaxEngine) scoreCaptures(moveList *movegen.MoveList, ply int) {
 //  8. Slightly bad captures (SEE >= -100): 50,000+
 //  9. Terrible captures (SEE < -100): 25,000+
 //
-// 10. Quiet moves with history: 0-10,000
+// 10. Quiet moves with history: roughly -260k..+260k scaled (raw +-16k x16),
+//     co-dominant with the tactical tier when well-learned
 // 11. Other quiet moves: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
