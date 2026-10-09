@@ -17,18 +17,18 @@ import (
 // is written by the STS runner to tools/results/sts_<timestamp>.jsonl (one
 // line per scored EPD position).
 type PositionRecord struct {
-	FEN      string              `json:"fen"`
-	Expected string              `json:"expected"`
-	Chosen   string              `json:"chosen"`
-	Score    int                 `json:"score"`
-	Stats    *search.SearchStats `json:"stats,omitempty"`
-	Source   string              `json:"source,omitempty"`
+	FEN      string        `json:"fen"`
+	Expected string        `json:"expected"`
+	Chosen   string        `json:"chosen"`
+	Score    int           `json:"score"`
+	Stats    *search.Stats `json:"stats,omitempty"`
+	Source   string        `json:"source,omitempty"`
 }
 
 // NewSTSPositionRecord builds a JSONL position record from one scored EPD
 // position.
 func NewSTSPositionRecord(r epd.STSResult) PositionRecord {
-	stats := r.SearchResult.Stats
+	stats := r.Result.Stats
 	return PositionRecord{
 		FEN:      r.Position.Board.ToFEN(),
 		Expected: r.Position.BestMove,
@@ -83,8 +83,8 @@ func ComputeSTSAggregates(results []epd.STSResult, totalTime time.Duration) STSA
 		if r.Score == 10 {
 			agg.CorrectMoves++
 		}
-		agg.TotalNodes += r.SearchResult.Stats.NodesSearched
-		agg.TotalDepth += r.SearchResult.Stats.Depth
+		agg.TotalNodes += r.Result.Stats.NodesSearched
+		agg.TotalDepth += r.Result.Stats.Depth
 	}
 	if len(results) > 0 {
 		agg.AvgDepth = float64(agg.TotalDepth) / float64(len(results))
@@ -116,7 +116,7 @@ func newJSONLWriter(rootPath, prefix string) (*JSONLWriter, error) {
 	timestamp := time.Now().Format("20060102_150405")
 	basePath := filepath.Join(dir, fmt.Sprintf("%s_%s", prefix, timestamp))
 
-	for attempt := 0; attempt < 100; attempt++ {
+	for attempt := range 100 {
 		var path string
 		if attempt == 0 {
 			path = basePath + ".jsonl"

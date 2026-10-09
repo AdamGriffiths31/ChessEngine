@@ -11,15 +11,18 @@ import (
 const BookMoveLimit = 10
 
 var (
+	// ErrPositionNotFound means the position has no entry in the book.
 	ErrPositionNotFound = errors.New("position not found in opening book")
-	ErrInvalidBookFile  = errors.New("invalid opening book file format")
-	ErrBookNotLoaded    = errors.New("opening book not loaded")
+	// ErrInvalidBookFile means the file is not a valid, hash-sorted Polyglot book.
+	ErrInvalidBookFile = errors.New("invalid opening book file format")
+	// ErrBookNotLoaded means a lookup was attempted before a book was loaded.
+	ErrBookNotLoaded = errors.New("opening book not loaded")
 )
 
 // OpeningBook defines the interface for opening book implementations
 type OpeningBook interface {
 	// LookupMove finds book moves for the given position hash
-	LookupMove(hash uint64, b *board.Board) ([]BookMove, error)
+	LookupMove(hash uint64, b *board.Board) ([]Move, error)
 
 	// LoadFromFile loads the opening book from a file
 	LoadFromFile(filename string) error
@@ -28,11 +31,11 @@ type OpeningBook interface {
 	IsLoaded() bool
 
 	// GetBookInfo returns information about the loaded book
-	GetBookInfo() BookInfo
+	GetBookInfo() Info
 }
 
-// BookMove represents a move from an opening book with associated metadata
-type BookMove struct {
+// Move represents a move from an opening book with associated metadata
+type Move struct {
 	Move board.Move
 
 	// Weight represents the relative frequency/strength of this move
@@ -42,8 +45,8 @@ type BookMove struct {
 	Learn uint32
 }
 
-// BookInfo contains metadata about a loaded opening book
-type BookInfo struct {
+// Info contains metadata about a loaded opening book
+type Info struct {
 	Filename string
 
 	EntryCount int
@@ -66,21 +69,21 @@ type PolyglotEntry struct {
 	Learn uint32
 }
 
-// BookManager manages multiple opening books
-type BookManager struct {
+// Manager manages multiple opening books
+type Manager struct {
 	books   []OpeningBook
 	primary OpeningBook
 }
 
-// NewBookManager creates a new book manager
-func NewBookManager() *BookManager {
-	return &BookManager{
+// NewManager creates a new book manager
+func NewManager() *Manager {
+	return &Manager{
 		books: make([]OpeningBook, 0),
 	}
 }
 
 // AddBook adds an opening book to the manager
-func (bm *BookManager) AddBook(book OpeningBook) {
+func (bm *Manager) AddBook(book OpeningBook) {
 	bm.books = append(bm.books, book)
 	if bm.primary == nil {
 		bm.primary = book
@@ -88,7 +91,7 @@ func (bm *BookManager) AddBook(book OpeningBook) {
 }
 
 // LookupMove searches for moves in all loaded books, starting with primary
-func (bm *BookManager) LookupMove(hash uint64, b *board.Board) ([]BookMove, error) {
+func (bm *Manager) LookupMove(hash uint64, b *board.Board) ([]Move, error) {
 	if bm.primary != nil && bm.primary.IsLoaded() {
 		moves, err := bm.primary.LookupMove(hash, b)
 		if err == nil && len(moves) > 0 {

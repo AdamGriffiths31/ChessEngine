@@ -65,7 +65,7 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 		rawLog.WriteString(line)
 		rawLog.WriteByte('\n')
 
-		if status, ok := ParseSPRTStatus(line); ok {
+		if status, ok := parseSPRTStatus(line); ok {
 			latestStatus = status
 			haveStatus = true
 		}

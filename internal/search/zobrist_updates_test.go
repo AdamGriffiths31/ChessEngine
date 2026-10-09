@@ -11,15 +11,12 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// zobristSeedBase is the fixed base seed used to derive a per-FEN RNG seed
-// (base + index into zobristTestFENs). Keeping it fixed makes any failure
-// reproducible by re-running the test with the same index.
+// zobristSeedBase + the FEN index seeds each playout, so failures reproduce.
 const zobristSeedBase = 20240615
 
-// zobristTestFENs is a diverse set of legal positions exercising the pieces
-// of board state that feed the Zobrist hash: full/partial/no castling
-// rights, en passant availability for both colors, imminent promotions for
-// both colors, and a sparse late endgame.
+// zobristTestFENs covers the state that feeds the hash: full/partial/no
+// castling rights, en passant for both colors, imminent promotions, and a
+// sparse endgame. Other search tests reuse this list by index.
 var zobristTestFENs = []string{
 	// Standard starting position: full castling rights, no en passant.
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -46,16 +43,13 @@ var zobristTestFENs = []string{
 // maxZobristPlies caps the length of each random playout.
 const maxZobristPlies = 40
 
-// TestZobristIncrementalHashRoundTrip plays a bounded sequence of random
-// legal moves from a diverse set of positions and checks, at every ply,
-// that the incrementally maintained Zobrist hash (board.Board.GetHash,
-// updated via MinimaxEngine.GetHashDelta) matches a from-scratch recompute
-// (book.ZobristHash.HashPosition), and that unmaking a move restores the
-// exact pre-move hash. It also checks the null-move make/unmake round trip
-// at every position visited.
+// TestZobristIncrementalHashRoundTrip plays seeded random legal moves and
+// checks at every ply that the incremental hash matches a from-scratch
+// recompute, that unmake restores the pre-move hash, and that the null-move
+// make/unmake round trip is exact.
 func TestZobristIncrementalHashRoundTrip(t *testing.T) {
 	for idx, fen := range zobristTestFENs {
-		fen := fen
+
 		seed := int64(zobristSeedBase + idx)
 		t.Run(fmt.Sprintf("fen%d", idx), func(t *testing.T) {
 			runZobristPlayout(t, fen, seed)
@@ -88,9 +82,8 @@ func runZobristPlayout(t *testing.T, fen string, seed int64) {
 		}
 	}
 
-	for ply := 0; ply < maxZobristPlies; ply++ {
-		// Null-move round trip check at the current position, before any
-		// real move is made this ply.
+	for ply := range maxZobristPlies {
+		// Null-move round trip at this position.
 		preNullHash := b.GetHash()
 		nullUndo := b.MakeNullMove()
 		if b.GetHash() == preNullHash {
@@ -104,7 +97,7 @@ func runZobristPlayout(t *testing.T, fen string, seed int64) {
 		pseudoMoves := m.generator.GeneratePseudoLegalMoves(b, player)
 		legalMoves := make([]board.Move, 0, pseudoMoves.Count)
 
-		for i := 0; i < pseudoMoves.Count; i++ {
+		for i := range pseudoMoves.Count {
 			move := pseudoMoves.Moves[i]
 
 			preHash := b.GetHash()
@@ -121,8 +114,7 @@ func runZobristPlayout(t *testing.T, fen string, seed int64) {
 				continue
 			}
 
-			// Legal candidate: verify make produced the right hash, then
-			// verify unmake restores it, before deciding whether to play it.
+			// Legal candidate: make must give the right hash and unmake must restore it.
 			checkHash(fmt.Sprintf("ply %d candidate %s after make", ply, moveString(move)))
 
 			b.UnmakeMove(undo)
@@ -148,64 +140,17 @@ func runZobristPlayout(t *testing.T, fen string, seed int64) {
 		playedMoves = append(playedMoves, moveString(chosen))
 		checkHash(fmt.Sprintf("ply %d chosen move %s after make", ply, moveString(chosen)))
 
-		// Exercise the unmake path for the chosen move too, then re-make it
-		// so the playout continues from the resulting position.
+		// Unmake and re-make the chosen move to continue the playout.
 		b.UnmakeMove(undo)
 		if b.GetHash() != preMoveHash {
 			failf("ply %d: hash after unmake of chosen move %s = %#x, want %#x", ply, moveString(chosen), b.GetHash(), preMoveHash)
 		}
 
-		undo, err = b.MakeMoveWithUndo(chosen)
-		if err != nil {
+		if _, err = b.MakeMoveWithUndo(chosen); err != nil {
 			failf("ply %d: chosen move %s unexpectedly failed to re-make: %v", ply, moveString(chosen), err)
 		}
-		_ = undo
 		checkHash(fmt.Sprintf("ply %d chosen move %s after re-make", ply, moveString(chosen)))
 
 		player = opposite(player)
-	}
-}
-
-// playerFromSide converts the board's side-to-move string ("w"/"b") into a
-// movegen.Player.
-func playerFromSide(side string) movegen.Player {
-	if side == "w" {
-		return movegen.White
-	}
-	return movegen.Black
-}
-
-// opposite returns the other player.
-func opposite(p movegen.Player) movegen.Player {
-	if p == movegen.White {
-		return movegen.Black
-	}
-	return movegen.White
-}
-
-// moveString renders a move as coordinate notation (e.g. "e2e4", "a7a8q")
-// for failure messages.
-func moveString(move board.Move) string {
-	s := move.From.String() + move.To.String()
-	if move.Promotion != board.Empty {
-		s += string(promotionLetter(move.Promotion))
-	}
-	return s
-}
-
-// promotionLetter returns the lowercase algebraic letter for a promotion
-// piece, for use in coordinate-notation move strings.
-func promotionLetter(p board.Piece) rune {
-	switch p {
-	case board.WhiteQueen, board.BlackQueen:
-		return 'q'
-	case board.WhiteRook, board.BlackRook:
-		return 'r'
-	case board.WhiteBishop, board.BlackBishop:
-		return 'b'
-	case board.WhiteKnight, board.BlackKnight:
-		return 'n'
-	default:
-		return '?'
 	}
 }

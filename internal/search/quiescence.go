@@ -117,7 +117,7 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, alpha, beta evalpkg.Eval
 		bestScore = -evalpkg.MateScore - 1
 	}
 
-	for i := 0; i < movesToSearch.Count; i++ {
+	for i := range movesToSearch.Count {
 		m.pickNextMove(movesToSearch, i, bufferPly)
 		move := movesToSearch.Moves[i]
 
@@ -196,11 +196,12 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, alpha, beta evalpkg.Eval
 
 	if m.transpositionTable != nil && !m.searchState.searchCancelled {
 		var entryType EntryType
-		if bestScore <= originalAlpha {
+		switch {
+		case bestScore <= originalAlpha:
 			entryType = EntryUpperBound
-		} else if bestScore >= beta {
+		case bestScore >= beta:
 			entryType = EntryLowerBound
-		} else {
+		default:
 			entryType = EntryExact
 		}
 		m.transpositionTable.Store(hash, 0, scoreToTT(bestScore, ply), entryType, board.Move{})

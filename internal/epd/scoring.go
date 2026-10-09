@@ -16,7 +16,7 @@ type STSResult struct {
 	EngineMove    board.Move
 	EngineMoveStr string
 	Score         int // Points scored (0-10)
-	SearchResult  search.SearchResult
+	Result        search.Result
 	TestDuration  time.Duration
 }
 
@@ -34,23 +34,13 @@ type STSSuiteResult struct {
 // STSScorer handles scoring EPD positions using an AI engine
 type STSScorer struct {
 	engine  search.Engine
-	config  search.SearchConfig
+	config  search.Config
 	verbose bool
 	clearTT bool
 }
 
-// NewSTSScorer creates a new STS scorer with the given engine and search configuration
-func NewSTSScorer(engine search.Engine, config search.SearchConfig, verbose bool) *STSScorer {
-	return &STSScorer{
-		engine:  engine,
-		config:  config,
-		verbose: verbose,
-		clearTT: false,
-	}
-}
-
 // NewSTSScorerWithTTClear creates a new STS scorer with TT clearing option
-func NewSTSScorerWithTTClear(engine search.Engine, config search.SearchConfig, verbose bool, clearTT bool) *STSScorer {
+func NewSTSScorerWithTTClear(engine search.Engine, config search.Config, verbose bool, clearTT bool) *STSScorer {
 	return &STSScorer{
 		engine:  engine,
 		config:  config,
@@ -92,7 +82,7 @@ func (scorer *STSScorer) ScorePosition(ctx context.Context, position *Position) 
 		EngineMove:    searchResult.BestMove,
 		EngineMoveStr: engineMoveStr + "/" + algebraicMove, // Show both notations
 		Score:         score,
-		SearchResult:  searchResult,
+		Result:        searchResult,
 		TestDuration:  duration,
 	}
 }

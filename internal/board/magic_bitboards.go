@@ -75,7 +75,7 @@ func init() {
 }
 
 func initializeRelevantOccupancy() {
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		RookRelevantBits[square] = rookRelevantOccupancy(square).PopCount()
 		BishopRelevantBits[square] = bishopRelevantOccupancy(square).PopCount()
 	}
@@ -134,7 +134,7 @@ func bishopRelevantOccupancy(square int) Bitboard {
 func initializeRookMagics() {
 	offset := 0
 
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		relevantOccupancy := rookRelevantOccupancy(square)
 		relevantBits := relevantOccupancy.PopCount()
 
@@ -152,12 +152,12 @@ func initializeRookMagics() {
 
 	RookAttacks = make([]Bitboard, offset)
 
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		magic := RookMagics[square]
 		relevantBits := RookRelevantBits[square]
 		occupancyVariations := 1 << relevantBits
 
-		for i := 0; i < occupancyVariations; i++ {
+		for i := range occupancyVariations {
 			occupancy := indexToOccupancy(i, magic.Mask)
 			magicIndex := (occupancy * Bitboard(magic.Magic)) >> magic.Shift
 			RookAttacks[magic.Offset+int(magicIndex)] = calculateRookAttacks(square, occupancy)
@@ -168,7 +168,7 @@ func initializeRookMagics() {
 func initializeBishopMagics() {
 	offset := 0
 
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		relevantOccupancy := bishopRelevantOccupancy(square)
 		relevantBits := relevantOccupancy.PopCount()
 
@@ -186,12 +186,12 @@ func initializeBishopMagics() {
 
 	BishopAttacks = make([]Bitboard, offset)
 
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		magic := BishopMagics[square]
 		relevantBits := BishopRelevantBits[square]
 		occupancyVariations := 1 << relevantBits
 
-		for i := 0; i < occupancyVariations; i++ {
+		for i := range occupancyVariations {
 			occupancy := indexToOccupancy(i, magic.Mask)
 			magicIndex := (occupancy * Bitboard(magic.Magic)) >> magic.Shift
 			BishopAttacks[magic.Offset+int(magicIndex)] = calculateBishopAttacks(square, occupancy)
@@ -204,7 +204,7 @@ func indexToOccupancy(index int, mask Bitboard) Bitboard {
 	var occupancy Bitboard
 	bits := mask.BitList()
 
-	for i := 0; i < len(bits); i++ {
+	for i := range bits {
 		if (index & (1 << i)) != 0 {
 			occupancy = occupancy.SetBit(bits[i])
 		}

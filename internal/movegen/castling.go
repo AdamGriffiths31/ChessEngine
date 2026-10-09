@@ -1,8 +1,9 @@
 package movegen
 
 import (
-	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 	"strings"
+
+	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
 // Square constants for castling

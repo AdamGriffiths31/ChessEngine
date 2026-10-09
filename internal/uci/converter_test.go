@@ -6,89 +6,76 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
+const (
+	startFEN      = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+	castlingFEN   = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
+	captureFEN    = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+	enPassantFEN  = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
+	whitePromoFEN = "4k3/P7/8/8/8/8/8/4K3 w - - 0 1"
+	blackPromoFEN = "4k3/8/8/8/8/8/p7/4K3 b - - 0 1"
+)
+
+// sq builds a Square from algebraic notation ("e4"), independently of the
+// production parser.
+func sq(name string) board.Square {
+	return board.Square{File: int(name[0] - 'a'), Rank: int(name[1] - '1')}
+}
+
+// mv builds a Move the way the move generator does (no promotion, nothing
+// captured), then applies any modifiers.
+func mv(from, to string, piece board.Piece, mods ...func(*board.Move)) board.Move {
+	m := board.Move{From: sq(from), To: sq(to), Piece: piece, Promotion: board.Empty, Captured: board.Empty}
+	for _, mod := range mods {
+		mod(&m)
+	}
+	return m
+}
+
+func castling(m *board.Move)  { m.IsCastling = true }
+func enPassant(m *board.Move) { m.IsEnPassant = true }
+
+func promotesTo(p board.Piece) func(*board.Move) {
+	return func(m *board.Move) { m.Promotion = p }
+}
+
+func captures(p board.Piece) func(*board.Move) {
+	return func(m *board.Move) { m.Captured, m.IsCapture = p, true }
+}
+
 func TestMoveConverter_ToUCI(t *testing.T) {
 	converter := NewMoveConverter()
 
+	offBoard := mv("e2", "e4", board.WhitePawn)
+	offBoard.From = board.Square{File: 8, Rank: 0}
+
 	tests := []struct {
-		name     string
-		move     board.Move
-		expected string
+		name string
+		move board.Move
+		want string
 	}{
-		{
-			name: "simple pawn move",
-			move: board.Move{
-				From:      board.Square{File: 4, Rank: 1}, // e2
-				To:        board.Square{File: 4, Rank: 3}, // e4
-				Promotion: board.Empty,
-			},
-			expected: "e2e4",
-		},
-		{
-			name: "knight move",
-			move: board.Move{
-				From:      board.Square{File: 1, Rank: 0}, // b1
-				To:        board.Square{File: 2, Rank: 2}, // c3
-				Promotion: board.Empty,
-			},
-			expected: "b1c3",
-		},
-		{
-			name: "promotion to queen",
-			move: board.Move{
-				From:      board.Square{File: 0, Rank: 6}, // a7
-				To:        board.Square{File: 0, Rank: 7}, // a8
-				Promotion: board.WhiteQueen,
-			},
-			expected: "a7a8q",
-		},
-		{
-			name: "promotion to knight",
-			move: board.Move{
-				From:      board.Square{File: 7, Rank: 1}, // h2
-				To:        board.Square{File: 7, Rank: 0}, // h1
-				Promotion: board.BlackKnight,
-			},
-			expected: "h2h1n",
-		},
-		{
-			// Chess960/opening-book castling notation: From=king's square,
-			// To=rook's square. IsCastling must gate the rewrite to standard
-			// notation -- see the next case for why matching on squares alone
-			// is wrong.
-			name: "white queenside castling in Chess960 notation is rewritten to standard",
-			move: board.Move{
-				From:       board.Square{File: 4, Rank: 0}, // e1
-				To:         board.Square{File: 0, Rank: 0}, // a1
-				Piece:      board.WhiteKing,
-				IsCastling: true,
-				Promotion:  board.Empty,
-			},
-			expected: "e1c1",
-		},
-		{
-			// Regression test: a rook that has lifted to e1 and moves back
-			// to a1 shares its From/To squares with Chess960 queenside
-			// castling notation, but IsCastling is false here -- ToUCI must
-			// NOT rewrite this to e1c1 (that bug corrupted recorded Elo game
-			// history: the rook's real e1a1 move was silently turned into
-			// e1c1, desyncing our board from what was sent to Stockfish).
-			name: "plain rook move sharing castling squares is not rewritten",
-			move: board.Move{
-				From:       board.Square{File: 4, Rank: 0}, // e1
-				To:         board.Square{File: 0, Rank: 0}, // a1
-				Piece:      board.WhiteRook,
-				IsCastling: false,
-				Promotion:  board.Empty,
-			},
-			expected: "e1a1",
-		},
+		{"pawn move", mv("e2", "e4", board.WhitePawn), "e2e4"},
+		{"knight move", mv("b1", "c3", board.WhiteKnight), "b1c3"},
+		{"white promotion", mv("a7", "a8", board.WhitePawn, promotesTo(board.WhiteQueen)), "a7a8q"},
+		{"black promotion", mv("h2", "h1", board.BlackPawn, promotesTo(board.BlackKnight)), "h2h1n"},
+		{"off-board square", offBoard, "0000"},
+
+		// Opening-book castling is stored as king-takes-rook; ToUCI rewrites it
+		// to the standard king destination, but only when IsCastling is set.
+		{"white kingside castling", mv("e1", "h1", board.WhiteKing, castling), "e1g1"},
+		{"white queenside castling", mv("e1", "a1", board.WhiteKing, castling), "e1c1"},
+		{"black kingside castling", mv("e8", "h8", board.BlackKing, castling), "e8g8"},
+		{"black queenside castling", mv("e8", "a8", board.BlackKing, castling), "e8c8"},
+
+		// Regression: a rook lifted to e1 and moving back to a1 shares its
+		// squares with queenside castling. It was rewritten to e1c1, desyncing
+		// the recorded game from what was sent to the opponent.
+		{"rook move sharing castling squares", mv("e1", "a1", board.WhiteRook), "e1a1"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := converter.ToUCI(tt.move)
-			if result != tt.expected {
-				t.Errorf("ToUCI() = %v, want %v", result, tt.expected)
+			if got := converter.ToUCI(tt.move); got != tt.want {
+				t.Errorf("ToUCI() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -98,186 +85,100 @@ func TestMoveConverter_FromUCI(t *testing.T) {
 	converter := NewMoveConverter()
 
 	tests := []struct {
-		name        string
-		uciMove     string
-		boardFEN    string
-		expectedErr bool
-		validate    func(board.Move) bool
+		name string
+		fen  string
+		uci  string
+		want board.Move
 	}{
-		{
-			name:     "simple pawn move",
-			uciMove:  "e2e4",
-			boardFEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			validate: func(m board.Move) bool {
-				return m.From.File == 4 && m.From.Rank == 1 &&
-					m.To.File == 4 && m.To.Rank == 3 &&
-					m.Piece == board.WhitePawn
-			},
-		},
-		{
-			name:     "knight move",
-			uciMove:  "g1f3",
-			boardFEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			validate: func(m board.Move) bool {
-				return m.From.File == 6 && m.From.Rank == 0 &&
-					m.To.File == 5 && m.To.Rank == 2 &&
-					m.Piece == board.WhiteKnight
-			},
-		},
-		{
-			name:     "promotion",
-			uciMove:  "a7a8q",
-			boardFEN: "rnbqkbnr/Pppppppp/8/8/8/8/1PPPPPPP/RNBQKBNR w KQkq - 0 1",
-			validate: func(m board.Move) bool {
-				return m.From.File == 0 && m.From.Rank == 6 &&
-					m.To.File == 0 && m.To.Rank == 7 &&
-					m.Piece == board.WhitePawn &&
-					m.Promotion == board.WhiteQueen
-			},
-		},
-		{
-			name:        "invalid move format",
-			uciMove:     "e2",
-			boardFEN:    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			expectedErr: true,
-		},
-		{
-			name:        "invalid square",
-			uciMove:     "z9e4",
-			boardFEN:    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			expectedErr: true,
-		},
-		{
-			name:        "no piece on from square",
-			uciMove:     "e4e5",
-			boardFEN:    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			expectedErr: true,
-		},
+		{"pawn move", startFEN, "e2e4", mv("e2", "e4", board.WhitePawn)},
+		{"knight move", startFEN, "g1f3", mv("g1", "f3", board.WhiteKnight)},
+		{"capture", captureFEN, "e4d5", mv("e4", "d5", board.WhitePawn, captures(board.BlackPawn))},
+		{"white promotion", whitePromoFEN, "a7a8q", mv("a7", "a8", board.WhitePawn, promotesTo(board.WhiteQueen))},
+		{"black promotion", blackPromoFEN, "a2a1n", mv("a2", "a1", board.BlackPawn, promotesTo(board.BlackKnight))},
+		{"kingside castling", castlingFEN, "e1g1", mv("e1", "g1", board.WhiteKing, castling)},
+		{"en passant", enPassantFEN, "e5d6", mv("e5", "d6", board.WhitePawn, enPassant)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b, err := board.FromFEN(tt.boardFEN)
+			b, err := board.FromFEN(tt.fen)
 			if err != nil {
-				t.Fatalf("Failed to create board from FEN: %v", err)
+				t.Fatalf("FromFEN: %v", err)
 			}
-
-			move, err := converter.FromUCI(tt.uciMove, b)
-
-			if tt.expectedErr {
-				if err == nil {
-					t.Errorf("FromUCI() expected error but got none")
-				}
-				return
-			}
-
+			got, err := converter.FromUCI(tt.uci, b)
 			if err != nil {
-				t.Errorf("FromUCI() unexpected error: %v", err)
-				return
+				t.Fatalf("FromUCI(%q): %v", tt.uci, err)
 			}
-
-			if tt.validate != nil && !tt.validate(move) {
-				t.Errorf("FromUCI() move validation failed: %+v", move)
+			// FromUCI leaves Promotion as the zero value for non-promotions
+			// rather than board.Empty; treat the two as equal here.
+			if got.Promotion == 0 {
+				got.Promotion = board.Empty
+			}
+			if got != tt.want {
+				t.Errorf("FromUCI(%q) =\n  %+v\nwant\n  %+v", tt.uci, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestSquareToUCI(t *testing.T) {
+func TestMoveConverter_FromUCIErrors(t *testing.T) {
+	converter := NewMoveConverter()
+	start, err := board.FromFEN(startFEN)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []struct {
-		name     string
-		square   board.Square
-		expected string
+		name  string
+		uci   string
+		board *board.Board
 	}{
-		{
-			name:     "a1",
-			square:   board.Square{File: 0, Rank: 0},
-			expected: "a1",
-		},
-		{
-			name:     "h8",
-			square:   board.Square{File: 7, Rank: 7},
-			expected: "h8",
-		},
-		{
-			name:     "e4",
-			square:   board.Square{File: 4, Rank: 3},
-			expected: "e4",
-		},
-		{
-			name:     "d5",
-			square:   board.Square{File: 3, Rank: 4},
-			expected: "d5",
-		},
+		{"too short", "e2", start},
+		{"too long", "e2e4qq", start},
+		{"invalid from square", "z9e4", start},
+		{"invalid to square", "e2z9", start},
+		{"no piece on from square", "e4e5", start},
+		{"nil board", "e2e4", nil},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := squareToUCI(tt.square)
-			if result != tt.expected {
-				t.Errorf("squareToUCI() = %v, want %v", result, tt.expected)
+			if _, err := converter.FromUCI(tt.uci, tt.board); err == nil {
+				t.Errorf("FromUCI(%q) succeeded, want an error", tt.uci)
 			}
 		})
 	}
 }
 
-func TestParseUCISquare(t *testing.T) {
-	tests := []struct {
-		name        string
-		uciSquare   string
-		expected    board.Square
-		expectedErr bool
+func TestUCISquare(t *testing.T) {
+	valid := []struct {
+		text   string
+		square board.Square
 	}{
-		{
-			name:      "a1",
-			uciSquare: "a1",
-			expected:  board.Square{File: 0, Rank: 0},
-		},
-		{
-			name:      "h8",
-			uciSquare: "h8",
-			expected:  board.Square{File: 7, Rank: 7},
-		},
-		{
-			name:      "e4",
-			uciSquare: "e4",
-			expected:  board.Square{File: 4, Rank: 3},
-		},
-		{
-			name:        "invalid length",
-			uciSquare:   "a",
-			expectedErr: true,
-		},
-		{
-			name:        "out of bounds file",
-			uciSquare:   "z1",
-			expectedErr: true,
-		},
-		{
-			name:        "out of bounds rank",
-			uciSquare:   "a9",
-			expectedErr: true,
-		},
+		{"a1", board.Square{File: 0, Rank: 0}},
+		{"e4", board.Square{File: 4, Rank: 3}},
+		{"d5", board.Square{File: 3, Rank: 4}},
+		{"h8", board.Square{File: 7, Rank: 7}},
+	}
+	for _, tt := range valid {
+		t.Run(tt.text, func(t *testing.T) {
+			if got := squareToUCI(tt.square); got != tt.text {
+				t.Errorf("squareToUCI(%+v) = %q, want %q", tt.square, got, tt.text)
+			}
+			got, err := parseUCISquare(tt.text)
+			if err != nil {
+				t.Fatalf("parseUCISquare(%q): %v", tt.text, err)
+			}
+			if got != tt.square {
+				t.Errorf("parseUCISquare(%q) = %+v, want %+v", tt.text, got, tt.square)
+			}
+		})
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseUCISquare(tt.uciSquare)
-
-			if tt.expectedErr {
-				if err == nil {
-					t.Errorf("parseUCISquare() expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("parseUCISquare() unexpected error: %v", err)
-				return
-			}
-
-			if result != tt.expected {
-				t.Errorf("parseUCISquare() = %v, want %v", result, tt.expected)
+	for _, text := range []string{"", "a", "a11", "z1", "a9"} {
+		t.Run("invalid_"+text, func(t *testing.T) {
+			if _, err := parseUCISquare(text); err == nil {
+				t.Errorf("parseUCISquare(%q) succeeded, want an error", text)
 			}
 		})
 	}
@@ -285,54 +186,26 @@ func TestParseUCISquare(t *testing.T) {
 
 func TestParsePromotionPiece(t *testing.T) {
 	tests := []struct {
-		name          string
-		promotionChar byte
-		originalPiece board.Piece
-		expected      board.Piece
+		name string
+		char byte
+		pawn board.Piece
+		want board.Piece
 	}{
-		{
-			name:          "white pawn to queen",
-			promotionChar: 'q',
-			originalPiece: board.WhitePawn,
-			expected:      board.WhiteQueen,
-		},
-		{
-			name:          "black pawn to queen",
-			promotionChar: 'q',
-			originalPiece: board.BlackPawn,
-			expected:      board.BlackQueen,
-		},
-		{
-			name:          "white pawn to knight",
-			promotionChar: 'n',
-			originalPiece: board.WhitePawn,
-			expected:      board.WhiteKnight,
-		},
-		{
-			name:          "black pawn to rook",
-			promotionChar: 'r',
-			originalPiece: board.BlackPawn,
-			expected:      board.BlackRook,
-		},
-		{
-			name:          "white pawn to bishop",
-			promotionChar: 'b',
-			originalPiece: board.WhitePawn,
-			expected:      board.WhiteBishop,
-		},
-		{
-			name:          "invalid promotion defaults to queen",
-			promotionChar: 'x',
-			originalPiece: board.WhitePawn,
-			expected:      board.WhiteQueen,
-		},
+		{"white queen", 'q', board.WhitePawn, board.WhiteQueen},
+		{"white rook", 'r', board.WhitePawn, board.WhiteRook},
+		{"white bishop", 'b', board.WhitePawn, board.WhiteBishop},
+		{"white knight", 'n', board.WhitePawn, board.WhiteKnight},
+		{"black queen", 'q', board.BlackPawn, board.BlackQueen},
+		{"black rook", 'r', board.BlackPawn, board.BlackRook},
+		{"black bishop", 'b', board.BlackPawn, board.BlackBishop},
+		{"black knight", 'n', board.BlackPawn, board.BlackKnight},
+		{"unknown letter defaults to queen", 'x', board.WhitePawn, board.WhiteQueen},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parsePromotionPiece(tt.promotionChar, tt.originalPiece)
-			if result != tt.expected {
-				t.Errorf("parsePromotionPiece() = %v, want %v", result, tt.expected)
+			if got := parsePromotionPiece(tt.char, tt.pawn); got != tt.want {
+				t.Errorf("parsePromotionPiece(%q, %c) = %c, want %c", tt.char, tt.pawn, got, tt.want)
 			}
 		})
 	}

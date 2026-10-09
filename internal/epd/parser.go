@@ -19,7 +19,7 @@ type MoveScore struct {
 // Position represents a single EPD position with annotations
 type Position struct {
 	Board      *board.Board
-	BestMove   string      // Best move in algebraic notation (e.g., "Nf3", "e1g1")
+	BestMove   string // Best move in algebraic notation (e.g., "Nf3", "e1g1")
 	AvoidMove  string
 	Comment    string
 	ID         string
@@ -146,30 +146,6 @@ func ParseEPDFile(content string) ([]*Position, error) {
 	}
 
 	return positions, nil
-}
-
-// String returns a string representation of the EPD position
-func (pos *Position) String() string {
-	var parts []string
-
-	if pos.ID != "" {
-		parts = append(parts, fmt.Sprintf("ID: %s", pos.ID))
-	}
-	if pos.Comment != "" {
-		parts = append(parts, fmt.Sprintf("Comment: %s", pos.Comment))
-	}
-	if pos.BestMove != "" {
-		parts = append(parts, fmt.Sprintf("Best Move: %s", pos.BestMove))
-	}
-	if pos.AvoidMove != "" {
-		parts = append(parts, fmt.Sprintf("Avoid Move: %s", pos.AvoidMove))
-	}
-
-	if len(parts) == 0 {
-		return "EPD Position (no annotations)"
-	}
-
-	return strings.Join(parts, ", ")
 }
 
 // parseMoveScores parses move scores from STS c0 comments like "Ba7=10, Qf6+=3, a5=3, h5=5"

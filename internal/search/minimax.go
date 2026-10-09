@@ -16,21 +16,21 @@ import (
 type State struct {
 	killerTable      [MaxKillerDepth][2]board.Move
 	moveOrderBuffers [MaxKillerDepth][]moveScore // Per-ply buffers for move ordering
-	searchStats      SearchStats
+	searchStats      Stats
 	searchParams     Params
 	searchCancelled  bool
 
 	// Per-search invariants, set at the start of FindBestMove/runIterativeDeepening.
 	board     *board.Board   // Board being searched (single instance, moves made/unmade on it)
 	player    movegen.Player // Side to move at the current node
-	config    SearchConfig   // Search configuration for this search
+	config    Config         // Search configuration for this search
 	pv        *pvTable       // Principal variation storage (allocated per search)
 	collectPV bool           // Whether the current node should record into pv
 }
 
 // MinimaxEngine implements negamax search with alpha-beta pruning, transposition table,
 // history heuristic, null move pruning, and SEE-based move ordering. Opening book probing
-// is not part of this engine; callers (internal/player, internal/uci) consult
+// is not part of this engine; callers (internal/uci) consult
 // internal/book.Prober before invoking FindBestMove.
 type MinimaxEngine struct {
 	evaluator          eval.Evaluator
@@ -105,8 +105,8 @@ func (m *MinimaxEngine) tryMove(move board.Move, player movegen.Player) (undo bo
 // config.RepetitionHistory with the real game's hashes; without it the
 // search cannot recognize repetitions that happened before this call
 // (see that field's doc comment).
-func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config SearchConfig) SearchResult {
-	m.searchState.searchStats = SearchStats{}
+func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config Config) Result {
+	m.searchState.searchStats = Stats{}
 
 	b.SetHashUpdater(m)
 	b.InitializeHashFromPosition(m.zobrist.HashPosition)
@@ -160,17 +160,17 @@ func (m *MinimaxEngine) GetName() string {
 
 // ClearSearchState clears transient search state between different positions
 func (m *MinimaxEngine) ClearSearchState() {
-	for i := 0; i < MaxKillerDepth; i++ {
+	for i := range MaxKillerDepth {
 		m.searchState.killerTable[i][0] = board.Move{}
 		m.searchState.killerTable[i][1] = board.Move{}
 		m.searchState.moveOrderBuffers[i] = nil
 	}
-	m.searchState.searchStats = SearchStats{}
+	m.searchState.searchStats = Stats{}
 	m.searchState.searchCancelled = false
 
 	m.searchState.board = nil
 	m.searchState.player = movegen.White
-	m.searchState.config = SearchConfig{}
+	m.searchState.config = Config{}
 	m.searchState.pv = nil
 	m.searchState.collectPV = false
 

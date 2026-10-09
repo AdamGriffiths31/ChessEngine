@@ -33,47 +33,8 @@ func (ml *MoveList) AddMove(move board.Move) {
 	ml.Count++
 }
 
-// Contains checks if the move list contains a specific move
-func (ml *MoveList) Contains(move board.Move) bool {
-	for _, m := range ml.Moves {
-		if Equal(m, move) {
-			return true
-		}
-	}
-	return false
-}
-
 // Clear empties the move list
 func (ml *MoveList) Clear() {
 	ml.Moves = ml.Moves[:0]
 	ml.Count = 0
-}
-
-// MoveHistory stores information needed to undo a move
-type MoveHistory struct {
-	Move            board.Move
-	CapturedPiece   board.Piece
-	CastlingRights  string
-	EnPassantSquare board.Square
-	HasEnPassant    bool
-	HalfMoveClock   int
-	FullMoveNumber  int
-	WasEnPassant    bool
-	WasCastling     bool
-}
-
-// Equal compares two moves for equality
-func Equal(a, b board.Move) bool {
-	return a.From.File == b.From.File &&
-		a.From.Rank == b.From.Rank &&
-		a.To.File == b.To.File &&
-		a.To.Rank == b.To.Rank &&
-		a.Promotion == b.Promotion
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

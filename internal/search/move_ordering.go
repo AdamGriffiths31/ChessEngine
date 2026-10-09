@@ -68,7 +68,7 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *movegen.MoveList, p
 
 	buffer := m.searchState.moveOrderBuffers[ply]
 
-	for i := 0; i < moveList.Count; i++ {
+	for i := range moveList.Count {
 		move := moveList.Moves[i]
 		score := 0
 
@@ -113,7 +113,7 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *movegen.MoveList, p
 // orderMovesAtRoot scores and fully sorts moves for the root node
 func (m *MinimaxEngine) orderMovesAtRoot(b *board.Board, moveList *movegen.MoveList, ttMove board.Move) {
 	m.scoreMoves(b, moveList, 0, ttMove)
-	for i := 0; i < moveList.Count-1; i++ {
+	for i := range moveList.Count - 1 {
 		m.pickNextMove(moveList, i, 0)
 	}
 }
@@ -136,7 +136,7 @@ func (m *MinimaxEngine) scoreCaptures(moveList *movegen.MoveList, ply int) {
 
 	buffer := m.searchState.moveOrderBuffers[ply]
 
-	for i := 0; i < moveList.Count; i++ {
+	for i := range moveList.Count {
 		move := moveList.Moves[i]
 
 		victimValue := getAbsPieceValue(move.Captured)
@@ -151,19 +151,29 @@ func (m *MinimaxEngine) scoreCaptures(moveList *movegen.MoveList, ply int) {
 // Higher scores indicate more valuable captures (better moves to try first).
 //
 // Move ordering priorities:
+//
 //  1. TT moves: 3,000,000+
+//
 //  2. Good captures (SEE > 0): 1,000,000+
+//
 //  3. Equal exchanges (SEE = 0): 900,000
+//
 //  4. Killer moves: 500,000
+//
 //  5. Tactical quiet moves (attacks piece + king zone): 150,000
+//
 //  6. Tactical quiet moves (attacks piece): 100,000
+//
 //  7. Tactical quiet moves (attacks king zone): 50,000
+//
 //  8. Slightly bad captures (SEE >= -100): 50,000+
+//
 //  9. Terrible captures (SEE < -100): 25,000+
 //
-// 10. Quiet moves with history: roughly -260k..+260k scaled (raw +-16k x16),
+//  10. Quiet moves with history: roughly -260k..+260k scaled (raw +-16k x16),
 //     co-dominant with the tactical tier when well-learned
-// 11. Other quiet moves: 0
+//
+//  11. Other quiet moves: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
 		return 0
@@ -180,11 +190,12 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 
 	seeValue := m.seeCalculator.SEE(b, move)
 
-	if seeValue > 0 {
+	switch {
+	case seeValue > 0:
 		return 1000000 + seeValue + mvvLvaScore
-	} else if seeValue == 0 {
+	case seeValue == 0:
 		return 900000 + mvvLvaScore
-	} else if seeValue >= -100 {
+	case seeValue >= -100:
 		return 50000 + seeValue + 100 + mvvLvaScore
 	}
 	return 25000 + seeValue + 1000 + mvvLvaScore

@@ -147,11 +147,6 @@ func (ph *ProtocolHandler) ParseGo(args []string) SearchParams {
 	return params
 }
 
-// FormatUCIResponse formats the initial UCI response.
-func (ph *ProtocolHandler) FormatUCIResponse(engineName, author string) string {
-	return fmt.Sprintf("id name %s\nid author %s\nuciok", engineName, author)
-}
-
 // FormatReadyOK formats the readyok response.
 func (ph *ProtocolHandler) FormatReadyOK() string {
 	return "readyok"
@@ -178,11 +173,6 @@ func (ph *ProtocolHandler) FormatInfo(depth int, score int, nodes int64, time ti
 	}
 
 	return info
-}
-
-// FormatOption formats a UCI option declaration.
-func (ph *ProtocolHandler) FormatOption(name, optionType, defaultValue string) string {
-	return fmt.Sprintf("option name %s type %s default %s", name, optionType, defaultValue)
 }
 
 // ParseSetOption parses a setoption command.

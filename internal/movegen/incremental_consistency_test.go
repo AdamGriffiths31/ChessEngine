@@ -37,7 +37,7 @@ func TestIncrementalEvalConsistency(t *testing.T) {
 			player = Black
 		}
 
-		for ply := 0; ply < 200; ply++ {
+		for ply := range 200 {
 			legal := generator.GenerateAllMoves(b, player)
 			if legal.Count == 0 {
 				ReleaseMoveList(legal)

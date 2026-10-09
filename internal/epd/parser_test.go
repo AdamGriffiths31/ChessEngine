@@ -1,106 +1,79 @@
 package epd
 
 import (
+	"reflect"
 	"testing"
 )
 
 func TestParseEPD(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name            string
-		epdLine         string
-		expectError     bool
-		expectedBM      string
-		expectedComment string
+		name       string
+		line       string
+		wantErr    bool
+		wantBest   string
+		wantAvoid  string
+		wantID     string
+		wantScores []MoveScore
 	}{
+		{name: "best move", line: "1R6/1brk2p1/4p2p/p1P1Pp2/P7/6P1/1P4P1/2R3K1 w - - 0 1 bm b8b7", wantBest: "b8b7"},
+		{name: "castling best move", line: "r1b2rk1/ppq1bppp/2p1pn2/8/2NP4/2N1P3/PP2BPPP/2RQK2R w K - 0 1 bm e1g1", wantBest: "e1g1"},
 		{
-			name:        "Basic EPD with best move",
-			epdLine:     "1R6/1brk2p1/4p2p/p1P1Pp2/P7/6P1/1P4P1/2R3K1 w - - 0 1 bm b8b7",
-			expectError: false,
-			expectedBM:  "b8b7",
+			name:     "STS annotations",
+			line:     `8/8/8/8/8/8/4P3/4K3 w - - bm e4; id "STS(v2.2) Open Files.001"; c0 "e4=10, Kf2=7, e3=3"; am Kd2;`,
+			wantBest: "e4", wantAvoid: "Kd2", wantID: "STS(v2.2) Open Files.001",
+			wantScores: []MoveScore{{"e4", 10}, {"Kf2", 7}, {"e3", 3}},
 		},
-		{
-			name:        "EPD with castling best move",
-			epdLine:     "r1b2rk1/ppq1bppp/2p1pn2/8/2NP4/2N1P3/PP2BPPP/2RQK2R w K - 0 1 bm e1g1",
-			expectError: false,
-			expectedBM:  "e1g1",
-		},
-		{
-			name:        "Empty line",
-			epdLine:     "",
-			expectError: true,
-		},
-		{
-			name:        "Comment line",
-			epdLine:     "# This is a comment",
-			expectError: true,
-		},
-		{
-			name:        "Invalid FEN",
-			epdLine:     "invalid_fen w - - 0 1 bm Nf3",
-			expectError: true,
-		},
+		{name: "empty line", line: "", wantErr: true},
+		{name: "comment line", line: "# This is a comment", wantErr: true},
+		{name: "invalid FEN", line: "invalid_fen w - - 0 1 bm Nf3", wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			position, err := ParseEPD(tt.epdLine)
-
-			if tt.expectError {
+			pos, err := ParseEPD(tt.line)
+			if tt.wantErr {
 				if err == nil {
-					t.Errorf("Expected error but got none")
+					t.Fatal("ParseEPD succeeded, want an error")
 				}
 				return
 			}
-
 			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
+				t.Fatalf("ParseEPD: %v", err)
 			}
-
-			if position.BestMove != tt.expectedBM {
-				t.Errorf("Expected best move %s, got %s", tt.expectedBM, position.BestMove)
+			if pos.Board == nil {
+				t.Fatal("Board is nil")
 			}
-
-			if tt.expectedComment != "" && position.Comment != tt.expectedComment {
-				t.Errorf("Expected comment %s, got %s", tt.expectedComment, position.Comment)
+			if pos.BestMove != tt.wantBest || pos.AvoidMove != tt.wantAvoid || pos.ID != tt.wantID {
+				t.Errorf("got best=%q avoid=%q id=%q, want best=%q avoid=%q id=%q",
+					pos.BestMove, pos.AvoidMove, pos.ID, tt.wantBest, tt.wantAvoid, tt.wantID)
 			}
-
-			if position.Board == nil {
-				t.Error("Board should not be nil")
+			if !reflect.DeepEqual(pos.MoveScores, tt.wantScores) {
+				t.Errorf("MoveScores = %v, want %v", pos.MoveScores, tt.wantScores)
 			}
 		})
 	}
 }
 
+// Comment and blank lines in a file are skipped, not reported as errors.
 func TestParseEPDFile(t *testing.T) {
 	t.Parallel()
-	epdContent := `1R6/1brk2p1/4p2p/p1P1Pp2/P7/6P1/1P4P1/2R3K1 w - - 0 1 bm b8b7
+	content := `1R6/1brk2p1/4p2p/p1P1Pp2/P7/6P1/1P4P1/2R3K1 w - - 0 1 bm b8b7
 4r1k1/p1qr1p2/2pb1Bp1/1p5p/3P1n1R/1B3P2/PP3PK1/2Q4R w - - 0 1 bm c1f4
 # This is a comment line
 r1b2rk1/ppq1bppp/2p1pn2/8/2NP4/2N1P3/PP2BPPP/2RQK2R w K - 0 1 bm e1g1
 `
 
-	positions, err := ParseEPDFile(epdContent)
+	positions, err := ParseEPDFile(content)
 	if err != nil {
-		t.Fatalf("Unexpected error parsing EPD file: %v", err)
+		t.Fatalf("ParseEPDFile: %v", err)
 	}
 
-	expectedPositions := 3 // Should skip the comment line
-	if len(positions) != expectedPositions {
-		t.Errorf("Expected %d positions, got %d", expectedPositions, len(positions))
+	var got []string
+	for _, p := range positions {
+		got = append(got, p.BestMove)
 	}
-
-	if positions[0].BestMove != "b8b7" {
-		t.Errorf("Expected first position best move b8b7, got %s", positions[0].BestMove)
-	}
-
-	if positions[1].BestMove != "c1f4" {
-		t.Errorf("Expected second position best move c1f4, got %s", positions[1].BestMove)
-	}
-
-	// Test third position (castling)
-	if positions[2].BestMove != "e1g1" {
-		t.Errorf("Expected third position best move e1g1, got %s", positions[2].BestMove)
+	if want := []string{"b8b7", "c1f4", "e1g1"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("best moves = %v, want %v", got, want)
 	}
 }

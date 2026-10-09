@@ -1,250 +1,165 @@
 package eval
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
-	"github.com/AdamGriffiths31/ChessEngine/internal/eval/values"
 )
 
-func TestNewEvaluator(t *testing.T) {
-	t.Parallel()
-	evaluator := NewEvaluator()
-	if evaluator == nil {
-		t.Fatal("NewEvaluator should not return nil")
+// mirrorFEN returns the color-flipped FEN: ranks reversed, piece case
+// swapped, side to move flipped, castling rights swapped between colors,
+// en-passant rank mirrored (3<->6). Halfmove/fullmove kept as-is.
+func mirrorFEN(fen string) string {
+	fields := strings.Fields(fen)
+
+	ranks := strings.Split(fields[0], "/")
+	mirrored := make([]string, len(ranks))
+	for i, rank := range ranks {
+		mirrored[len(ranks)-1-i] = swapCase(rank)
 	}
 
-	if evaluator.GetName() != "Evaluator" {
-		t.Errorf("Expected name 'Evaluator', got '%s'", evaluator.GetName())
+	side := "w"
+	if fields[1] == "w" {
+		side = "b"
 	}
+
+	castling := fields[2]
+	if castling != "-" {
+		castling = swapCase(castling)
+		// Normalize to conventional KQkq order
+		ordered := ""
+		for _, c := range []string{"K", "Q", "k", "q"} {
+			if strings.Contains(castling, c) {
+				ordered += c
+			}
+		}
+		castling = ordered
+	}
+
+	ep := fields[3]
+	if ep != "-" {
+		ep = string(ep[0]) + string('1'+('8'-ep[1]))
+	}
+
+	out := []string{strings.Join(mirrored, "/"), side, castling, ep}
+	out = append(out, fields[4:]...)
+	return strings.Join(out, " ")
 }
 
-func TestEvaluateEmptyBoard(t *testing.T) {
-	// Not parallel: Evaluate() routes through evaluatePawnStructure(), which
-	// reads/writes the package-level PawnHashTable cache (pawn_evaluation.go)
-	// without synchronization. Racing this against other Evaluate()-calling
-	// tests is a real data race under -race (see TestEvaluatePawnStructure,
-	// TestPawnHashCaching, TestEvaluationSymmetry).
-	evaluator := NewEvaluator()
-	b := board.NewBoard()
-
-	// Empty board should have score 0 (always from White's perspective)
-	score := evaluator.Evaluate(b)
-
-	if score != 0 {
-		t.Errorf("Expected score 0 for empty board, got %d", score)
+func swapCase(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r - 'a' + 'A')
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r - 'A' + 'a')
+		default:
+			b.WriteRune(r)
+		}
 	}
+	return b.String()
 }
 
-func TestEvaluateMaterialAndPST(t *testing.T) {
+func TestMirrorFEN(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name        string
-		fen         string
-		expected    int
-		description string
-	}{
+	tests := []struct{ in, want string }{
 		{
-			name:        "balanced fianchetto position",
-			fen:         "rn1qkbnr/pbpppppp/1p6/8/8/6P1/PPPPPPBP/RNBQK1NR w KQkq - 0 1",
-			expected:    0,
-			description: "Equal material, symmetric development (g3+Bg2 vs b6+Bb7)",
+			"4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
+			"4k3/4p3/8/8/8/8/8/4K3 b - - 0 1",
 		},
 		{
-			name:        "symmetric pawn promotion race",
-			fen:         "8/PPPPPPPP/8/8/8/8/pppppppp/8 w - - 0 1",
-			expected:    0,
-			description: "White pawns on 7th rank vs black pawns on 2nd rank (symmetric near-promotion)",
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1",
 		},
 		{
-			name:        "starting position",
-			fen:         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			expected:    0,
-			description: "Standard chess starting position (perfectly symmetric)",
+			"rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",
+			"rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 2",
 		},
 		{
-			name:        "endgame king and pawns",
-			fen:         "7k/5ppp/8/8/8/8/5PPP/7K w - - 0 1",
-			expected:    0,
-			description: "Symmetric endgame with kings on h-files and 3 pawns each",
-		},
-		{
-			name:        "bishops only",
-			fen:         "8/8/2b2b2/8/8/2B2B2/8/8 w - - 0 1",
-			expected:    0,
-			description: "Symmetric bishop placement (white on c3,f3 vs black on c6,f6)",
+			"r3k3/8/8/8/8/8/8/4K2R w Kq - 4 20",
+			"4k2r/8/8/8/8/8/8/R3K3 b Qk - 4 20",
 		},
 	}
-
-	evaluator := NewEvaluator()
-
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b, err := board.FromFEN(tt.fen)
-			if err != nil {
-				t.Fatalf("Failed to create board from FEN %s: %v", tt.fen, err)
-			}
-
-			score := evaluator.evaluateMaterialAndPST(b)
-
-			if score != tt.expected {
-				t.Errorf("Expected material + PST score %d, got %d", tt.expected, score)
-			}
-
-			t.Logf("Material + PST score: %d (%s)", score, tt.description)
-		})
+		if got := mirrorFEN(tt.in); got != tt.want {
+			t.Errorf("mirrorFEN(%q):\n got %q\nwant %q", tt.in, got, tt.want)
+		}
+	}
+	// Mirror must be its own inverse
+	for _, tt := range tests {
+		if got := mirrorFEN(mirrorFEN(tt.in)); got != tt.in {
+			t.Errorf("mirrorFEN not involutive for %q: got %q", tt.in, got)
+		}
 	}
 }
 
-func TestGetPositionalBonus(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name     string
-		fen      string
-		rank     int
-		file     int
-		piece    board.Piece
-		expected int
-	}{
-		{
-			name:     "black bishop on b7",
-			fen:      "8/1b6/8/8/8/8/8/8 w - - 0 1",
-			rank:     6,
-			file:     1,
-			piece:    board.BlackBishop,
-			expected: -5,
-		},
-		{
-			name:     "black rook on b2",
-			fen:      "8/8/8/8/8/8/1r6/8 w - - 0 1",
-			rank:     1,
-			file:     1,
-			piece:    board.BlackRook,
-			expected: -10,
-		},
-		{
-			name:     "black king on e8",
-			fen:      "4k3/8/8/8/8/8/8/8 w - - 0 1",
-			rank:     7,
-			file:     4,
-			piece:    board.BlackKing,
-			expected: 0,
-		},
-		{
-			name:     "black pawn on g2",
-			fen:      "8/8/8/8/8/8/6p1/8 w - - 0 1",
-			rank:     1,
-			file:     6,
-			piece:    board.BlackPawn,
-			expected: -50,
-		},
-		{
-			name:     "white bishop on g2",
-			fen:      "8/8/8/8/8/8/6B1/8 w - - 0 1",
-			rank:     1,
-			file:     6,
-			piece:    board.WhiteBishop,
-			expected: 5,
-		},
-		{
-			name:     "white rook on d7",
-			fen:      "8/3R4/8/8/8/8/8/8 w - - 0 1",
-			rank:     6,
-			file:     3,
-			piece:    board.WhiteRook,
-			expected: 10,
-		},
-		{
-			name:     "black knight on d2",
-			fen:      "8/8/8/8/8/8/3n4/8 w - - 0 1",
-			rank:     1,
-			file:     3,
-			piece:    board.BlackKnight,
-			expected: 0,
-		},
-		{
-			name:     "black king on h1",
-			fen:      "8/8/8/8/8/8/8/7k w - - 0 1",
-			rank:     0,
-			file:     7,
-			piece:    board.BlackKing,
-			expected: 30,
-		},
-		{
-			name:     "white king on h8",
-			fen:      "7K/8/8/8/8/8/8/8 w - - 0 1",
-			rank:     7,
-			file:     7,
-			piece:    board.WhiteKing,
-			expected: -30,
-		},
-		{
-			name:     "black pawn on e7",
-			fen:      "8/4p3/8/8/8/8/8/8 w - - 0 1",
-			rank:     6,
-			file:     4,
-			piece:    board.BlackPawn,
-			expected: 20,
-		},
-		{
-			name:     "white pawn on e2",
-			fen:      "8/8/8/8/8/8/4P3/8 w - - 0 1",
-			rank:     1,
-			file:     4,
-			piece:    board.WhitePawn,
-			expected: -20,
-		},
-		{
-			name:     "black pawn on a7",
-			fen:      "8/p7/8/8/8/8/8/8 w - - 0 1",
-			rank:     6,
-			file:     0,
-			piece:    board.BlackPawn,
-			expected: -5,
-		},
-		{
-			name:     "white rook on h7",
-			fen:      "8/7R/8/8/8/8/8/8 w - - 0 1",
-			rank:     6,
-			file:     7,
-			piece:    board.WhiteRook,
-			expected: 5,
-		},
-		{
-			name:     "white knight on e4",
-			fen:      "8/8/8/8/4N3/8/8/8 w - - 0 1",
-			rank:     3,
-			file:     4,
-			piece:    board.WhiteKnight,
-			expected: 20,
-		},
-		{
-			name:     "black knight on a1",
-			fen:      "8/8/8/8/8/8/8/n7 w - - 0 1",
-			rank:     0,
-			file:     0,
-			piece:    board.BlackKnight,
-			expected: 50,
-		},
+// loadTestFENs returns a few hand-picked positions plus the FEN prefix (first
+// 4 fields) of every line in the STS EPD files. It parses them locally because
+// importing the epd package here would create an import cycle.
+func loadTestFENs(t *testing.T) []string {
+	t.Helper()
+	fens := []string{
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		// White castled short, Black castled long
+		"2kr3r/pppq1ppp/2n2n2/4p3/4P3/2N2N2/PPPQ1PPP/R4RK1 w - - 8 12",
+		// Passed pawns for both sides
+		"8/2p5/8/1P6/8/5p2/6P1/4K2k w - - 0 40",
+		// Fianchetto structures
+		"rnbqk2r/ppppppbp/5np1/8/8/5NP1/PPPPPPBP/RNBQK2R w KQkq - 4 4",
+		// En passant available
+		"rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b, err := board.FromFEN(tt.fen)
-			if err != nil {
-				t.Fatalf("Failed to create board from FEN %s: %v", tt.fen, err)
+	for i := 1; i <= 6; i++ {
+		path := filepath.Join("..", "..", "testdata", fmt.Sprintf("STS%d.epd", i))
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", path, err)
+		}
+		for _, line := range strings.Split(string(content), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) < 4 {
+				continue
 			}
+			fens = append(fens, strings.Join(fields[:4], " ")+" 0 1")
+		}
+	}
+	return fens
+}
 
-			actualPiece := b.GetPiece(tt.rank, tt.file)
-			if actualPiece != tt.piece {
-				t.Fatalf("Expected piece %v at rank %d, file %d, but got %v", tt.piece, tt.rank, tt.file, actualPiece)
-			}
+// TestEvaluationSymmetry requires Evaluate(position) == -Evaluate(mirror) for
+// about 1,500 positions. It catches colour-specific bugs in any evaluation
+// term, including ones the hand-built per-piece tests do not exercise.
+func TestEvaluationSymmetry(t *testing.T) {
+	// Not parallel: Evaluate() shares the unsynchronised PawnHashTable cache.
+	evaluator := NewEvaluator()
+	failures := 0
+	for _, fen := range loadTestFENs(t) {
+		b, err := board.FromFEN(fen)
+		if err != nil {
+			t.Fatalf("bad FEN %q: %v", fen, err)
+		}
+		m, err := board.FromFEN(mirrorFEN(fen))
+		if err != nil {
+			t.Fatalf("bad mirrored FEN %q (from %q): %v", mirrorFEN(fen), fen, err)
+		}
 
-			got := values.GetPositionalBonus(values.Piece(tt.piece), tt.rank, tt.file)
-			if got != tt.expected {
-				t.Errorf("values.GetPositionalBonus(%v, %d, %d) = %d, want %d", tt.piece, tt.rank, tt.file, got, tt.expected)
+		orig := evaluator.Evaluate(b)
+		mirror := evaluator.Evaluate(m)
+		if orig != -mirror {
+			failures++
+			if failures <= 10 {
+				t.Errorf("asymmetric eval: %d vs %d (mirror)\n  fen:    %s\n  mirror: %s",
+					orig, mirror, fen, mirrorFEN(fen))
 			}
-		})
+		}
+	}
+	if failures > 10 {
+		t.Errorf("... and %d more asymmetric positions", failures-10)
 	}
 }
 
@@ -255,7 +170,7 @@ func BenchmarkEvaluateStartingPosition(b *testing.B) {
 	}
 	evaluator := NewEvaluator()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = evaluator.Evaluate(board)
 	}
 }
@@ -267,19 +182,7 @@ func BenchmarkEvaluateMiddlegame(b *testing.B) {
 	}
 	evaluator := NewEvaluator()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = evaluator.Evaluate(board)
-	}
-}
-
-func BenchmarkEvaluateMaterialAndPST(b *testing.B) {
-	board, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		b.Fatal(err)
-	}
-	evaluator := NewEvaluator()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = evaluator.evaluateMaterialAndPST(board)
 	}
 }

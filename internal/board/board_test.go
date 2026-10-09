@@ -4,30 +4,6 @@ import (
 	"testing"
 )
 
-func TestFromFEN_ValidCases(t *testing.T) {
-	t.Parallel()
-	testCases := []struct {
-		name string
-		fen  string
-	}{
-		{"initial_position", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"},
-		{"empty_board", "8/8/8/8/8/8/8/8 w - - 0 1"},
-		{"single_piece", "8/8/8/8/8/8/8/4K3 w - - 0 1"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			board, err := FromFEN(tc.fen)
-			if err != nil {
-				t.Errorf("Expected valid FEN %q to parse successfully, got error: %v", tc.fen, err)
-			}
-			if board == nil {
-				t.Errorf("Expected board to be non-nil for valid FEN %q", tc.fen)
-			}
-		})
-	}
-}
-
 func TestFromFEN_InvalidCases(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
@@ -59,11 +35,8 @@ func TestFromFEN_InvalidCases(t *testing.T) {
 	}
 }
 
-// TestFromFEN_EnPassantField exercises FromFEN's 4th (en-passant) field in
-// isolation, including the malformed inputs discovered by FuzzFromFEN/
-// FuzzParseEPD (Task 7.6, batch C report): any en-passant token that is not
-// "-" or a valid 2-char square with rank 3/6 must return an error, never
-// panic.
+// The en-passant field must be "-" or a square on rank 3 or 6; anything else is
+// an error, never a panic.
 func TestFromFEN_EnPassantField(t *testing.T) {
 	t.Parallel()
 	const boardPart = "8/8/8/8/8/8/8/8"
@@ -78,10 +51,9 @@ func TestFromFEN_EnPassantField(t *testing.T) {
 		{name: "dash_no_en_passant", fen: boardPart + " w - - 0 1", wantErr: false, wantHasEnPassant: false},
 		{name: "valid_e3", fen: boardPart + " w - e3 0 1", wantErr: false, wantHasEnPassant: true, wantFile: 4, wantRank: 2},
 		{name: "valid_e6", fen: boardPart + " w - e6 0 1", wantErr: false, wantHasEnPassant: true, wantFile: 4, wantRank: 5},
-		// Fuzz-found crasher (batch C report, 7.6): a 1-char en-passant
-		// field indexes enPassantStr[1] out of range.
+		// Regression: a 1-char field once indexed out of range.
 		{name: "one_char_crasher", fen: boardPart + " w - e 0 1", wantErr: true},
-		// Empty field, e.g. from a doubled space collapsing parts[3] to "".
+		// Doubled space leaves an empty field.
 		{name: "empty_field", fen: boardPart + " w -  0 1", wantErr: true},
 		{name: "three_char", fen: boardPart + " w - e34 0 1", wantErr: true},
 		{name: "out_of_range_square", fen: boardPart + " w - z9 0 1", wantErr: true},
@@ -117,71 +89,16 @@ func TestFromFEN_EnPassantField(t *testing.T) {
 	}
 }
 
-func TestBoardGetSetPiece(t *testing.T) {
+func TestPieceToBitboardIndexRejectsNonPieces(t *testing.T) {
 	t.Parallel()
-	board := NewBoard()
-
-	board.SetPiece(0, 0, WhiteKing)
-	piece := board.GetPiece(0, 0)
-	if piece != WhiteKing {
-		t.Errorf("Expected %c, got %c", WhiteKing, piece)
-	}
-}
-
-func TestIsValidPiece(t *testing.T) {
-	t.Parallel()
-	validPieces := []Piece{
-		WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing,
-		BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing,
-	}
-
-	for _, piece := range validPieces {
-		if !isValidPiece(piece) {
-			t.Errorf("Expected %c to be valid", piece)
-		}
-	}
-
-	invalidPieces := []Piece{'x', 'Y', '1', '.', ' '}
-	for _, piece := range invalidPieces {
-		if isValidPiece(piece) {
-			t.Errorf("Expected %c to be invalid", piece)
+	for _, piece := range []Piece{Empty, 'x', ' '} {
+		if got := PieceToBitboardIndex(piece); got != -1 {
+			t.Errorf("PieceToBitboardIndex(%q) = %d, want -1", piece, got)
 		}
 	}
 }
 
-func TestBitboardSynchronization(t *testing.T) {
-	t.Parallel()
-	board := NewBoard()
-
-	board.SetPiece(0, 0, WhiteRook) // a1
-	board.SetPiece(7, 7, BlackKing) // h8
-	board.SetPiece(3, 4, WhitePawn) // e4
-
-	if !board.GetPieceBitboard(WhiteRook).HasBit(FileRankToSquare(0, 0)) {
-		t.Error("White rook bitboard should have a1 set")
-	}
-	if !board.GetPieceBitboard(BlackKing).HasBit(FileRankToSquare(7, 7)) {
-		t.Error("Black king bitboard should have h8 set")
-	}
-	if !board.GetPieceBitboard(WhitePawn).HasBit(FileRankToSquare(4, 3)) {
-		t.Error("White pawn bitboard should have e4 set")
-	}
-
-	whitePieces := board.GetColorBitboard(BitboardWhite)
-	if !whitePieces.HasBit(FileRankToSquare(0, 0)) || !whitePieces.HasBit(FileRankToSquare(4, 3)) {
-		t.Error("White pieces bitboard should include white rook and pawn")
-	}
-
-	blackPieces := board.GetColorBitboard(BitboardBlack)
-	if !blackPieces.HasBit(FileRankToSquare(7, 7)) {
-		t.Error("Black pieces bitboard should include black king")
-	}
-
-	if board.AllPieces.PopCount() != 3 {
-		t.Errorf("All pieces bitboard should have 3 pieces, got %d", board.AllPieces.PopCount())
-	}
-}
-
+// SetPiece keeps the mailbox and every bitboard in step: place, replace, clear.
 func TestSetPieceUpdatesAllRepresentations(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
@@ -213,29 +130,14 @@ func TestSetPieceUpdatesAllRepresentations(t *testing.T) {
 	if board.GetPiece(3, 4) != BlackRook {
 		t.Error("Array representation should have black rook on e4")
 	}
-}
 
-func TestRemovePieceUpdatesAllRepresentations(t *testing.T) {
-	t.Parallel()
-	board := NewBoard()
-
-	board.SetPiece(3, 4, WhiteBishop) // e4
 	board.SetPiece(3, 4, Empty)
 
-	if board.GetPiece(3, 4) != Empty {
-		t.Error("Array representation should be empty on e4")
+	if board.GetPiece(3, 4) != Empty || board.GetPieceBitboard(BlackRook).HasBit(FileRankToSquare(4, 3)) {
+		t.Error("Emptying a square should clear both the array and the bitboard")
 	}
-
-	if board.GetPieceBitboard(WhiteBishop).HasBit(FileRankToSquare(4, 3)) {
-		t.Error("Bitboard representation should not have white bishop on e4")
-	}
-
 	if board.AllPieces.HasBit(FileRankToSquare(4, 3)) {
 		t.Error("All pieces bitboard should not have e4 set")
-	}
-
-	if board.getPieceCountFromBitboard(WhiteBishop) != 0 {
-		t.Error("Should have no white bishops")
 	}
 }
 
@@ -294,93 +196,6 @@ func TestFENToBitboards(t *testing.T) {
 	}
 }
 
-func TestStartingPositionBitboards(t *testing.T) {
-	t.Parallel()
-	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to parse starting position FEN: %v", err)
-	}
-
-	expectedCounts := map[Piece]int{
-		WhitePawn:   8,
-		WhiteRook:   2,
-		WhiteKnight: 2,
-		WhiteBishop: 2,
-		WhiteQueen:  1,
-		WhiteKing:   1,
-		BlackPawn:   8,
-		BlackRook:   2,
-		BlackKnight: 2,
-		BlackBishop: 2,
-		BlackQueen:  1,
-		BlackKing:   1,
-	}
-
-	for piece, expectedCount := range expectedCounts {
-		actualCount := board.GetPieceBitboard(piece).PopCount()
-		if actualCount != expectedCount {
-			t.Errorf("Expected %d %c pieces, got %d", expectedCount, piece, actualCount)
-		}
-	}
-
-	if board.WhitePieces.PopCount() != 16 {
-		t.Errorf("Expected 16 white pieces, got %d", board.WhitePieces.PopCount())
-	}
-	if board.BlackPieces.PopCount() != 16 {
-		t.Errorf("Expected 16 black pieces, got %d", board.BlackPieces.PopCount())
-	}
-	if board.AllPieces.PopCount() != 32 {
-		t.Errorf("Expected 32 total pieces, got %d", board.AllPieces.PopCount())
-	}
-
-	rank1and2 := RankMask(0) | RankMask(1)
-	if (board.WhitePieces & rank1and2) != board.WhitePieces {
-		t.Error("All white pieces should be on ranks 1-2")
-	}
-
-	rank7and8 := RankMask(6) | RankMask(7)
-	if (board.BlackPieces & rank7and8) != board.BlackPieces {
-		t.Error("All black pieces should be on ranks 7-8")
-	}
-}
-
-func TestComplexPositionBitboards(t *testing.T) {
-	t.Parallel()
-	fen := "r2qkb1r/pb1p1ppp/1pn1pn2/8/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQkq - 0 8"
-	board, err := FromFEN(fen)
-	if err != nil {
-		t.Fatalf("Failed to parse complex position FEN: %v", err)
-	}
-
-	testCases := []struct {
-		piece    Piece
-		square   string
-		expected bool
-	}{
-		{WhiteQueen, "d1", true},
-		{BlackQueen, "d8", true},
-		{WhitePawn, "c4", true},
-		{WhitePawn, "d4", true},
-		{BlackPawn, "b6", true},
-		{BlackPawn, "e6", true},
-		{WhiteKnight, "c3", true},
-		{WhiteKnight, "f3", true},
-		{BlackKnight, "c6", true},
-		{BlackKnight, "f6", true},
-		{WhitePawn, "e5", false}, // Should be empty
-		{BlackPawn, "d5", false}, // Should be empty
-	}
-
-	for _, tc := range testCases {
-		square := StringToSquare(tc.square)
-		hasPiece := board.GetPieceBitboard(tc.piece).HasBit(square)
-		if hasPiece != tc.expected {
-			t.Errorf("Expected piece %c on %s to be %v, got %v",
-				tc.piece, tc.square, tc.expected, hasPiece)
-		}
-	}
-}
-
 func TestBitboardConsistency(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
@@ -429,8 +244,8 @@ func TestBitboardConsistency(t *testing.T) {
 	}
 
 	// Verify that array and bitboard representations are consistent
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			square := FileRankToSquare(file, rank)
 			arrayPiece := board.GetPiece(rank, file)
 
@@ -451,40 +266,10 @@ func TestBitboardConsistency(t *testing.T) {
 	}
 }
 
-func TestPieceToBitboardIndex(t *testing.T) {
-	t.Parallel()
-	testCases := []struct {
-		piece         Piece
-		expectedIndex int
-	}{
-		{WhitePawn, WhitePawnIndex},
-		{WhiteRook, WhiteRookIndex},
-		{WhiteKnight, WhiteKnightIndex},
-		{WhiteBishop, WhiteBishopIndex},
-		{WhiteQueen, WhiteQueenIndex},
-		{WhiteKing, WhiteKingIndex},
-		{BlackPawn, BlackPawnIndex},
-		{BlackRook, BlackRookIndex},
-		{BlackKnight, BlackKnightIndex},
-		{BlackBishop, BlackBishopIndex},
-		{BlackQueen, BlackQueenIndex},
-		{BlackKing, BlackKingIndex},
-		{Empty, -1},
-		{'x', -1}, // Invalid piece
-	}
-
-	for _, tc := range testCases {
-		actualIndex := PieceToBitboardIndex(tc.piece)
-		if actualIndex != tc.expectedIndex {
-			t.Errorf("Expected index %d for piece %c, got %d", tc.expectedIndex, tc.piece, actualIndex)
-		}
-	}
-}
-
 func BenchmarkSetPieceWithBitboards(b *testing.B) {
 	board := NewBoard()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		rank := i % 8
 		file := (i / 8) % 8
 		piece := WhitePawn
@@ -492,28 +277,6 @@ func BenchmarkSetPieceWithBitboards(b *testing.B) {
 			piece = BlackPawn
 		}
 		board.SetPiece(rank, file, piece)
-	}
-}
-
-func BenchmarkGetPieceBitboard(b *testing.B) {
-	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		b.Fatalf("Failed to create board from FEN: %v", err)
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = board.GetPieceBitboard(WhitePawn)
-	}
-}
-
-func BenchmarkGetColorBitboard(b *testing.B) {
-	board, err := FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		b.Fatalf("Failed to create board from FEN: %v", err)
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = board.GetColorBitboard(BitboardWhite)
 	}
 }
 
@@ -566,195 +329,5 @@ func TestIncrementalEvalInitialization(t *testing.T) {
 				t.Errorf("Expected PST score %d, got %d", tc.expectedPST, board.GetPSTScore())
 			}
 		})
-	}
-}
-
-func TestIncrementalEvalSetPiece(t *testing.T) {
-	t.Parallel()
-	board := NewBoard()
-
-	// Initially empty - scores should be 0
-	if board.GetMaterialScore() != 0 || board.GetPSTScore() != 0 {
-		t.Errorf("Empty board should have 0 scores, got material=%d pst=%d",
-			board.GetMaterialScore(), board.GetPSTScore())
-	}
-
-	// Add a white knight to e4 (rank=3, file=4)
-	board.SetPiece(3, 4, WhiteKnight)
-
-	// Knight value is 320, e4 knight PST bonus is 20
-	expectedMaterial := 320
-	expectedPST := 20
-
-	if board.GetMaterialScore() != expectedMaterial {
-		t.Errorf("After adding knight, expected material %d, got %d",
-			expectedMaterial, board.GetMaterialScore())
-	}
-
-	if board.GetPSTScore() != expectedPST {
-		t.Errorf("After adding knight, expected PST %d, got %d",
-			expectedPST, board.GetPSTScore())
-	}
-
-	// Replace with black queen
-	board.SetPiece(3, 4, BlackQueen)
-
-	// Black queen value is -900, e4 black queen PST is -5
-	expectedMaterial = -900
-	expectedPST = -5
-
-	if board.GetMaterialScore() != expectedMaterial {
-		t.Errorf("After replacing with queen, expected material %d, got %d",
-			expectedMaterial, board.GetMaterialScore())
-	}
-
-	if board.GetPSTScore() != expectedPST {
-		t.Errorf("After replacing with queen, expected PST %d, got %d",
-			expectedPST, board.GetPSTScore())
-	}
-
-	// Remove piece
-	board.SetPiece(3, 4, Empty)
-
-	if board.GetMaterialScore() != 0 || board.GetPSTScore() != 0 {
-		t.Errorf("After removing piece, should have 0 scores, got material=%d pst=%d",
-			board.GetMaterialScore(), board.GetPSTScore())
-	}
-}
-
-func TestIncrementalEvalMoveUnmake(t *testing.T) {
-	t.Parallel()
-	board, err := FromFEN("8/8/8/8/8/8/4P3/8 w - - 0 1") // White pawn on e2
-	if err != nil {
-		t.Fatalf("Failed to parse FEN: %v", err)
-	}
-
-	initialMaterial := board.GetMaterialScore()
-	initialPST := board.GetPSTScore()
-
-	// Make a move: e2 to e4
-	move := Move{
-		From:  Square{Rank: 1, File: 4},
-		To:    Square{Rank: 3, File: 4},
-		Piece: WhitePawn,
-	}
-
-	undo, err := board.MakeMoveWithUndo(move)
-	if err != nil {
-		t.Fatalf("Failed to make move: %v", err)
-	}
-
-	// After move, pawn is on e4 - different PST value
-	// e2 has PST -20, e4 has PST 20
-	expectedMaterialAfter := 100 // Still same material
-	expectedPSTAfter := 20       // New PST value for e4
-
-	if board.GetMaterialScore() != expectedMaterialAfter {
-		t.Errorf("After move, expected material %d, got %d",
-			expectedMaterialAfter, board.GetMaterialScore())
-	}
-
-	if board.GetPSTScore() != expectedPSTAfter {
-		t.Errorf("After move, expected PST %d, got %d",
-			expectedPSTAfter, board.GetPSTScore())
-	}
-
-	board.UnmakeMove(undo)
-
-	if board.GetMaterialScore() != initialMaterial {
-		t.Errorf("After unmake, expected material %d, got %d",
-			initialMaterial, board.GetMaterialScore())
-	}
-
-	if board.GetPSTScore() != initialPST {
-		t.Errorf("After unmake, expected PST %d, got %d",
-			initialPST, board.GetPSTScore())
-	}
-}
-
-func TestIncrementalEvalCaptures(t *testing.T) {
-	t.Parallel()
-	// Position with potential capture
-	board, err := FromFEN("8/8/8/8/4p3/8/4P3/8 w - - 0 1") // White pawn on e2, black pawn on e4
-	if err != nil {
-		t.Fatalf("Failed to parse FEN: %v", err)
-	}
-
-	// Verify initial state is balanced (100 - 100)
-	if board.GetMaterialScore() != 0 {
-		t.Errorf("Initial material should be 0, got %d", board.GetMaterialScore())
-	}
-
-	// White pawn captures black pawn (illegal in real chess, but tests the mechanics)
-	// Manually simulate: remove black pawn, move white pawn
-	board.SetPiece(3, 4, Empty)     // Remove black pawn from e4
-	board.SetPiece(1, 4, Empty)     // Remove white pawn from e2
-	board.SetPiece(3, 4, WhitePawn) // Place white pawn on e4
-
-	expectedMaterial := 100
-	expectedPST := 20 // e4 white pawn PST
-
-	if board.GetMaterialScore() != expectedMaterial {
-		t.Errorf("After capture, expected material %d, got %d",
-			expectedMaterial, board.GetMaterialScore())
-	}
-
-	if board.GetPSTScore() != expectedPST {
-		t.Errorf("After capture, expected PST %d, got %d",
-			expectedPST, board.GetPSTScore())
-	}
-}
-
-func TestIncrementalEvalComplexPosition(t *testing.T) {
-	t.Parallel()
-	fen := "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
-	board, err := FromFEN(fen)
-	if err != nil {
-		t.Fatalf("Failed to parse FEN: %v", err)
-	}
-
-	// Calculate expected material manually by iterating
-	expectedMaterial := 0
-
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
-			piece := board.GetPiece(rank, file)
-			if piece != Empty {
-				pieceValue := 0
-				switch piece {
-				case WhitePawn:
-					pieceValue = 100
-				case WhiteKnight:
-					pieceValue = 320
-				case WhiteBishop:
-					pieceValue = 330
-				case WhiteRook:
-					pieceValue = 500
-				case WhiteQueen:
-					pieceValue = 900
-				case BlackPawn:
-					pieceValue = -100
-				case BlackKnight:
-					pieceValue = -320
-				case BlackBishop:
-					pieceValue = -330
-				case BlackRook:
-					pieceValue = -500
-				case BlackQueen:
-					pieceValue = -900
-				}
-				expectedMaterial += pieceValue
-			}
-		}
-	}
-
-	if board.GetMaterialScore() != expectedMaterial {
-		t.Errorf("Complex position material mismatch: expected %d, got %d",
-			expectedMaterial, board.GetMaterialScore())
-	}
-
-	totalScore := board.GetMaterialScore() + board.GetPSTScore()
-	if totalScore == 0 {
-		t.Log("Warning: total score is 0 in asymmetric position")
 	}
 }

@@ -12,17 +12,10 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// roundtripSeedBase is the fixed base seed used to derive a per-FEN RNG seed
-// (base + index into roundtripTestFENs). Keeping it fixed makes any failure
-// reproducible by re-running the test with the same index.
+// roundtripSeedBase + the FEN index seeds each playout, so failures reproduce.
 const roundtripSeedBase = 20240701
 
-// roundtripTestFENs mirrors the FEN set used by the sibling Zobrist
-// round-trip test (game/ai/search/zobrist_updates_test.go): a diverse set of
-// legal positions exercising the pieces of board state that make/unmake must
-// restore exactly: full/partial/no castling rights, en passant availability
-// for both colors, imminent promotions for both colors, and a sparse late
-// endgame.
+// roundtripTestFENs is the same set as zobristTestFENs in internal/search.
 var roundtripTestFENs = []string{
 	// Standard starting position: full castling rights, no en passant.
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -49,18 +42,14 @@ var roundtripTestFENs = []string{
 // maxRoundtripPlies caps the length of each random playout.
 const maxRoundtripPlies = 40
 
-// TestMakeUnmakeStateRoundTrip plays bounded, seeded random sequences of
-// moves from a diverse set of positions and checks, at every ply, that
-// board.Board.MakeMoveWithUndo followed by board.Board.UnmakeMove restores
-// the board to exactly the state it was in before the move was made. This is
-// checked for every move MakeMoveWithUndo accepts -- legal or not -- because
-// unmake must restore state regardless of whether the move turned out to be
-// legal. It also checks the MakeNullMove/UnmakeNullMove round trip at every
-// position visited.
+// TestMakeUnmakeStateRoundTrip plays seeded random moves and checks at every
+// ply that MakeMoveWithUndo followed by UnmakeMove restores the exact prior
+// board state, for every accepted move (legal or not), plus the null-move
+// round trip.
 func TestMakeUnmakeStateRoundTrip(t *testing.T) {
 	t.Parallel()
 	for idx, fen := range roundtripTestFENs {
-		fen := fen
+
 		seed := int64(roundtripSeedBase + idx)
 		t.Run(fmt.Sprintf("fen%d", idx), func(t *testing.T) {
 			runRoundtripPlayout(t, fen, seed)
@@ -83,9 +72,8 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 		t.Fatalf("fen=%q seed=%d moves=%v: %s", fen, seed, playedMoves, fmt.Sprintf(format, args...))
 	}
 
-	for ply := 0; ply < maxRoundtripPlies; ply++ {
-		// Null-move round trip check at the current position, before any
-		// real move is made this ply.
+	for ply := range maxRoundtripPlies {
+		// Null-move round trip at this position.
 		preNull := *b
 		nullUndo := b.MakeNullMove()
 		b.UnmakeNullMove(nullUndo)
@@ -97,7 +85,7 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 		pseudoMoves := gen.GeneratePseudoLegalMoves(b, player)
 		legalMoves := make([]board.Move, 0, pseudoMoves.Count)
 
-		for i := 0; i < pseudoMoves.Count; i++ {
+		for i := range pseudoMoves.Count {
 			move := pseudoMoves.Moves[i]
 
 			pre := *b
@@ -133,8 +121,7 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 		}
 		playedMoves = append(playedMoves, moveString(chosen))
 
-		// Exercise the unmake path for the chosen move too, then re-make it
-		// so the playout continues from the resulting position.
+		// Unmake and re-make the chosen move to continue the playout.
 		b.UnmakeMove(undo)
 		post := *b
 		if ok, diff := boardsEqual(&pre, &post); !ok {
@@ -149,20 +136,11 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 	}
 }
 
-// boardsEqual reports whether pre and post represent the same board state
-// and, if not, a human-readable description of what differs.
-//
-// It first tries reflect.DeepEqual on the dereferenced structs. That is safe
-// despite board.Board's unexported slice fields (hashHistory/evalHistory):
-// those slices are only grown by append and shrunk by re-slicing in board's
-// Push*/Pop* helpers, never mutated in place, so the pre-round-trip slice
-// header compares correctly against the post-round-trip header.
-//
-// If DeepEqual disagrees, a fallback comparing public accessors and exported
-// fields produces a useful diagnostic. If none of them disagree, the mismatch
-// is in unexported bookkeeping they cannot reach (e.g. a leaked hash/eval
-// history entry) - itself a real bug worth failing on, just not one this
-// fallback can name precisely.
+// boardsEqual reports whether two boards are in the same state and, if not,
+// what differs. reflect.DeepEqual is safe here because the unexported history
+// slices are only appended to and re-sliced, never mutated in place. When it
+// fails, the accessor comparison names the difference; if none is found, the
+// mismatch is in unexported bookkeeping (e.g. a leaked history entry).
 func boardsEqual(pre, post *board.Board) (bool, string) {
 	if reflect.DeepEqual(*pre, *post) {
 		return true, ""
@@ -236,8 +214,7 @@ func opposite(p movegen.Player) movegen.Player {
 	return movegen.White
 }
 
-// moveString renders a move as coordinate notation (e.g. "e2e4", "a7a8q")
-// for failure messages.
+// moveString renders a move in coordinate notation ("e2e4", "a7a8q").
 func moveString(move board.Move) string {
 	s := move.From.String() + move.To.String()
 	if move.Promotion != board.Empty {
@@ -246,8 +223,6 @@ func moveString(move board.Move) string {
 	return s
 }
 
-// promotionLetter returns the lowercase algebraic letter for a promotion
-// piece, for use in coordinate-notation move strings.
 func promotionLetter(p board.Piece) rune {
 	switch p {
 	case board.WhiteQueen, board.BlackQueen:

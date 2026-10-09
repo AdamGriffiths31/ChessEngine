@@ -8,13 +8,14 @@ import (
 // structure penalties, connected-pawn bonus, cached through PawnHashTable.
 
 const (
-	// Structure penalties
-	IsolatedPawnPenalty = -15 // Pawn with no friendly pawns on adjacent files
-	DoubledPawnPenalty  = -10 // Extra pawns on the same file
-	BackwardPawnPenalty = -8  // Pawn that cannot advance safely
-
-	// Connected pawns bonus
-	ConnectedPawnBonus = 8 // Bonus for pawns protecting each other
+	// IsolatedPawnPenalty applies to a pawn with no friendly pawns on adjacent files.
+	IsolatedPawnPenalty = -15
+	// DoubledPawnPenalty applies to each extra pawn on the same file.
+	DoubledPawnPenalty = -10
+	// BackwardPawnPenalty applies to a pawn that cannot advance safely.
+	BackwardPawnPenalty = -8
+	// ConnectedPawnBonus applies to pawns that protect each other.
+	ConnectedPawnBonus = 8
 )
 
 // PassedPawnBonus provides exponential bonuses for passed pawns by rank
@@ -99,7 +100,7 @@ func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool
 		}
 	}
 
-	for file := 0; file < 8; file++ {
+	for file := range 8 {
 		if filePawns[file] > 1 {
 			score += (filePawns[file] - 1) * DoubledPawnPenalty
 		}

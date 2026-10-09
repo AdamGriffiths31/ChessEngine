@@ -8,11 +8,12 @@ import (
 // pawn-defended outposts in enemy territory.
 
 const (
-	// Outpost bonus (most important)
-	KnightOutpostBonus = 30 // Knight on defended square in enemy territory
+	// KnightOutpostBonus rewards a knight on a pawn-defended square in enemy
+	// territory.
+	KnightOutpostBonus = 30
 
-	// Mobility penalty (knights hate being on edges)
-	KnightMobilityUnit = 4 // Per available square
+	// KnightMobilityUnit is the score per available square.
+	KnightMobilityUnit = 4
 )
 
 // KnightMobilityTable provides pre-computed mobility approximations for each square

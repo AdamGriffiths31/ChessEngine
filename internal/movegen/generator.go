@@ -11,16 +11,12 @@ type MoveGenerator interface {
 // Generator implements the MoveGenerator interface for complete chess move generation.
 // Uses high-performance bitboard operations for all move types.
 type Generator struct {
-	MoveExecutor      *MoveExecutor
-	attackDetector    *AttackDetector
 	bitboardGenerator *BitboardMoveGenerator
 }
 
 // NewGenerator creates a new move generator with bitboard-based move generation.
 func NewGenerator() *Generator {
 	return &Generator{
-		MoveExecutor:      &MoveExecutor{},
-		attackDetector:    &AttackDetector{},
 		bitboardGenerator: NewBitboardMoveGenerator(),
 	}
 }
@@ -73,65 +69,4 @@ func (g *Generator) IsKingInCheck(b *board.Board, player Player) bool {
 	}
 
 	return b.IsInCheck(color)
-}
-
-// findKing finds the king's position for the given player.
-// Returns a Square with File=-1 if no king is found.
-func (g *Generator) findKing(b *board.Board, player Player) board.Square {
-	var kingPiece board.Piece
-	if player == White {
-		kingPiece = board.WhiteKing
-	} else {
-		kingPiece = board.BlackKing
-	}
-
-	kingBitboard := b.GetPieceBitboard(kingPiece)
-	if kingBitboard == 0 {
-		return board.Square{File: -1, Rank: -1}
-	}
-
-	squareIndex := kingBitboard.LSB()
-	if squareIndex == -1 {
-		return board.Square{File: -1, Rank: -1}
-	}
-
-	file, rank := board.SquareToFileRank(squareIndex)
-	return board.Square{File: file, Rank: rank}
-}
-
-// updateBoardState updates castling rights, en passant, and move counters
-//
-//nolint:gocyclo // refactored in Phase 4
-func (g *Generator) updateBoardState(b *board.Board, move board.Move) {
-	piece := b.GetPiece(move.To.Rank, move.To.File)
-
-	// Castling-rights bookkeeping is shared with board.Board.MakeMove via
-	// UpdateCastlingRights rather than reimplemented here - see that
-	// method's doc comment for why (this file used to have its own
-	// separate copy, and the two diverged).
-	b.UpdateCastlingRights(move, piece)
-
-	if piece == board.WhitePawn || piece == board.BlackPawn {
-		if abs(move.To.Rank-move.From.Rank) == 2 {
-			targetRank := (move.From.Rank + move.To.Rank) / 2
-			enPassantTarget := board.Square{File: move.From.File, Rank: targetRank}
-			b.SetEnPassantTarget(enPassantTarget, true)
-		} else {
-			b.SetEnPassantTarget(board.Square{}, false)
-		}
-	} else {
-		b.SetEnPassantTarget(board.Square{}, false)
-	}
-
-	halfMoveClock := b.GetHalfMoveClock()
-	if move.IsCapture || piece == board.WhitePawn || piece == board.BlackPawn {
-		halfMoveClock = 0
-	} else {
-		halfMoveClock++
-	}
-	b.SetHalfMoveClock(halfMoveClock)
-
-	if b.GetSideToMove() == "b" {
-		b.SetFullMoveNumber(b.GetFullMoveNumber() + 1)
-	}
 }

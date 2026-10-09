@@ -20,12 +20,6 @@ func NewPrompter() *Prompter {
 	}
 }
 
-// ShowError displays an error message to the user
-func (p *Prompter) ShowError(err error) {
-	fmt.Printf("Error: %s\n", err.Error())
-	fmt.Println()
-}
-
 // PromptForNumber prompts the user to enter a number
 func (p *Prompter) PromptForNumber(prompt string, minVal, maxVal int) (int, error) {
 	for {

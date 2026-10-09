@@ -34,13 +34,19 @@ func setupLogging(debugLogPath string) (closeFn func(), err error) {
 }
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	debugLogPath := flag.String("debug-log", "", "path to write JSON debug logs at Debug level (default: text warnings to stderr)")
 	flag.Parse()
 
 	closeLog, err := setupLogging(*debugLogPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		return err
 	}
 	defer closeLog()
 
@@ -53,7 +59,7 @@ func main() {
 	}
 
 	if err := engine.Run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "UCI engine failed: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("UCI engine failed: %w", err)
 	}
+	return nil
 }

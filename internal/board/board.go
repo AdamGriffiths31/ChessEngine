@@ -107,8 +107,8 @@ var (
 )
 
 func init() {
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			square := FileRankToSquare(file, rank)
 			if (file+rank)%2 == 0 {
 				DarkSquares = DarkSquares.SetBit(square)
@@ -129,14 +129,14 @@ func NewBoard() *Board {
 		sideToMove:     "w",
 	}
 
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		board.PieceBitboards[i] = 0
 	}
 	board.WhitePieces = 0
 	board.BlackPieces = 0
 	board.AllPieces = 0
 
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		board.Mailbox[i] = Empty
 	}
 
@@ -250,8 +250,8 @@ func (b *Board) InitializeEvalScoresFromPosition() {
 	b.pstScore = 0
 	b.pstScoreEG = 0
 
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 			if piece != Empty {
 				b.materialScore += values.GetPieceValue(values.Piece(piece))
@@ -433,8 +433,8 @@ func (b *Board) getPieceCountFromBitboard(piece Piece) int {
 // mismatch between the scanned board and the tracked bitboard counts.
 func (b *Board) DebugPieceCounts(label string) {
 	actualCounts := make(map[Piece]int)
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 			if piece != Empty {
 				actualCounts[piece]++

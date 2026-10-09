@@ -6,9 +6,6 @@ var (
 	FileMasks [8]Bitboard
 	RankMasks [8]Bitboard
 
-	DiagonalMasks     [15]Bitboard // Main diagonals (a1-h8 direction)
-	AntiDiagonalMasks [15]Bitboard // Anti-diagonals (a8-h1 direction)
-
 	// Non-sliding piece attacks
 	KnightAttacks [64]Bitboard
 	KingAttacks   [64]Bitboard
@@ -17,64 +14,28 @@ var (
 	WhitePawnAttacks [64]Bitboard
 	BlackPawnAttacks [64]Bitboard
 
-	// Pawn pushes (single and double)
-	WhitePawnPushes       [64]Bitboard
-	BlackPawnPushes       [64]Bitboard
-	WhitePawnDoublePushes [64]Bitboard
-	BlackPawnDoublePushes [64]Bitboard
-
-	DistanceTable [64][64]int      // Manhattan distance between squares
-	BetweenTable  [64][64]Bitboard // Squares between two squares (exclusive)
-	LineTable     [64][64]Bitboard // All squares on the line between two squares (inclusive)
+	BetweenTable [64][64]Bitboard // Squares between two squares (exclusive)
+	LineTable    [64][64]Bitboard // All squares on the line between two squares (inclusive)
 
 )
 
 // init automatically initializes attack tables when the package is loaded
 func init() {
 	initializeFilesAndRanks()
-	initializeDiagonals()
 	initializeKnightAttacks()
 	initializeKingAttacks()
 	initializePawnAttacks()
-	initializePawnPushes()
-	initializeDistanceTable()
 	initializeBetweenTable()
 	initializeLineTable()
 }
 
 func initializeFilesAndRanks() {
-	for file := 0; file < 8; file++ {
+	for file := range 8 {
 		FileMasks[file] = FileMask(file)
 	}
 
-	for rank := 0; rank < 8; rank++ {
+	for rank := range 8 {
 		RankMasks[rank] = RankMask(rank)
-	}
-}
-
-func initializeDiagonals() {
-	for diag := 0; diag < 15; diag++ {
-		var mask Bitboard
-		for square := 0; square < 64; square++ {
-			file, rank := SquareToFileRank(square)
-			// Main diagonal: rank - file is constant
-			if rank-file == diag-7 {
-				mask = mask.SetBit(square)
-			}
-		}
-		DiagonalMasks[diag] = mask
-	}
-
-	for diag := 0; diag < 15; diag++ {
-		var mask Bitboard
-		for square := 0; square < 64; square++ {
-			file, rank := SquareToFileRank(square)
-			// Anti-diagonal: rank + file is constant
-			if rank+file == diag {
-				mask = mask.SetBit(square)
-			}
-		}
-		AntiDiagonalMasks[diag] = mask
 	}
 }
 
@@ -84,7 +45,7 @@ func initializeKnightAttacks() {
 		{1, -2}, {1, 2}, {2, -1}, {2, 1},
 	}
 
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		var attacks Bitboard
 		file, rank := SquareToFileRank(square)
 
@@ -109,7 +70,7 @@ func initializeKingAttacks() {
 		{1, -1}, {1, 0}, {1, 1},
 	}
 
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		var attacks Bitboard
 		file, rank := SquareToFileRank(square)
 
@@ -128,7 +89,7 @@ func initializeKingAttacks() {
 }
 
 func initializePawnAttacks() {
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		file, rank := SquareToFileRank(square)
 
 		// White pawn attacks (moving up the board)
@@ -165,58 +126,9 @@ func initializePawnAttacks() {
 	}
 }
 
-func initializePawnPushes() {
-	for square := 0; square < 64; square++ {
-		file, rank := SquareToFileRank(square)
-
-		var whitePush, whiteDoublePush Bitboard
-		if rank < 7 { // Not on 8th rank
-			targetSquare := FileRankToSquare(file, rank+1)
-			whitePush = whitePush.SetBit(targetSquare)
-
-			// Double push from 2nd rank
-			if rank == 1 && rank < 6 {
-				targetSquare = FileRankToSquare(file, rank+2)
-				whiteDoublePush = whiteDoublePush.SetBit(targetSquare)
-			}
-		}
-		WhitePawnPushes[square] = whitePush
-		WhitePawnDoublePushes[square] = whiteDoublePush
-
-		var blackPush, blackDoublePush Bitboard
-		if rank > 0 { // Not on 1st rank
-			targetSquare := FileRankToSquare(file, rank-1)
-			blackPush = blackPush.SetBit(targetSquare)
-
-			// Double push from 7th rank
-			if rank == 6 && rank > 1 {
-				targetSquare = FileRankToSquare(file, rank-2)
-				blackDoublePush = blackDoublePush.SetBit(targetSquare)
-			}
-		}
-		BlackPawnPushes[square] = blackPush
-		BlackPawnDoublePushes[square] = blackDoublePush
-	}
-}
-
-func initializeDistanceTable() {
-	for sq1 := 0; sq1 < 64; sq1++ {
-		for sq2 := 0; sq2 < 64; sq2++ {
-			file1, rank1 := SquareToFileRank(sq1)
-			file2, rank2 := SquareToFileRank(sq2)
-
-			fileDist := abs(file1 - file2)
-			rankDist := abs(rank1 - rank2)
-
-			// Manhattan distance (also known as taxicab distance)
-			DistanceTable[sq1][sq2] = fileDist + rankDist
-		}
-	}
-}
-
 func initializeBetweenTable() {
-	for sq1 := 0; sq1 < 64; sq1++ {
-		for sq2 := 0; sq2 < 64; sq2++ {
+	for sq1 := range 64 {
+		for sq2 := range 64 {
 			var between Bitboard
 
 			if sq1 != sq2 {
@@ -257,8 +169,8 @@ func initializeBetweenTable() {
 }
 
 func initializeLineTable() {
-	for sq1 := 0; sq1 < 64; sq1++ {
-		for sq2 := 0; sq2 < 64; sq2++ {
+	for sq1 := range 64 {
+		for sq2 := range 64 {
 			var line Bitboard
 
 			if sq1 != sq2 {
@@ -272,7 +184,7 @@ func initializeLineTable() {
 				if fileDiff == 0 || rankDiff == 0 || abs(fileDiff) == abs(rankDiff) {
 					line = line.SetBit(sq1).SetBit(sq2)
 
-					line = line | BetweenTable[sq1][sq2]
+					line |= BetweenTable[sq1][sq2]
 				}
 			}
 
@@ -316,38 +228,6 @@ func GetPawnAttacks(square int, color BitboardColor) Bitboard {
 	return BlackPawnAttacks[square]
 }
 
-// GetPawnPushes returns the pawn push pattern for a given square and color
-func GetPawnPushes(square int, color BitboardColor) Bitboard {
-	if square < 0 || square > 63 {
-		return 0
-	}
-
-	if color == BitboardWhite {
-		return WhitePawnPushes[square]
-	}
-	return BlackPawnPushes[square]
-}
-
-// GetPawnDoublePushes returns the pawn double push pattern for a given square and color
-func GetPawnDoublePushes(square int, color BitboardColor) Bitboard {
-	if square < 0 || square > 63 {
-		return 0
-	}
-
-	if color == BitboardWhite {
-		return WhitePawnDoublePushes[square]
-	}
-	return BlackPawnDoublePushes[square]
-}
-
-// GetDistance returns the Manhattan distance between two squares
-func GetDistance(sq1, sq2 int) int {
-	if sq1 < 0 || sq1 > 63 || sq2 < 0 || sq2 > 63 {
-		return -1
-	}
-	return DistanceTable[sq1][sq2]
-}
-
 // GetBetween returns the squares between two squares (exclusive)
 func GetBetween(sq1, sq2 int) Bitboard {
 	if sq1 < 0 || sq1 > 63 || sq2 < 0 || sq2 > 63 {
@@ -362,26 +242,4 @@ func GetLine(sq1, sq2 int) Bitboard {
 		return 0
 	}
 	return LineTable[sq1][sq2]
-}
-
-// GetDiagonalMask returns the diagonal mask for a given square
-func GetDiagonalMask(square int) Bitboard {
-	if square < 0 || square > 63 {
-		return 0
-	}
-
-	file, rank := SquareToFileRank(square)
-	diagIndex := rank - file + 7
-	return DiagonalMasks[diagIndex]
-}
-
-// GetAntiDiagonalMask returns the anti-diagonal mask for a given square
-func GetAntiDiagonalMask(square int) Bitboard {
-	if square < 0 || square > 63 {
-		return 0
-	}
-
-	file, rank := SquareToFileRank(square)
-	diagIndex := rank + file
-	return AntiDiagonalMasks[diagIndex]
 }

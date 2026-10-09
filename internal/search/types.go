@@ -10,8 +10,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-// SearchConfig configures the search parameters
-type SearchConfig struct {
+// Config configures the search parameters
+type Config struct {
 	MaxDepth  int
 	MaxTime   time.Duration
 	DebugMode bool
@@ -33,17 +33,17 @@ type SearchConfig struct {
 	RepetitionHistory []uint64
 }
 
-// SearchResult contains the result of a search
-type SearchResult struct {
+// Result contains the result of a search
+type Result struct {
 	BestMove board.Move
 	Score    eval.EvaluationScore
-	Stats    SearchStats
+	Stats    Stats
 }
 
 // Engine defines the interface for a chess AI engine
 type Engine interface {
 	// FindBestMove searches for the best move in the given position
-	FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config SearchConfig) SearchResult
+	FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config Config) Result
 
 	// SetEvaluator sets the position evaluator
 	SetEvaluator(evaluator eval.Evaluator)

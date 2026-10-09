@@ -57,22 +57,6 @@ var NullMove = Move{
 	IsEnPassant: false,
 }
 
-// ParseSquare converts algebraic notation (e.g. "e4") to a Square struct
-func ParseSquare(notation string) (Square, error) {
-	if len(notation) != 2 {
-		return Square{}, errors.New("invalid square notation: must be 2 characters")
-	}
-
-	file := int(notation[0] - 'a')
-	rank := int(notation[1] - '1')
-
-	if file < 0 || file > 7 || rank < 0 || rank > 7 {
-		return Square{}, errors.New("invalid square notation: out of bounds")
-	}
-
-	return Square{File: file, Rank: rank}, nil
-}
-
 func (s Square) String() string {
 	return string(rune('a'+s.File)) + string(rune('1'+s.Rank))
 }
@@ -359,77 +343,6 @@ func (b *Board) updateEnPassantTarget(move Move, piece Piece) {
 	}
 }
 
-// ParseSimpleMove parses a simple move notation (e.g. "e2e4") into a Move struct
-func ParseSimpleMove(notation string) (Move, error) {
-	notation = strings.TrimSpace(notation)
-
-	if notation == "O-O" || notation == "0-0" {
-		return Move{IsCastling: true, Promotion: Empty}, nil
-	}
-	if notation == "O-O-O" || notation == "0-0-0" {
-		return Move{IsCastling: true, Promotion: Empty}, nil
-	}
-
-	if len(notation) == 4 {
-		from, err := ParseSquare(notation[:2])
-		if err != nil {
-			return Move{}, err
-		}
-
-		to, err := ParseSquare(notation[2:4])
-		if err != nil {
-			return Move{}, err
-		}
-
-		return Move{From: from, To: to, Promotion: Empty, Piece: Empty}, nil
-	}
-
-	if len(notation) == 5 {
-		from, err := ParseSquare(notation[:2])
-		if err != nil {
-			return Move{}, err
-		}
-
-		to, err := ParseSquare(notation[2:4])
-		if err != nil {
-			return Move{}, err
-		}
-
-		promotionChar := notation[4]
-		promotion, err := charToPiece(promotionChar)
-		if err != nil {
-			return Move{}, err
-		}
-
-		return Move{From: from, To: to, Promotion: promotion}, nil
-	}
-
-	return Move{}, errors.New("unsupported move notation format")
-}
-
-func charToPiece(char byte) (Piece, error) {
-	switch char {
-	case 'Q':
-		return WhiteQueen, nil
-	case 'R':
-		return WhiteRook, nil
-	case 'B':
-		return WhiteBishop, nil
-	case 'N':
-		return WhiteKnight, nil
-	case 'q':
-		return BlackQueen, nil
-	case 'r':
-		return BlackRook, nil
-	case 'b':
-		return BlackBishop, nil
-	case 'n':
-		return BlackKnight, nil
-	default:
-		return Empty, errors.New("invalid piece character")
-	}
-}
-
 // UnmakeMove reverses a move using the undo information
 func (b *Board) UnmakeMove(undo MoveUndo) {
 	move := undo.Move
@@ -526,11 +439,11 @@ func (b *Board) ToFEN() string {
 	var fen strings.Builder
 
 	// FEN ranks start from 8 (top) and go down to 1 (bottom)
-	for rankIndex := 0; rankIndex < 8; rankIndex++ {
+	for rankIndex := range 8 {
 		rank := 7 - rankIndex // Convert FEN rank to board array index
 		emptyCount := 0
 
-		for file := 0; file < 8; file++ {
+		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 
 			if piece == Empty {

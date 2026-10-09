@@ -29,7 +29,7 @@ func (bmg *BitboardMoveGenerator) filterLegalMovesInPlace(b *board.Board, player
 	inCheck := b.IsSquareAttackedByColor(kingSquare, opponentColor)
 
 	writeIndex := 0
-	for readIndex := 0; readIndex < moves.Count; readIndex++ {
+	for readIndex := range moves.Count {
 		move := moves.Moves[readIndex]
 
 		if bmg.isMoveLegal(b, move, kingSquare, pinnedPieces, inCheck, opponentColor) {

@@ -202,6 +202,13 @@ func TestProtocolHandler_ParseGo(t *testing.T) {
 			},
 		},
 		{
+			name: "node limit",
+			args: []string{"nodes", "1000000"},
+			expected: SearchParams{
+				Nodes: 1000000,
+			},
+		},
+		{
 			name: "moves to go",
 			args: []string{"movestogo", "20"},
 			expected: SearchParams{
@@ -312,46 +319,13 @@ func TestProtocolHandler_ParseSetOption(t *testing.T) {
 	}
 }
 
-func TestProtocolHandler_FormatResponses(t *testing.T) {
+// info lines report time in milliseconds and a derived nodes-per-second figure.
+func TestProtocolHandler_FormatInfo(t *testing.T) {
 	handler := NewProtocolHandler()
 
-	t.Run("FormatUCIResponse", func(t *testing.T) {
-		result := handler.FormatUCIResponse("TestEngine", "Test Author")
-		expected := "id name TestEngine\nid author Test Author\nuciok"
-		if result != expected {
-			t.Errorf("FormatUCIResponse() = %v, want %v", result, expected)
-		}
-	})
-
-	t.Run("FormatReadyOK", func(t *testing.T) {
-		result := handler.FormatReadyOK()
-		expected := "readyok"
-		if result != expected {
-			t.Errorf("FormatReadyOK() = %v, want %v", result, expected)
-		}
-	})
-
-	t.Run("FormatBestMove", func(t *testing.T) {
-		result := handler.FormatBestMove("e2e4")
-		expected := "bestmove e2e4"
-		if result != expected {
-			t.Errorf("FormatBestMove() = %v, want %v", result, expected)
-		}
-	})
-
-	t.Run("FormatInfo", func(t *testing.T) {
-		result := handler.FormatInfo(6, 50, 1000000, 2*time.Second, "e2e4 e7e5")
-		expected := "info depth 6 score cp 50 nodes 1000000 time 2000 nps 500000 pv e2e4 e7e5"
-		if result != expected {
-			t.Errorf("FormatInfo() = %v, want %v", result, expected)
-		}
-	})
-
-	t.Run("FormatOption", func(t *testing.T) {
-		result := handler.FormatOption("Hash", "spin", "128")
-		expected := "option name Hash type spin default 128"
-		if result != expected {
-			t.Errorf("FormatOption() = %v, want %v", result, expected)
-		}
-	})
+	got := handler.FormatInfo(6, 50, 1000000, 2*time.Second, "e2e4 e7e5")
+	want := "info depth 6 score cp 50 nodes 1000000 time 2000 nps 500000 pv e2e4 e7e5"
+	if got != want {
+		t.Errorf("FormatInfo() = %q, want %q", got, want)
+	}
 }

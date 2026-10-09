@@ -2,11 +2,9 @@ package board
 
 import "testing"
 
-// TestMoveIsValid documents the exact predicate mirrored from the inline
-// TT-move sanity check formerly in internal/search/negamax.go: both From.File
-// and To.File must be within [0,7], and From must differ from To. Note that
-// only the File components are range-checked (Rank is not), matching the
-// original inline code precisely.
+// IsValid is the sanity check for moves read back from the transposition
+// table: From and To files must be in [0,7] and From must differ from To. Ranks
+// are deliberately not range-checked.
 func TestMoveIsValid(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {

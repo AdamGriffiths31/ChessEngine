@@ -17,11 +17,11 @@ type mockEngine struct {
 	scoreToReturn eval.EvaluationScore
 }
 
-func (m *mockEngine) FindBestMove(_ context.Context, _ *board.Board, _ movegen.Player, _ search.SearchConfig) search.SearchResult {
-	return search.SearchResult{
+func (m *mockEngine) FindBestMove(_ context.Context, _ *board.Board, _ movegen.Player, _ search.Config) search.Result {
+	return search.Result{
 		BestMove: m.moveToReturn,
 		Score:    m.scoreToReturn,
-		Stats:    search.SearchStats{},
+		Stats:    search.Stats{},
 	}
 }
 
@@ -31,11 +31,11 @@ func (m *mockEngine) GetName() string               { return "mock" }
 func TestCalculateScore(t *testing.T) {
 	t.Parallel()
 	engine := &mockEngine{}
-	config := search.SearchConfig{
+	config := search.Config{
 		MaxDepth: 3,
 		MaxTime:  time.Second,
 	}
-	scorer := NewSTSScorer(engine, config, false)
+	scorer := NewSTSScorerWithTTClear(engine, config, false, false)
 
 	tests := []struct {
 		name          string
@@ -84,11 +84,11 @@ func TestCalculateScore(t *testing.T) {
 func TestCastlingMoveMatches(t *testing.T) {
 	t.Parallel()
 	engine := &mockEngine{}
-	config := search.SearchConfig{
+	config := search.Config{
 		MaxDepth: 3,
 		MaxTime:  time.Second,
 	}
-	scorer := NewSTSScorer(engine, config, false)
+	scorer := NewSTSScorerWithTTClear(engine, config, false, false)
 
 	tests := []struct {
 		name         string
@@ -155,11 +155,11 @@ func TestScoreSuite(t *testing.T) {
 		scoreToReturn: 50,
 	}
 
-	config := search.SearchConfig{
+	config := search.Config{
 		MaxDepth: 3,
 		MaxTime:  time.Second,
 	}
-	scorer := NewSTSScorer(engine, config, false)
+	scorer := NewSTSScorerWithTTClear(engine, config, false, false)
 
 	result := scorer.ScoreSuite(context.Background(), positions, "test_suite", nil)
 

@@ -1,230 +1,133 @@
 package book
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// polyglotEncode builds a raw Polyglot move encoding from 0-indexed
-// from/to squares (file+rank*8), matching decodeMove's own unpacking.
+// polyglotEncode builds a raw Polyglot move from 0-indexed squares.
 func polyglotEncode(fromFile, fromRank, toFile, toRank int) uint16 {
 	from := fromRank*8 + fromFile
 	to := toRank*8 + toFile
 	return uint16(from<<FromSquareShift) | uint16(to)
 }
 
-func TestDecodeMoveWhiteKingsideCastling(t *testing.T) {
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
+func queenPromotion(encoded uint16) uint16 {
+	return encoded | uint16(PromotionQueen<<PromotionShift)
+}
+
+// Polyglot writes castling as the king moving onto its own rook (e1-h1), so
+// decodeMove must remap it to the king's real destination with IsCastling set.
+func TestDecodeMove(t *testing.T) {
+	const startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR %s KQkq - 0 1"
+	tests := []struct {
+		name        string
+		fen         string
+		encoded     uint16
+		wantTo      board.Square
+		wantCastle  bool
+		wantPromoTo board.Piece
+	}{
+		{"white kingside castling", fmt.Sprintf(startPos, "w"), polyglotEncode(4, 0, 7, 0), board.Square{File: 6, Rank: 0}, true, 0},
+		{"white queenside castling", fmt.Sprintf(startPos, "w"), polyglotEncode(4, 0, 0, 0), board.Square{File: 2, Rank: 0}, true, 0},
+		{"black kingside castling", fmt.Sprintf(startPos, "b"), polyglotEncode(4, 7, 7, 7), board.Square{File: 6, Rank: 7}, true, 0},
+		{"ordinary king step is not castling", fmt.Sprintf(startPos, "w"), polyglotEncode(4, 0, 4, 1), board.Square{File: 4, Rank: 1}, false, 0},
+		{"white promotion gets a white piece", "7k/1P6/8/8/8/8/8/8 w - - 0 1", queenPromotion(polyglotEncode(1, 6, 1, 7)), board.Square{File: 1, Rank: 7}, false, board.WhiteQueen},
+		{"black promotion gets a black piece", "8/8/8/8/8/8/1p6/7K b - - 0 1", queenPromotion(polyglotEncode(1, 1, 1, 0)), board.Square{File: 1, Rank: 0}, false, board.BlackQueen},
 	}
 
-	pb := NewPolyglotBook()
-	// Polyglot encodes castling as king-from to the ROOK's own square:
-	// White kingside is e1 (file 4, rank 0) -> h1 (file 7, rank 0).
-	encoded := polyglotEncode(4, 0, 7, 0)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatal(err)
+			}
+			move, err := NewPolyglotBook().decodeMove(tt.encoded, b)
+			if err != nil {
+				t.Fatalf("decodeMove: %v", err)
+			}
 
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if !move.IsCastling {
-		t.Error("expected IsCastling to be true for a Polyglot-encoded castling move")
-	}
-	if move.To.File != 6 || move.To.Rank != 0 {
-		t.Errorf("expected king destination g1 (file 6, rank 0), got file %d rank %d", move.To.File, move.To.Rank)
-	}
-	if move.IsCapture {
-		t.Error("expected IsCapture to be false for a castling move (own rook is not a capture)")
+			if move.To != tt.wantTo {
+				t.Errorf("To = %v, want %v", move.To, tt.wantTo)
+			}
+			if move.IsCastling != tt.wantCastle {
+				t.Errorf("IsCastling = %v, want %v", move.IsCastling, tt.wantCastle)
+			}
+			if tt.wantCastle && move.IsCapture {
+				t.Error("castling must not be a capture (the rook is the king's own)")
+			}
+			if tt.wantPromoTo != 0 && move.Promotion != tt.wantPromoTo {
+				t.Errorf("Promotion = %c, want %c", move.Promotion, tt.wantPromoTo)
+			}
+		})
 	}
 }
 
-func TestDecodeMoveWhiteQueensideCastling(t *testing.T) {
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
+// A decoded move must apply cleanly to a real board: the castling rook moves
+// too, and en passant removes the captured pawn.
+func TestDecodedMovesApplyToBoard(t *testing.T) {
+	tests := []struct {
+		name    string
+		fen     string
+		encoded uint16
+		want    map[[2]int]board.Piece // [rank, file] -> piece after the move
+	}{
+		{
+			name:    "white kingside castling",
+			fen:     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			encoded: polyglotEncode(4, 0, 7, 0),
+			want: map[[2]int]board.Piece{
+				{0, 6}: board.WhiteKing, {0, 5}: board.WhiteRook, {0, 4}: board.Empty, {0, 7}: board.Empty,
+			},
+		},
+		{
+			name:    "en passant",
+			fen:     "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
+			encoded: polyglotEncode(4, 4, 3, 5),
+			want: map[[2]int]board.Piece{
+				{5, 3}: board.WhitePawn, {4, 4}: board.Empty, {4, 3}: board.Empty, // d6, e5, captured d5
+			},
+		},
 	}
 
-	pb := NewPolyglotBook()
-	// White queenside: e1 (file 4, rank 0) -> a1 (file 0, rank 0).
-	encoded := polyglotEncode(4, 0, 0, 0)
-
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if !move.IsCastling {
-		t.Error("expected IsCastling to be true for a Polyglot-encoded castling move")
-	}
-	if move.To.File != 2 || move.To.Rank != 0 {
-		t.Errorf("expected king destination c1 (file 2, rank 0), got file %d rank %d", move.To.File, move.To.Rank)
-	}
-}
-
-func TestDecodeMoveBlackKingsideCastling(t *testing.T) {
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
-	}
-
-	pb := NewPolyglotBook()
-	// Black kingside: e8 (file 4, rank 7) -> h8 (file 7, rank 7).
-	encoded := polyglotEncode(4, 7, 7, 7)
-
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if !move.IsCastling {
-		t.Error("expected IsCastling to be true for a Polyglot-encoded castling move")
-	}
-	if move.To.File != 6 || move.To.Rank != 7 {
-		t.Errorf("expected king destination g8 (file 6, rank 7), got file %d rank %d", move.To.File, move.To.Rank)
-	}
-}
-
-func TestDecodeMoveOrdinaryKingMoveIsNotCastling(t *testing.T) {
-	// King still on e1 (starting position); decoding a hypothetical e1-e2
-	// step (a perfectly ordinary, non-castling move) must not be
-	// misdetected as castling.
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
-	}
-
-	pb := NewPolyglotBook()
-	// e1 (file 4, rank 0) -> e2 (file 4, rank 1): ordinary king step.
-	encoded := polyglotEncode(4, 0, 4, 1)
-
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if move.IsCastling {
-		t.Error("expected an ordinary king move not to be flagged as castling")
-	}
-	if move.To.File != 4 || move.To.Rank != 1 {
-		t.Errorf("expected destination e2 (file 4, rank 1) unchanged, got file %d rank %d", move.To.File, move.To.Rank)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatal(err)
+			}
+			move, err := NewPolyglotBook().decodeMove(tt.encoded, b)
+			if err != nil {
+				t.Fatalf("decodeMove: %v", err)
+			}
+			if err := b.MakeMove(move); err != nil {
+				t.Fatalf("MakeMove: %v", err)
+			}
+			for pos, piece := range tt.want {
+				if got := b.GetPiece(pos[0], pos[1]); got != piece {
+					t.Errorf("square (rank %d, file %d) = %c, want %c", pos[0], pos[1], got, piece)
+				}
+			}
+		})
 	}
 }
 
-func TestDecodeMoveThenApplyEnPassantCaptureOnBoard(t *testing.T) {
-	// Polyglot en passant moves are plain diagonal pawn moves in standard
-	// notation (no special encoding quirk like castling has), and
-	// board.Board.MakeMove auto-detects en passant on its own (board/moves.go)
-	// even when the caller doesn't set IsEnPassant. This test exists to
-	// document and pin down that end-to-end behavior stays correct.
-	b, err := board.FromFEN("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
+func TestDecodeMoveErrors(t *testing.T) {
+	start := startBoard(t)
+	tests := []struct {
+		name    string
+		encoded uint16
+	}{
+		{"no piece on the from square", polyglotEncode(4, 3, 4, 4)},
+		{"invalid promotion code", polyglotEncode(4, 1, 4, 3) | uint16(7<<PromotionShift)},
 	}
-
-	pb := NewPolyglotBook()
-	encoded := polyglotEncode(4, 4, 3, 5)
-
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if err := b.MakeMove(move); err != nil {
-		t.Fatalf("MakeMove failed: %v", err)
-	}
-
-	if piece := b.GetPiece(5, 3); piece != board.WhitePawn { // d6
-		t.Errorf("expected white pawn on d6, got %c", piece)
-	}
-	if piece := b.GetPiece(4, 4); piece != board.Empty { // e5
-		t.Errorf("expected e5 to be empty after the capturing pawn moved, got %c", piece)
-	}
-	if piece := b.GetPiece(4, 3); piece != board.Empty { // d5 - the captured pawn
-		t.Errorf("expected the captured black pawn on d5 to be removed, got %c", piece)
-	}
-}
-
-func TestDecodeMoveBlackPromotionUsesBlackPiece(t *testing.T) {
-	// Black pawn on b2 promoting to a queen on b1. decodeMove must
-	// produce a BLACK queen, not a White one.
-	b, err := board.FromFEN("8/8/8/8/8/8/1p6/7K b - - 0 1")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
-	}
-
-	pb := NewPolyglotBook()
-	// b2 (file 1, rank 1) -> b1 (file 1, rank 0), promotion=Queen.
-	encoded := polyglotEncode(1, 1, 1, 0) | uint16(PromotionQueen<<PromotionShift)
-
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if move.Promotion != board.BlackQueen {
-		t.Errorf("expected BlackQueen promotion for a black pawn, got %c", move.Promotion)
-	}
-}
-
-func TestDecodeMoveWhitePromotionUsesWhitePiece(t *testing.T) {
-	b, err := board.FromFEN("7k/1P6/8/8/8/8/8/8 w - - 0 1")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
-	}
-
-	pb := NewPolyglotBook()
-	// b7 (file 1, rank 6) -> b8 (file 1, rank 7), promotion=Queen.
-	encoded := polyglotEncode(1, 6, 1, 7) | uint16(PromotionQueen<<PromotionShift)
-
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if move.Promotion != board.WhiteQueen {
-		t.Errorf("expected WhiteQueen promotion for a white pawn, got %c", move.Promotion)
-	}
-}
-
-func TestDecodeMoveThenApplyWhiteKingsideCastlingOnBoard(t *testing.T) {
-	// End-to-end: decode a book castling move and actually apply it to a
-	// real board.Board, verifying the king and rook land on the correct
-	// squares (the exact scenario that was silently corrupting games).
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("failed to build board: %v", err)
-	}
-
-	// Clear the squares between king and rook so kingside castling is legal
-	// (this board isn't checking legality here, but MakeMove's castling
-	// handler unconditionally relocates the rook, so squares must be sane).
-	// f1 and g1 are already empty in the starting position.
-
-	pb := NewPolyglotBook()
-	encoded := polyglotEncode(4, 0, 7, 0)
-
-	move, err := pb.decodeMove(encoded, b)
-	if err != nil {
-		t.Fatalf("decodeMove failed: %v", err)
-	}
-
-	if err := b.MakeMove(move); err != nil {
-		t.Fatalf("MakeMove failed: %v", err)
-	}
-
-	if piece := b.GetPiece(0, 6); piece != board.WhiteKing { // g1
-		t.Errorf("expected white king on g1, got %c", piece)
-	}
-	if piece := b.GetPiece(0, 5); piece != board.WhiteRook { // f1
-		t.Errorf("expected white rook on f1, got %c", piece)
-	}
-	if piece := b.GetPiece(0, 4); piece != board.Empty { // e1
-		t.Errorf("expected e1 to be empty after castling, got %c", piece)
-	}
-	if piece := b.GetPiece(0, 7); piece != board.Empty { // h1
-		t.Errorf("expected h1 to be empty after castling (rook moved away), got %c", piece)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := NewPolyglotBook().decodeMove(tt.encoded, start); err == nil {
+				t.Error("decodeMove succeeded, want an error")
+			}
+		})
 	}
 }

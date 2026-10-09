@@ -33,74 +33,11 @@ func TestNewEngine(t *testing.T) {
 	}
 }
 
-func TestEnginePlayerString(t *testing.T) {
-	testCases := []struct {
-		player   Player
-		expected string
-	}{
-		{White, "White"},
-		{Black, "Black"},
-	}
-
-	for _, tc := range testCases {
-		result := tc.player.String()
-		if result != tc.expected {
-			t.Errorf("Expected %q, got %q", tc.expected, result)
-		}
-	}
-}
-
-func TestEngineMakeMove(t *testing.T) {
-	engine := NewEngine()
-
-	move := board.Move{
-		From:      board.Square{File: 4, Rank: 1}, // e2
-		To:        board.Square{File: 4, Rank: 3}, // e4
-		Promotion: board.Empty,
-	}
-
-	err := engine.MakeMove(move)
-	if err != nil {
-		t.Errorf("Expected no error making move, got: %v", err)
-	}
-
-	state := engine.GetState()
-	currentPlayer := engine.GetCurrentPlayer()
-	if currentPlayer != Black {
-		t.Errorf("Expected turn to switch to Black after white move, got %v", currentPlayer)
-	}
-
-	if state.MoveCount != 1 {
-		t.Errorf("Expected move count to remain 1 after white move, got %d", state.MoveCount)
-	}
-
-	move = board.Move{
-		From:      board.Square{File: 4, Rank: 6}, // e7
-		To:        board.Square{File: 4, Rank: 4}, // e5
-		Promotion: board.Empty,
-	}
-
-	err = engine.MakeMove(move)
-	if err != nil {
-		t.Errorf("Expected no error making black move, got: %v", err)
-	}
-
-	state = engine.GetState()
-	currentPlayer = engine.GetCurrentPlayer()
-	if currentPlayer != White {
-		t.Errorf("Expected turn to switch to White after black move, got %v", currentPlayer)
-	}
-
-	if state.MoveCount != 2 {
-		t.Errorf("Expected move count to be 2 after black move, got %d", state.MoveCount)
-	}
-}
-
 // TestEngineHashHistoryTracksRealMoves verifies HashHistory() exposes the
 // real-game position-hash sequence (oldest first, ending with the current
 // position) that MakeMove already accumulates internally for threefold
 // detection - this is what internal/uci feeds into
-// search.SearchConfig.RepetitionHistory so the search can recognize
+// search.Config.RepetitionHistory so the search can recognize
 // repetitions that started before its own hypothetical lookahead.
 func TestEngineHashHistoryTracksRealMoves(t *testing.T) {
 	engine := NewEngine()

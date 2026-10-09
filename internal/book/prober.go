@@ -6,10 +6,10 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Prober wraps a BookLookupService with caller-side lazy loading and the
+// Prober wraps a LookupService with caller-side lazy loading and the
 // opening-phase move-number gate. It used to live inside the search engine
 // (MinimaxEngine.FindBestMove); it now lives here so that callers of the
-// search engine (internal/player, internal/uci) can consult the opening book
+// search engine (internal/uci) can consult the opening book
 // before invoking the engine at all, keeping FindBestMove a pure searcher.
 //
 // A Prober is constructed once per set of book files and reused across
@@ -21,7 +21,7 @@ import (
 // an intentional improvement, not behavior parity.
 type Prober struct {
 	files     []string
-	service   *BookLookupService
+	service   *LookupService
 	attempted bool
 }
 
@@ -68,13 +68,13 @@ func (p *Prober) ensureLoaded() {
 	}
 	p.attempted = true
 
-	cfg := BookConfig{
+	cfg := Config{
 		Enabled:       true,
 		BookFiles:     p.files,
 		SelectionMode: SelectBest, // Always pick best move, as the engine did.
 	}
 
-	service := NewBookLookupService(cfg)
+	service := NewLookupService(cfg)
 	if err := service.LoadBooks(); err != nil {
 		slog.Warn("failed to load opening book(s)", "files", p.files, "error", err)
 		return

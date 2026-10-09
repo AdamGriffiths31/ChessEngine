@@ -21,7 +21,7 @@ func runReport(args []string) error {
 
 	report, err := bench.GenerateReport(*dir)
 	if err != nil {
-		return fmt.Errorf("failed to generate report: %v", err)
+		return fmt.Errorf("failed to generate report: %w", err)
 	}
 
 	if *output == "" {
@@ -30,7 +30,7 @@ func runReport(args []string) error {
 	}
 
 	if err := os.WriteFile(*output, []byte(report), 0600); err != nil {
-		return fmt.Errorf("failed to write report to %s: %v", *output, err)
+		return fmt.Errorf("failed to write report to %s: %w", *output, err)
 	}
 	fmt.Printf("Report written to %s\n", *output)
 	return nil

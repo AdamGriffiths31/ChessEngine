@@ -1,8 +1,18 @@
 package movegen
 
 import (
-	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 	"sync"
+
+	"github.com/AdamGriffiths31/ChessEngine/internal/board"
+)
+
+const (
+	// preAllocCapacity is the backing-array size of a new pooled list, sized for
+	// typical positions.
+	preAllocCapacity = 128
+	// maxPooledCapacity is the largest list kept on release; bigger ones are
+	// dropped so the pool does not hold on to outliers.
+	maxPooledCapacity = 512
 )
 
 // MoveListPool manages a pool of reusable MoveList objects to reduce allocation overhead.
@@ -15,7 +25,7 @@ var globalMoveListPool = &MoveListPool{
 	pool: sync.Pool{
 		New: func() interface{} {
 			return &MoveList{
-				Moves: make([]board.Move, 0, PoolPreAllocCapacity),
+				Moves: make([]board.Move, 0, preAllocCapacity),
 				Count: 0,
 			}
 		},
@@ -44,7 +54,7 @@ func ReleaseMoveList(ml *MoveList) {
 		return
 	}
 
-	if cap(ml.Moves) <= MaxMoveListCapacity {
+	if cap(ml.Moves) <= maxPooledCapacity {
 		ml.Clear()
 		globalMoveListPool.pool.Put(ml)
 	}

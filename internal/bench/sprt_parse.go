@@ -20,9 +20,9 @@ type sprtStatus struct {
 // layout, update this pattern rather than the call sites.
 var sprtStatusPattern = regexp.MustCompile(`llr (-?[\d.]+).*lbound (-?[\d.]+), ubound (-?[\d.]+)`)
 
-// ParseSPRTStatus extracts llr/lbound/ubound from a cutechess-cli stdout
+// parseSPRTStatus extracts llr/lbound/ubound from a cutechess-cli stdout
 // line. ok is false for any line that isn't an SPRT status line.
-func ParseSPRTStatus(line string) (sprtStatus, bool) {
+func parseSPRTStatus(line string) (sprtStatus, bool) {
 	m := sprtStatusPattern.FindStringSubmatch(line)
 	if m == nil {
 		return sprtStatus{}, false

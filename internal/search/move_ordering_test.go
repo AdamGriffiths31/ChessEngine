@@ -6,16 +6,10 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// TestGetTacticalBonus_WhiteMoveAttackingBlackPiece guards against a
-// regression where getTacticalBonus's side check used
-// `move.Piece >= board.WhitePawn && move.Piece <= board.WhiteKing`, which can
-// never be true since Piece values are FEN-letter rune codes
-// (WhitePawn='P'=80, WhiteKing='K'=75), not an ordered enum. That sent every
-// White move down the "Black" branch, scoring it against White's own
-// pieces/king instead of Black's - e.g. this exact position spuriously
-// awarded a king-zone bonus for approaching White's own king on a1 (whose
-// zone includes a2/b1, both knight-attack squares from c3) while missing the
-// real threat against Black's rook on e4 entirely.
+// Regression: the side check compared piece codes as an ordered range, which is
+// never true (pieces are FEN-letter runes), so every White move was scored as a
+// Black move: it earned a king-zone bonus near White's own king and missed the
+// real threat on Black's rook.
 func TestGetTacticalBonus_WhiteMoveAttackingBlackPiece(t *testing.T) {
 	// White knight on c3, Black rook on e4 (a knight-attack square from c3).
 	// Kings are far enough from c3's attack squares (a2,a4,b1,b5,d1,d5,e2,e4)

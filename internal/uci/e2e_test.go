@@ -10,19 +10,12 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-// e2eHardTimeout is the absolute cap on how long the scripted session below
-// may take to run. Engine.Run has no context/cancellation of its own - it
-// simply reads lines until "quit" or EOF - so a real hang (e.g. a "go"
-// command whose search never returns) would otherwise wedge the test
-// process forever instead of failing it. Run is driven from a goroutine and
-// raced against this timeout.
+// e2eHardTimeout caps the scripted session. Engine.Run has no cancellation,
+// so a hang would otherwise wedge the test process; Run is raced against this.
 const e2eHardTimeout = 10 * time.Second
 
-// sessionTimeout returns e2eHardTimeout, shortened to fit under the test's
-// own -timeout deadline (with a 2s margin for cleanup/reporting) when that
-// deadline is sooner, so a slow CI box fails with a clear "session did not
-// complete" message rather than being killed mid-assertion by `go test`'s
-// own panic-on-timeout.
+// sessionTimeout is e2eHardTimeout, shortened to fit under the test deadline
+// so a hang fails with a clear message instead of a go test panic.
 func sessionTimeout(t *testing.T) time.Duration {
 	t.Helper()
 	timeout := e2eHardTimeout
@@ -34,22 +27,11 @@ func sessionTimeout(t *testing.T) time.Duration {
 	return timeout
 }
 
-// TestEngine_EndToEndProtocolSession drives Engine.Run in-process over an
-// io.Reader/io.Writer pair (no real stdin/stdout, no subprocess) with a
-// scripted UCI session and asserts on the exact response shape a real GUI
-// would observe:
-//
-//   - the two "id ..." lines followed immediately by "uciok"
-//   - "readyok" answering "isready"
-//   - a "setoption name BookFile value <bad path>" early in the session,
-//     which must not crash the engine or otherwise disrupt the session
-//     (see internal/book.Prober.ensureLoaded: a failed load just logs a
-//     warning and every Probe reports a miss)
-//   - at least one "info ..." line before the final answer
-//   - "bestmove ..." as the last line of output, and that its move is legal
-//     in the position reached by "position startpos moves e2e4"
-//   - clean termination: Run returns nil once "quit" is read, well within
-//     the hard timeout.
+// TestEngine_EndToEndProtocolSession drives Engine.Run in-process with a
+// scripted UCI session and checks what a GUI would see: id lines then uciok,
+// readyok, an info line before a bestmove that is legal after 1.e4, and a
+// clean exit on "quit". A bad BookFile path set mid-session must not disrupt
+// any of it.
 func TestEngine_EndToEndProtocolSession(t *testing.T) {
 	engine := NewUCIEngine()
 
@@ -90,11 +72,8 @@ func TestEngine_EndToEndProtocolSession(t *testing.T) {
 	assertBestMoveIsLegalAfterE2E4(t, lines)
 }
 
-// assertResponseOrder walks the captured output lines and asserts the
-// protocol-level ordering a GUI depends on: both "id" lines before "uciok",
-// "readyok" answering "isready" before the go-command's own response block,
-// at least one "info" line before "bestmove", and "bestmove" as the very
-// last line emitted.
+// assertResponseOrder checks the ordering a GUI depends on: id lines before
+// uciok, readyok after it, an info line before bestmove, bestmove last.
 func assertResponseOrder(t *testing.T, lines []string) {
 	t.Helper()
 
@@ -153,11 +132,8 @@ func assertResponseOrder(t *testing.T, lines []string) {
 	}
 }
 
-// assertBestMoveIsLegalAfterE2E4 extracts the move from the final
-// "bestmove <uci> [ponder ...]" line and verifies it is one of the legal
-// moves generated for the position reached after 1.e4 (the position given
-// to the scripted session's "position" command), independently re-deriving
-// that position rather than trusting the engine's internal state.
+// assertBestMoveIsLegalAfterE2E4 checks the final bestmove against legal moves
+// generated independently for the position after 1.e4.
 func assertBestMoveIsLegalAfterE2E4(t *testing.T, lines []string) {
 	t.Helper()
 
@@ -184,13 +160,13 @@ func assertBestMoveIsLegalAfterE2E4(t *testing.T, lines []string) {
 		t.Fatalf("making e2e4 failed: %v", err)
 	}
 
-	player := movegen.Player(gameEngine.GetCurrentPlayer())
+	player := gameEngine.GetCurrentPlayer()
 	generator := movegen.NewGenerator()
 	legalMoves := generator.GenerateAllMoves(gameEngine.GetState().Board, player)
 	defer movegen.ReleaseMoveList(legalMoves)
 
 	found := false
-	for i := 0; i < legalMoves.Count; i++ {
+	for i := range legalMoves.Count {
 		if converter.ToUCI(legalMoves.Moves[i]) == bestMoveUCI {
 			found = true
 			break
@@ -198,17 +174,14 @@ func assertBestMoveIsLegalAfterE2E4(t *testing.T, lines []string) {
 	}
 	if !found {
 		legalUCI := make([]string, legalMoves.Count)
-		for i := 0; i < legalMoves.Count; i++ {
+		for i := range legalMoves.Count {
 			legalUCI[i] = converter.ToUCI(legalMoves.Moves[i])
 		}
 		t.Errorf("bestmove %q is not legal after 1.e4; legal moves: %s", bestMoveUCI, strings.Join(legalUCI, " "))
 	}
 }
 
-// nonEmptyLines splits output on newlines and drops empty trailing/interior
-// lines, so a trailing "\n" from the last Fprintln doesn't show up as a
-// spurious empty final "line" that would otherwise defeat the
-// "bestmove is the last line" check.
+// nonEmptyLines splits output into lines, dropping blanks.
 func nonEmptyLines(output string) []string {
 	rawLines := strings.Split(output, "\n")
 	lines := make([]string, 0, len(rawLines))

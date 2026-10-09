@@ -30,15 +30,15 @@ func TestParseSPRTStatus(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			status, ok := ParseSPRTStatus(tc.line)
+			status, ok := parseSPRTStatus(tc.line)
 			if ok != tc.wantOK {
-				t.Fatalf("ParseSPRTStatus(%q) ok = %v, want %v", tc.line, ok, tc.wantOK)
+				t.Fatalf("parseSPRTStatus(%q) ok = %v, want %v", tc.line, ok, tc.wantOK)
 			}
 			if !ok {
 				return
 			}
 			if status.llr != tc.wantLLR {
-				t.Errorf("ParseSPRTStatus(%q) llr = %v, want %v", tc.line, status.llr, tc.wantLLR)
+				t.Errorf("parseSPRTStatus(%q) llr = %v, want %v", tc.line, status.llr, tc.wantLLR)
 			}
 		})
 	}

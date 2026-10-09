@@ -4,7 +4,6 @@ package book
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 
@@ -39,7 +38,7 @@ const (
 // PolyglotBook implements the OpeningBook interface for Polyglot binary format
 type PolyglotBook struct {
 	entries  []PolyglotEntry
-	info     BookInfo
+	info     Info
 	isLoaded bool
 	zobrist  *ZobristHash
 }
@@ -75,7 +74,7 @@ func (pb *PolyglotBook) LoadFromFile(filename string) error {
 	entryCount := int(fileSize / PolyglotEntrySize)
 	entries := make([]PolyglotEntry, entryCount)
 
-	for i := 0; i < entryCount; i++ {
+	for i := range entryCount {
 		var entry PolyglotEntry
 
 		if err := binary.Read(file, binary.BigEndian, &entry.Hash); err != nil {
@@ -101,7 +100,7 @@ func (pb *PolyglotBook) LoadFromFile(filename string) error {
 	}
 
 	pb.entries = entries
-	pb.info = BookInfo{
+	pb.info = Info{
 		Filename:   filename,
 		EntryCount: entryCount,
 		FileSize:   fileSize,
@@ -112,7 +111,7 @@ func (pb *PolyglotBook) LoadFromFile(filename string) error {
 }
 
 // LookupMove finds book moves for the given position hash
-func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, error) {
+func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]Move, error) {
 	if !pb.isLoaded {
 		return nil, ErrBookNotLoaded
 	}
@@ -125,7 +124,7 @@ func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, err
 		return nil, ErrPositionNotFound
 	}
 
-	var bookMoves []BookMove
+	var bookMoves []Move
 	for i := startIdx; i < len(pb.entries) && pb.entries[i].Hash == hash; i++ {
 		entry := pb.entries[i]
 
@@ -134,7 +133,7 @@ func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]BookMove, err
 			continue
 		}
 
-		bookMove := BookMove{
+		bookMove := Move{
 			Move:   move,
 			Weight: entry.Weight,
 			Learn:  entry.Learn,
@@ -156,7 +155,7 @@ func (pb *PolyglotBook) IsLoaded() bool {
 }
 
 // GetBookInfo returns information about the loaded book
-func (pb *PolyglotBook) GetBookInfo() BookInfo {
+func (pb *PolyglotBook) GetBookInfo() Info {
 	return pb.info
 }
 
@@ -234,21 +233,4 @@ func pieceForColor(isWhite bool, whitePiece, blackPiece board.Piece) board.Piece
 		return whitePiece
 	}
 	return blackPiece
-}
-
-// WriteEntry writes a single entry to a writer (for creating test books)
-func WriteEntry(w io.Writer, entry PolyglotEntry) error {
-	if err := binary.Write(w, binary.BigEndian, entry.Hash); err != nil {
-		return fmt.Errorf("failed to write hash: %w", err)
-	}
-	if err := binary.Write(w, binary.BigEndian, entry.Move); err != nil {
-		return fmt.Errorf("failed to write move: %w", err)
-	}
-	if err := binary.Write(w, binary.BigEndian, entry.Weight); err != nil {
-		return fmt.Errorf("failed to write weight: %w", err)
-	}
-	if err := binary.Write(w, binary.BigEndian, entry.Learn); err != nil {
-		return fmt.Errorf("failed to write learn value: %w", err)
-	}
-	return nil
 }

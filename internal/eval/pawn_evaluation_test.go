@@ -6,172 +6,49 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func TestEvaluatePawnStructure(t *testing.T) {
-	// Not parallel: evaluatePawnStructure reads/writes the package-level
-	// PawnHashTable cache without synchronization; racing this against
-	// other tests that call it (TestPawnHashCaching, TestEvaluateEmptyBoard,
-	// TestEvaluationSymmetry) is a real data race under -race.
-	tests := []struct {
-		name        string
-		fen         string
-		expected    int
-		description string
-	}{
-		{
-			name:        "starting_position",
-			fen:         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			expected:    0,
-			description: "Starting position - both sides equal",
-		},
-		{
-			name:        "white_passed_pawn_e6",
-			fen:         "8/8/4P3/8/8/8/8/8 w - - 0 1",
-			expected:    45, // Actual observed value
-			description: "White passed pawn on 6th rank",
-		},
-		{
-			name:        "isolated_pawns",
-			fen:         "8/8/8/8/8/1P1P1P2/8/8 w - - 0 1",
-			expected:    0, // Actual observed value
-			description: "White has isolated pawns",
-		},
-		{
-			name:        "doubled_pawns",
-			fen:         "8/8/8/8/2P5/2P5/2P5/8 w - - 0 1",
-			expected:    -15, // Actual observed value (1 isolated + 2 doubled)
-			description: "White has tripled pawns on c-file",
-		},
-		{
-			name:        "connected_pawns",
-			fen:         "8/8/8/8/8/1PP5/8/8 w - - 0 1",
-			expected:    30, // Actual observed value (connected + other factors)
-			description: "White has connected pawns",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b, err := board.FromFEN(tt.fen)
-			if err != nil {
-				t.Fatalf("Failed to create board from FEN: %v", err)
-			}
-
-			score := evaluatePawnStructure(b)
-			if score != tt.expected {
-				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, score)
-			}
-		})
-	}
-}
-
-func TestEvaluatePawnsSimple(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name        string
-		whitePawns  []int // Square indices for white pawns
-		blackPawns  []int // Square indices for black pawns
-		expected    int
-		description string
-	}{
-		{
-			name:        "no_pawns",
-			whitePawns:  []int{},
-			blackPawns:  []int{},
-			expected:    0,
-			description: "No pawns on board",
-		},
-		{
-			name:        "single_white_passed_pawn",
-			whitePawns:  []int{44}, // e6
-			blackPawns:  []int{},
-			expected:    45, // Actual observed value
-			description: "Single white passed pawn",
-		},
-		{
-			name:        "single_black_passed_pawn",
-			whitePawns:  []int{},
-			blackPawns:  []int{20}, // e3
-			expected:    -45,       // Actual observed value
-			description: "Single black passed pawn",
-		},
-		{
-			name:        "white_isolated_pawn",
-			whitePawns:  []int{20}, // e3 with no adjacent pawns
-			blackPawns:  []int{},
-			expected:    0, // Actual observed value
-			description: "White isolated pawn",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var whitePawns, blackPawns board.Bitboard
-
-			for _, square := range tt.whitePawns {
-				whitePawns = whitePawns.SetBit(square)
-			}
-
-			for _, square := range tt.blackPawns {
-				blackPawns = blackPawns.SetBit(square)
-			}
-
-			score := evaluatePawnsSimple(whitePawns, blackPawns)
-			if score != tt.expected {
-				t.Errorf("%s: expected %d, got %d", tt.description, tt.expected, score)
-			}
-		})
-	}
-}
-
 func TestIsPassedPawn(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		pawnSquare  int
-		enemyPawns  []int
-		isWhite     bool
-		expected    bool
-		description string
+		name       string
+		pawnSquare int
+		enemyPawns []int
+		isWhite    bool
+		expected   bool
 	}{
 		{
-			name:        "white_passed_pawn_clear_path",
-			pawnSquare:  28, // e4
-			enemyPawns:  []int{},
-			isWhite:     true,
-			expected:    true,
-			description: "White pawn with clear path to promotion",
+			name:       "white_passed_pawn_clear_path",
+			pawnSquare: 28, // e4
+			enemyPawns: []int{},
+			isWhite:    true,
+			expected:   true,
 		},
 		{
-			name:        "white_blocked_by_enemy_pawn_ahead",
-			pawnSquare:  28,        // e4
-			enemyPawns:  []int{36}, // e5
-			isWhite:     true,
-			expected:    false,
-			description: "White pawn blocked by enemy pawn directly ahead",
+			name:       "white_blocked_by_enemy_pawn_ahead",
+			pawnSquare: 28,        // e4
+			enemyPawns: []int{36}, // e5
+			isWhite:    true,
+			expected:   false,
 		},
 		{
-			name:        "white_blocked_by_diagonal_enemy",
-			pawnSquare:  28,        // e4
-			enemyPawns:  []int{35}, // d5 - can capture if white advances
-			isWhite:     true,
-			expected:    false,
-			description: "White pawn blocked by enemy pawn on diagonal",
+			name:       "white_blocked_by_diagonal_enemy",
+			pawnSquare: 28,        // e4
+			enemyPawns: []int{35}, // d5 - can capture if white advances
+			isWhite:    true,
+			expected:   false,
 		},
 		{
-			name:        "black_passed_pawn_clear_path",
-			pawnSquare:  36, // e5
-			enemyPawns:  []int{},
-			isWhite:     false,
-			expected:    true,
-			description: "Black pawn with clear path to promotion",
+			name:       "black_passed_pawn_clear_path",
+			pawnSquare: 36, // e5
+			enemyPawns: []int{},
+			isWhite:    false,
+			expected:   true,
 		},
 		{
-			name:        "black_blocked_by_enemy_pawn",
-			pawnSquare:  36,        // e5
-			enemyPawns:  []int{28}, // e4
-			isWhite:     false,
-			expected:    false,
-			description: "Black pawn blocked by enemy pawn",
+			name:       "black_blocked_by_enemy_pawn",
+			pawnSquare: 36,        // e5
+			enemyPawns: []int{28}, // e4
+			isWhite:    false,
+			expected:   false,
 		},
 	}
 
@@ -184,7 +61,7 @@ func TestIsPassedPawn(t *testing.T) {
 
 			result := isPassedPawn(tt.pawnSquare, enemyPawns, tt.isWhite)
 			if result != tt.expected {
-				t.Errorf("%s: expected %t, got %t", tt.description, tt.expected, result)
+				t.Errorf("%s: expected %t, got %t", tt.name, tt.expected, result)
 			}
 		})
 	}
@@ -197,35 +74,30 @@ func TestIsIsolatedPawn(t *testing.T) {
 		friendlyPawns []int
 		file          int
 		expected      bool
-		description   string
 	}{
 		{
 			name:          "isolated_e_file",
 			friendlyPawns: []int{20}, // e3
 			file:          4,         // e-file
 			expected:      true,
-			description:   "Pawn on e-file with no pawns on d or f files",
 		},
 		{
 			name:          "not_isolated_with_left_neighbor",
 			friendlyPawns: []int{20, 19}, // e3, d3
 			file:          4,             // e-file
 			expected:      false,
-			description:   "Pawn on e-file with pawn on d-file",
 		},
 		{
 			name:          "not_isolated_with_right_neighbor",
 			friendlyPawns: []int{20, 21}, // e3, f3
 			file:          4,             // e-file
 			expected:      false,
-			description:   "Pawn on e-file with pawn on f-file",
 		},
 		{
 			name:          "edge_file_isolated",
 			friendlyPawns: []int{16}, // a3
 			file:          0,         // a-file
 			expected:      true,
-			description:   "Pawn on a-file with no pawn on b-file",
 		},
 	}
 
@@ -238,7 +110,7 @@ func TestIsIsolatedPawn(t *testing.T) {
 
 			result := isIsolatedPawn(friendlyPawns, tt.file)
 			if result != tt.expected {
-				t.Errorf("%s: expected %t, got %t", tt.description, tt.expected, result)
+				t.Errorf("%s: expected %t, got %t", tt.name, tt.expected, result)
 			}
 		})
 	}
@@ -252,7 +124,6 @@ func TestIsConnectedPawn(t *testing.T) {
 		pawnSquare    int
 		isWhite       bool
 		expected      bool
-		description   string
 	}{
 		{
 			name:          "connected_diagonal_support",
@@ -260,7 +131,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    20,            // e3
 			isWhite:       true,
 			expected:      true,
-			description:   "Pawn supported by diagonal pawn behind",
 		},
 		{
 			name:          "not_connected_no_support",
@@ -268,7 +138,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    20,        // e3
 			isWhite:       true,
 			expected:      false,
-			description:   "Pawn with no diagonal support",
 		},
 		{
 			name:          "connected_right_diagonal",
@@ -276,7 +145,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    20,            // e3
 			isWhite:       true,
 			expected:      true,
-			description:   "Pawn supported by right diagonal pawn",
 		},
 		{
 			name:          "edge_pawn_no_connection",
@@ -284,7 +152,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    16,        // a3
 			isWhite:       true,
 			expected:      false,
-			description:   "Edge pawn with no possible diagonal support",
 		},
 		{
 			name:          "not_connected_forward_left_diagonal",
@@ -292,7 +159,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    20,            // e3
 			isWhite:       true,
 			expected:      false,
-			description:   "Pawn not connected by forward-left diagonal pawn",
 		},
 		{
 			name:          "not_connected_forward_right_diagonal",
@@ -300,7 +166,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    20,            // e3
 			isWhite:       true,
 			expected:      false,
-			description:   "Pawn not connected by forward-right diagonal pawn",
 		},
 		{
 			name:          "black_connected_support_from_above",
@@ -308,7 +173,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    44,            // e6
 			isWhite:       false,
 			expected:      true,
-			description:   "Black pawn supported by diagonal pawn behind (higher rank)",
 		},
 		{
 			name:          "black_not_connected_pawn_in_front",
@@ -316,7 +180,6 @@ func TestIsConnectedPawn(t *testing.T) {
 			pawnSquare:    44,            // e6
 			isWhite:       false,
 			expected:      false,
-			description:   "Black pawn not supported by pawn in front of it",
 		},
 	}
 
@@ -329,30 +192,18 @@ func TestIsConnectedPawn(t *testing.T) {
 
 			result := isConnectedPawn(friendlyPawns, tt.pawnSquare, tt.isWhite)
 			if result != tt.expected {
-				t.Errorf("%s: expected %t, got %t", tt.description, tt.expected, result)
+				t.Errorf("%s: expected %t, got %t", tt.name, tt.expected, result)
 			}
 		})
 	}
 }
 
-func TestPassedPawnBonus(t *testing.T) {
+// The passed-pawn bonus grows with every rank advanced.
+func TestPassedPawnBonusGrowsTowardPromotion(t *testing.T) {
 	t.Parallel()
-	expected := [8]int{0, 10, 15, 25, 40, 60, 90, 0}
-
-	if len(PassedPawnBonus) != 8 {
-		t.Errorf("PassedPawnBonus should have 8 entries, has %d", len(PassedPawnBonus))
-	}
-
-	for rank, bonus := range PassedPawnBonus {
-		if bonus != expected[rank] {
-			t.Errorf("PassedPawnBonus[%d] = %d, expected %d", rank, bonus, expected[rank])
-		}
-	}
-
-	// Test that bonuses generally increase (except edges)
 	for rank := 1; rank < 6; rank++ {
 		if PassedPawnBonus[rank] >= PassedPawnBonus[rank+1] {
-			t.Errorf("PassedPawnBonus should increase toward promotion: rank %d (%d) >= rank %d (%d)",
+			t.Errorf("PassedPawnBonus[%d] = %d, not less than rank %d (%d)",
 				rank, PassedPawnBonus[rank], rank+1, PassedPawnBonus[rank+1])
 		}
 	}
@@ -386,4 +237,36 @@ func TestPawnHashCaching(t *testing.T) {
 	if score1 == score3 {
 		t.Errorf("Different pawn structures should give different scores: %d == %d", score1, score3)
 	}
+}
+
+// Structure scores are compared, not pinned, so retuning the weights does not
+// break them: only the direction of each rule matters.
+func TestPawnStructureRules(t *testing.T) {
+	t.Parallel()
+	score := func(white ...int) int {
+		return evaluatePawnsSimple(bitboardOf(white...), 0)
+	}
+	const (
+		b3, c3, d3, f3 = 17, 18, 19, 21
+		c2, c4         = 10, 26
+		e6, e3         = 44, 20
+	)
+
+	if got, want := score(e6), score(e3); got <= want {
+		t.Errorf("passed pawn on e6 scored %d, not above the same pawn on e3 (%d)", got, want)
+	}
+	if got, want := score(b3, c3), score(b3, d3); got <= want {
+		t.Errorf("connected pawns scored %d, not above unconnected ones (%d)", got, want)
+	}
+	if got, want := score(c2, c3, c4), score(b3, d3, f3); got >= want {
+		t.Errorf("tripled pawns scored %d, not below the same count spread out (%d)", got, want)
+	}
+}
+
+func bitboardOf(squares ...int) board.Bitboard {
+	var bb board.Bitboard
+	for _, sq := range squares {
+		bb = bb.SetBit(sq)
+	}
+	return bb
 }

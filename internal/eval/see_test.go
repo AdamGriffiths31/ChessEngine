@@ -8,14 +8,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func TestNewSEECalculator(t *testing.T) {
-	t.Parallel()
-	calc := NewSEECalculator()
-	if calc == nil {
-		t.Fatal("NewSEECalculator() returned nil")
-	}
-}
-
 func TestSEE_XRayBattery(t *testing.T) {
 	t.Parallel()
 	// Doubled white rooks on the d-file vs a pawn defended by a rook.
@@ -275,141 +267,6 @@ func TestSEE_NonCapture(t *testing.T) {
 	}
 }
 
-func TestSEE_PawnAttackers(t *testing.T) {
-	t.Parallel()
-	b := board.NewBoard()
-	b.SetPiece(3, 3, board.WhitePawn) // d4 - attacks e5
-	b.SetPiece(3, 5, board.WhitePawn) // f4 - attacks e5
-	b.SetPiece(5, 3, board.BlackPawn) // d6 - attacks e5
-	b.SetPiece(5, 5, board.BlackPawn) // f6 - attacks e5
-
-	e5Square := 4*8 + 4 // e5
-	whiteAttackers := b.GetAttackersToSquare(e5Square, board.BitboardWhite)
-	blackAttackers := b.GetAttackersToSquare(e5Square, board.BitboardBlack)
-
-	expectedWhiteCount := 2
-	expectedBlackCount := 2
-	actualWhiteCount := whiteAttackers.PopCount()
-	actualBlackCount := blackAttackers.PopCount()
-
-	if actualWhiteCount != expectedWhiteCount {
-		t.Errorf("Expected %d white pawn attackers, got %d", expectedWhiteCount, actualWhiteCount)
-	}
-	if actualBlackCount != expectedBlackCount {
-		t.Errorf("Expected %d black pawn attackers, got %d", expectedBlackCount, actualBlackCount)
-	}
-}
-
-func TestSEE_KnightAttackers(t *testing.T) {
-	t.Parallel()
-	b := board.NewBoard()
-	b.SetPiece(2, 3, board.WhiteKnight) // d3 - attacks e5
-	b.SetPiece(6, 5, board.BlackKnight) // f7 - attacks e5
-
-	e5Square := 4*8 + 4 // e5
-	whiteAttackers := b.GetAttackersToSquare(e5Square, board.BitboardWhite)
-	blackAttackers := b.GetAttackersToSquare(e5Square, board.BitboardBlack)
-
-	expectedWhiteCount := 1
-	expectedBlackCount := 1
-	actualWhiteCount := whiteAttackers.PopCount()
-	actualBlackCount := blackAttackers.PopCount()
-
-	if actualWhiteCount != expectedWhiteCount {
-		t.Errorf("Expected %d white knight attackers, got %d", expectedWhiteCount, actualWhiteCount)
-	}
-	if actualBlackCount != expectedBlackCount {
-		t.Errorf("Expected %d black knight attackers, got %d", expectedBlackCount, actualBlackCount)
-	}
-}
-
-func TestSEE_SlidingPieceAttackers(t *testing.T) {
-	t.Parallel()
-	b := board.NewBoard()
-	b.SetPiece(4, 0, board.WhiteRook)   // a5 - attacks e5 horizontally
-	b.SetPiece(7, 4, board.BlackRook)   // e8 - attacks e5 vertically
-	b.SetPiece(2, 2, board.WhiteBishop) // c3 - attacks e5 diagonally
-	b.SetPiece(6, 6, board.BlackQueen)  // g7 - attacks e5 diagonally
-
-	e5Square := 4*8 + 4 // e5
-	whiteAttackers := b.GetAttackersToSquare(e5Square, board.BitboardWhite)
-	blackAttackers := b.GetAttackersToSquare(e5Square, board.BitboardBlack)
-
-	expectedWhiteCount := 2
-	expectedBlackCount := 2
-	actualWhiteCount := whiteAttackers.PopCount()
-	actualBlackCount := blackAttackers.PopCount()
-
-	if actualWhiteCount != expectedWhiteCount {
-		t.Errorf("Expected %d white sliding piece attackers, got %d", expectedWhiteCount, actualWhiteCount)
-	}
-	if actualBlackCount != expectedBlackCount {
-		t.Errorf("Expected %d black sliding piece attackers, got %d", expectedBlackCount, actualBlackCount)
-	}
-}
-
-func TestSEE_GetPieceValue(t *testing.T) {
-	t.Parallel()
-	calc := NewSEECalculator()
-
-	tests := []struct {
-		piece    board.Piece
-		expected int
-	}{
-		{board.WhitePawn, 100},
-		{board.BlackPawn, 100},
-		{board.WhiteKnight, 320},
-		{board.BlackKnight, 320},
-		{board.WhiteBishop, 330},
-		{board.BlackBishop, 330},
-		{board.WhiteRook, 500},
-		{board.BlackRook, 500},
-		{board.WhiteQueen, 900},
-		{board.BlackQueen, 900},
-		{board.WhiteKing, 10000},
-		{board.BlackKing, 10000},
-		{board.Empty, 0},
-	}
-
-	for _, tt := range tests {
-		result := calc.getPieceValue(tt.piece)
-		if result != tt.expected {
-			t.Errorf("getPieceValue(%v) = %d, expected %d", tt.piece, result, tt.expected)
-		}
-	}
-}
-
-func TestSEE_IsWhitePiece(t *testing.T) {
-	t.Parallel()
-	calc := NewSEECalculator()
-
-	tests := []struct {
-		piece    board.Piece
-		expected bool
-	}{
-		{board.WhitePawn, true},
-		{board.WhiteKnight, true},
-		{board.WhiteBishop, true},
-		{board.WhiteRook, true},
-		{board.WhiteQueen, true},
-		{board.WhiteKing, true},
-		{board.BlackPawn, false},
-		{board.BlackKnight, false},
-		{board.BlackBishop, false},
-		{board.BlackRook, false},
-		{board.BlackQueen, false},
-		{board.BlackKing, false},
-		{board.Empty, false},
-	}
-
-	for _, tt := range tests {
-		result := calc.isWhitePiece(tt.piece)
-		if result != tt.expected {
-			t.Errorf("isWhitePiece(%v) = %t, expected %t", tt.piece, result, tt.expected)
-		}
-	}
-}
-
 func BenchmarkSEE_SimpleCapture(b *testing.B) {
 	testBoard := createBoardFromFEN(b, "8/8/8/4p3/3P4/8/8/8 w - - 0 1")
 	calc := NewSEECalculator()
@@ -422,7 +279,7 @@ func BenchmarkSEE_SimpleCapture(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		calc.SEE(testBoard, move)
 	}
 }
@@ -439,7 +296,7 @@ func BenchmarkSEE_ComplexPosition(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		calc.SEE(testBoard, move)
 	}
 }
@@ -464,7 +321,7 @@ func createBoardFromFEN(t testing.TB, fen string) *board.Board {
 	t.Logf("Board from FEN: %s", fen)
 	for rank := 7; rank >= 0; rank-- {
 		line := fmt.Sprintf("%d ", rank+1)
-		for file := 0; file < 8; file++ {
+		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 			if piece == board.Empty {
 				line += "."

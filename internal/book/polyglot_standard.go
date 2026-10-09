@@ -222,15 +222,15 @@ func init() {
 	// - 1 side key (index 780)
 
 	// Initialize piece keys (indices 0-767)
-	for piece := 0; piece < 12; piece++ {
-		for square := 0; square < 64; square++ {
+	for piece := range 12 {
+		for square := range 64 {
 			index := piece*64 + square
 			officialPolyglotPieceKeys[square][piece] = random64Poly[index]
 		}
 	}
 
 	// Initialize castling keys (indices 768-771)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		officialPolyglotCastlingKeys[i] = random64Poly[768+i]
 	}
 	// Fill the rest with zeros (HashPosition only uses 0-3)
@@ -238,7 +238,7 @@ func init() {
 		officialPolyglotCastlingKeys[i] = 0
 	}
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		officialPolyglotEnPassantKeys[i] = random64Poly[772+i]
 	}
 }

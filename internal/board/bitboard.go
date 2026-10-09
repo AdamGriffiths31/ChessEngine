@@ -150,16 +150,6 @@ func (b Bitboard) PopLSB() (int, Bitboard) {
 	return lsb, b.ClearBit(lsb)
 }
 
-// IsEmpty returns true if the bitboard has no set bits
-func (b Bitboard) IsEmpty() bool {
-	return b == 0
-}
-
-// IsNotEmpty returns true if the bitboard has at least one set bit
-func (b Bitboard) IsNotEmpty() bool {
-	return b != 0
-}
-
 // FileRankToSquare converts file (0-7) and rank (0-7) to square index (0-63)
 func FileRankToSquare(file, rank int) int {
 	return rank*8 + file
@@ -168,28 +158,6 @@ func FileRankToSquare(file, rank int) int {
 // SquareToFileRank converts square index (0-63) to file (0-7) and rank (0-7)
 func SquareToFileRank(square int) (file, rank int) {
 	return square % 8, square / 8
-}
-
-// SquareToString converts square index to algebraic notation (e.g., 0 -> "a1")
-func SquareToString(square int) string {
-	if square < 0 || square > 63 {
-		return "invalid"
-	}
-	file, rank := SquareToFileRank(square)
-	return string(rune('a'+file)) + string(rune('1'+rank))
-}
-
-// StringToSquare converts algebraic notation to square index (e.g., "a1" -> 0)
-func StringToSquare(square string) int {
-	if len(square) != 2 {
-		return -1
-	}
-	file := int(square[0] - 'a')
-	rank := int(square[1] - '1')
-	if file < 0 || file > 7 || rank < 0 || rank > 7 {
-		return -1
-	}
-	return FileRankToSquare(file, rank)
 }
 
 // File and rank masks for quick operations
@@ -232,7 +200,7 @@ func (b Bitboard) String() string {
 	for rank := 7; rank >= 0; rank-- {
 		result.WriteString(strconv.Itoa(rank + 1))
 		result.WriteString(" ")
-		for file := 0; file < 8; file++ {
+		for file := range 8 {
 			square := FileRankToSquare(file, rank)
 			if b.HasBit(square) {
 				result.WriteString("1 ")
@@ -307,32 +275,7 @@ func (b Bitboard) ShiftSouthWest() Bitboard {
 	return (b >> 9) &^ FileH
 }
 
-// GetBitboardColor returns the bitboard color of a piece
-func GetBitboardColor(piece Piece) BitboardColor {
-	if piece >= 'A' && piece <= 'Z' {
-		return BitboardWhite
-	}
-	return BitboardBlack
-}
-
 // OppositeBitboardColor returns the opposite color
 func OppositeBitboardColor(color BitboardColor) BitboardColor {
 	return color ^ 1
 }
-
-// ConvertToBitboardColor converts PieceColor to BitboardColor
-func ConvertToBitboardColor(color PieceColor) BitboardColor {
-	if color == WhiteColor {
-		return BitboardWhite
-	}
-	return BitboardBlack
-}
-
-// ConvertFromBitboardColor converts BitboardColor to PieceColor
-func ConvertFromBitboardColor(color BitboardColor) PieceColor {
-	if color == BitboardWhite {
-		return WhiteColor
-	}
-	return BlackColor
-}
-

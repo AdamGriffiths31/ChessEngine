@@ -132,7 +132,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 	// Track if we improved alpha to determine correct entry type
 	alphaImproved := false
 
-	for i := 0; i < pseudoMoves.Count; i++ {
+	for i := range pseudoMoves.Count {
 		m.pickNextMove(pseudoMoves, i, ply)
 		move := pseudoMoves.Moves[i]
 
@@ -367,9 +367,10 @@ func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player 
 		beta < eval.MateScore-MateDistanceThreshold &&
 		beta > -eval.MateScore+MateDistanceThreshold {
 		if !inCheck {
-			if !hasNonPawnMaterial(b, player) {
+			switch {
+			case !hasNonPawnMaterial(b, player):
 				m.searchState.searchStats.NullMoveZugzwangSkipped++
-			} else if b.AllPieces.PopCount() <= NullMoveMaxPieces {
+			case b.AllPieces.PopCount() <= NullMoveMaxPieces:
 				// Zugzwang guard #2: hasNonPawnMaterial only protects the
 				// mover's OWN pieces, but a side holding even one minor can be
 				// in a fatal zugzwang if that piece is immobile (e.g. a bishop
@@ -379,7 +380,7 @@ func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player 
 				// zugzwang mate-in-2 that NMP silently pruned once
 				// SEE-corrected move ordering changed which nodes it fired at.
 				m.searchState.searchStats.NullMoveZugzwangSkipped++
-			} else {
+			default:
 				nullReduction := m.searchState.searchParams.NullMoveReduction
 				if depth >= 6 && nullReduction < 3 {
 					nullReduction++
@@ -503,7 +504,7 @@ func (m *MinimaxEngine) recordCutoff(move board.Move, depth, ply, legalMoveCount
 			m.historyTable.Bonus(move, depth)
 		}
 		// Malus every earlier-attempted quiet except the cutoff move itself.
-		for j := 0; j < triedIndex; j++ {
+		for j := range triedIndex {
 			earlier := moveList.Moves[j]
 			if earlier.IsCapture || hasPromotion(earlier) {
 				continue
@@ -589,13 +590,14 @@ func (m *MinimaxEngine) calculateLMRReduction(depth, legalMoveCount int, inCheck
 
 	// Adjust reduction based on history heuristic
 	historyScore := m.getHistoryScore(move)
-	if historyScore > m.searchState.searchParams.HistoryHighThreshold {
+	switch {
+	case historyScore > m.searchState.searchParams.HistoryHighThreshold:
 		// Very good history - don't reduce
 		return 0
-	} else if historyScore > m.searchState.searchParams.HistoryMedThreshold && reduction > 0 {
+	case historyScore > m.searchState.searchParams.HistoryMedThreshold && reduction > 0:
 		// Good history - reduce less
 		reduction = reduction * 2 / 3
-	} else if historyScore < m.searchState.searchParams.HistoryLowThreshold {
+	case historyScore < m.searchState.searchParams.HistoryLowThreshold:
 		// Bad history - reduce more
 		reduction = reduction * 4 / 3
 	}

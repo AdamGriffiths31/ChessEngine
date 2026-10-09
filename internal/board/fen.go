@@ -45,7 +45,7 @@ func FromFEN(fen string) (*Board, error) {
 				if err != nil {
 					return nil, fmt.Errorf("invalid FEN: failed to parse empty squares count: %w", err)
 				}
-				for i := 0; i < emptySquares; i++ {
+				for range emptySquares {
 					if file >= 8 {
 						return nil, errors.New("invalid FEN: too many files in rank")
 					}

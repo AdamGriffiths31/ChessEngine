@@ -34,8 +34,8 @@ func GetPolyglotHash() *ZobristHash {
 func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 	var hash uint64
 
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 			if piece != board.Empty {
 				polyPiece := zh.getPieceIndex(piece)

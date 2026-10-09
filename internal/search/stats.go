@@ -7,8 +7,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// SearchStats tracks statistics during search
-type SearchStats struct {
+// Stats tracks statistics during search
+type Stats struct {
 	NodesSearched      int64
 	Depth              int
 	Time               time.Duration
@@ -67,7 +67,7 @@ type SearchStats struct {
 // should not be interpreted as "no branching" and drag the average down.
 // Returns 0 if there are no eligible depth pairs (e.g. fewer than two
 // non-zero depths were recorded), never NaN or Inf.
-func (s *SearchStats) EBF() float64 {
+func (s *Stats) EBF() float64 {
 	var sum float64
 	var count int
 	for d := 1; d < len(s.NodesByDepth); d++ {
@@ -87,7 +87,7 @@ func (s *SearchStats) EBF() float64 {
 
 // TTHitRate returns the fraction of transposition table probes that were
 // hits (TTHits/TTProbes). Returns 0 if there were no probes.
-func (s *SearchStats) TTHitRate() float64 {
+func (s *Stats) TTHitRate() float64 {
 	if s.TTProbes == 0 {
 		return 0
 	}
@@ -97,7 +97,7 @@ func (s *SearchStats) TTHitRate() float64 {
 // OrderingQuality returns the fraction of beta cutoffs that occurred on the
 // first move tried (FirstMoveCutoffs/TotalCutoffs), a standard proxy for
 // move-ordering effectiveness. Returns 0 if there were no cutoffs.
-func (s *SearchStats) OrderingQuality() float64 {
+func (s *Stats) OrderingQuality() float64 {
 	if s.TotalCutoffs == 0 {
 		return 0
 	}
@@ -107,14 +107,14 @@ func (s *SearchStats) OrderingQuality() float64 {
 // NullMoveEfficiency returns the fraction of null move attempts that
 // produced a cutoff (NullCutoffs/NullMoves). Returns 0 if no null moves were
 // attempted.
-func (s *SearchStats) NullMoveEfficiency() float64 {
+func (s *Stats) NullMoveEfficiency() float64 {
 	if s.NullMoves == 0 {
 		return 0
 	}
 	return float64(s.NullCutoffs) / float64(s.NullMoves)
 }
 
-// searchStatsJSON mirrors SearchStats for marshaling: it fixes the field
+// searchStatsJSON mirrors Stats for marshaling: it fixes the field
 // order (struct field order, not map iteration order, so json.Marshal output
 // is deterministic and diff-stable) and adds the derived metrics alongside
 // the raw counters. Field names are snake_case per the task brief.
@@ -192,12 +192,12 @@ func nonZeroPrefix(arr []int64) []int64 {
 // as UCI move strings (e.g. "e2e4", "e7e8q").
 //
 // This uses a value receiver (rather than pointer) so that json.Marshal
-// invokes it even when SearchStats is embedded by value in another struct
-// (e.g. SearchResult.Stats) and the top-level value passed to json.Marshal
+// invokes it even when Stats is embedded by value in another struct
+// (e.g. Result.Stats) and the top-level value passed to json.Marshal
 // is not itself a pointer — encoding/json only auto-takes the address of
 // addressable values, and a struct field of a non-pointer argument to
 // json.Marshal is not addressable.
-func (s SearchStats) MarshalJSON() ([]byte, error) {
+func (s Stats) MarshalJSON() ([]byte, error) {
 	pv := make([]string, len(s.PrincipalVariation))
 	for i, m := range s.PrincipalVariation {
 		pv[i] = moveToUCI(m)

@@ -15,11 +15,6 @@ func IsWhitePiece(piece Piece) bool {
 	return piece >= 'A' && piece <= 'Z'
 }
 
-// IsBlackPiece checks if a piece belongs to black
-func IsBlackPiece(piece Piece) bool {
-	return piece >= 'a' && piece <= 'z'
-}
-
 // GetPieceColor returns the color of a piece
 func GetPieceColor(piece Piece) PieceColor {
 	if piece == Empty {
@@ -58,8 +53,8 @@ func (pc PieceColor) String() string {
 // CountPieces counts total pieces on the board
 func (b *Board) CountPieces() int {
 	count := 0
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			if b.IsSquareOccupied(rank, file) {
 				count++
 			}
@@ -71,8 +66,8 @@ func (b *Board) CountPieces() int {
 // CountPiecesByColor counts pieces by color
 func (b *Board) CountPiecesByColor(color PieceColor) int {
 	count := 0
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 			if GetPieceColor(piece) == color {
 				count++
@@ -91,8 +86,8 @@ func (b *Board) FindKing(color PieceColor) (rank, file int, found bool) {
 		kingPiece = BlackKing
 	}
 
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			if b.GetPiece(rank, file) == kingPiece {
 				return rank, file, true
 			}
@@ -104,8 +99,8 @@ func (b *Board) FindKing(color PieceColor) (rank, file int, found bool) {
 // GetAllPiecesOfType returns all squares containing a specific piece type
 func (b *Board) GetAllPiecesOfType(piece Piece) []Square {
 	var squares []Square
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			if b.GetPiece(rank, file) == piece {
 				squares = append(squares, Square{File: file, Rank: rank})
 			}
@@ -117,8 +112,8 @@ func (b *Board) GetAllPiecesOfType(piece Piece) []Square {
 // GetAllPiecesOfColor returns all squares containing pieces of a specific color
 func (b *Board) GetAllPiecesOfColor(color PieceColor) []Square {
 	var squares []Square
-	for rank := 0; rank < 8; rank++ {
-		for file := 0; file < 8; file++ {
+	for rank := range 8 {
+		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 			if GetPieceColor(piece) == color {
 				squares = append(squares, Square{File: file, Rank: rank})

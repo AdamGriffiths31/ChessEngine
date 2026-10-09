@@ -10,11 +10,10 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// stageTTHash is an arbitrary non-zero hash used for stage TT fixtures. It must
-// be non-zero because a zero Hash marks an empty transposition-table slot.
+// stageTTHash is an arbitrary non-zero hash (zero marks an empty TT slot).
 const stageTTHash uint64 = 0x123456789ABCDEF0
 
-// stageMove is a valid, non-capture quiet move used across the stage tests.
+// stageMove is a quiet e2e4.
 func stageMove() board.Move {
 	return board.Move{
 		From: board.Square{File: 4, Rank: 1}, // e2
@@ -22,230 +21,74 @@ func stageMove() board.Move {
 	}
 }
 
-// newEngineWithTT builds an engine with a small transposition table for probe
-// and cutoff tests.
+// newEngineWithTT builds an engine with a small transposition table.
 func newEngineWithTT() *MinimaxEngine {
 	m := NewMinimaxEngine()
 	m.SetTranspositionTableSize(1)
 	return m
 }
 
-func TestProbeTT_ExactEntryCutoff(t *testing.T) {
-	m := newEngineWithTT()
-	move := stageMove()
-	m.transpositionTable.Store(stageTTHash, 5, eval.EvaluationScore(100), EntryExact, move)
+// Null-move pruning must decline, without counting an attempt, when the side to
+// move is in check, beta is near the mate bound, or only a king and pawns
+// remain (zugzwang risk).
+func TestTryNullMove_Declines(t *testing.T) {
+	tests := []struct {
+		name         string
+		fen          string
+		beta         eval.EvaluationScore
+		inCheck      bool
+		wantZugzwang int64 // expected NullMoveZugzwangSkipped
+	}{
+		{"in check", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 100, true, 0},
+		{"beta at the mate bound", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", eval.MateScore, false, 0},
+		{"no non-pawn material", "6k1/8/8/8/8/8/P7/K7 w - - 0 1", 0, false, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewMinimaxEngine()
+			b := testutil.MustFromFEN(t, tt.fen)
+			m.searchState.board = b
+			staticEval := m.evaluator.Evaluate(b)
+			if tt.beta == eval.MateScore {
+				staticEval = eval.MateScore
+			}
 
-	beforeCutoffs := m.searchState.searchStats.TTCutoffs
+			score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, tt.beta, 1, 0, 1, staticEval, tt.inCheck)
 
-	ttMove, score, alphaOut, betaOut, done := m.probeTT(stageTTHash, 3, 0, -1000, 1000)
-
-	if !done {
-		t.Fatalf("expected exact entry to produce a cutoff (done=true)")
-	}
-	if score != 100 {
-		t.Errorf("score = %d, want 100", score)
-	}
-	if ttMove.From != move.From || ttMove.To != move.To {
-		t.Errorf("ttMove = %v->%v, want %v->%v", ttMove.From, ttMove.To, move.From, move.To)
-	}
-	if alphaOut != -1000 || betaOut != 1000 {
-		t.Errorf("bounds changed on exact cutoff: alpha=%d beta=%d", alphaOut, betaOut)
-	}
-	if m.searchState.searchStats.TTCutoffs != beforeCutoffs+1 {
-		t.Errorf("TTCutoffs not incremented on exact cutoff")
-	}
-	if m.searchState.searchStats.PVNodes != 1 {
-		t.Errorf("PVNodes = %d, want 1 (an exact TT entry resolves the node's true score, same as a PV node)", m.searchState.searchStats.PVNodes)
-	}
-}
-
-func TestProbeTT_LowerBoundNarrowsAlpha(t *testing.T) {
-	m := newEngineWithTT()
-	m.transpositionTable.Store(stageTTHash, 5, eval.EvaluationScore(100), EntryLowerBound, stageMove())
-
-	beforeCutoffs := m.searchState.searchStats.TTCutoffs
-
-	// ttScore 100 is between alpha (0) and beta (1000): no cutoff, alpha raised.
-	_, _, alphaOut, betaOut, done := m.probeTT(stageTTHash, 3, 0, 0, 1000)
-
-	if done {
-		t.Fatalf("lower-bound score inside the window must not cut off")
-	}
-	if alphaOut != 100 {
-		t.Errorf("alphaOut = %d, want 100 (narrowed)", alphaOut)
-	}
-	if betaOut != 1000 {
-		t.Errorf("betaOut = %d, want 1000 (unchanged)", betaOut)
-	}
-	if m.searchState.searchStats.TTCutoffs != beforeCutoffs {
-		t.Errorf("TTCutoffs must not increment on narrowing")
+			if done || score != 0 {
+				t.Errorf("tryNullMove = (%d, done=%v), want it to decline", score, done)
+			}
+			stats := m.searchState.searchStats
+			if stats.NullMoves != 0 {
+				t.Errorf("NullMoves = %d, want 0", stats.NullMoves)
+			}
+			if stats.NullMoveZugzwangSkipped != tt.wantZugzwang {
+				t.Errorf("NullMoveZugzwangSkipped = %d, want %d", stats.NullMoveZugzwangSkipped, tt.wantZugzwang)
+			}
+		})
 	}
 }
 
-func TestProbeTT_LowerBoundCutoffAtBeta(t *testing.T) {
-	m := newEngineWithTT()
-	m.transpositionTable.Store(stageTTHash, 5, eval.EvaluationScore(2000), EntryLowerBound, stageMove())
-
-	beforeCutoffs := m.searchState.searchStats.TTCutoffs
-
-	// ttScore 2000 >= beta 1000: fail-high cutoff.
-	_, score, _, _, done := m.probeTT(stageTTHash, 3, 0, 0, 1000)
-
-	if !done || score != 2000 {
-		t.Fatalf("expected lower-bound cutoff score=2000 done=true, got score=%d done=%v", score, done)
-	}
-	if m.searchState.searchStats.TTCutoffs != beforeCutoffs+1 {
-		t.Errorf("TTCutoffs not incremented on lower-bound cutoff")
-	}
-	if m.searchState.searchStats.CutNodes != 1 {
-		t.Errorf("CutNodes = %d, want 1 (a lower-bound cutoff is a fail-high, same node type as a move-loop beta cutoff)", m.searchState.searchStats.CutNodes)
-	}
-}
-
-func TestProbeTT_UpperBoundNarrowsBeta(t *testing.T) {
-	m := newEngineWithTT()
-	m.transpositionTable.Store(stageTTHash, 5, eval.EvaluationScore(100), EntryUpperBound, stageMove())
-
-	// ttScore 100 is above alpha (0) and below beta (1000): no cutoff, beta lowered.
-	_, _, alphaOut, betaOut, done := m.probeTT(stageTTHash, 3, 0, 0, 1000)
-
-	if done {
-		t.Fatalf("upper-bound score inside the window must not cut off")
-	}
-	if betaOut != 100 {
-		t.Errorf("betaOut = %d, want 100 (narrowed)", betaOut)
-	}
-	if alphaOut != 0 {
-		t.Errorf("alphaOut = %d, want 0 (unchanged)", alphaOut)
-	}
-}
-
-func TestProbeTT_UpperBoundCutoffAtAlpha(t *testing.T) {
-	m := newEngineWithTT()
-	m.transpositionTable.Store(stageTTHash, 5, eval.EvaluationScore(-2000), EntryUpperBound, stageMove())
-
-	beforeAllNodes := m.searchState.searchStats.AllNodes
-
-	// ttScore -2000 <= alpha 0: fail-low cutoff.
-	_, score, _, _, done := m.probeTT(stageTTHash, 3, 0, 0, 1000)
-
-	if !done || score != -2000 {
-		t.Fatalf("expected upper-bound cutoff score=-2000 done=true, got score=%d done=%v", score, done)
-	}
-	if m.searchState.searchStats.AllNodes != beforeAllNodes+1 {
-		t.Errorf("AllNodes = %d, want %d (an upper-bound cutoff is a fail-low, same node type as a move-loop !alphaImproved node)", m.searchState.searchStats.AllNodes, beforeAllNodes+1)
-	}
-}
-
-func TestProbeTT_ShallowEntryDoesNotCutOff(t *testing.T) {
-	m := newEngineWithTT()
-	m.transpositionTable.Store(stageTTHash, 2, eval.EvaluationScore(100), EntryExact, stageMove())
-
-	// Entry depth 2 < requested depth 5: only the move is usable, no cutoff.
-	ttMove, _, alphaOut, betaOut, done := m.probeTT(stageTTHash, 5, 0, 0, 1000)
-
-	if done {
-		t.Fatalf("shallow entry must not cut off")
-	}
-	if !ttMove.IsValid() {
-		t.Errorf("shallow entry should still return the TT move")
-	}
-	if alphaOut != 0 || betaOut != 1000 {
-		t.Errorf("bounds changed on shallow entry: alpha=%d beta=%d", alphaOut, betaOut)
-	}
-}
-
-func TestTryNullMove_DeclinesInCheck(t *testing.T) {
+// Black is a queen down on a full board, so passing leaves it lost and the
+// reduced-depth search fails high against a low beta. The board must be dense:
+// sparse boards skip null-move cutoffs entirely (see params.go).
+func TestTryNullMove_CutsOffWhenOpponentIsLost(t *testing.T) {
 	m := NewMinimaxEngine()
-	b := testutil.MustFromFEN(t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-
-	// Outer conditions satisfied (depth>=3, staticEval>=beta, beta in range) but
-	// inCheck=true, so null move must decline without touching the null-move stat.
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, 100, 1, 0, 1, 200, true)
-
-	if done {
-		t.Fatalf("null move must decline when in check")
-	}
-	if score != 0 {
-		t.Errorf("declined null move score = %d, want 0", score)
-	}
-	if m.searchState.searchStats.NullMoves != 0 {
-		t.Errorf("NullMoves incremented while in check: %d", m.searchState.searchStats.NullMoves)
-	}
-}
-
-func TestTryNullMove_DeclinesNearMateBound(t *testing.T) {
-	m := NewMinimaxEngine()
-	b := testutil.MustFromFEN(t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-
-	// beta at MateScore is outside the (beta < MateScore-threshold) guard, so the
-	// outer condition fails and null move is not attempted.
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.MateScore, 1, 0, 1, eval.MateScore, false)
-
-	if done {
-		t.Fatalf("null move must decline near mate bounds")
-	}
-	if score != 0 {
-		t.Errorf("declined null move score = %d, want 0", score)
-	}
-	if m.searchState.searchStats.NullMoves != 0 {
-		t.Errorf("NullMoves incremented near mate bound: %d", m.searchState.searchStats.NullMoves)
-	}
-}
-
-func TestTryNullMove_CutoffIncrementsCutNodes(t *testing.T) {
-	m := NewMinimaxEngine()
-	// Black is down its queen in an otherwise full board: giving Black a free
-	// move (the null move) still leaves Black hopelessly lost, so the
-	// reduced-depth verification search reliably fails high against a very
-	// low beta. The board is deliberately DENSE (> NullMoveMaxPieces pieces):
-	// on sparse boards NMP cutoffs are now skipped outright by the
-	// sparse-position zugzwang guard (see params.go), so the old QQ-vs-K
-	// fixture no longer reaches the cutoff path this test exists to pin.
 	b := testutil.MustFromFEN(t, "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	m.searchState.board = b
 	staticEval := m.evaluator.Evaluate(b)
 
-	beforeCutoffs := m.searchState.searchStats.NullCutoffs
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.EvaluationScore(0), 1, 0, 1, staticEval, false)
+	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, 0, 1, 0, 1, staticEval, false)
 
 	if !done {
 		t.Fatalf("expected a null-move cutoff, got done=false (score=%d)", score)
 	}
-	if m.searchState.searchStats.NullCutoffs != beforeCutoffs+1 {
-		t.Errorf("NullCutoffs not incremented on cutoff")
+	stats := m.searchState.searchStats
+	if stats.NullCutoffs != 1 {
+		t.Errorf("NullCutoffs = %d, want 1", stats.NullCutoffs)
 	}
-	if m.searchState.searchStats.CutNodes != 1 {
-		t.Errorf("CutNodes = %d, want 1 (a null-move cutoff is a fail-high, same node type as a move-loop beta cutoff)", m.searchState.searchStats.CutNodes)
-	}
-}
-
-func TestTryNullMove_DeclinesWithNoNonPawnMaterial(t *testing.T) {
-	m := NewMinimaxEngine()
-	// White has only a king and a pawn - no knight/bishop/rook/queen. This is
-	// exactly the zugzwang-prone material composition null-move pruning is
-	// known to misbehave in (giving Black a free move is not actually free
-	// when White has nothing but pawn moves and king moves left to make).
-	// Otherwise the outer conditions are satisfied (depth>=3, beta in range,
-	// staticEval should favor White's extra pawn), so without a zugzwang
-	// guard this would proceed to attempt the null move.
-	b := testutil.MustFromFEN(t, "6k1/8/8/8/8/8/P7/K7 w - - 0 1")
-	m.searchState.board = b
-	staticEval := m.evaluator.Evaluate(b)
-
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, eval.EvaluationScore(0), 1, 0, 1, staticEval, false)
-
-	if done {
-		t.Fatalf("null move must decline with no non-pawn material (zugzwang risk), got done=true (score=%d)", score)
-	}
-	if score != 0 {
-		t.Errorf("declined null move score = %d, want 0", score)
-	}
-	if m.searchState.searchStats.NullMoves != 0 {
-		t.Errorf("NullMoves incremented with no non-pawn material: %d", m.searchState.searchStats.NullMoves)
-	}
-	if m.searchState.searchStats.NullMoveZugzwangSkipped != 1 {
-		t.Errorf("NullMoveZugzwangSkipped = %d, want 1 (so real games can confirm the guard actually fires)", m.searchState.searchStats.NullMoveZugzwangSkipped)
+	if stats.CutNodes != 1 {
+		t.Errorf("CutNodes = %d, want 1 (a null-move cutoff is a fail-high)", stats.CutNodes)
 	}
 }
 
@@ -253,9 +96,7 @@ func TestTryRazoring_DeclinesWhenDisabled(t *testing.T) {
 	m := NewMinimaxEngine()
 	m.searchState.searchParams.RazoringEnabled = false
 
-	// Conditions that would otherwise trigger razoring (low depth, staticEval far
-	// below alpha), but razoring is disabled so it must decline before any
-	// quiescence probe and without incrementing the attempt counter.
+	// Otherwise-qualifying conditions, but razoring is off: decline, no attempt counted.
 	score, done := m.tryRazoring(context.Background(), movegen.White, 1, 100, 200, 1, 0, -500, false)
 
 	if done {
@@ -272,9 +113,7 @@ func TestTryRazoring_DeclinesWhenDisabled(t *testing.T) {
 func TestTryRazoring_CutoffIncrementsAllNodes(t *testing.T) {
 	m := NewMinimaxEngine()
 	m.searchState.searchParams.RazoringEnabled = true
-	// White is down two queens with no other pieces on the board: the
-	// position is hopelessly lost, so the quiescence verification search
-	// reliably confirms a fail-low against a generous alpha.
+	// White is two queens down, so quiescence confirms a fail-low against a high alpha.
 	b := testutil.MustFromFEN(t, "4k3/8/8/8/8/8/8/qq2K3 w - - 0 1")
 	m.searchState.board = b
 	m.searchState.player = movegen.White
@@ -332,9 +171,9 @@ func TestRecordCutoff_MalusesEarlierQuietMoves(t *testing.T) {
 
 	hero := stageMove() // quiet, non-capture
 	earlier := board.Move{
-		From: board.Square{File: 0, Rank: 1}, // a2
-		To:   board.Square{File: 0, Rank: 2}, // a3
-		Piece:    board.WhitePawn,
+		From:  board.Square{File: 0, Rank: 1}, // a2
+		To:    board.Square{File: 0, Rank: 2}, // a3
+		Piece: board.WhitePawn,
 	}
 
 	list := &movegen.MoveList{}

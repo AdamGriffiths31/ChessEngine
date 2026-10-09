@@ -7,101 +7,62 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func TestProberNoFilesAlwaysMisses(t *testing.T) {
-	p := NewProber(nil)
-
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create board from FEN: %v", err)
+func TestProberProbe(t *testing.T) {
+	tests := []struct {
+		name    string
+		files   []string
+		fen     string
+		wantHit bool
+	}{
+		{"no book files", nil, startFEN, false},
+		{"opening move found", []string{performanceBin}, startFEN, true},
+		// Move 11 is past BookMoveLimit (10), so the book is not consulted.
+		{"past the move limit", []string{performanceBin}, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 11", false},
+		// A bare king ending never occurs in opening theory.
+		{"position not in the book", []string{performanceBin}, "8/8/8/4k3/8/8/4K3/8 w - - 0 1", false},
 	}
 
-	if move, ok := p.Probe(b); ok {
-		t.Errorf("Expected a miss with no book files configured, got move %+v", move)
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if len(tt.files) > 0 {
+				if _, err := os.Stat(tt.files[0]); os.IsNotExist(err) {
+					t.Skipf("%s not found", tt.files[0])
+				}
+			}
+			b, err := board.FromFEN(tt.fen)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-func TestProberPastMoveLimitAlwaysMisses(t *testing.T) {
-	bookPath := "testdata/performance.bin"
-	if _, err := os.Stat(bookPath); os.IsNotExist(err) {
-		t.Skip("Skipping test: performance.bin not found")
-		return
-	}
-
-	p := NewProber([]string{bookPath})
-
-	// Full-move number 11 is past BookMoveLimit (10).
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 11")
-	if err != nil {
-		t.Fatalf("Failed to create board from FEN: %v", err)
-	}
-
-	if move, ok := p.Probe(b); ok {
-		t.Errorf("Expected a miss past BookMoveLimit, got move %+v", move)
-	}
-}
-
-func TestProberFindsOpeningMove(t *testing.T) {
-	bookPath := "testdata/performance.bin"
-	if _, err := os.Stat(bookPath); os.IsNotExist(err) {
-		t.Skip("Skipping test: performance.bin not found")
-		return
-	}
-
-	p := NewProber([]string{bookPath})
-
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create board from FEN: %v", err)
-	}
-
-	move, ok := p.Probe(b)
-	if !ok {
-		t.Fatal("Expected a book move for the starting position")
-	}
-	if move == nil {
-		t.Fatal("Probe reported a hit but returned a nil move")
+			move, ok := NewProber(tt.files).Probe(b)
+			if ok != tt.wantHit {
+				t.Fatalf("Probe hit = %v, want %v (move %+v)", ok, tt.wantHit, move)
+			}
+			if ok && move == nil {
+				t.Error("Probe reported a hit but returned a nil move")
+			}
+		})
 	}
 }
 
-func TestProberMissesUnknownPosition(t *testing.T) {
-	bookPath := "testdata/performance.bin"
-	if _, err := os.Stat(bookPath); os.IsNotExist(err) {
-		t.Skip("Skipping test: performance.bin not found")
-		return
-	}
-
-	p := NewProber([]string{bookPath})
-
-	// A bare king-vs-king position never arises from opening theory.
-	b, err := board.FromFEN("8/8/8/4k3/8/8/4K3/8 w - - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create board from FEN: %v", err)
-	}
-
-	if move, ok := p.Probe(b); ok {
-		t.Errorf("Expected a miss for a position outside the opening book, got move %+v", move)
-	}
-}
-
+// A book that cannot be loaded is a permanent miss: no panic, and the load is
+// attempted once and never retried.
 func TestProberLoadFailureIsGracefulAndCached(t *testing.T) {
 	p := NewProber([]string{"testdata/does-not-exist.bin"})
-
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	b, err := board.FromFEN(startFEN)
 	if err != nil {
-		t.Fatalf("Failed to create board from FEN: %v", err)
+		t.Fatal(err)
 	}
 
-	// First call attempts (and fails) to load; subsequent calls must not
-	// panic or retry the load, just keep reporting a miss.
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if move, ok := p.Probe(b); ok {
-			t.Errorf("Expected a miss when the book file cannot be loaded, got move %+v", move)
+			t.Errorf("Probe hit with an unloadable book: %+v", move)
 		}
 	}
 	if p.service != nil {
-		t.Error("Expected service to remain nil after a failed load")
+		t.Error("service should stay nil after a failed load")
 	}
 	if !p.attempted {
-		t.Error("Expected attempted to be set after the first load attempt")
+		t.Error("attempted should be set after the first load")
 	}
 }

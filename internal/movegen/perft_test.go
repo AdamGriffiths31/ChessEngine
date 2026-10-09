@@ -1,65 +1,98 @@
 package movegen
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
+type perftPosition struct {
+	Name   string `json:"name"`
+	FEN    string `json:"fen"`
+	Depths []struct {
+		Depth int   `json:"depth"`
+		Nodes int64 `json:"nodes"`
+	} `json:"depths"`
+}
+
+func loadPerftPositions(t *testing.T) []perftPosition {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", "perft_tests.json"))
+	if err != nil {
+		t.Fatalf("reading perft data: %v", err)
+	}
+	var file struct {
+		Positions []perftPosition `json:"positions"`
+	}
+	if err := json.Unmarshal(data, &file); err != nil {
+		t.Fatalf("parsing perft data: %v", err)
+	}
+	return file.Positions
+}
+
+// perft counts the leaf nodes reachable in depth plies, making and unmaking
+// moves with the same board methods the search uses.
+func perft(t *testing.T, b *board.Board, depth int, player Player, gen *Generator) int64 {
+	moves := gen.GenerateAllMoves(b, player)
+	defer ReleaseMoveList(moves)
+
+	if depth == 1 {
+		return int64(moves.Count)
+	}
+
+	var nodes int64
+	for _, move := range moves.Moves {
+		undo, err := b.MakeMoveWithUndo(move)
+		if err != nil {
+			t.Fatalf("generated move %s%s failed to apply: %v", move.From, move.To, err)
+		}
+		nodes += perft(t, b, depth-1, opposite(player), gen)
+		b.UnmakeMove(undo)
+	}
+	return nodes
+}
+
+// TestPerft_StandardPositions checks move generation against published node
+// counts. Set PERFT_MAX_DEPTH to cap the depth; -short caps it at 3.
 func TestPerft_StandardPositions(t *testing.T) {
 	maxDepth := 5
-	if envDepth := os.Getenv("PERFT_MAX_DEPTH"); envDepth != "" {
-		if depth, err := strconv.Atoi(envDepth); err == nil {
+	if env := os.Getenv("PERFT_MAX_DEPTH"); env != "" {
+		if depth, err := strconv.Atoi(env); err == nil {
 			maxDepth = depth
 		}
 	}
-
-	// In short mode, cap depth to keep the suite fast, unless
-	// PERFT_MAX_DEPTH already set an even lower cap (env var always wins
-	// when it asks for less work than the short-mode default).
 	if testing.Short() && maxDepth > 3 {
 		maxDepth = 3
 	}
 
-	testData, err := LoadPerftTestData(GetTestDataPath())
-	if err != nil {
-		t.Fatalf("Failed to load test data: %v", err)
-	}
-
-	for _, position := range testData.Positions {
+	gen := NewGenerator()
+	for _, position := range loadPerftPositions(t) {
 		t.Run(position.Name, func(t *testing.T) {
 			b, err := board.FromFEN(position.FEN)
 			if err != nil {
-				t.Fatalf("Failed to parse FEN %s: %v", position.FEN, err)
+				t.Fatalf("FromFEN(%q): %v", position.FEN, err)
 			}
 			player := playerFromSide(b.GetSideToMove())
 
-			for _, depthTest := range position.Depths {
-				t.Run(fmt.Sprintf("depth_%d", depthTest.Depth), func(t *testing.T) {
-					if depthTest.Depth > maxDepth {
-						t.Skipf("Skipping depth %d (max depth: %d)", depthTest.Depth, maxDepth)
+			for _, want := range position.Depths {
+				t.Run(fmt.Sprintf("depth_%d", want.Depth), func(t *testing.T) {
+					if want.Depth > maxDepth {
+						t.Skipf("depth %d exceeds the cap of %d", want.Depth, maxDepth)
 					}
-
-					// Use single generator instance for optimal cache performance
-					generator := NewGenerator()
-					result := PerftWithGenerator(b, depthTest.Depth, player, generator)
-					if result != depthTest.Nodes {
-						t.Errorf("Position %s at depth %d: expected %d nodes, got %d",
-							position.Name, depthTest.Depth, depthTest.Nodes, result)
+					if got := perft(t, b, want.Depth, player, gen); got != want.Nodes {
+						t.Errorf("got %d nodes, want %d", got, want.Nodes)
 					}
-
 				})
 			}
 		})
 	}
 }
 
-// playerFromSide converts the board's side-to-move string ("w"/"b") into a
-// Player, so perft is run for whichever side the FEN actually specifies
-// instead of assuming White.
 func playerFromSide(side string) Player {
 	if side == "w" {
 		return White

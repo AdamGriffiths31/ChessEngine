@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"runtime"
@@ -18,14 +17,10 @@ import (
 
 // runProfile provides CPU and memory profiling utilities for the chess engine.
 //
-// NOTE: the CPU-profile start failure and memory-profile create/write
-// failures below deliberately stay log.Fatalf rather than returning errors:
-// by then, profile-cleanup defers are already registered, and a return would
-// run them - a behavior change from os.Exit semantics. Earlier failures have
-// no pending defers and do return errors.
+// Profile setup and write failures are returned as errors, so the deferred
+// cleanup (closing the profile files, stopping the CPU profile) still runs.
 //
 //nolint:gocyclo // linear sequence of flag/mode branches in a CLI entrypoint;
-// see the defer-ordering note above for why it isn't split further
 func runProfile(args []string) error {
 	fs := flag.NewFlagSet("bench profile", flag.ExitOnError)
 	var (
@@ -48,12 +43,12 @@ func runProfile(args []string) error {
 
 	content, err := os.ReadFile(*stsFile)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %v", err)
+		return fmt.Errorf("failed to read file: %w", err)
 	}
 
 	positions, err := epd.ParseEPDFile(string(content))
 	if err != nil {
-		return fmt.Errorf("failed to parse EPD file: %v", err)
+		return fmt.Errorf("failed to parse EPD file: %w", err)
 	}
 
 	if *count > 1 {
@@ -89,11 +84,11 @@ func runProfile(args []string) error {
 	if *cpuProfile != "" {
 		f, err := os.Create(*cpuProfile)
 		if err != nil {
-			return fmt.Errorf("failed to create CPU profile: %v", err)
+			return fmt.Errorf("failed to create CPU profile: %w", err)
 		}
 		defer func() { _ = f.Close() }()
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatalf("Failed to start CPU profile: %v", err)
+			return fmt.Errorf("failed to start CPU profile: %w", err)
 		}
 		defer pprof.StopCPUProfile()
 	}
@@ -101,7 +96,7 @@ func runProfile(args []string) error {
 	engine := search.NewMinimaxEngine()
 	engine.SetTranspositionTableSize(*ttSize)
 
-	config := search.SearchConfig{
+	config := search.Config{
 		MaxDepth: 999,
 		MaxTime:  *searchTime,
 	}
@@ -163,12 +158,12 @@ func runProfile(args []string) error {
 	if *memProfile != "" {
 		f, err := os.Create(*memProfile)
 		if err != nil {
-			log.Fatalf("Failed to create memory profile: %v", err)
+			return fmt.Errorf("failed to create memory profile: %w", err)
 		}
 		defer func() { _ = f.Close() }()
 		runtime.GC()
 		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatalf("Failed to write memory profile: %v", err)
+			return fmt.Errorf("failed to write memory profile: %w", err)
 		}
 	}
 
@@ -194,13 +189,13 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 	fmt.Printf("Search time per position: %v, TT: %dMB\n\n", searchTime, ttSize)
 
 	if cpuProfile != "" {
-		f, err := os.Create(cpuProfile)
+		f, err := os.Create(cpuProfile) // #nosec G304 - path comes from the -cpuprofile flag
 		if err != nil {
-			return fmt.Errorf("failed to create CPU profile: %v", err)
+			return fmt.Errorf("failed to create CPU profile: %w", err)
 		}
 		defer func() { _ = f.Close() }()
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatalf("Failed to start CPU profile: %v", err)
+			return fmt.Errorf("failed to start CPU profile: %w", err)
 		}
 	}
 
@@ -220,7 +215,7 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 
 		engine := search.NewMinimaxEngine()
 		engine.SetTranspositionTableSize(ttSize)
-		config := search.SearchConfig{MaxDepth: 999, MaxTime: searchTime}
+		config := search.Config{MaxDepth: 999, MaxTime: searchTime}
 
 		start := time.Now()
 		result := engine.FindBestMove(context.Background(), b, player, config)
@@ -289,14 +284,14 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 	}
 
 	if memProfile != "" {
-		f, err := os.Create(memProfile)
+		f, err := os.Create(memProfile) // #nosec G304 - path comes from the -memprofile flag
 		if err != nil {
-			log.Fatalf("Failed to create memory profile: %v", err)
+			return fmt.Errorf("failed to create memory profile: %w", err)
 		}
 		defer func() { _ = f.Close() }()
 		runtime.GC()
 		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatalf("Failed to write memory profile: %v", err)
+			return fmt.Errorf("failed to write memory profile: %w", err)
 		}
 		fmt.Printf("Memory profile written to %s\n", memProfile)
 		fmt.Printf("Analyze with: go tool pprof -http=:8080 %s\n", memProfile)

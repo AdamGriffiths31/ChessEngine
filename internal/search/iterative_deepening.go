@@ -13,7 +13,7 @@ import (
 // runIterativeDeepening runs the core iterative deepening search
 //
 //nolint:gocyclo // refactored in Phase 4
-func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Board, player movegen.Player, config SearchConfig, startTime time.Time) SearchResult {
+func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Board, player movegen.Player, config Config, startTime time.Time) Result {
 	// Per-search invariants shared with negamax/quiescence via State.
 	m.searchState.board = b
 	m.searchState.player = player
@@ -25,16 +25,16 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	if pseudoMoves.Count == 0 {
 		isCheck := m.generator.IsKingInCheck(b, player)
 		if isCheck {
-			return SearchResult{
+			return Result{
 				BestMove: board.Move{},
 				Score:    -eval.MateScore,
-				Stats:    SearchStats{},
+				Stats:    Stats{},
 			}
 		}
-		return SearchResult{
+		return Result{
 			BestMove: board.Move{},
 			Score:    eval.DrawScore,
-			Stats:    SearchStats{},
+			Stats:    Stats{},
 		}
 	}
 
@@ -53,7 +53,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	lastCompletedBestMove := pseudoMoves.Moves[0]
 	lastCompletedScore := eval.EvaluationScore(0)
 	lastCompletedDepth := 0
-	var finalStats SearchStats
+	var finalStats Stats
 
 	maxPlyDepth := config.MaxDepth + PVArrayMargin
 	m.searchState.pv = newPVTable(maxPlyDepth)
@@ -74,7 +74,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		case <-ctx.Done():
 			finalStats.Time = time.Since(startTime)
 			finalStats.Depth = lastCompletedDepth
-			return SearchResult{
+			return Result{
 				BestMove: lastCompletedBestMove,
 				Score:    lastCompletedScore,
 				Stats:    finalStats,
@@ -112,7 +112,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				rootScores[i] = -eval.MateScore - 1
 			}
 
-			for moveIdx := 0; moveIdx < pseudoMoves.Count; moveIdx++ {
+			for moveIdx := range pseudoMoves.Count {
 				move := pseudoMoves.Moves[moveIdx]
 				if m.searchState.searchCancelled {
 					break
@@ -245,7 +245,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	finalStats.Time = time.Since(startTime)
 	finalStats.Depth = lastCompletedDepth
 
-	return SearchResult{
+	return Result{
 		BestMove: lastCompletedBestMove,
 		Score:    lastCompletedScore,
 		Stats:    finalStats,

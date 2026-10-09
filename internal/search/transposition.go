@@ -131,7 +131,8 @@ func packMove(move board.Move) uint32 {
 	packed := (from&0x3F)<<26 | (to&0x3F)<<20
 
 	// Determine move type
-	if move.Promotion != board.Empty {
+	switch {
+	case move.Promotion != board.Empty:
 		// Promotion move
 		packed |= 3 << 18 // MoveType = Promotion
 
@@ -148,16 +149,16 @@ func packMove(move board.Move) uint32 {
 			promotionFlag = 3 // Queen
 		}
 		packed |= promotionFlag << 16
-	} else if move.IsCastling {
+	case move.IsCastling:
 		// Castling move
 		packed |= 2 << 18 // MoveType = Castle
-	} else if move.IsCapture {
+	case move.IsCapture:
 		// Attack move (capture)
 		packed |= 1 << 18 // MoveType = Attack
 		if move.IsEnPassant {
 			packed |= 1 << 16 // Flag = EnPassant
 		}
-	} else {
+	default:
 		// Quiet move
 		packed |= 0 << 18 // MoveType = Quiet
 	}

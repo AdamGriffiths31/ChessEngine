@@ -45,13 +45,13 @@ func runSTS(args []string) error {
 	fmt.Printf("Loading EPD file: %s\n", *epdFile)
 	content, err := os.ReadFile(*epdFile)
 	if err != nil {
-		return fmt.Errorf("Failed to read EPD file %s: %v", *epdFile, err)
+		return fmt.Errorf("Failed to read EPD file %s: %w", *epdFile, err)
 	}
 	epdContent := string(content)
 
 	positions, err := epd.ParseEPDFile(epdContent)
 	if err != nil {
-		return fmt.Errorf("Failed to parse EPD file: %v", err)
+		return fmt.Errorf("Failed to parse EPD file: %w", err)
 	}
 
 	fmt.Printf("Loaded %d positions\n", len(positions))
@@ -70,7 +70,7 @@ func runSTS(args []string) error {
 		fmt.Printf("Initialized transposition table: %d MB\n", *ttSize)
 	}
 
-	searchConfig := search.SearchConfig{
+	searchConfig := search.Config{
 		MaxDepth:  *depth,
 		MaxTime:   time.Duration(*timeout) * time.Second,
 		DebugMode: false,
@@ -84,7 +84,7 @@ func runSTS(args []string) error {
 	}
 	jsonl, err := bench.NewSTSResultsWriter(rootPath)
 	if err != nil {
-		return fmt.Errorf("failed to open JSONL results file: %v", err)
+		return fmt.Errorf("failed to open JSONL results file: %w", err)
 	}
 	defer func() {
 		if err := jsonl.Close(); err != nil {
@@ -189,7 +189,7 @@ func displayResults(results epd.STSSuiteResult, verbose bool, totalTime time.Dur
 				display = "FEN: " + result.Position.Board.ToFEN()
 			}
 
-			nodesStr := formatNodes(result.SearchResult.Stats.NodesSearched)
+			nodesStr := formatNodes(result.Result.Stats.NodesSearched)
 
 			fmt.Printf("%-4d %-10s %-10s %-6d %-8v %-8s %-6d %s\n",
 				i+1,
@@ -198,7 +198,7 @@ func displayResults(results epd.STSSuiteResult, verbose bool, totalTime time.Dur
 				result.Score,
 				result.TestDuration.Round(time.Millisecond),
 				nodesStr,
-				result.SearchResult.Stats.Depth,
+				result.Result.Stats.Depth,
 				display)
 		}
 	}
@@ -225,15 +225,16 @@ func displayResults(results epd.STSSuiteResult, verbose bool, totalTime time.Dur
 // This is a simplified approximation based on known engine performance.
 func calculateSTSRating(scorePercent float64) int {
 
-	if scorePercent >= 90 {
+	switch {
+	case scorePercent >= 90:
 		return 3400 + int((scorePercent-90)*20)
-	} else if scorePercent >= 80 {
+	case scorePercent >= 80:
 		return 3200 + int((scorePercent-80)*20)
-	} else if scorePercent >= 70 {
+	case scorePercent >= 70:
 		return 3000 + int((scorePercent-70)*20)
-	} else if scorePercent >= 60 {
+	case scorePercent >= 60:
 		return 2700 + int((scorePercent-60)*30)
-	} else if scorePercent >= 50 {
+	case scorePercent >= 50:
 		return 2400 + int((scorePercent-50)*30)
 	}
 	return int(2000 + scorePercent*8)

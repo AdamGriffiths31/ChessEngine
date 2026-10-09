@@ -9,54 +9,26 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// mateSearchDepth, mateTTSizeMB: every mate test searches at fixed depth 6
-// with a 64MB transposition table and no opening book, so scores are exact
-// and deterministic (same preconditions as TestSearchGolden).
 const (
 	mateSearchDepth = 6
 	mateTTSizeMB    = 64
 )
 
-// Expected mate scores are derived from the engine's own conventions, not
-// from a generic "MateScore - plies" formula:
+// Expected scores follow the engine's convention: the root score for a forced
+// mate is MateScore - (truePlies - checksOnLine), because the check extension
+// holds ply constant after every checking move (including the mating move).
 //
-//   - handleNoLegalMoves returns -MateScore + pliesFromRoot at the mated
-//     node, where pliesFromRoot == ply - extended. `ply` counts plies along
-//     the unextended spine, and the check extension (negamax: inCheck &&
-//     ply > 0) holds a child's ply constant instead of incrementing it.
-//   - A checkmate node is always in check, so the extension always fires
-//     there; it also fires at every in-check interior node of the mating
-//     line (i.e. after every checking move).
-//
-// Therefore the root score for a forced mate is
-//
-//	MateScore - (truePlies - checkExtensionsOnLine)
-//
-// where truePlies is the real length of the mating line in plies and
-// checkExtensionsOnLine counts the moves in the line that give check
-// (including the mating move itself). Concretely, for the suite below:
-//
-//   - mate in 1:               1 ply,  1 check  -> 30000 - (1-1) = 30000
-//   - mate in 2, quiet + mate: 3 plies, 1 check -> 30000 - (3-1) = 29998
-//   - mate in 3, all checks:   5 plies, 3 checks-> 30000 - (5-3) = 29998
-//
-// (A quiet-then-mate mate-in-2 and an all-check mate-in-3 legitimately
-// share the score 29998 under this convention; mate-in-1 is always exactly
-// MateScore.) Every FEN below was verified by running the fixed engine at
-// depth 6: the reported score matches the derivation for the documented
-// line, and the reported best move is the documented key move.
+//   - mate in 1:               1 ply,  1 check  -> MateScore
+//   - mate in 2, quiet + mate: 3 plies, 1 check -> MateScore-2
+//   - mate in 3, all checks:   5 plies, 3 checks-> MateScore-2
 type mateCase struct {
-	name string
-	fen  string
-	// line documents the forced mating line the expected score was derived
-	// from (truePlies / checking-move count as per the comment above).
-	line      string
+	name      string
+	fen       string
+	line      string // the forced line the score was derived from
 	wantScore eval.EvaluationScore
-	// wantMove is the exact expected best move (coordinate notation) for
-	// mate-in-1 cases, where the mating move is unique and must be chosen.
-	// Empty for longer mates: several key moves of equal mate distance can
-	// exist (e.g. either rook may start a ladder), so only legality and the
-	// exact score are asserted there.
+	// wantMove is only set for mate-in-1, where the mating move is unique.
+	// Longer mates can have several equal key moves, so only the score and
+	// legality are checked.
 	wantMove string
 }
 
@@ -71,8 +43,8 @@ var mateCases = []mateCase{
 	},
 	{
 		name: "mate1_white_scholars_mate",
-		// The Task 7.1 bug reproducer: pre-fix, the TT re-probe during the
-		// root PVS re-search returned 29999 instead of 30000 here.
+		// Regression: the TT re-probe during the root PVS re-search used to
+		// return 29999 instead of 30000 here.
 		fen:       "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
 		line:      "1.Qxf7#",
 		wantScore: eval.MateScore,
@@ -125,13 +97,9 @@ var mateCases = []mateCase{
 
 	// --- mate in 2, white to move: quiet key move, mate on the 2nd ---
 	{
-		// Pure zugzwang mate: after 1.Ra6! Black's a7-pawn is PINNED (axb6
-		// would expose Ka8 to the a6-rook), so Black's only tries are bxa6,
-		// met by 2.b7#, or a bishop retreat, met by 2.Rxa7#. This position
-		// doubles as a null-move-pruning sentinel: letting Black "pass"
-		// refutes the mate entirely, so any NMP cutoff that fires here hides
-		// a real mate. It caught exactly that failure mode once SEE-corrected
-		// move ordering changed which nodes NMP fired at.
+		// Zugzwang mate: after 1.Ra6! every Black move loses. Doubles as a
+		// null-move-pruning sentinel, since letting Black "pass" refutes the
+		// mate and any NMP cutoff here hides a real mate.
 		name:      "mate2_white_rook_sac_pawn_mate",
 		fen:       "kbK5/pp6/1P6/8/8/8/8/R7 w - - 0 1",
 		line:      "1.Ra6! bxa6 2.b7#  (3 plies; zugzwang - every Black move loses)",
@@ -180,23 +148,15 @@ var mateCases = []mateCase{
 	},
 }
 
-// TestFindBestMove_MateInN drives FindBestMove over a fixed suite of
-// mate-in-1/2/3 positions (both colors) and asserts the exact, convention-
-// derived mate score in every case, plus the exact mating move for the
-// mate-in-1 cases and best-move legality everywhere.
-//
-// These exact-score assertions are what guard the transposition-table mate
-// round-trip: handleNoLegalMoves must store its mate score with the same
-// raw node-entry ply that probeTT later decodes with. When the store used
-// the extension-adjusted ply instead, re-probes (e.g. the root PVS
-// re-search) came back one ply off and mate-in-1 positions reported 29999
-// instead of 30000.
+// TestFindBestMove_MateInN asserts the exact mate score for every case (and
+// the exact move for mate-in-1). The exact scores guard the TT mate round-trip:
+// handleNoLegalMoves must store with the same raw ply that probeTT decodes
+// with, or re-probes come back one ply off (29999 instead of 30000).
 func TestFindBestMove_MateInN(t *testing.T) {
 	for _, tc := range mateCases {
-		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
-			// Fresh engine per position: no cross-position TT state, same
-			// isolation the golden suite gets via ClearSearchState.
+			// Fresh engine per position: no cross-position TT state.
 			engine := NewMinimaxEngine()
 			engine.SetTranspositionTableSize(mateTTSizeMB)
 
@@ -206,7 +166,7 @@ func TestFindBestMove_MateInN(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 
-			result := engine.FindBestMove(ctx, b, player, SearchConfig{
+			result := engine.FindBestMove(ctx, b, player, Config{
 				MaxDepth:       mateSearchDepth,
 				UseOpeningBook: false,
 			})
@@ -220,22 +180,7 @@ func TestFindBestMove_MateInN(t *testing.T) {
 				t.Errorf("BestMove = %s, want %s (line: %s)", got, tc.wantMove, tc.line)
 			}
 
-			// Best move must be one of the legal moves in the root position
-			// (same check as TestCancellationResponsiveness).
-			if !result.BestMove.IsValid() {
-				t.Fatalf("BestMove %+v is not a valid move", result.BestMove)
-			}
-			legal := false
-			moves := engine.generator.GenerateAllMoves(b, player)
-			for i := 0; i < moves.Count; i++ {
-				if moves.Moves[i] == result.BestMove {
-					legal = true
-					break
-				}
-			}
-			if !legal {
-				t.Errorf("BestMove %s is not a legal move in this position", got)
-			}
+			assertLegalMove(t, engine, b, player, result.BestMove)
 		})
 	}
 }

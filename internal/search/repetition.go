@@ -12,7 +12,7 @@ func (m *MinimaxEngine) setupRepetitionHistory(rootHash uint64) {
 // seedRepetitionHistory seeds the engine's repetition history with a
 // real-game hash sequence (oldest first, ending with the current position),
 // instead of collapsing it to just the current root. See
-// SearchConfig.RepetitionHistory for the full contract. Sequences longer
+// Config.RepetitionHistory for the full contract. Sequences longer
 // than the array capacity are truncated to their most recent MaxGamePly
 // entries; older positions cannot affect repetition detection near the
 // current search horizon.
@@ -48,7 +48,7 @@ func (m *MinimaxEngine) removeHistory() {
 // indicating a draw by repetition according to chess rules. Only checks positions
 // in the current search tree, not the full game history.
 func (m *MinimaxEngine) isDrawByRepetition(currentHash uint64) bool {
-	for repPly := uint16(0); repPly < m.zobristHistoryPly; repPly++ {
+	for repPly := range m.zobristHistoryPly {
 		if m.zobristHistory[repPly] == currentHash {
 			return true
 		}

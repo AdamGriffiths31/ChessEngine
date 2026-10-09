@@ -241,7 +241,7 @@ func (ue *Engine) handleGo(args []string) {
 	}
 
 	params := ue.protocol.ParseGo(args)
-	player := movegen.Player(ue.engine.GetCurrentPlayer())
+	player := ue.engine.GetCurrentPlayer()
 
 	ue.searching = true
 	ue.stopChannel = make(chan struct{})
@@ -353,13 +353,13 @@ func (ue *Engine) handleGo(args []string) {
 // default budget here; handleGo overrides it with searchTimeout. The opening
 // book is driven entirely by the BookFile UCI option (ue.bookFile); the old
 // executable-relative filesystem walk has been removed.
-func (ue *Engine) buildSearchConfig(params SearchParams) search.SearchConfig {
+func (ue *Engine) buildSearchConfig(params SearchParams) search.Config {
 	var bookFiles []string
 	if ue.bookFile != "" {
 		bookFiles = []string{ue.bookFile}
 	}
 
-	config := search.SearchConfig{
+	config := search.Config{
 		MaxDepth:          DefaultMaxDepth,
 		MaxTime:           DefaultMoveTime,
 		DebugMode:         false,
@@ -399,12 +399,12 @@ func (ue *Engine) searchTimeout(params SearchParams, player movegen.Player) time
 // runSearch produces a search result for the current position. It first
 // consults the opening book; on a miss it runs the engine search guarded by a
 // panic recovery that plays a fallback move instead of forfeiting the game.
-func (ue *Engine) runSearch(ctx context.Context, config search.SearchConfig, player movegen.Player) search.SearchResult {
+func (ue *Engine) runSearch(ctx context.Context, config search.Config, player movegen.Player) search.Result {
 	if bookMove, ok := ue.probeBook(config); ok {
-		return search.SearchResult{
+		return search.Result{
 			BestMove: bookMove,
 			Score:    0,
-			Stats:    search.SearchStats{BookMoveUsed: true},
+			Stats:    search.Stats{BookMoveUsed: true},
 		}
 	}
 
@@ -416,7 +416,7 @@ func (ue *Engine) runSearch(ctx context.Context, config search.SearchConfig, pla
 // play the first legal move rather than re-panicking. If no legal move exists,
 // we emit the UCI null move (bestmove 0000) via an out-of-range move that the
 // converter renders as "0000".
-func (ue *Engine) searchWithFallback(ctx context.Context, config search.SearchConfig, player movegen.Player) (result search.SearchResult) {
+func (ue *Engine) searchWithFallback(ctx context.Context, config search.Config, player movegen.Player) (result search.Result) {
 	defer func() {
 		if r := recover(); r != nil {
 			ue.debugLogger.Printf("PANIC CAUGHT: Search panicked for move %d: %v", ue.moveNumber, r)
@@ -434,25 +434,25 @@ func (ue *Engine) searchWithFallback(ctx context.Context, config search.SearchCo
 // engine can respond after a search panic. If there are no legal moves it
 // returns an out-of-range move that the converter renders as the UCI null move
 // "0000".
-func (ue *Engine) fallbackResult(player movegen.Player) search.SearchResult {
+func (ue *Engine) fallbackResult(player movegen.Player) search.Result {
 	moves := ue.generator.GenerateAllMoves(ue.engine.GetState().Board, player)
 	defer movegen.ReleaseMoveList(moves)
 
 	if moves.Count > 0 {
-		return search.SearchResult{
+		return search.Result{
 			BestMove: moves.Moves[0],
 			Score:    0,
-			Stats:    search.SearchStats{},
+			Stats:    search.Stats{},
 		}
 	}
 
-	return search.SearchResult{
+	return search.Result{
 		BestMove: board.Move{
 			From: board.Square{File: -1, Rank: -1},
 			To:   board.Square{File: -1, Rank: -1},
 		},
 		Score: 0,
-		Stats: search.SearchStats{},
+		Stats: search.Stats{},
 	}
 }
 
@@ -462,7 +462,7 @@ func (ue *Engine) fallbackResult(player movegen.Player) search.SearchResult {
 // at most once per Engine lifetime (matching the previous engine-side
 // lazy-init behavior); a load failure is logged once by the Prober itself
 // and every subsequent call cheaply reports a miss.
-func (ue *Engine) probeBook(config search.SearchConfig) (board.Move, bool) {
+func (ue *Engine) probeBook(config search.Config) (board.Move, bool) {
 	if !config.UseOpeningBook || len(config.BookFiles) == 0 {
 		return board.Move{}, false
 	}
@@ -549,13 +549,14 @@ func (ue *Engine) calculateMoveTime(params SearchParams, player movegen.Player, 
 	safeIncrement := increment * 9 / 10
 
 	var timeFactor float64
-	if timeLeft > 60*time.Second {
+	switch {
+	case timeLeft > 60*time.Second:
 		timeFactor = 1.5
-	} else if timeLeft > 30*time.Second {
+	case timeLeft > 30*time.Second:
 		timeFactor = 1.2
-	} else if timeLeft > 10*time.Second {
+	case timeLeft > 10*time.Second:
 		timeFactor = 1.0
-	} else {
+	default:
 		timeFactor = 0.7
 	}
 

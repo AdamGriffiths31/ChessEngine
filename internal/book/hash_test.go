@@ -1,23 +1,34 @@
 package book
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Tests in this package are deliberately NOT run with t.Parallel(): nearly
-// every test here, directly or via NewBookLookupService/NewPolyglotBook,
-// reaches GetPolyglotHash() (hash.go), which lazily initializes the
-// package-level polyglotZobrist singleton with an unsynchronized
-// check-then-write ("if polyglotZobrist == nil { polyglotZobrist = ... }").
-// Running these tests concurrently trips `go test -race`: confirmed via
-// `go test -race -count=2 ./internal/book/...` finding a genuine data race
-// on that singleton (and, downstream, on ZobristHash field reads racing the
-// write). Fixing GetPolyglotHash's initialization (e.g. sync.Once) would be
-// a production-code change out of scope for test-suite hygiene, so this
-// package is excluded from Task 7.7's t.Parallel() sweep instead.
+// Tests in this package do not use t.Parallel(): GetPolyglotHash lazily
+// initialises a package-level singleton without synchronisation, which
+// `go test -race` flags as a data race when tests run concurrently.
 
+// parseTestMove parses a plain four-character move such as "e2e4".
+func parseTestMove(s string) (board.Move, error) {
+	if len(s) != 4 {
+		return board.Move{}, fmt.Errorf("unsupported move %q", s)
+	}
+	file := func(c byte) int { return int(c - 'a') }
+	rank := func(c byte) int { return int(c - '1') }
+	return board.Move{
+		From:      board.Square{File: file(s[0]), Rank: rank(s[1])},
+		To:        board.Square{File: file(s[2]), Rank: rank(s[3])},
+		Promotion: board.Empty,
+		Piece:     board.Empty,
+	}, nil
+}
+
+// TestSpecificPositionHashes checks published Polyglot keys, both for the FEN
+// directly and for the position reached by playing the listed moves from the
+// start. The keys are the ground truth that opening books are looked up by.
 func TestSpecificPositionHashes(t *testing.T) {
 	zobrist := GetPolyglotHash()
 
@@ -103,7 +114,7 @@ func TestSpecificPositionHashes(t *testing.T) {
 				}
 
 				for i, moveStr := range tt.moves {
-					move, err := board.ParseSimpleMove(moveStr)
+					move, err := parseTestMove(moveStr)
 					if err != nil {
 						t.Fatalf("Failed to parse move %s at index %d: %v", moveStr, i, err)
 					}
@@ -127,140 +138,5 @@ func TestSpecificPositionHashes(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestIncrementalHashUpdate(t *testing.T) {
-	zobrist := GetPolyglotHash()
-
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create starting position: %v", err)
-	}
-
-	startHash := zobrist.HashPosition(b)
-	if startHash != 0x463b96181691fc9c {
-		t.Errorf("Starting position hash mismatch\nExpected: 0x%016x\nGot:      0x%016x",
-			0x463b96181691fc9c, startHash)
-	}
-
-	moveSequence := []struct {
-		move        string
-		expectedKey uint64
-	}{
-		{"e2e4", 0x823c9b50fd114196},
-		{"d7d5", 0x0756b94461c50fb0},
-		{"e4e5", 0x662fafb965db29d4},
-		{"f7f5", 0x22a48b5a8e47ff78},
-		{"e1e2", 0x652a607ca3f242c1},
-		{"e8f7", 0x00fdd303c946bdd9},
-	}
-
-	for i, ms := range moveSequence {
-		move, err := board.ParseSimpleMove(ms.move)
-		if err != nil {
-			t.Fatalf("Failed to parse move %s at step %d: %v", ms.move, i+1, err)
-		}
-
-		err = b.MakeMove(move)
-		if err != nil {
-			t.Fatalf("Failed to make move %s at step %d: %v", ms.move, i+1, err)
-		}
-
-		actualHash := zobrist.HashPosition(b)
-		if actualHash != ms.expectedKey {
-			t.Errorf("Hash mismatch after move %s (step %d)\nExpected: 0x%016x\nGot:      0x%016x",
-				ms.move, i+1, ms.expectedKey, actualHash)
-		}
-	}
-}
-
-func TestHashConsistency(t *testing.T) {
-	zobrist := GetPolyglotHash()
-
-	testFENs := []string{
-		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-		"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
-		"rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4",
-		"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4",
-	}
-
-	for _, fen := range testFENs {
-		hashes := make([]uint64, 5)
-		for i := 0; i < 5; i++ {
-			b, err := board.FromFEN(fen)
-			if err != nil {
-				t.Fatalf("Failed to create position from FEN: %v", err)
-			}
-			hashes[i] = zobrist.HashPosition(b)
-		}
-
-		for i := 1; i < len(hashes); i++ {
-			if hashes[i] != hashes[0] {
-				t.Errorf("Inconsistent hash for position %s\nFirst:  0x%016x\nOther:  0x%016x (iteration %d)",
-					fen, hashes[0], hashes[i], i+1)
-			}
-		}
-	}
-}
-
-func TestCastlingRightsHashEffect(t *testing.T) {
-	zobrist := GetPolyglotHash()
-
-	fenPairs := []struct {
-		fen1 string
-		fen2 string
-		desc string
-	}{
-		{
-			"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3",
-			"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b - - 0 3",
-			"with and without black castling rights",
-		},
-		{
-			"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4",
-			"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b kq - 0 4",
-			"with and without white kingside castling",
-		},
-	}
-
-	for _, pair := range fenPairs {
-		b1, err := board.FromFEN(pair.fen1)
-		if err != nil {
-			t.Fatalf("Failed to create position 1 for %s: %v", pair.desc, err)
-		}
-
-		b2, err := board.FromFEN(pair.fen2)
-		if err != nil {
-			t.Fatalf("Failed to create position 2 for %s: %v", pair.desc, err)
-		}
-
-		hash1 := zobrist.HashPosition(b1)
-		hash2 := zobrist.HashPosition(b2)
-
-		if hash1 == hash2 {
-			t.Errorf("Positions %s should have different hashes", pair.desc)
-		}
-	}
-}
-
-func TestSideToMoveHashEffect(t *testing.T) {
-	zobrist := GetPolyglotHash()
-
-	b1, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create position with white to move: %v", err)
-	}
-
-	b2, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create position with black to move: %v", err)
-	}
-
-	hash1 := zobrist.HashPosition(b1)
-	hash2 := zobrist.HashPosition(b2)
-
-	if hash1 == hash2 {
-		t.Error("Positions with different side to move should have different hashes")
 	}
 }

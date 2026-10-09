@@ -23,11 +23,11 @@ const (
 	// sizing the principal-variation array, to accommodate check extensions.
 	PVArrayMargin = 20
 
-	// NullMoveMaxPieces: above this many pieces on the board, null-move
-	// pruning is trusted. At or below it, NMP cutoffs are skipped: sparse
-	// positions are where zugzwang lives, and a side holding even one immobile
-	// minor piece (e.g. a bishop jailed by its own pawns) can lose to any
-	// forced tempo - a danger class hasNonPawnMaterial alone does not cover.
+	// NullMoveMaxPieces is the piece count above which null-move pruning is
+	// trusted. At or below it, null-move cutoffs are skipped: sparse positions
+	// are where zugzwang lives, and even one immobile minor piece (e.g. a bishop
+	// jailed by its own pawns) can lose to a forced tempo, which
+	// hasNonPawnMaterial alone does not catch.
 	NullMoveMaxPieces = 8
 )
 
@@ -50,8 +50,7 @@ type Params struct {
 	HistoryMedThreshold  int32
 	HistoryLowThreshold  int32
 
-	// NullMoveEnabled toggles null-move pruning (see tryNullMove). Defaults to
-	// true; used by soundness_test.go to compare pruned vs. unpruned search.
+	// NullMoveEnabled toggles null-move pruning (see tryNullMove). Defaults to true.
 	NullMoveEnabled bool
 
 	// Razoring parameters

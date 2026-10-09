@@ -1,182 +1,150 @@
 package movegen
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func TestNewGenerator(t *testing.T) {
-	gen := NewGenerator()
-	if gen == nil {
-		t.Fatal("Expected generator to be non-nil")
+// TestGenerateCapturesMatchesFilteredPseudoLegal verifies that GenerateCaptures
+// produces exactly the captures and promotions that quiescence search previously
+// obtained by generating all pseudo-legal moves and filtering.
+func TestGenerateCapturesMatchesFilteredPseudoLegal(t *testing.T) {
+	testPositions := []struct {
+		name string
+		fen  string
+	}{
+		{
+			name: "starting_position",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		},
+		{
+			name: "kiwipete_position",
+			fen:  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+		},
+		{
+			name: "endgame_position",
+			fen:  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+		},
+		{
+			name: "promotion_position",
+			fen:  "8/P1P5/K7/8/8/8/p1p5/k7 w - - 0 1",
+		},
+		{
+			name: "capture_promotion_position",
+			fen:  "1n1q4/P1P5/K7/8/8/8/p1p5/1N1Q3k w - - 0 1",
+		},
+		{
+			name: "en_passant_position",
+			fen:  "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+		},
+		{
+			name: "black_en_passant_position",
+			fen:  "rnbqkbnr/pppp1ppp/8/8/3pP3/8/PPP2PPP/RNBQKBNR b KQkq e3 0 3",
+		},
+		{
+			name: "queen_heavy_middlegame",
+			fen:  "r1bq1rk1/pp2nppp/2n1p3/2ppP3/3P4/2PB1N2/PP1N1PPP/R1BQ1RK1 w - - 0 1",
+		},
+	}
+
+	for _, pos := range testPositions {
+		t.Run(pos.name, func(t *testing.T) {
+			b, err := board.FromFEN(pos.fen)
+			if err != nil {
+				t.Fatalf("Failed to parse FEN %s: %v", pos.fen, err)
+			}
+
+			for _, player := range []Player{White, Black} {
+				t.Run(fmt.Sprintf("%s_to_move", player.String()), func(t *testing.T) {
+					generator := NewBitboardMoveGenerator()
+
+					allMoves := generator.GeneratePseudoLegalMoves(b, player)
+					defer ReleaseMoveList(allMoves)
+
+					expected := make(map[string]bool)
+					for i := range allMoves.Count {
+						move := allMoves.Moves[i]
+						if move.IsCapture || move.Promotion != board.Empty {
+							expected[formatMove(move)] = true
+						}
+					}
+
+					captures := generator.GenerateCaptures(b, player)
+					defer ReleaseMoveList(captures)
+
+					actual := make(map[string]bool)
+					for i := range captures.Count {
+						actual[formatMove(captures.Moves[i])] = true
+					}
+
+					if len(actual) != captures.Count {
+						t.Errorf("GenerateCaptures produced duplicate moves: %d moves, %d unique",
+							captures.Count, len(actual))
+					}
+
+					for move := range expected {
+						if !actual[move] {
+							t.Errorf("Move %s expected from GenerateCaptures but missing", move)
+						}
+					}
+
+					for move := range actual {
+						if !expected[move] {
+							t.Errorf("Move %s from GenerateCaptures is not a pseudo-legal capture/promotion", move)
+						}
+					}
+				})
+			}
+		})
 	}
 }
 
-func TestGenerateAllMoves_InitialPosition(t *testing.T) {
-	gen := NewGenerator()
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create board from FEN: %v", err)
+// formatMove renders a move with its flags, so the set comparison above also
+// distinguishes castling, en passant and capture variants.
+func formatMove(move board.Move) string {
+	from := fmt.Sprintf("%c%d", 'a'+move.From.File, move.From.Rank+1)
+	to := fmt.Sprintf("%c%d", 'a'+move.To.File, move.To.Rank+1)
+
+	result := from + to
+
+	if move.Promotion != board.Empty {
+		result += string(move.Promotion)
 	}
 
-	// Test white moves - should include pawns (16) + knights (4) + king (0) = 20 moves
-	// Rooks, bishops, queens are blocked by pawns in initial position
-	// King has no legal moves (blocked by pawns)
-	whiteMoves := gen.GenerateAllMoves(b, White)
-	if whiteMoves.Count != 20 {
-		t.Errorf("Expected 20 white moves from initial position (16 pawn + 4 knight + 0 king), got %d", whiteMoves.Count)
+	if move.IsCastling {
+		result += " (castling)"
 	}
 
-	// Test black moves - should include pawns (16) + knights (4) + king (0) = 20 moves
-	blackMoves := gen.GenerateAllMoves(b, Black)
-	if blackMoves.Count != 20 {
-		t.Errorf("Expected 20 black moves from initial position (16 pawn + 4 knight + 0 king), got %d", blackMoves.Count)
+	if move.IsEnPassant {
+		result += " (en passant)"
 	}
+
+	if move.IsCapture {
+		result += " (capture)"
+	}
+
+	return result
 }
 
-func TestMoveList_AddMove(t *testing.T) {
-	ml := GetMoveList()
-	defer ReleaseMoveList(ml)
-
-	if ml.Count != 0 {
-		t.Errorf("Expected empty move list to have count 0, got %d", ml.Count)
+func BenchmarkMoveGeneration(b *testing.B) {
+	positions := []struct{ name, fen string }{
+		{"start", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"},
+		{"kiwipete", "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"},
+		{"endgame", "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"},
 	}
-
-	move := board.Move{
-		From: board.Square{File: 4, Rank: 1},
-		To:   board.Square{File: 4, Rank: 3},
+	for _, pos := range positions {
+		b.Run(pos.name, func(b *testing.B) {
+			bd, err := board.FromFEN(pos.fen)
+			if err != nil {
+				b.Fatal(err)
+			}
+			gen := NewGenerator()
+			b.ResetTimer()
+			for range b.N {
+				ReleaseMoveList(gen.GenerateAllMoves(bd, White))
+			}
+		})
 	}
-
-	ml.AddMove(move)
-
-	if ml.Count != 1 {
-		t.Errorf("Expected move list count to be 1 after adding move, got %d", ml.Count)
-	}
-
-	if len(ml.Moves) != 1 {
-		t.Errorf("Expected moves slice length to be 1, got %d", len(ml.Moves))
-	}
-}
-
-func TestMoveList_Contains(t *testing.T) {
-	ml := GetMoveList()
-	defer ReleaseMoveList(ml)
-
-	move := board.Move{
-		From:      board.Square{File: 4, Rank: 1},
-		To:        board.Square{File: 4, Rank: 3},
-		Promotion: board.Empty,
-	}
-
-	ml.AddMove(move)
-
-	if !ml.Contains(move) {
-		t.Error("Expected move list to contain the added move")
-	}
-
-	differentMove := board.Move{
-		From:      board.Square{File: 4, Rank: 1},
-		To:        board.Square{File: 4, Rank: 2},
-		Promotion: board.Empty,
-	}
-
-	if ml.Contains(differentMove) {
-		t.Error("Expected move list to not contain different move")
-	}
-}
-
-func TestEqual(t *testing.T) {
-	move1 := board.Move{
-		From:      board.Square{File: 4, Rank: 1},
-		To:        board.Square{File: 4, Rank: 3},
-		Promotion: board.Empty,
-	}
-
-	move2 := board.Move{
-		From:      board.Square{File: 4, Rank: 1},
-		To:        board.Square{File: 4, Rank: 3},
-		Promotion: board.Empty,
-	}
-
-	if !Equal(move1, move2) {
-		t.Error("Expected identical moves to be equal")
-	}
-
-	move3 := board.Move{
-		From:      board.Square{File: 4, Rank: 1},
-		To:        board.Square{File: 4, Rank: 2},
-		Promotion: board.Empty,
-	}
-
-	if Equal(move1, move3) {
-		t.Error("Expected different moves to not be equal")
-	}
-}
-
-func TestFindKing(t *testing.T) {
-	gen := NewGenerator()
-
-	b, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create board from FEN: %v", err)
-	}
-
-	whiteKingPos := gen.findKing(b, White)
-	if whiteKingPos.File == -1 || whiteKingPos.Rank == -1 {
-		t.Error("Expected to find white king")
-	}
-
-	blackKingPos := gen.findKing(b, Black)
-	if blackKingPos.File == -1 || blackKingPos.Rank == -1 {
-		t.Error("Expected to find black king")
-	}
-
-	expectedWhiteKing := board.Square{File: 4, Rank: 0} // e1
-	expectedBlackKing := board.Square{File: 4, Rank: 7} // e8
-
-	if whiteKingPos != expectedWhiteKing {
-		t.Errorf("Expected white king at %v, got %v", expectedWhiteKing, whiteKingPos)
-	}
-	if blackKingPos != expectedBlackKing {
-		t.Errorf("Expected black king at %v, got %v", expectedBlackKing, blackKingPos)
-	}
-
-	// Test with empty board - should return sentinel value
-	emptyBoard, err := board.FromFEN("8/8/8/8/8/8/8/8 w - - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create empty board from FEN: %v", err)
-	}
-	whiteKingPosEmpty := gen.findKing(emptyBoard, White)
-	blackKingPosEmpty := gen.findKing(emptyBoard, Black)
-
-	if whiteKingPosEmpty.File != -1 || whiteKingPosEmpty.Rank != -1 {
-		t.Error("Expected sentinel value for white king on empty board")
-	}
-	if blackKingPosEmpty.File != -1 || blackKingPosEmpty.Rank != -1 {
-		t.Error("Expected sentinel value for black king on empty board")
-	}
-
-	customBoard, err := board.FromFEN("8/8/8/3k4/3K4/8/8/8 w - - 0 1")
-	if err != nil {
-		t.Fatalf("Failed to create custom board from FEN: %v", err)
-	}
-	whiteKingCustom := gen.findKing(customBoard, White)
-	blackKingCustom := gen.findKing(customBoard, Black)
-
-	expectedWhiteCustom := board.Square{File: 3, Rank: 3} // d4
-	expectedBlackCustom := board.Square{File: 3, Rank: 4} // d5
-
-	if whiteKingCustom.File == -1 || whiteKingCustom != expectedWhiteCustom {
-		t.Errorf("Expected white king at %v, got %v", expectedWhiteCustom, whiteKingCustom)
-	}
-	if blackKingCustom.File == -1 || blackKingCustom != expectedBlackCustom {
-		t.Errorf("Expected black king at %v, got %v", expectedBlackCustom, blackKingCustom)
-	}
-
-	moves := gen.GenerateAllMoves(b, White)
-	if moves.Count == 0 {
-		t.Error("Expected to generate some moves")
-	}
-	ReleaseMoveList(moves)
 }

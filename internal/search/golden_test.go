@@ -11,36 +11,24 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// update, when passed as `go test ./internal/search -run TestSearchGolden
-// -update`, regenerates testdata/search_golden.json from the engine's
-// current output instead of comparing against it. There is no other
-// `flag.` declaration in this package's tests (checked before adding this
-// one), so "-update" cannot collide with an existing flag.
+// update regenerates testdata/search_golden.json from the engine's current
+// output: go test ./internal/search -run TestSearchGolden -update
 var update = flag.Bool("update", false, "regenerate the golden file (testdata/search_golden.json) from current engine output")
 
-// goldenFilePath is the location of the golden JSON file, relative to the
-// package directory (which is also `go test`'s working directory).
 const goldenFilePath = "testdata/search_golden.json"
 
-// goldenDepth: deep enough to exercise LMR and aspiration-window paths,
-// shallow enough that the whole golden suite finishes in seconds.
+// goldenDepth is deep enough to exercise LMR and aspiration windows, and
+// shallow enough to finish in seconds.
 const goldenDepth = 5
 
-// goldenSearchConfig is shared by every position in the golden suite: no
-// time cutoff (depth is the only bound, per the same reasoning as
-// determinismSearchConfig in determinism_test.go) and no opening book (so the
-// engine always searches rather than returning a book move). LMR parameters
-// now live in search.Params (see params.go's getParams), and its defaults
-// (LMRMinDepth: 3, LMRMinMoves: 4) already match the UCI engine's production
-// values, so there is nothing to override here.
-var goldenSearchConfig = SearchConfig{
+// goldenSearchConfig is depth-bounded only (no time cutoff, no opening book).
+var goldenSearchConfig = Config{
 	MaxDepth:       goldenDepth,
 	MaxTime:        0,
 	UseOpeningBook: false,
 }
 
-// goldenRecord is the on-disk (and in-memory) representation of one golden
-// search result. Field order here also fixes the JSON key order.
+// goldenRecord is one golden search result; field order fixes the JSON key order.
 type goldenRecord struct {
 	FEN      string `json:"fen"`
 	Depth    int    `json:"depth"`
@@ -49,20 +37,9 @@ type goldenRecord struct {
 	Nodes    int64  `json:"nodes"`
 }
 
-// goldenTestFENs is a fixed, ordered set of ~20 legal positions covering the
-// opening, middlegame, endgame, and tactical phases. It reuses the 10
-// positions from zobristTestFENs (zobrist_updates_test.go) - which already
-// give full/partial/no castling rights, both-side en passant, both-side
-// imminent promotion, and a sparse endgame - and adds 10 more chosen for
-// additional phase coverage: real opening theory, well-known tactical test
-// positions, plain endgames, an in-check (but not mated) position, and a
-// one-move-from-mate position.
-//
-// This slice, and therefore the golden file, is intentionally never
-// reordered: TestSearchGolden asserts index-for-index against the golden
-// file's FEN field, so reordering would look like every position "moved"
-// rather than a clean diff. Append new positions at the end and regenerate
-// with -update instead.
+// goldenTestFENs is a fixed, ordered set of 20 positions spanning opening,
+// middlegame, tactical, endgame, in-check and near-mate. Never reorder: the
+// test compares index-for-index. Append new positions and regenerate instead.
 var goldenTestFENs = []string{
 	// --- reused from zobristTestFENs (see zobrist_updates_test.go) ---
 	zobristTestFENs[0], // standard starting position: full castling rights
@@ -107,22 +84,11 @@ var goldenTestFENs = []string{
 	"6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
 }
 
-// TestSearchGolden is the acceptance gate for search-internals refactors: it
-// searches a fixed set of ~20 positions at a fixed depth (5) with a fixed
-// transposition table size and no time cutoff, and asserts that
-// (bestmove, score, nodes) for every position exactly match a checked-in
-// golden file (testdata/search_golden.json). Determinism at fixed depth -
-// the precondition this relies on - is established by
-// TestSearchDeterminism_ClearSearchStateResetsAllState; this test follows
-// that pattern so node counts are stable across runs and search orders.
-//
-// Any refactor that observably changes search behavior will shift nodes
-// counts/moves here; regenerate the golden file with:
-//
-//	go test ./internal/search -run TestSearchGolden -update
-//
-// and manually confirm the new values are the intended effect before
-// committing the updated golden file.
+// TestSearchGolden is the acceptance gate for search and eval changes. It
+// searches every golden position at depth 5 and requires an exact match of
+// (bestmove, score, nodes) with the golden file, so ANY change to search or
+// eval behaviour fails it. After confirming the new values are the intended
+// effect, regenerate with -update and commit the golden file with the change.
 func TestSearchGolden(t *testing.T) {
 	engine := NewMinimaxEngine()
 	engine.SetTranspositionTableSize(64)
@@ -138,7 +104,6 @@ func TestSearchGolden(t *testing.T) {
 	results := make([]goldenRecord, len(goldenTestFENs))
 
 	for idx, fen := range goldenTestFENs {
-		idx, fen := idx, fen
 		t.Run(fmt.Sprintf("fen%d", idx), func(t *testing.T) {
 			engine.ClearSearchState()
 			b := testutil.MustFromFEN(t, fen)
@@ -206,7 +171,7 @@ func writeGoldenFile(t *testing.T, records []goldenRecord) {
 	}
 	data = append(data, '\n')
 
-	if err := os.WriteFile(goldenFilePath, data, 0o644); err != nil {
+	if err := os.WriteFile(goldenFilePath, data, 0o600); err != nil {
 		t.Fatalf("writing golden file %s: %v", goldenFilePath, err)
 	}
 }

@@ -59,7 +59,7 @@ func NewEngine() *Engine {
 // the current position. Reset to just the new starting position by Reset
 // and LoadFromFEN, appended to by MakeMove. Exported so callers (the UCI
 // adapter) can feed the actual game history into
-// search.SearchConfig.RepetitionHistory - without it, the search can only
+// search.Config.RepetitionHistory - without it, the search can only
 // see repetitions reachable within its own hypothetical lookahead from the
 // current position, blind to ones that already happened via real moves.
 func (e *Engine) HashHistory() []uint64 {
@@ -108,14 +108,14 @@ func (e *Engine) updateGameOverState() {
 	e.hashHistory = append(e.hashHistory, hash)
 
 	currentPlayer := e.GetCurrentPlayer()
-	legalMoves := e.generator.GenerateAllMoves(e.state.Board, movegen.Player(currentPlayer))
+	legalMoves := e.generator.GenerateAllMoves(e.state.Board, currentPlayer)
 	legalCount := legalMoves.Count
 	movegen.ReleaseMoveList(legalMoves)
 
 	switch {
 	case legalCount == 0:
 		e.state.GameOver = true
-		if e.generator.IsKingInCheck(e.state.Board, movegen.Player(currentPlayer)) {
+		if e.generator.IsKingInCheck(e.state.Board, currentPlayer) {
 			e.state.Winner = opponentOf(currentPlayer)
 		} else {
 			e.state.IsDraw = true

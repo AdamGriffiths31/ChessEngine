@@ -89,8 +89,8 @@ func (h *HistoryTable) GetHistoryScore(move board.Move) int32 {
 
 // Clear resets all history scores to zero
 func (h *HistoryTable) Clear() {
-	for i := 0; i < 64; i++ {
-		for j := 0; j < 64; j++ {
+	for i := range 64 {
+		for j := range 64 {
 			h.table[i][j].Store(0)
 		}
 	}
@@ -99,8 +99,8 @@ func (h *HistoryTable) Clear() {
 // Age applies decay to all history scores to prevent them from growing too large
 // and to give more weight to recent patterns
 func (h *HistoryTable) Age() {
-	for i := 0; i < 64; i++ {
-		for j := 0; j < 64; j++ {
+	for i := range 64 {
+		for j := range 64 {
 			for {
 				current := h.table[i][j].Load()
 				newValue := current / HistoryDecayFactor

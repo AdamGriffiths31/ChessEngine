@@ -58,7 +58,6 @@ internal/
   ├── eval/       # Position evaluation with pawn hash table
   │   └── values/ # Piece values and piece-square tables
   ├── book/       # Polyglot opening book support
-  ├── player/     # Player implementations, including the computer player
   ├── epd/        # EPD file parsing and STS scoring
   ├── bench/      # Benchmark infrastructure for STS comparison
   ├── uci/        # UCI protocol implementation

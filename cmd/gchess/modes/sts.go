@@ -190,7 +190,7 @@ func (sm *STSMode) runSTSBenchmark(config STSConfig, epdFiles []string) (*STSRes
 	engine.SetEvaluator(evaluator)
 	engine.SetTranspositionTableSize(256)
 
-	searchConfig := search.SearchConfig{
+	searchConfig := search.Config{
 		MaxDepth:  config.Depth,
 		MaxTime:   time.Duration(config.Timeout) * time.Second,
 		DebugMode: false,

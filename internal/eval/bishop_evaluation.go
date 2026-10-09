@@ -8,16 +8,16 @@ import (
 // on the bishop's square color, static mobility and fianchetto tables.
 
 const (
-	// Bishop pair bonus - the most valuable bishop feature
-	BishopPairBonus = 50 // Having both light and dark squared bishops
+	// BishopPairBonus rewards owning both the light- and dark-squared bishop.
+	BishopPairBonus = 50
 
-	// Mobility scoring unit
-	BishopMobilityUnit = 3 // Multiplier for mobility table values
+	// BishopMobilityUnit multiplies the values in BishopMobilityTable.
+	BishopMobilityUnit = 3
 
-	// Bad bishop penalty - bishops blocked by own pawns
-	BadBishopPenalty = -8 // Penalty per own pawn on same color squares
+	// BadBishopPenalty applies per own pawn on the bishop's square colour.
+	BadBishopPenalty = -8
 
-	// Positional bonus for strong bishop placements
+	// FianchettoBishopBonus rewards a bishop on its fianchetto square.
 	FianchettoBishopBonus = 10
 )
 

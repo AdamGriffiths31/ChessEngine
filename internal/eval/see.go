@@ -151,7 +151,7 @@ func (see *SEECalculator) getLeastValuableAttacker(b *board.Board, attackers *bo
 		if attackingPieces != 0 {
 			square, _ := attackingPieces.PopLSB()
 
-			*attackers = (*attackers).ClearBit(square)
+			*attackers = attackers.ClearBit(square)
 
 			return attacker{
 				piece:  pieceType,

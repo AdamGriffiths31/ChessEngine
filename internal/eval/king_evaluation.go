@@ -12,17 +12,15 @@ import (
 // it to the king's exact square created a large score cliff the instant a
 // castled king took one more step (see sprt-mobility-eval-fix session notes).
 
-const (
-	// King safety (simplified)
-	OpenFileNearKing = -20
-)
+// OpenFileNearKing is the penalty per open file next to the king.
+const OpenFileNearKing = -20
 
 // KingSafetyZone provides pre-computed 3x3 zones around each square
 // This avoids expensive zone calculation during evaluation
 var KingSafetyZone [64]board.Bitboard
 
 func init() {
-	for square := 0; square < 64; square++ {
+	for square := range 64 {
 		rank := square / 8
 		file := square % 8
 		zone := board.Bitboard(0)
