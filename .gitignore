@@ -65,3 +65,6 @@ docs/*
 
 # Coverage report output
 coverage/
+
+# Local secrets
+.env
