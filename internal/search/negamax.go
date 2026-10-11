@@ -68,6 +68,30 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 	staticEval := m.evaluator.Evaluate(b)
 
+	// Record this node's side-to-move eval and derive "improving": the eval is
+	// better than two plies ago (same side to move). Never improving when in
+	// check or when the earlier slot has no eval. The root is not recorded by
+	// negamax, so ply 1 clears slot 0 to keep ply 2 from reading a stale value.
+	if ply == 1 {
+		m.searchState.staticEvalStack[0] = noStaticEval
+	}
+	stmEval := staticEval
+	if player == movegen.Black {
+		stmEval = -staticEval
+	}
+	improving := false
+	if ply < MaxKillerDepth {
+		if inCheck {
+			m.searchState.staticEvalStack[ply] = noStaticEval
+		} else {
+			m.searchState.staticEvalStack[ply] = stmEval
+			if ply >= 2 {
+				prev := m.searchState.staticEvalStack[ply-2]
+				improving = prev != noStaticEval && stmEval > prev
+			}
+		}
+	}
+
 	// Reverse futility pruning: a position far above beta is assumed to fail
 	// high; cheaper than the null-move search and tried first.
 	if score, done := m.tryReverseFutility(b, player, depth, alpha, beta, staticEval, inCheck); done {
@@ -116,6 +140,14 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 	// Quiet moves searched so far at this node, for late move pruning.
 	quietsSearched := 0
+
+	// LMP is skipped in PV nodes (open window). Improving nodes get double the
+	// move-count threshold.
+	isPV := beta-alpha > 1
+	lmpLimit := 3 + depth*depth
+	if improving {
+		lmpLimit *= 2
+	}
 
 	// Set when quiet-move pruning skips at least one legal move. If every
 	// move ends up pruned, reaching the post-loop check with
@@ -175,8 +207,8 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 				stmStaticEval+p.FutilityMargins[min(depth, len(p.FutilityMargins)-1)] <= alpha {
 				m.searchState.searchStats.FutilityPrunes++
 				pruned = true
-			} else if p.LMPEnabled && depth <= p.LMPMaxDepth &&
-				quietsSearched >= 3+depth*depth {
+			} else if p.LMPEnabled && !isPV && depth <= p.LMPMaxDepth &&
+				quietsSearched >= lmpLimit {
 				m.searchState.searchStats.LMPPrunes++
 				pruned = true
 			}

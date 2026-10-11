@@ -30,6 +30,10 @@ const (
 	// hasNonPawnMaterial alone does not catch.
 	NullMoveMaxPieces = 8
 
+	// noStaticEval marks a staticEvalStack slot with no usable eval (side in
+	// check, or the root, which negamax does not record).
+	noStaticEval = eval.EvaluationScore(-32001)
+
 	// FiftyMoveHalfMoves is the halfmove-clock value at which the fifty-move
 	// rule makes a position drawn (50 full moves = 100 plies without a pawn
 	// move or capture).
@@ -119,9 +123,10 @@ func getParams() Params {
 		FutilityMaxDepth: 4,
 		FutilityMargins:  [6]eval.EvaluationScore{0, 150, 250, 350, 450},
 
-		// LMP is off: pruning late quiets by move count alone, regardless of
-		// eval, weakened play in testing.
-		LMPEnabled:  false,
+		// LMP skips quiets after 3+depth^2 searched (doubled when improving)
+		// and never runs in PV nodes. Without the improving split and PV
+		// exclusion it lost Elo in testing.
+		LMPEnabled:  true,
 		LMPMaxDepth: 5,
 
 		// Late Move Reductions: matches the UCI engine defaults.

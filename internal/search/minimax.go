@@ -20,6 +20,11 @@ type State struct {
 	searchParams     Params
 	searchCancelled  bool
 
+	// staticEvalStack[ply] is the side-to-move static eval at each node on the
+	// current line, or noStaticEval when in check. Read two plies back to
+	// decide whether the position is improving.
+	staticEvalStack [MaxKillerDepth]eval.EvaluationScore
+
 	// Per-search invariants, set at the start of FindBestMove/runIterativeDeepening.
 	board     *board.Board   // Board being searched (single instance, moves made/unmade on it)
 	player    movegen.Player // Side to move at the current node
