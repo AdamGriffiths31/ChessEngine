@@ -29,6 +29,11 @@ const (
 	// jailed by its own pawns) can lose to a forced tempo, which
 	// hasNonPawnMaterial alone does not catch.
 	NullMoveMaxPieces = 8
+
+	// FiftyMoveHalfMoves is the halfmove-clock value at which the fifty-move
+	// rule makes a position drawn (50 full moves = 100 plies without a pawn
+	// move or capture).
+	FiftyMoveHalfMoves = 100
 )
 
 // LMRTable is a pre-calculated reduction table for Late Move Reductions
@@ -52,6 +57,13 @@ type Params struct {
 
 	// NullMoveEnabled toggles null-move pruning (see tryNullMove). Defaults to true.
 	NullMoveEnabled bool
+
+	// Reverse futility pruning (static null move): in non-PV nodes at shallow
+	// depth, if the static eval is already above beta by a depth-scaled margin,
+	// assume the node fails high without searching it.
+	RFPEnabled  bool
+	RFPMaxDepth int
+	RFPMargin   eval.EvaluationScore // Per-ply margin: eval - depth*RFPMargin >= beta
 
 	// Razoring parameters
 	RazoringEnabled  bool
@@ -87,6 +99,11 @@ func getParams() Params {
 
 		NullMoveEnabled: true,
 
+		// Reverse futility pruning.
+		RFPEnabled:  true,
+		RFPMaxDepth: 6,
+		RFPMargin:   90,
+
 		// Razoring: Like Stockfish, only apply at depth 1
 		// Applying at deeper depths is too risky in tactical positions
 		// Margin of 125cp is conservative enough to avoid pruning tactics
@@ -94,25 +111,16 @@ func getParams() Params {
 		RazoringMargins:  [5]eval.EvaluationScore{0, 125, 175, 225, 275},
 		RazoringMaxDepth: 1,
 
-		// Futility pruning: implemented but default-off. Probing showed its
-		// tactical safety is chaotic in this engine - identical margins both
-		// found and lost a known mate depending on exact values - because
-		// qsearch generates no quiet checking moves, making main-search
-		// quiets the only carrier of those tactics. Revisit alongside
-		// qsearch check generation; LMP alone delivers most of the node win.
-		FutilityEnabled:  false,
+		// Futility pruning: at depth <= FutilityMaxDepth a quiet move is skipped
+		// when static eval + FutilityMargins[depth] cannot reach alpha.
+		// FutilityMargins has no entry past depth 4, so FutilityMaxDepth must not
+		// exceed 4 without extending it.
+		FutilityEnabled:  true,
 		FutilityMaxDepth: 4,
 		FutilityMargins:  [6]eval.EvaluationScore{0, 150, 250, 350, 450},
 
-		// LMP: implemented but default-OFF. Empirically catastrophic in this
-		// engine despite textbook formulation: SPRT measured roughly -150 to
-		// -230 Elo at LMPMaxDepth 5, 2, and with the all-pruned-terminal bug
-		// fixed, while fixed-depth tactical probes stayed clean. Root cause:
-		// LMP presupposes late quiets are genuinely worse than early ones,
-		// which requires well-ranked quiet ordering - see the history-scale
-		// mismatch in move_ordering.go (history caps at 10k while tactical
-		// bonuses reach 150k+, leaving plain quiets nearly arbitrarily
-		// ordered). Revisit only after the history heuristic is reworked.
+		// LMP is off: pruning late quiets by move count alone, regardless of
+		// eval, weakened play in testing.
 		LMPEnabled:  false,
 		LMPMaxDepth: 5,
 

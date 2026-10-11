@@ -95,14 +95,9 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *movegen.MoveList, p
 			}
 
 			if !move.IsCapture && move.Promotion == board.Empty {
-				// History is scaled up so a well-learned move competes with
-				// the tactical-guess tier instead of acting as its
-				// tiebreaker: +-16k raw x16 spans roughly the tactical bonus
-				// range, while staying below killers (500k).
+				// Quiet moves are ordered by history, scaled x16 (+-262k): below
+				// killers (500k), above losing captures once well learned.
 				score += int(m.getHistoryScore(move)) * 16
-
-				tacticalBonus := m.getTacticalBonus(b, move)
-				score += tacticalBonus
 			}
 		}
 
@@ -160,20 +155,14 @@ func (m *MinimaxEngine) scoreCaptures(moveList *movegen.MoveList, ply int) {
 //
 //  4. Killer moves: 500,000
 //
-//  5. Tactical quiet moves (attacks piece + king zone): 150,000
+//  5. Slightly bad captures (SEE >= -100): 50,000+
 //
-//  6. Tactical quiet moves (attacks piece): 100,000
+//  6. Terrible captures (SEE < -100): 25,000+
 //
-//  7. Tactical quiet moves (attacks king zone): 50,000
+//  7. Quiet moves, ordered by history: roughly -260k..+260k (raw +-16k x16),
+//     so a well-learned quiet outranks slightly and very bad captures
 //
-//  8. Slightly bad captures (SEE >= -100): 50,000+
-//
-//  9. Terrible captures (SEE < -100): 25,000+
-//
-//  10. Quiet moves with history: roughly -260k..+260k scaled (raw +-16k x16),
-//     co-dominant with the tactical tier when well-learned
-//
-//  11. Other quiet moves: 0
+//  8. Quiet moves with no history: 0
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	if !move.IsCapture || move.Captured == board.Empty {
 		return 0
@@ -206,36 +195,4 @@ func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
 		return 0
 	}
 	return m.historyTable.GetHistoryScore(move)
-}
-
-// getTacticalBonus calculates bonus score for moves that attack enemy pieces or king zone
-func (m *MinimaxEngine) getTacticalBonus(b *board.Board, move board.Move) int {
-	toSquare := move.To.Rank*8 + move.To.File
-	attacks := b.GetPieceAttacks(move.Piece, toSquare)
-
-	var enemyPieces board.Bitboard
-	var enemyKing board.Bitboard
-	if board.IsWhitePiece(move.Piece) {
-		enemyPieces = b.BlackPieces
-		enemyKing = b.GetPieceBitboard(board.BlackKing)
-	} else {
-		enemyPieces = b.WhitePieces
-		enemyKing = b.GetPieceBitboard(board.WhiteKing)
-	}
-
-	bonus := 0
-
-	if (attacks & enemyPieces) != 0 {
-		bonus += 100000
-	}
-
-	if enemyKing != 0 {
-		kingSquare, _ := enemyKing.PopLSB()
-		kingZone := board.GetKingAttacks(kingSquare)
-		if (attacks & kingZone) != 0 {
-			bonus += 50000
-		}
-	}
-
-	return bonus
 }

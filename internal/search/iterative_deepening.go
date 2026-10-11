@@ -143,16 +143,16 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				if moveIndex == 0 {
 					m.searchState.player = oppositePlayer(player)
 					m.searchState.collectPV = true
-					score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1, 1)
+					score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1)
 				} else {
 					m.searchState.player = oppositePlayer(player)
 					m.searchState.collectPV = true
-					score = -m.negamax(ctx, currentDepth-1, -alpha-1, -alpha, 1, 1)
+					score = -m.negamax(ctx, currentDepth-1, -alpha-1, -alpha, 1)
 
 					if score > alpha && score < beta {
 						m.searchState.player = oppositePlayer(player)
 						m.searchState.collectPV = true
-						score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1, 1)
+						score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1)
 					}
 				}
 
@@ -209,6 +209,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		finalStats.FirstMoveCutoffs = m.searchState.searchStats.FirstMoveCutoffs
 		finalStats.TotalCutoffs = m.searchState.searchStats.TotalCutoffs
 		finalStats.DeltaPruned = m.searchState.searchStats.DeltaPruned
+		finalStats.RFPCutoffs = m.searchState.searchStats.RFPCutoffs
 		finalStats.RazoringAttempts = m.searchState.searchStats.RazoringAttempts
 		finalStats.RazoringCutoffs = m.searchState.searchStats.RazoringCutoffs
 		finalStats.RazoringFailed = m.searchState.searchStats.RazoringFailed

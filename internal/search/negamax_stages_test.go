@@ -53,7 +53,7 @@ func TestTryNullMove_Declines(t *testing.T) {
 				staticEval = eval.MateScore
 			}
 
-			score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, tt.beta, 1, 0, 1, staticEval, tt.inCheck)
+			score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, tt.beta, 1, staticEval, tt.inCheck)
 
 			if done || score != 0 {
 				t.Errorf("tryNullMove = (%d, done=%v), want it to decline", score, done)
@@ -78,7 +78,7 @@ func TestTryNullMove_CutsOffWhenOpponentIsLost(t *testing.T) {
 	m.searchState.board = b
 	staticEval := m.evaluator.Evaluate(b)
 
-	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, 0, 1, 0, 1, staticEval, false)
+	score, done := m.tryNullMove(context.Background(), b, movegen.White, 5, 0, 1, staticEval, false)
 
 	if !done {
 		t.Fatalf("expected a null-move cutoff, got done=false (score=%d)", score)
@@ -97,7 +97,7 @@ func TestTryRazoring_DeclinesWhenDisabled(t *testing.T) {
 	m.searchState.searchParams.RazoringEnabled = false
 
 	// Otherwise-qualifying conditions, but razoring is off: decline, no attempt counted.
-	score, done := m.tryRazoring(context.Background(), movegen.White, 1, 100, 200, 1, 0, -500, false)
+	score, done := m.tryRazoring(context.Background(), movegen.White, 1, 100, 200, 1, -500, false)
 
 	if done {
 		t.Fatalf("razoring must decline when disabled")
@@ -120,7 +120,7 @@ func TestTryRazoring_CutoffIncrementsAllNodes(t *testing.T) {
 	staticEval := m.evaluator.Evaluate(b)
 
 	beforeCutoffs := m.searchState.searchStats.RazoringCutoffs
-	score, done := m.tryRazoring(context.Background(), movegen.White, 1, eval.EvaluationScore(0), eval.EvaluationScore(2000), 1, 0, staticEval, false)
+	score, done := m.tryRazoring(context.Background(), movegen.White, 1, eval.EvaluationScore(0), eval.EvaluationScore(2000), 1, staticEval, false)
 
 	if !done {
 		t.Fatalf("expected a razoring cutoff, got done=false (score=%d)", score)

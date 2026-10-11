@@ -31,6 +31,9 @@ type Stats struct {
 	TotalCutoffs     int64 // Total beta cutoffs (for move ordering calculation)
 	DeltaPruned      int64 // Captures skipped by delta pruning
 
+	// Reverse futility pruning statistics
+	RFPCutoffs int64 // Nodes pruned as fail-high by static eval minus margin
+
 	// Razoring statistics
 	RazoringAttempts int64 // Number of razoring attempts
 	RazoringCutoffs  int64 // Successful razoring cutoffs

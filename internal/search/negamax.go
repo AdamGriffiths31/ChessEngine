@@ -12,7 +12,7 @@ import (
 // negamax performs negamax search with alpha-beta pruning and optimizations
 //
 //nolint:gocyclo // refactored in Phase 4
-func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval.EvaluationScore, ply, pvPly int) eval.EvaluationScore {
+func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval.EvaluationScore, ply int) eval.EvaluationScore {
 	b := m.searchState.board
 	player := m.searchState.player
 	pv := m.searchState.pv
@@ -20,12 +20,11 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 	m.searchState.searchStats.NodesSearched++
 
-	// ply is this node's distance from the root along the unreduced spine
-	// (originalMaxDepth - depth): held constant by check extensions, inflated
-	// by LMR reductions. Child calls pass ply + (depth - childDepth).
-	// pvPly instead counts true recursion depth (+1 per level), and the pv
-	// table is indexed ONLY by pvPly: indexing by ply aliased a
-	// check-extended child onto its parent's row, dropping moves from the PV.
+	// ply is this node's true distance from the root in plies (+1 per level of
+	// recursion), regardless of check extensions or LMR/null-move reductions.
+	// It indexes the pv table, killer table and move-ordering buffers, and is
+	// what mate scores and TT mate adjustments are measured against, so it
+	// must never be derived from the (extended/reduced) remaining depth.
 
 	if ply >= 0 && ply < len(m.searchState.searchStats.NodesByDepth) {
 		m.searchState.searchStats.NodesByDepth[ply]++
@@ -44,21 +43,20 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 	}
 
 	inCheck := m.generator.IsKingInCheck(b, player)
-	// Check extension. The former guard `depth < originalMaxDepth` is exactly
-	// originalMaxDepth-depth > 0, and on entry ply == originalMaxDepth-depth, so
-	// it re-expresses identically as ply > 0. `extended` (0 or 1) records whether
-	// this node spent one ply of extension budget: after depth++ the invariant
-	// becomes originalMaxDepth-depth == ply-extended, which the quiescence and
-	// mate paths below consume directly.
-	extended := 0
-	if inCheck && ply > 0 {
+	// Check extension: a node in check searches one ply deeper.
+	if inCheck {
 		depth++
-		extended = 1
 	}
 
 	hash := b.GetHash()
 
-	if m.isDrawByRepetition(hash) {
+	if m.isDrawByRepetition(hash) || isInsufficientMaterial(b) {
+		return eval.DrawScore
+	}
+
+	// Fifty-move rule. A side in check is exempt: the position may be mate,
+	// and mate on the 100th halfmove takes precedence over the draw claim.
+	if !inCheck && b.GetHalfMoveClock() >= FiftyMoveHalfMoves {
 		return eval.DrawScore
 	}
 
@@ -70,32 +68,37 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 	staticEval := m.evaluator.Evaluate(b)
 
+	// Reverse futility pruning: a position far above beta is assumed to fail
+	// high; cheaper than the null-move search and tried first.
+	if score, done := m.tryReverseFutility(b, player, depth, alpha, beta, staticEval, inCheck); done {
+		return score
+	}
+
 	// Null move pruning: If our position is so good we can give opponent a free
 	// move and still achieve a beta cutoff, we can prune this branch.
-	if score, done := m.tryNullMove(ctx, b, player, depth, beta, ply, extended, pvPly, staticEval, inCheck); done {
+	if score, done := m.tryNullMove(ctx, b, player, depth, beta, ply, staticEval, inCheck); done {
 		return score
 	}
 
 	// Razoring: If static eval + margin is below alpha at low depths, verify
 	// with quiescence search and potentially prune.
-	if score, done := m.tryRazoring(ctx, player, depth, alpha, beta, ply, extended, staticEval, inCheck); done {
+	if score, done := m.tryRazoring(ctx, player, depth, alpha, beta, ply, staticEval, inCheck); done {
 		return score
 	}
 
-	if depth <= 0 {
+	// ply >= MaxKillerDepth-1 is a safety valve: the per-ply tables are fixed
+	// size, so a pathologically deep line falls back to quiescence (which
+	// clamps its own buffer index).
+	if depth <= 0 || ply >= MaxKillerDepth-1 {
 		m.searchState.player = player
-		// ply-extended == originalMaxDepth-depth (extended depth). Reaching here
-		// needs depth<=0, and since child entry depths are >= 0 this node cannot
-		// have extended (extension needs ply>0 and leaves depth>=1), so extended==0.
-		// (the passed value ply−extended is exact in all cases; extended==0 here only explains why no extension budget is lost at a leaf)
-		return m.quiescence(ctx, alpha, beta, ply-extended)
+		return m.quiescence(ctx, alpha, beta, ply)
 	}
 
 	pseudoMoves := m.generator.GeneratePseudoLegalMoves(b, player)
 	defer movegen.ReleaseMoveList(pseudoMoves)
 
 	if pseudoMoves.Count == 0 {
-		return m.handleNoLegalMoves(b, player, depth, ply, ply-extended, hash)
+		return m.handleNoLegalMoves(b, player, depth, ply, hash)
 	}
 
 	m.scoreMoves(b, pseudoMoves, ply, ttMove)
@@ -190,7 +193,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 		var score eval.EvaluationScore
 
 		if collectPV {
-			pv.clearPly(pvPly + 1)
+			pv.clearPly(ply + 1)
 		}
 
 		// Late Move Reductions: Search later moves at reduced depth since
@@ -202,22 +205,19 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 			m.searchState.player = oppositePlayer(player)
 			m.searchState.collectPV = false
-			// Reduced scout child ply = originalMaxDepth - (depth-1-reduction) =
-			// ply+1-extended+reduction (searched shallower, so a larger ply index).
-			score = -m.negamax(ctx, depth-1-reduction, -alpha-1, -alpha, ply+1-extended+reduction, pvPly+1)
+			score = -m.negamax(ctx, depth-1-reduction, -alpha-1, -alpha, ply+1)
 
 			if score > alpha {
 				m.searchState.searchStats.LMRReSearches++
 
 				m.searchState.player = oppositePlayer(player)
 				m.searchState.collectPV = collectPV
-				score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1-extended, pvPly+1)
+				score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1)
 			}
 		} else {
 			m.searchState.player = oppositePlayer(player)
 			m.searchState.collectPV = collectPV
-			// Child ply = originalMaxDepth - (depth-1) = ply+1-extended.
-			score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1-extended, pvPly+1)
+			score = -m.negamax(ctx, depth-1, -beta, -alpha, ply+1)
 		}
 
 		b.UnmakeMove(undo)
@@ -238,7 +238,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 			alphaImproved = true
 
 			if collectPV {
-				pv.store(pvPly, move)
+				pv.store(ply, move)
 			}
 
 			if alpha >= beta {
@@ -250,7 +250,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 
 	if legalMoveCount == 0 {
 		if !quietMovesPruned {
-			return m.handleNoLegalMoves(b, player, depth, ply, ply-extended, hash)
+			return m.handleNoLegalMoves(b, player, depth, ply, hash)
 		}
 		// Every legal move was quiet-pruned and none was searched. This is a
 		// fail-low with no information beyond the window itself: return alpha
@@ -346,6 +346,31 @@ func (m *MinimaxEngine) probeTT(hash uint64, depth, ply int, alpha, beta eval.Ev
 	return ttMove, 0, alphaOut, betaOut, false
 }
 
+// tryReverseFutility prunes non-PV nodes at shallow depth whose static eval
+// exceeds beta by at least depth*RFPMargin, returning the margin-reduced eval
+// (fail-soft) with done=true. It declines in check, in PV windows (beta-alpha
+// > 1), near mate scores, and when the mover has only king and pawns
+// (zugzwang risk, same guard as null-move pruning). staticEval is White-relative.
+func (m *MinimaxEngine) tryReverseFutility(b *board.Board, player movegen.Player, depth int, alpha, beta, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
+	p := &m.searchState.searchParams
+	if !p.RFPEnabled || inCheck || depth <= 0 || depth > p.RFPMaxDepth ||
+		beta-alpha != 1 ||
+		beta >= eval.MateScore-MateDistanceThreshold || beta <= -eval.MateScore+MateDistanceThreshold ||
+		!hasNonPawnMaterial(b, player) {
+		return 0, false
+	}
+	if player == movegen.Black {
+		staticEval = -staticEval
+	}
+	margin := eval.EvaluationScore(depth) * p.RFPMargin
+	if staticEval-margin >= beta {
+		m.searchState.searchStats.RFPCutoffs++
+		m.searchState.searchStats.CutNodes++
+		return staticEval - margin, true
+	}
+	return 0, false
+}
+
 // tryNullMove performs null move pruning. When the position is good enough to
 // forfeit a move and still fail high, it returns (beta, true) to signal a
 // cutoff; otherwise (0, false). Side effects (NullMoves/NullCutoffs stats, the
@@ -353,7 +378,7 @@ func (m *MinimaxEngine) probeTT(hash uint64, depth, ply int, alpha, beta eval.Ev
 // verbatim body from negamax. A cutoff also increments CutNodes: it is a
 // fail-high, exactly the same node type the move-loop's own beta-cutoff path
 // (recordCutoff) classifies as.
-func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player movegen.Player, depth int, beta eval.EvaluationScore, ply, extended, pvPly int, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
+func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player movegen.Player, depth int, beta eval.EvaluationScore, ply int, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
 	// Convert to side-to-move-relative before comparing against beta:
 	// StandardEvaluator.Evaluate returns White-relative scores (see
 	// internal/eval/evaluator.go), while beta is from the side to move's
@@ -392,9 +417,7 @@ func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player 
 
 				m.searchState.player = oppositePlayer(player)
 				m.searchState.collectPV = false
-				// Child ply = originalMaxDepth - (depth-1-nullReduction). With
-				// originalMaxDepth = ply + depth - extended this is ply+1-extended+nullReduction.
-				nullScore := -m.negamax(ctx, depth-1-nullReduction, -beta, -beta+1, ply+1-extended+nullReduction, pvPly+1)
+				nullScore := -m.negamax(ctx, depth-1-nullReduction, -beta, -beta+1, ply+1)
 
 				b.UnmakeNullMove(nullUndo)
 
@@ -409,6 +432,19 @@ func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player 
 		}
 	}
 	return 0, false
+}
+
+// isInsufficientMaterial reports whether neither side can ever deliver
+// checkmate: bare kings, or a lone minor piece (knight or bishop) against a
+// bare king. Material that merely cannot force mate (e.g. KNN vs K) is left
+// to the search, since mate is still possible against bad defence.
+func isInsufficientMaterial(b *board.Board) bool {
+	if b.AllPieces.PopCount() > 3 {
+		return false
+	}
+	return b.GetPieceBitboard(board.WhitePawn)|b.GetPieceBitboard(board.BlackPawn)|
+		b.GetPieceBitboard(board.WhiteRook)|b.GetPieceBitboard(board.BlackRook)|
+		b.GetPieceBitboard(board.WhiteQueen)|b.GetPieceBitboard(board.BlackQueen) == 0
 }
 
 // hasNonPawnMaterial reports whether player has any knight, bishop, rook, or
@@ -437,9 +473,9 @@ func hasNonPawnMaterial(b *board.Board, player movegen.Player) bool {
 // mutation are the verbatim body from negamax. A confirmed cutoff also
 // increments AllNodes: qScore <= alpha is a fail-low, the same node type the
 // move-loop's own !alphaImproved path classifies as.
-func (m *MinimaxEngine) tryRazoring(ctx context.Context, player movegen.Player, depth int, alpha, beta eval.EvaluationScore, ply, extended int, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
+func (m *MinimaxEngine) tryRazoring(ctx context.Context, player movegen.Player, depth int, alpha, beta eval.EvaluationScore, ply int, staticEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
 	// Convert to side-to-move-relative before comparing against alpha: see
-	// tryNullMove. Razoring requires !inCheck so extended is 0 at the gate.
+	// tryNullMove.
 	if player == movegen.Black {
 		staticEval = -staticEval
 	}
@@ -457,9 +493,7 @@ func (m *MinimaxEngine) tryRazoring(ctx context.Context, player movegen.Player, 
 			m.searchState.searchStats.RazoringAttempts++
 
 			m.searchState.player = player
-			// Quiescence's ply arg is originalMaxDepth-depth (extended depth) ==
-			// ply-extended. Razoring requires !inCheck so extended is 0 here.
-			qScore := m.quiescence(ctx, alpha, beta, ply-extended)
+			qScore := m.quiescence(ctx, alpha, beta, ply)
 
 			if qScore <= alpha {
 				m.searchState.searchStats.RazoringCutoffs++
@@ -529,27 +563,14 @@ func hasPromotion(move board.Move) bool {
 }
 
 // handleNoLegalMoves returns the appropriate score when no legal moves are available
-// Returns checkmate score if in check, stalemate score otherwise.
-//
-// ply is this node's RAW entry ply (originalMaxDepth - entry depth) — the exact
-// value probeTT/scoreFromTT will use to decode this entry on any later probe.
-// pliesFromRoot is ply-extended, the mate-distance convention the returned score
-// uses (unchanged: it must stay consistent with sibling mate-score ordering).
-// The TT store MUST use scoreToTT(score, ply) (raw ply), not pliesFromRoot:
-// scoreFromTT decodes with the raw ply, so encoding with pliesFromRoot would
-// skew every re-probe of a checkmate node by the check-extension count (which
-// nearly always fires at a mate node, since it is in check). See scoreToTT.
-func (m *MinimaxEngine) handleNoLegalMoves(b *board.Board, player movegen.Player, depth, ply, pliesFromRoot int, hash uint64) eval.EvaluationScore {
+// Returns checkmate score if in check, stalemate score otherwise. ply is the
+// node's true distance from the root, which is the mate distance the score
+// encodes; the TT store uses the same ply so a later probe decodes it exactly.
+func (m *MinimaxEngine) handleNoLegalMoves(b *board.Board, player movegen.Player, depth, ply int, hash uint64) eval.EvaluationScore {
 	if m.generator.IsKingInCheck(b, player) {
-		// Checkmate - the mate distance is how many plies from the root we are.
-		// The returned score uses pliesFromRoot (== ply-extended at the call
-		// site) to stay consistent with how mate scores propagate/compare.
-		// Negative score because it's mate AGAINST the current player.
-		score := -eval.MateScore + eval.EvaluationScore(pliesFromRoot)
+		// Checkmate. Negative score because it's mate AGAINST the current player.
+		score := -eval.MateScore + eval.EvaluationScore(ply)
 		if m.transpositionTable != nil {
-			// Encode with the RAW ply so the round-trip through
-			// scoreFromTT(entry.Score, ply) on a later probe returns exactly
-			// this same root-relative score.
 			m.transpositionTable.Store(hash, depth, scoreToTT(score, ply), EntryExact, board.Move{})
 		}
 		return score
