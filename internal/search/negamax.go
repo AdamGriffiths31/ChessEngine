@@ -436,7 +436,7 @@ func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player 
 				// Real case caught: kbK5/pp6/1P6/8/8/8/8/R7 w - a pure
 				// zugzwang mate-in-2 that NMP silently pruned once
 				// SEE-corrected move ordering changed which nodes it fired at.
-				m.searchState.searchStats.NullMoveZugzwangSkipped++
+				m.searchState.searchStats.NullMoveSparseSkipped++
 			default:
 				nullReduction := m.searchState.searchParams.NullMoveReduction
 				if depth >= 6 && nullReduction < 3 {

@@ -5,10 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -38,8 +36,13 @@ type Engine struct {
 	searching   bool
 	stopChannel chan struct{}
 	output      io.Writer
-	debugLogger *log.Logger
 	moveNumber  int
+	// session identifies this engine process in the structured move log, and
+	// gameNumber counts "ucinewgame" commands, so one log file can hold many
+	// games. prevMoveFromBook lets the log say when the engine left the book.
+	session          string
+	gameNumber       int
+	prevMoveFromBook bool
 	// uciLogEnabled caches slog's Debug-level enablement at construction time
 	// so the per-line UCI communication tee (see send/Run) is a near-zero-cost
 	// no-op when disabled. slog's level is fixed at startup (see cmd/uci/main.go
@@ -52,8 +55,6 @@ type Engine struct {
 
 // NewUCIEngine creates a new UCI engine wrapper.
 func NewUCIEngine() *Engine {
-	debugLogger := createDebugLogger()
-
 	minimaxEngine := search.NewMinimaxEngine()
 	minimaxEngine.SetTranspositionTableSize(256)
 
@@ -65,7 +66,7 @@ func NewUCIEngine() *Engine {
 		options:       make(map[string]string),
 		searching:     false,
 		stopChannel:   make(chan struct{}),
-		debugLogger:   debugLogger,
+		session:       fmt.Sprintf("%d-%d", time.Now().Unix(), os.Getpid()),
 		uciLogEnabled: slog.Default().Enabled(context.Background(), slog.LevelDebug),
 		generator:     movegen.NewGenerator(),
 	}
@@ -77,41 +78,14 @@ func NewUCIEngine() *Engine {
 // The prober is constructed once, on the first "go" command that finds a
 // non-empty book file (see probeBook); therefore a BookFile set BEFORE the
 // first search takes effect, while later changes are ignored. Passing an empty
-// path disables the opening book. Resolution is logged via the debug logger.
+// path disables the opening book. The choice is logged at Info level.
 func (ue *Engine) SetBookFile(path string) {
 	ue.bookFile = path
 	if path != "" {
-		ue.debugLogger.Printf("BOOK: BookFile set to: %s", path)
+		slog.Info("book file set", "path", path)
 	} else {
-		ue.debugLogger.Printf("BOOK: No book file configured")
+		slog.Info("no book file configured")
 	}
-}
-
-func createDebugLogger() *log.Logger {
-	logLocations := []string{
-		filepath.Join(os.TempDir(), "chess"),
-	}
-
-	for _, dir := range logLocations {
-		if err := os.MkdirAll(dir, 0750); err != nil {
-			log.Printf("Failed to create log directory %s: %v", dir, err)
-			continue
-		}
-
-		logFile := filepath.Join(dir, fmt.Sprintf("uci_debug_%d.log", time.Now().Unix()))
-		file, err := os.Create(logFile) // #nosec G304 - log file path is controlled by application
-		if err != nil {
-			log.Printf("Failed to create log file %s: %v", logFile, err)
-			continue
-		}
-
-		multiWriter := io.MultiWriter(file, os.Stderr)
-		log.Printf("UCI debug logging to: %s", logFile)
-		return log.New(multiWriter, "[UCI-DEBUG] ", log.LstdFlags|log.Lmicroseconds)
-	}
-
-	log.Printf("Failed to create debug log file, using stderr only")
-	return log.New(os.Stderr, "[UCI-DEBUG] ", log.LstdFlags|log.Lmicroseconds)
 }
 
 // Run starts the UCI engine main loop.
@@ -156,7 +130,7 @@ func (ue *Engine) send(line string) {
 		slog.Debug("uci", "dir", "out", "line", line)
 	}
 	if _, err := fmt.Fprintln(ue.output, line); err != nil {
-		ue.debugLogger.Printf("UCI-ERROR: Failed to write response: %v", err)
+		slog.Error("failed to write response", "error", err)
 	}
 }
 
@@ -209,25 +183,25 @@ func (ue *Engine) handleIsReady() string {
 func (ue *Engine) handlePosition(args []string) string {
 	fen, moveList, err := ue.protocol.ParsePosition(args)
 	if err != nil {
-		ue.debugLogger.Printf("POSITION-ERROR: Failed to parse position - fen: %q, error: %v", fen, err)
+		slog.Error("position: parse failed", "fen", fen, "error", err)
 		return ""
 	}
 
 	if err := ue.engine.LoadFromFEN(fen); err != nil {
-		ue.debugLogger.Printf("POSITION-ERROR: Failed to load FEN %q: %v", fen, err)
+		slog.Error("position: FEN load failed", "fen", fen, "error", err)
 		return ""
 	}
 
 	for _, moveStr := range moveList {
 		move, err := ue.converter.FromUCI(moveStr, ue.engine.GetState().Board)
 		if err != nil {
-			ue.debugLogger.Printf("POSITION-ERROR: Failed to convert UCI move - move: %s, error: %v", moveStr, err)
+			slog.Error("position: move conversion failed", "move", moveStr, "error", err)
 			return ""
 		}
 
 		err = ue.engine.MakeMove(move)
 		if err != nil {
-			ue.debugLogger.Printf("POSITION-ERROR: Failed to make move - move: %+v, error: %v", move, err)
+			slog.Error("position: make move failed", "move", moveStr, "error", err)
 			return ""
 		}
 	}
@@ -255,9 +229,12 @@ func (ue *Engine) handleGo(args []string) {
 	stopCtx, stopCancel := context.WithCancel(ctx)
 	defer stopCancel()
 
+	// Pass this search's own channel to the goroutine: reading ue.stopChannel
+	// from it would race with the next "go" command replacing the field.
+	stop := ue.stopChannel
 	go func() {
 		select {
-		case <-ue.stopChannel:
+		case <-stop:
 			stopCancel()
 		case <-ctx.Done():
 		}
@@ -267,7 +244,7 @@ func (ue *Engine) handleGo(args []string) {
 
 	searchFEN := ue.engine.GetCurrentFEN()
 	searchStart := time.Now()
-	result := ue.runSearch(stopCtx, config, player)
+	result, bookOutcome := ue.runSearch(stopCtx, config, player)
 	searchDuration := time.Since(searchStart)
 
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
@@ -286,53 +263,16 @@ func (ue *Engine) handleGo(args []string) {
 
 	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI)
 
-	var ttStatsStr string
-	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
-		ttStats := minimaxEngine.TTStats()
-		ttStatsStr = fmt.Sprintf("TT: %d hits, %d misses, %d collisions, %.1f%% hit rate | 2B: %d uses, %.1f%% rate",
-			ttStats.Hits, ttStats.Misses, ttStats.Collisions, ttStats.HitRate, ttStats.SecondBucketUse, ttStats.SecondBucketRate)
-	}
-
-	var moveOrderPct float64
-	if result.Stats.TotalCutoffs > 0 {
-		moveOrderPct = float64(result.Stats.FirstMoveCutoffs) / float64(result.Stats.TotalCutoffs) * 100
-	}
-
-	var ttHitRate float64
-	if result.Stats.TTProbes > 0 {
-		ttHitRate = float64(result.Stats.TTHits) / float64(result.Stats.TTProbes) * 100
-	}
-
-	var ebf float64
-	ebfCount := 0
-	for d := 0; d < len(result.Stats.NodesByDepth)-1 && d < result.Stats.Depth; d++ {
-		if result.Stats.NodesByDepth[d] > 0 && result.Stats.NodesByDepth[d+1] > 0 {
-			ebf += float64(result.Stats.NodesByDepth[d+1]) / float64(result.Stats.NodesByDepth[d])
-			ebfCount++
-		}
-	}
-	if ebfCount > 0 {
-		ebf /= float64(ebfCount)
-	}
-
-	cutoff1st := result.Stats.CutoffsByMoveIndex[0]
-	cutoff2nd := result.Stats.CutoffsByMoveIndex[1]
-	cutoff3rd := result.Stats.CutoffsByMoveIndex[2]
-
-	totalNodes := result.Stats.PVNodes + result.Stats.CutNodes + result.Stats.AllNodes
-	var pvNodePct, cutNodePct, allNodePct float64
-	if totalNodes > 0 {
-		pvNodePct = float64(result.Stats.PVNodes) / float64(totalNodes) * 100
-		cutNodePct = float64(result.Stats.CutNodes) / float64(totalNodes) * 100
-		allNodePct = float64(result.Stats.AllNodes) / float64(totalNodes) * 100
-	}
-
-	pvLog := "none"
-	if pvString != "" {
-		pvLog = pvString
-	}
-	ue.debugLogger.Printf("Move %d: %s | Score: %d | Depth: %d | Nodes: %d | Q: %d | NM: %d/%d | ZZ: %d | LMR: %d | TTC: %d | DP: %d | RZ: %d/%d | MO: %.0f%% | TTHit: %.0f%% | EBF: %.2f | Cutoffs: [%d,%d,%d] | NodeTypes: PV=%.0f%% Cut=%.0f%% All=%.0f%% | Time: %.3fs | Book: %t | PV: %s | %s | FEN: %s",
-		ue.moveNumber, bestMoveUCI, result.Score, result.Stats.Depth, result.Stats.NodesSearched, result.Stats.QNodes, result.Stats.NullCutoffs, result.Stats.NullMoves, result.Stats.NullMoveZugzwangSkipped, result.Stats.LMRReductions, result.Stats.TTCutoffs, result.Stats.DeltaPruned, result.Stats.RazoringCutoffs, result.Stats.RazoringAttempts, moveOrderPct, ttHitRate, ebf, cutoff1st, cutoff2nd, cutoff3rd, pvNodePct, cutNodePct, allNodePct, searchDuration.Seconds(), result.Stats.BookMoveUsed, pvLog, ttStatsStr, searchFEN)
+	ue.logMove(moveLog{
+		fen:     searchFEN,
+		player:  player,
+		params:  params,
+		budget:  config.MaxTime,
+		elapsed: searchDuration,
+		move:    bestMoveUCI,
+		result:  result,
+		book:    bookOutcome,
+	})
 
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
@@ -399,16 +339,18 @@ func (ue *Engine) searchTimeout(params SearchParams, player movegen.Player) time
 // runSearch produces a search result for the current position. It first
 // consults the opening book; on a miss it runs the engine search guarded by a
 // panic recovery that plays a fallback move instead of forfeiting the game.
-func (ue *Engine) runSearch(ctx context.Context, config search.Config, player movegen.Player) search.Result {
-	if bookMove, ok := ue.probeBook(config); ok {
+func (ue *Engine) runSearch(ctx context.Context, config search.Config, player movegen.Player) (search.Result, bookOutcome) {
+	bookMove, outcome := ue.probeBook(config)
+	ue.prevMoveFromBook = outcome.Used
+	if outcome.Used {
 		return search.Result{
 			BestMove: bookMove,
 			Score:    0,
-			Stats:    search.Stats{BookMoveUsed: true},
-		}
+			Stats:    search.Stats{BookMoveUsed: true, StopReason: search.StopReasonBook},
+		}, outcome
 	}
 
-	return ue.searchWithFallback(ctx, config, player)
+	return ue.searchWithFallback(ctx, config, player), outcome
 }
 
 // searchWithFallback runs the engine search and recovers from any panic. A UCI
@@ -419,9 +361,9 @@ func (ue *Engine) runSearch(ctx context.Context, config search.Config, player mo
 func (ue *Engine) searchWithFallback(ctx context.Context, config search.Config, player movegen.Player) (result search.Result) {
 	defer func() {
 		if r := recover(); r != nil {
-			ue.debugLogger.Printf("PANIC CAUGHT: Search panicked for move %d: %v", ue.moveNumber, r)
-			ue.debugLogger.Printf("PANIC CONTEXT: Position=%s, Player=%s",
-				ue.engine.GetCurrentFEN(), player)
+			slog.Error("search panicked; playing fallback move",
+				"move_number", ue.moveNumber, "panic", fmt.Sprint(r),
+				"fen", ue.engine.GetCurrentFEN(), "player", player.String())
 			result = ue.fallbackResult(player)
 		}
 	}()
@@ -462,18 +404,21 @@ func (ue *Engine) fallbackResult(player movegen.Player) search.Result {
 // at most once per Engine lifetime (matching the previous engine-side
 // lazy-init behavior); a load failure is logged once by the Prober itself
 // and every subsequent call cheaply reports a miss.
-func (ue *Engine) probeBook(config search.Config) (board.Move, bool) {
+func (ue *Engine) probeBook(config search.Config) (board.Move, bookOutcome) {
 	if !config.UseOpeningBook || len(config.BookFiles) == 0 {
-		return board.Move{}, false
+		return board.Move{}, bookOutcome{Reason: BookNotConfigured}
 	}
 	if ue.prober == nil {
 		ue.prober = book.NewProber(config.BookFiles)
 	}
 	move, ok := ue.prober.Probe(ue.engine.GetState().Board)
 	if !ok {
-		return board.Move{}, false
+		if ue.prevMoveFromBook {
+			return board.Move{}, bookOutcome{Reason: BookLeft}
+		}
+		return board.Move{}, bookOutcome{Reason: BookNoEntry}
 	}
-	return *move, true
+	return *move, bookOutcome{Used: true, Reason: BookHit}
 }
 
 func (ue *Engine) handleStop() string {
@@ -486,7 +431,7 @@ func (ue *Engine) handleStop() string {
 func (ue *Engine) handleSetOption(args []string) string {
 	name, value, err := ue.protocol.ParseSetOption(args)
 	if err != nil {
-		ue.debugLogger.Printf("invalid option: %v", args)
+		slog.Warn("invalid setoption", "args", args, "error", err)
 		return ""
 	}
 
@@ -509,9 +454,10 @@ func (ue *Engine) handleSetOption(args []string) string {
 }
 
 func (ue *Engine) handleNewGame() string {
-	ue.debugLogger.Println("=== NEW GAME ===")
 	ue.engine.Reset()
 	ue.moveNumber = 0
+	ue.gameNumber++
+	ue.prevMoveFromBook = false
 
 	if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {
 		minimaxEngine.ClearSearchState()
@@ -524,7 +470,7 @@ func (ue *Engine) handleNewGame() string {
 		}
 	}
 
-	ue.debugLogger.Printf("ENGINE CONFIG: Hash=%dMB", hashSize)
+	slog.Info("new game", "session", ue.session, "game", ue.gameNumber, "hash_mb", hashSize)
 
 	return ""
 }

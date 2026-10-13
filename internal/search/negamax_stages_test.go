@@ -29,8 +29,8 @@ func newEngineWithTT() *MinimaxEngine {
 }
 
 // Null-move pruning must decline, without counting an attempt, when the side to
-// move is in check, beta is near the mate bound, or only a king and pawns
-// remain (zugzwang risk).
+// move is in check, beta is near the mate bound, only a king and pawns remain
+// (zugzwang risk), or the board is sparse.
 func TestTryNullMove_Declines(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -38,10 +38,12 @@ func TestTryNullMove_Declines(t *testing.T) {
 		beta         eval.EvaluationScore
 		inCheck      bool
 		wantZugzwang int64 // expected NullMoveZugzwangSkipped
+		wantSparse   int64 // expected NullMoveSparseSkipped
 	}{
-		{"in check", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 100, true, 0},
-		{"beta at the mate bound", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", eval.MateScore, false, 0},
-		{"no non-pawn material", "6k1/8/8/8/8/8/P7/K7 w - - 0 1", 0, false, 1},
+		{"in check", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 100, true, 0, 0},
+		{"beta at the mate bound", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", eval.MateScore, false, 0, 0},
+		{"no non-pawn material", "6k1/8/8/8/8/8/P7/K7 w - - 0 1", 0, false, 1, 0},
+		{"sparse board", "6k1/8/8/8/8/8/P7/KR6 w - - 0 1", 0, false, 0, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -64,6 +66,9 @@ func TestTryNullMove_Declines(t *testing.T) {
 			}
 			if stats.NullMoveZugzwangSkipped != tt.wantZugzwang {
 				t.Errorf("NullMoveZugzwangSkipped = %d, want %d", stats.NullMoveZugzwangSkipped, tt.wantZugzwang)
+			}
+			if stats.NullMoveSparseSkipped != tt.wantSparse {
+				t.Errorf("NullMoveSparseSkipped = %d, want %d", stats.NullMoveSparseSkipped, tt.wantSparse)
 			}
 		})
 	}

@@ -14,6 +14,17 @@ import (
 // directory at startup. Absent the file, the engine runs with no book.
 const defaultBookPath = "internal/book/testdata/performance.bin"
 
+// envDebugLog names the environment variable that supplies the default for the
+// -debug-log flag, for wrappers (such as lichess-bot) that cannot pass
+// command-line arguments to the engine.
+const envDebugLog = "CHESS_DEBUG_LOG"
+
+// debugLogDefault returns the default -debug-log path: the value of
+// CHESS_DEBUG_LOG, or empty when it is unset.
+func debugLogDefault() string {
+	return os.Getenv(envDebugLog)
+}
+
 // setupLogging wires the default slog logger. With no flag, warnings and
 // above are written as text to stderr. When debugLogPath is non-empty, a JSON
 // handler at Debug level writes to that file instead; stdout is never
@@ -41,7 +52,7 @@ func main() {
 }
 
 func run() error {
-	debugLogPath := flag.String("debug-log", "", "path to write JSON debug logs at Debug level (default: text warnings to stderr)")
+	debugLogPath := flag.String("debug-log", debugLogDefault(), "path to append JSON logs to, one record per move plus the UCI transcript (default: $"+envDebugLog+"; if empty, text warnings to stderr)")
 	flag.Parse()
 
 	closeLog, err := setupLogging(*debugLogPath)

@@ -5,7 +5,51 @@ import (
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
+	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 )
+
+// Reasons a search stopped, reported in Stats.StopReason.
+const (
+	// StopReasonDepth means every iteration up to Config.MaxDepth completed.
+	StopReasonDepth = "depth"
+	// StopReasonTime means the time budget (Config.MaxTime or the context
+	// deadline) ran out.
+	StopReasonTime = "time"
+	// StopReasonMate means a mate in one was found, so deeper search was skipped.
+	StopReasonMate = "mate"
+	// StopReasonCancelled means the context was cancelled (e.g. a UCI "stop").
+	StopReasonCancelled = "cancelled"
+	// StopReasonNoLegalMoves means the root position has no legal moves.
+	StopReasonNoLegalMoves = "no_legal_moves"
+	// StopReasonBook means the move came from the opening book, with no search.
+	StopReasonBook = "book"
+)
+
+// Iteration records one completed iterative-deepening pass.
+type Iteration struct {
+	Depth    int
+	Score    eval.EvaluationScore // from the side to move's point of view
+	BestMove board.Move
+	Nodes    int64 // cumulative nodes searched when the iteration finished
+	Elapsed  time.Duration
+
+	// Times the aspiration window failed low or high before this iteration's
+	// score landed inside it. Both are zero when the first window held.
+	AspirationFailLows  int
+	AspirationFailHighs int
+}
+
+// MaxLoggedRootMoves is how many root moves Stats.RootMoves keeps.
+const MaxLoggedRootMoves = 5
+
+// RootMove is a root move with an exact score from the last completed
+// iteration. Only moves searched with a full window have one: the rest failed
+// low on a null-window scout, which reports the current alpha whatever the
+// move's real value, so they carry no information and are not recorded.
+type RootMove struct {
+	Move  board.Move
+	Score eval.EvaluationScore // from the side to move's point of view
+}
 
 // Stats tracks statistics during search
 type Stats struct {
@@ -15,15 +59,25 @@ type Stats struct {
 	PrincipalVariation []board.Move
 	BookMoveUsed       bool // True if move came from opening book
 
+	// Iterations lists each completed iteration in depth order; StopReason says
+	// why the search ended (one of the StopReason constants).
+	Iterations []Iteration
+	StopReason string
+
+	// RootMoves lists the root moves with an exact score in the last completed
+	// iteration, best first, at most MaxLoggedRootMoves. The chosen move is
+	// always first; the others raised alpha before a better move was found.
+	RootMoves []RootMove
+
 	// Late Move Reductions (LMR) statistics
-	LMRReductions   int64 // Number of moves reduced
-	LMRReSearches   int64 // Number of re-searches performed
-	LMRNodesSkipped int64 // Estimated nodes saved by LMR
+	LMRReductions int64 // Number of moves reduced
+	LMRReSearches int64 // Number of re-searches performed
 
 	// Null move pruning statistics
 	NullMoves               int64 // Number of null move attempts
 	NullCutoffs             int64 // Number of successful null move cutoffs
 	NullMoveZugzwangSkipped int64 // Null move declined: side to move has no non-pawn material
+	NullMoveSparseSkipped   int64 // Null move declined: board has NullMoveMaxPieces pieces or fewer
 
 	QNodes           int64 // Quiescence search nodes
 	TTCutoffs        int64 // Beta cutoffs from transposition table
@@ -59,28 +113,31 @@ type Stats struct {
 	AllNodes int64 // Nodes where all moves were searched
 }
 
-// EBF returns the effective branching factor, computed as the mean of the
-// per-depth node-count ratios NodesByDepth[d]/NodesByDepth[d-1] over every
-// depth d where both NodesByDepth[d] and NodesByDepth[d-1] are nonzero. This
-// is the standard "average ratio of successive depths" approximation to the
-// branching factor (as opposed to the alternative geometric-mean-over-total
-// definition, b such that NodesSearched = b^Depth). Depths with a zero
-// numerator or denominator are skipped rather than treated as zero, since a
-// missing sample (search didn't reach that depth, or reported no nodes)
-// should not be interpreted as "no branching" and drag the average down.
-// Returns 0 if there are no eligible depth pairs (e.g. fewer than two
-// non-zero depths were recorded), never NaN or Inf.
+// EBF returns the effective branching factor: the mean ratio of nodes searched
+// by one iterative-deepening iteration to nodes searched by the one before it.
+// Iteration.Nodes is cumulative, so each iteration's own cost is the difference
+// from its predecessor. Iterations with no nodes of their own are skipped
+// rather than treated as zero, and it returns 0 when fewer than two iterations
+// qualify, never NaN or Inf.
+//
+// NodesByDepth is deliberately not used: it counts nodes by distance from the
+// root within the whole search, so the shrinking tail beyond the nominal depth
+// drags a per-ply ratio well below the true branching factor.
 func (s *Stats) EBF() float64 {
 	var sum float64
 	var count int
-	for d := 1; d < len(s.NodesByDepth); d++ {
-		prev := s.NodesByDepth[d-1]
-		curr := s.NodesByDepth[d]
-		if prev == 0 || curr == 0 {
+	var prevCumulative, prevOwn int64
+	for _, it := range s.Iterations {
+		own := it.Nodes - prevCumulative
+		prevCumulative = it.Nodes
+		if own <= 0 {
 			continue
 		}
-		sum += float64(curr) / float64(prev)
-		count++
+		if prevOwn > 0 {
+			sum += float64(own) / float64(prevOwn)
+			count++
+		}
+		prevOwn = own
 	}
 	if count == 0 {
 		return 0
@@ -128,19 +185,25 @@ type searchStatsJSON struct {
 	PrincipalVariation []string `json:"principal_variation"`
 	BookMoveUsed       bool     `json:"book_move_used"`
 
-	LMRReductions   int64 `json:"lmr_reductions"`
-	LMRReSearches   int64 `json:"lmr_re_searches"`
-	LMRNodesSkipped int64 `json:"lmr_nodes_skipped"`
+	StopReason string          `json:"stop_reason"`
+	Iterations []iterationJSON `json:"iterations"`
+	RootMoves  []rootMoveJSON  `json:"root_moves"`
+
+	LMRReductions int64 `json:"lmr_reductions"`
+	LMRReSearches int64 `json:"lmr_re_searches"`
 
 	NullMoves               int64 `json:"null_moves"`
 	NullCutoffs             int64 `json:"null_cutoffs"`
 	NullMoveZugzwangSkipped int64 `json:"null_move_zugzwang_skipped"`
+	NullMoveSparseSkipped   int64 `json:"null_move_sparse_skipped"`
 
 	QNodes           int64 `json:"q_nodes"`
 	TTCutoffs        int64 `json:"tt_cutoffs"`
 	FirstMoveCutoffs int64 `json:"first_move_cutoffs"`
 	TotalCutoffs     int64 `json:"total_cutoffs"`
 	DeltaPruned      int64 `json:"delta_pruned"`
+
+	RFPCutoffs int64 `json:"rfp_cutoffs"`
 
 	RazoringAttempts int64 `json:"razoring_attempts"`
 	RazoringCutoffs  int64 `json:"razoring_cutoffs"`
@@ -164,6 +227,25 @@ type searchStatsJSON struct {
 	TTHitRate          float64 `json:"tt_hit_rate"`
 	OrderingQuality    float64 `json:"ordering_quality"`
 	NullMoveEfficiency float64 `json:"null_move_efficiency"`
+}
+
+// iterationJSON is the marshaled form of Iteration: the score is in centipawns
+// from the side to move's point of view, the best move in UCI notation.
+type iterationJSON struct {
+	Depth     int    `json:"depth"`
+	ScoreCP   int    `json:"score_cp"`
+	BestMove  string `json:"best_move"`
+	Nodes     int64  `json:"nodes"`
+	ElapsedMS int64  `json:"elapsed_ms"`
+
+	AspirationFailLows  int `json:"aspiration_fail_lows"`
+	AspirationFailHighs int `json:"aspiration_fail_highs"`
+}
+
+// rootMoveJSON is the marshaled form of RootMove.
+type rootMoveJSON struct {
+	Move    string `json:"move"`
+	ScoreCP int    `json:"score_cp"`
 }
 
 // nonZeroPrefix returns arr truncated after the last non-zero element (empty
@@ -206,6 +288,25 @@ func (s Stats) MarshalJSON() ([]byte, error) {
 		pv[i] = moveToUCI(m)
 	}
 
+	iterations := make([]iterationJSON, len(s.Iterations))
+	for i, it := range s.Iterations {
+		iterations[i] = iterationJSON{
+			Depth:     it.Depth,
+			ScoreCP:   int(it.Score),
+			BestMove:  moveToUCI(it.BestMove),
+			Nodes:     it.Nodes,
+			ElapsedMS: it.Elapsed.Milliseconds(),
+
+			AspirationFailLows:  it.AspirationFailLows,
+			AspirationFailHighs: it.AspirationFailHighs,
+		}
+	}
+
+	rootMoves := make([]rootMoveJSON, len(s.RootMoves))
+	for i, rm := range s.RootMoves {
+		rootMoves[i] = rootMoveJSON{Move: moveToUCI(rm.Move), ScoreCP: int(rm.Score)}
+	}
+
 	snapshot := searchStatsJSON{
 		NodesSearched:      s.NodesSearched,
 		Depth:              s.Depth,
@@ -213,13 +314,19 @@ func (s Stats) MarshalJSON() ([]byte, error) {
 		PrincipalVariation: pv,
 		BookMoveUsed:       s.BookMoveUsed,
 
-		LMRReductions:   s.LMRReductions,
-		LMRReSearches:   s.LMRReSearches,
-		LMRNodesSkipped: s.LMRNodesSkipped,
+		StopReason: s.StopReason,
+		Iterations: iterations,
+		RootMoves:  rootMoves,
+
+		RFPCutoffs: s.RFPCutoffs,
+
+		LMRReductions: s.LMRReductions,
+		LMRReSearches: s.LMRReSearches,
 
 		NullMoves:               s.NullMoves,
 		NullCutoffs:             s.NullCutoffs,
 		NullMoveZugzwangSkipped: s.NullMoveZugzwangSkipped,
+		NullMoveSparseSkipped:   s.NullMoveSparseSkipped,
 
 		QNodes:           s.QNodes,
 		TTCutoffs:        s.TTCutoffs,

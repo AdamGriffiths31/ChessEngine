@@ -6,76 +6,53 @@ import (
 	"math"
 	"testing"
 
+	"github.com/AdamGriffiths31/ChessEngine/internal/board"
+	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
+	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
 func TestSearchStatsEBF(t *testing.T) {
+	// Iteration.Nodes is cumulative; the helper builds iterations from the
+	// cumulative totals at the end of each one.
+	iterations := func(cumulative ...int64) []Iteration {
+		its := make([]Iteration, len(cumulative))
+		for i, n := range cumulative {
+			its[i] = Iteration{Depth: i + 1, Nodes: n}
+		}
+		return its
+	}
+
 	tests := []struct {
-		name  string
-		nodes [100]int64
-		want  float64
+		name string
+		its  []Iteration
+		want float64
 	}{
+		{name: "no iterations", want: 0},
+		{name: "single iteration - no ratio possible", its: iterations(20), want: 0},
 		{
-			name: "zero value - all depths empty",
-			want: 0,
-		},
-		{
-			name: "single depth recorded - no ratio possible",
-			nodes: [100]int64{
-				0: 20,
-			},
-			want: 0,
-		},
-		{
-			name: "two depths, exact ratio",
-			// depth1/depth0 = 100/20 = 5
-			nodes: [100]int64{
-				0: 20,
-				1: 100,
-			},
-			want: 5,
-		},
-		{
-			name: "three depths, mean of two ratios",
-			// depth1/depth0 = 100/20 = 5
-			// depth2/depth1 = 500/100 = 5
-			// mean = 5
-			nodes: [100]int64{
-				0: 20,
-				1: 100,
-				2: 500,
-			},
+			name: "two iterations, exact ratio",
+			// own nodes 20 then 100: 100/20 = 5
+			its:  iterations(20, 120),
 			want: 5,
 		},
 		{
 			name: "uneven ratios averaged",
-			// depth1/depth0 = 40/20 = 2
-			// depth2/depth1 = 400/40 = 10
-			// mean = (2+10)/2 = 6
-			nodes: [100]int64{
-				0: 20,
-				1: 40,
-				2: 400,
-			},
+			// own nodes 20, 40, 400: (40/20 + 400/40) / 2 = 6
+			its:  iterations(20, 60, 460),
 			want: 6,
 		},
 		{
-			name: "gap in the middle is skipped, not treated as zero",
-			// depth0=20, depth1=0 (missing), depth2=200
-			// only eligible pair would need both prev and curr nonzero;
-			// (1,2) has prev=0 skipped, (0,1) has curr=0 skipped.
-			// So no eligible pairs at all -> 0.
-			nodes: [100]int64{
-				0: 20,
-				2: 200,
-			},
-			want: 0,
+			name: "iteration with no nodes of its own is skipped",
+			// own nodes 20, 0, 100: the empty iteration is ignored, 100/20 = 5
+			its:  iterations(20, 20, 120),
+			want: 5,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Stats{NodesByDepth: tt.nodes}
+			s := &Stats{Iterations: tt.its}
 			got := s.EBF()
 			if math.IsNaN(got) || math.IsInf(got, 0) {
 				t.Fatalf("EBF() = %v, want a finite number", got)
@@ -84,6 +61,38 @@ func TestSearchStatsEBF(t *testing.T) {
 				t.Errorf("EBF() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTopRootMoves(t *testing.T) {
+	const unsearched = -eval.MateScore - 1
+	moves := &movegen.MoveList{
+		Moves: []board.Move{
+			{From: sq(0, 1), To: sq(0, 2)},
+			{From: sq(1, 1), To: sq(1, 2)},
+			{From: sq(2, 1), To: sq(2, 2)},
+			{From: sq(3, 1), To: sq(3, 2)},
+			{From: sq(4, 1), To: sq(4, 2)},
+		},
+		Count: 5,
+	}
+	scores := []eval.EvaluationScore{50, 120, unsearched, 120, 10}
+	exact := []bool{true, true, false, true, false}
+
+	got := topRootMoves(moves, scores, exact, 3)
+
+	want := []RootMove{
+		{Move: moves.Moves[1], Score: 120},
+		{Move: moves.Moves[3], Score: 120}, // tie keeps root order
+		{Move: moves.Moves[0], Score: 50},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d moves, want %d: %+v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("rank %d = %+v, want %+v", i, got[i], want[i])
+		}
 	}
 }
 
@@ -161,9 +170,11 @@ func TestSearchStatsMarshalJSONFieldOrder(t *testing.T) {
 	}
 
 	want := `{"nodes_searched":0,"depth":0,"time_ms":0,"principal_variation":[],"book_move_used":false,` +
-		`"lmr_reductions":0,"lmr_re_searches":0,"lmr_nodes_skipped":0,"null_moves":0,"null_cutoffs":0,` +
-		`"null_move_zugzwang_skipped":0,` +
+		`"stop_reason":"","iterations":[],"root_moves":[],` +
+		`"lmr_reductions":0,"lmr_re_searches":0,"null_moves":0,"null_cutoffs":0,` +
+		`"null_move_zugzwang_skipped":0,"null_move_sparse_skipped":0,` +
 		`"q_nodes":0,"tt_cutoffs":0,"first_move_cutoffs":0,"total_cutoffs":0,"delta_pruned":0,` +
+		`"rfp_cutoffs":0,` +
 		`"razoring_attempts":0,"razoring_cutoffs":0,"razoring_failed":0,` +
 		`"futility_prunes":0,"lmp_prunes":0,"cutoffs_by_move_index":[],` +
 		`"tt_probes":0,"tt_hits":0,"nodes_by_depth":[],"pv_nodes":0,"cut_nodes":0,"all_nodes":0,` +

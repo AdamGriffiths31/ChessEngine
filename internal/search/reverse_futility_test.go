@@ -17,7 +17,7 @@ func TestTryReverseFutility_Fires(t *testing.T) {
 	t.Run("white to move", func(t *testing.T) {
 		b := testutil.MustFromFEN(t, rfpStartFEN)
 		score, done := m.tryReverseFutility(b, movegen.White, 2, 99, 100, 600, false)
-		want := eval.EvaluationScore(600 - 2*margin)
+		want := 600 - 2*margin
 		if !done || score != want {
 			t.Errorf("= (%d, done=%v), want (%d, true)", score, done, want)
 		}
@@ -29,7 +29,7 @@ func TestTryReverseFutility_Fires(t *testing.T) {
 	t.Run("black to move converts White-relative eval", func(t *testing.T) {
 		b := testutil.MustFromFEN(t, rfpStartFEN)
 		score, done := m.tryReverseFutility(b, movegen.Black, 2, 99, 100, -600, false)
-		if !done || score != eval.EvaluationScore(600-2*margin) {
+		if !done || score != 600-2*margin {
 			t.Errorf("= (%d, done=%v), want (%d, true)", score, done, 600-2*margin)
 		}
 	})
