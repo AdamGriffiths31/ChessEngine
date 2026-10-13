@@ -4,14 +4,14 @@
     "depth": 5,
     "bestmove": "b1c3",
     "score": 40,
-    "nodes": 2644
+    "nodes": 2747
   },
   {
     "fen": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
     "depth": 5,
     "bestmove": "e2a6",
     "score": -1,
-    "nodes": 8724
+    "nodes": 8771
   },
   {
     "fen": "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
@@ -25,28 +25,28 @@
     "depth": 5,
     "bestmove": "a1a7",
     "score": 29997,
-    "nodes": 17081
+    "nodes": 16652
   },
   {
     "fen": "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
     "depth": 5,
     "bestmove": "c3d5",
     "score": 57,
-    "nodes": 6440
+    "nodes": 6704
   },
   {
     "fen": "4k3/8/8/3Pp3/8/8/8/4K3 w - e6 0 1",
     "depth": 5,
     "bestmove": "e1d2",
     "score": 35,
-    "nodes": 1064
+    "nodes": 1119
   },
   {
     "fen": "4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1",
     "depth": 5,
     "bestmove": "e8d7",
     "score": 35,
-    "nodes": 1061
+    "nodes": 1125
   },
   {
     "fen": "4k3/1P6/8/8/8/8/8/4K3 w - - 0 1",

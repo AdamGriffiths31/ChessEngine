@@ -335,8 +335,16 @@ func (m *MinimaxEngine) negamax(ctx context.Context, depth int, alpha, beta eval
 // classification at the bottom of negamax would (score resolved exactly ==
 // PV, fail-high == Cut, fail-low == All) -- without this, any node resolved
 // via a TT shortcut was invisible to that classification entirely.
+//
+// The root's children (ply 1) never take a cutoff, though the TT move still
+// orders their moves. Entries persist across searches and across moves, so a
+// deep entry from an earlier search would answer every root move at once: the
+// iterations stop searching the candidates and report the same stale, possibly
+// path-dependent score at every depth. A fresh look at each root move costs
+// little and keeps the root decision grounded in the current search.
 func (m *MinimaxEngine) probeTT(hash uint64, depth, ply int, alpha, beta eval.EvaluationScore) (ttMove board.Move, score, alphaOut, betaOut eval.EvaluationScore, done bool) {
 	alphaOut, betaOut = alpha, beta
+	rootChild := ply == 1
 	if m.transpositionTable != nil {
 		m.searchState.searchStats.TTProbes++
 		if entry, found := m.transpositionTable.Probe(hash); found {
@@ -351,24 +359,28 @@ func (m *MinimaxEngine) probeTT(hash uint64, depth, ply int, alpha, beta eval.Ev
 				ttScore := scoreFromTT(entry.Score, ply)
 				switch entry.GetType() {
 				case EntryExact:
-					m.searchState.searchStats.TTCutoffs++
-					m.searchState.searchStats.PVNodes++
-					return ttMove, ttScore, alphaOut, betaOut, true
-				case EntryLowerBound:
-					if ttScore >= beta {
+					if !rootChild {
 						m.searchState.searchStats.TTCutoffs++
-						m.searchState.searchStats.CutNodes++
+						m.searchState.searchStats.PVNodes++
 						return ttMove, ttScore, alphaOut, betaOut, true
 					}
-					if ttScore > alpha {
+				case EntryLowerBound:
+					if ttScore >= beta {
+						if !rootChild {
+							m.searchState.searchStats.TTCutoffs++
+							m.searchState.searchStats.CutNodes++
+							return ttMove, ttScore, alphaOut, betaOut, true
+						}
+					} else if ttScore > alpha {
 						alphaOut = ttScore
 					}
 				case EntryUpperBound:
 					if ttScore <= alpha {
-						m.searchState.searchStats.AllNodes++
-						return ttMove, ttScore, alphaOut, betaOut, true
-					}
-					if ttScore < beta {
+						if !rootChild {
+							m.searchState.searchStats.AllNodes++
+							return ttMove, ttScore, alphaOut, betaOut, true
+						}
+					} else if ttScore < beta {
 						betaOut = ttScore
 					}
 				}
