@@ -49,6 +49,9 @@ type MinimaxEngine struct {
 	// Repetition detection
 	zobristHistory    [MaxGamePly]uint64
 	zobristHistoryPly uint16
+	// repetitionRootPly is the history index of the search root. Entries
+	// before it are real game positions, entries from it up are the search path.
+	repetitionRootPly uint16
 }
 
 // NewMinimaxEngine creates a new minimax search engine
@@ -181,6 +184,7 @@ func (m *MinimaxEngine) ClearSearchState() {
 
 	// Clear repetition history
 	m.zobristHistoryPly = 0
+	m.repetitionRootPly = 0
 
 	if m.transpositionTable != nil {
 		m.transpositionTable.Clear()

@@ -169,3 +169,41 @@ func TestFindBestMove_WinningSideAvoidsRepetition(t *testing.T) {
 		t.Error("Score = DrawScore: winning side walked into (or accepted) a repetition instead of playing for the win")
 	}
 }
+
+// A repeat of a position from before the root is only a draw once it would be
+// the third occurrence: the opponent need not repeat, so one earlier visit in
+// the real game proves nothing. A repeat inside the search path, from the root
+// down, is the usual two-fold draw.
+func TestIsDrawByRepetition_GameHistoryNeedsThreefold(t *testing.T) {
+	const (
+		p, q, r, x, y = 0xA1, 0xA2, 0xA3, 0xA4, 0xA5
+	)
+
+	tests := []struct {
+		name    string
+		history []uint64 // real game, oldest first, ending with the root
+		path    []uint64 // positions entered below the root, in order
+		want    bool
+	}{
+		{"seen once before the root", []uint64{p, x, r}, []uint64{p}, false},
+		{"seen twice before the root", []uint64{p, x, p, y, r}, []uint64{p}, true},
+		{"repeated within the search path", []uint64{r}, []uint64{q, x, q}, true},
+		{"returns to the root", []uint64{x, r}, []uint64{q, r}, true},
+		{"new position", []uint64{p, x, r}, []uint64{q}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := NewMinimaxEngine()
+			engine.seedRepetitionHistory(tt.history)
+
+			var got bool
+			for _, hash := range tt.path {
+				engine.addHistory(hash)
+				got = engine.isDrawByRepetition(hash)
+			}
+			if got != tt.want {
+				t.Errorf("isDrawByRepetition after path %v = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+}

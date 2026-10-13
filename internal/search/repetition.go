@@ -6,6 +6,7 @@ package search
 // repetition detection during the current search tree exploration.
 func (m *MinimaxEngine) setupRepetitionHistory(rootHash uint64) {
 	m.zobristHistoryPly = 0
+	m.repetitionRootPly = 0
 	m.zobristHistory[m.zobristHistoryPly] = rootHash
 }
 
@@ -22,6 +23,7 @@ func (m *MinimaxEngine) seedRepetitionHistory(history []uint64) {
 	}
 	copy(m.zobristHistory[:len(history)], history)
 	m.zobristHistoryPly = uint16(len(history) - 1)
+	m.repetitionRootPly = m.zobristHistoryPly
 }
 
 // addHistory adds a position hash to the repetition detection history.
@@ -43,15 +45,26 @@ func (m *MinimaxEngine) removeHistory() {
 	}
 }
 
-// isDrawByRepetition checks if the current position hash appears in the search history.
-// Returns true if the position repeats any position from the current search path,
-// indicating a draw by repetition according to chess rules. Only checks positions
-// in the current search tree, not the full game history.
+// isDrawByRepetition reports whether the position just entered (its hash is the
+// newest history entry) is a repetition the search should score as a draw.
+//
+// A repeat of the root or of anything below it is a draw on the first match:
+// the side that could avoid the repeat is assumed not to, as engines
+// conventionally do. A match before the root is a real game position, and the
+// opponent need not walk into a second visit, so it only counts once the
+// position has already occurred twice (this would be its third occurrence).
+// Treating one earlier visit as a draw makes the engine see a free draw in
+// every line that returns to a previous position and drift into worse ones.
 func (m *MinimaxEngine) isDrawByRepetition(currentHash uint64) bool {
+	gameMatches := 0
 	for repPly := range m.zobristHistoryPly {
-		if m.zobristHistory[repPly] == currentHash {
+		if m.zobristHistory[repPly] != currentHash {
+			continue
+		}
+		if repPly >= m.repetitionRootPly {
 			return true
 		}
+		gameMatches++
 	}
-	return false
+	return gameMatches >= 2
 }
