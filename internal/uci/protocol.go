@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
+	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
 // Command represents a UCI command.
@@ -157,6 +160,24 @@ func (ph *ProtocolHandler) FormatBestMove(move string) string {
 	return fmt.Sprintf("bestmove %s", move)
 }
 
+// formatScore renders a search score as a UCI score field. Scores within
+// MateDistanceThreshold of the mate bound encode a forced mate as
+// MateScore minus the plies to mate; UCI wants "mate N" in moves, positive when
+// the side to move delivers it and negative when it is mated.
+func formatScore(score int) string {
+	mate := int(eval.MateScore)
+	switch {
+	case score >= mate-search.MateDistanceThreshold:
+		plies := mate - score
+		return fmt.Sprintf("mate %d", (plies+1)/2)
+	case score <= -mate+search.MateDistanceThreshold:
+		plies := mate + score
+		return fmt.Sprintf("mate %d", -(plies / 2))
+	default:
+		return fmt.Sprintf("cp %d", score)
+	}
+}
+
 // FormatInfo formats search info during thinking.
 func (ph *ProtocolHandler) FormatInfo(depth int, score int, nodes int64, time time.Duration, pv string) string {
 	timeMs := int(time.Milliseconds())
@@ -165,8 +186,8 @@ func (ph *ProtocolHandler) FormatInfo(depth int, score int, nodes int64, time ti
 		nps = (nodes * 1000) / int64(timeMs)
 	}
 
-	info := fmt.Sprintf("info depth %d score cp %d nodes %d time %d nps %d",
-		depth, score, nodes, timeMs, nps)
+	info := fmt.Sprintf("info depth %d score %s nodes %d time %d nps %d",
+		depth, formatScore(score), nodes, timeMs, nps)
 
 	if pv != "" {
 		info += fmt.Sprintf(" pv %s", pv)

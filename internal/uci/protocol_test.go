@@ -319,6 +319,33 @@ func TestProtocolHandler_ParseSetOption(t *testing.T) {
 	}
 }
 
+// Mate scores encode the plies to mate as MateScore - plies; UCI reports them in
+// moves, positive for the side delivering mate and negative for the side mated.
+func TestFormatScore(t *testing.T) {
+	tests := []struct {
+		name  string
+		score int
+		want  string
+	}{
+		{"ordinary score", 50, "cp 50"},
+		{"negative score", -135, "cp -135"},
+		{"largest non-mate score", 28999, "cp 28999"},
+		{"mate in one", 29999, "mate 1"},
+		{"mate in two (3 plies)", 29997, "mate 2"},
+		{"mate in two (4 plies)", 29996, "mate 2"},
+		{"mated at once", -30000, "mate 0"},
+		{"mated after our move (2 plies)", -29998, "mate -1"},
+		{"mated after two of our moves (4 plies)", -29996, "mate -2"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := formatScore(tt.score); got != tt.want {
+				t.Errorf("formatScore(%d) = %q, want %q", tt.score, got, tt.want)
+			}
+		})
+	}
+}
+
 // info lines report time in milliseconds and a derived nodes-per-second figure.
 func TestProtocolHandler_FormatInfo(t *testing.T) {
 	handler := NewProtocolHandler()
