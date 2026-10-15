@@ -2,6 +2,22 @@
 
 A high-performance chess engine written in Go, featuring advanced search algorithms, comprehensive evaluation functions, and UCI protocol support for integration with chess GUIs.
 
+## Live on Lichess
+
+The engine plays real opponents on Lichess as the bot account **[GolangChessBot](https://lichess.org/@/GolangChessBot)**,
+around the clock if you leave it running: it challenges other bots, accepts challenges, and plays rated and casual games
+through [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot).
+
+**Current bullet rating: 2393** (October 2026).
+
+### What the bot does
+- **Rated or casual on demand** - one switch flips between them, or mixes both
+- **Polyglot opening book** built into the engine, so it plays theory instead of burning clock on move one
+- **Structured per-move log** - every search is recorded as JSON: depth, nodes, score, principal variation, best move at
+  each iteration, and why the search stopped
+- **Post-game analysis against Stockfish** - `review_log.py` replays the log and flags the moves that lost the most
+  centipawns, next to the engine's own per-depth score trace
+
 ## Features
 
 ### Core Engine Capabilities

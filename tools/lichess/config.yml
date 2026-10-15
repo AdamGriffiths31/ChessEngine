@@ -192,7 +192,7 @@ matchmaking:
 #    - 1
 #    - 2
   opponent_min_rating: 1800        # Opponents rating should be above this value (600 is the minimum rating in lichess).
-  opponent_max_rating: 2400       # Opponents rating should be below this value (4000 is the maximum rating in lichess).
+  opponent_max_rating: 2600       # Opponents rating should be below this value (4000 is the maximum rating in lichess).
   opponent_rating_difference: null # The maximum difference in rating between the bot's rating and opponent's rating.
   rating_preference: "none"        # One of "none", "high", "low".
   challenge_mode: "casual"         # Set it to the mode in which challenges are sent. Possible options are 'casual', 'rated' and 'random'.
