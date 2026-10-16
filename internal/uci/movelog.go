@@ -33,6 +33,7 @@ type moveLog struct {
 	player  movegen.Player
 	params  SearchParams
 	budget  time.Duration
+	soft    time.Duration
 	elapsed time.Duration
 	move    string
 	result  search.Result
@@ -77,6 +78,7 @@ func (ue *Engine) logMove(m moveLog) {
 		slog.Int64("nps", nps),
 		slog.Int64("elapsed_ms", m.elapsed.Milliseconds()),
 		slog.Int64("budget_ms", m.budget.Milliseconds()),
+		slog.Int64("soft_ms", m.soft.Milliseconds()),
 		slog.Group("clock",
 			slog.Int64("wtime_ms", m.params.WTime.Milliseconds()),
 			slog.Int64("btime_ms", m.params.BTime.Milliseconds()),

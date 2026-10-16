@@ -12,8 +12,11 @@ import (
 
 // Config configures the search parameters
 type Config struct {
-	MaxDepth  int
-	MaxTime   time.Duration
+	MaxDepth int
+	// MaxTime is the hard limit; the running iteration is discarded. Zero means none.
+	MaxTime time.Duration
+	// SoftTime is checked between iterations only; zero disables it.
+	SoftTime  time.Duration
 	DebugMode bool
 
 	// Opening book configuration

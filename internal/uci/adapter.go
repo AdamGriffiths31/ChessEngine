@@ -170,6 +170,7 @@ func (ue *Engine) handleUCI() string {
 		"id name ChessEngine",
 		"id author Adam Griffiths",
 		"option name Hash type spin default 128 min 1 max 1024",
+		"option name Move Overhead type spin default 50 min 0 max 5000",
 		"uciok",
 	}
 
@@ -221,7 +222,9 @@ func (ue *Engine) handleGo(args []string) {
 	ue.stopChannel = make(chan struct{})
 
 	config := ue.buildSearchConfig(params)
-	config.MaxTime = ue.searchTimeout(params, player)
+	budget := ue.searchTimeout(params, player)
+	config.MaxTime = budget.Hard
+	config.SoftTime = budget.Soft
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MaxTime)
 	defer cancel()
@@ -268,6 +271,7 @@ func (ue *Engine) handleGo(args []string) {
 		player:  player,
 		params:  params,
 		budget:  config.MaxTime,
+		soft:    config.SoftTime,
 		elapsed: searchDuration,
 		move:    bestMoveUCI,
 		result:  result,
@@ -319,21 +323,37 @@ func (ue *Engine) buildSearchConfig(params SearchParams) search.Config {
 // mirrors the original handleGo logic: default move time, then an explicit
 // movetime (minus a safety margin), then infinite, then clock-based management
 // when wtime/btime are supplied.
-func (ue *Engine) searchTimeout(params SearchParams, player movegen.Player) time.Duration {
-	maxTime := DefaultMoveTime
+// Only clock-based searches get a soft limit.
+func (ue *Engine) searchTimeout(params SearchParams, player movegen.Player) timeBudget {
+	overhead := ue.moveOverhead()
+	budget := timeBudget{Hard: DefaultMoveTime}
 
 	if params.MoveTime > 0 {
-		safetyMargin := 100 * time.Millisecond
-		maxTime = params.MoveTime - safetyMargin
+		budget.Hard = max(params.MoveTime-overhead, time.Millisecond)
 	}
 	if params.Infinite {
-		maxTime = 24 * time.Hour
+		budget.Hard = 24 * time.Hour
 	}
 	if params.WTime > 0 || params.BTime > 0 {
-		maxTime = ue.calculateMoveTime(params, player, ue.moveNumber)
+		timeLeft, increment := params.WTime, params.WInc
+		if player == movegen.Black {
+			timeLeft, increment = params.BTime, params.BInc
+		}
+		budget = allocateTime(timeLeft, increment, params.MovesToGo, overhead)
 	}
 
-	return maxTime
+	return budget
+}
+
+// moveOverhead returns the "Move Overhead" option, or the default if unset or invalid.
+func (ue *Engine) moveOverhead() time.Duration {
+	var ms int
+	if v, ok := ue.options["Move Overhead"]; ok {
+		if _, err := fmt.Sscanf(v, "%d", &ms); err == nil && ms >= 0 {
+			return time.Duration(ms) * time.Millisecond
+		}
+	}
+	return DefaultMoveOverhead
 }
 
 // runSearch produces a search result for the current position. It first
@@ -473,62 +493,4 @@ func (ue *Engine) handleNewGame() string {
 	slog.Info("new game", "session", ue.session, "game", ue.gameNumber, "hash_mb", hashSize)
 
 	return ""
-}
-
-func (ue *Engine) calculateMoveTime(params SearchParams, player movegen.Player, moveNumber int) time.Duration {
-	var timeLeft time.Duration
-	var increment time.Duration
-	if player == movegen.White {
-		timeLeft = params.WTime
-		increment = params.WInc
-	} else {
-		timeLeft = params.BTime
-		increment = params.BInc
-	}
-
-	estimatedMovesRemaining := 40 - (moveNumber / 2)
-	if estimatedMovesRemaining < 10 {
-		estimatedMovesRemaining = 10
-	}
-
-	baseTime := timeLeft / time.Duration(estimatedMovesRemaining)
-	safeIncrement := increment * 9 / 10
-
-	var timeFactor float64
-	switch {
-	case timeLeft > 60*time.Second:
-		timeFactor = 1.5
-	case timeLeft > 30*time.Second:
-		timeFactor = 1.2
-	case timeLeft > 10*time.Second:
-		timeFactor = 1.0
-	default:
-		timeFactor = 0.7
-	}
-
-	maxTime := time.Duration(float64(baseTime)*timeFactor) + safeIncrement
-
-	var maxSafeTime time.Duration
-	if increment > 0 {
-		incrementPortion := increment * 9 / 10
-		baseTimePortion := timeLeft / 10
-		maxSafeTime = incrementPortion + baseTimePortion
-
-		if timeLeft < 5*time.Second {
-			maxSafeTime = increment * 9 / 10
-		}
-	} else {
-		maxSafeTime = timeLeft / 3
-	}
-
-	if maxTime > maxSafeTime {
-		maxTime = maxSafeTime
-	}
-
-	minTime := 50 * time.Millisecond
-	if maxTime < minTime {
-		maxTime = minTime
-	}
-
-	return maxTime
 }

@@ -275,6 +275,11 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				finalStats.StopReason = StopReasonMate
 				break
 			}
+
+			if shouldStopOnSoftTime(config.SoftTime, time.Since(startTime), finalStats.Iterations) {
+				finalStats.StopReason = StopReasonTime
+				break
+			}
 		}
 	}
 
