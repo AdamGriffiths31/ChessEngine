@@ -2,23 +2,23 @@
   {
     "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     "depth": 5,
-    "bestmove": "b1c3",
-    "score": 40,
-    "nodes": 2747
+    "bestmove": "g1f3",
+    "score": 61,
+    "nodes": 8895
   },
   {
     "fen": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
     "depth": 5,
     "bestmove": "e2a6",
-    "score": -1,
-    "nodes": 8771
+    "score": -11,
+    "nodes": 16947
   },
   {
     "fen": "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
     "depth": 5,
     "bestmove": "c4c5",
-    "score": -511,
-    "nodes": 8884
+    "score": -462,
+    "nodes": 6399
   },
   {
     "fen": "4k3/8/8/8/8/8/8/R3K2R w K - 0 1",
@@ -30,9 +30,9 @@
   {
     "fen": "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
     "depth": 5,
-    "bestmove": "c3d5",
-    "score": 57,
-    "nodes": 6704
+    "bestmove": "g5f6",
+    "score": 54,
+    "nodes": 8881
   },
   {
     "fen": "4k3/8/8/3Pp3/8/8/8/4K3 w - e6 0 1",
@@ -72,71 +72,71 @@
   {
     "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 6",
     "depth": 5,
-    "bestmove": "c1g5",
-    "score": 22,
-    "nodes": 8774
+    "bestmove": "b1c3",
+    "score": 27,
+    "nodes": 10380
   },
   {
     "fen": "r1bqkbnr/1ppp1ppp/p1n5/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
     "depth": 5,
-    "bestmove": "a4c6",
-    "score": 68,
-    "nodes": 9807
+    "bestmove": "d2d4",
+    "score": 26,
+    "nodes": 10850
   },
   {
     "fen": "rnbqkb1r/pp2pppp/3p1n2/2p5/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 0 4",
     "depth": 5,
     "bestmove": "d2d4",
-    "score": 85,
-    "nodes": 7470
+    "score": 94,
+    "nodes": 9278
   },
   {
     "fen": "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - 0 1",
     "depth": 5,
-    "bestmove": "d6d4",
-    "score": -283,
-    "nodes": 9624
+    "bestmove": "a7a6",
+    "score": -290,
+    "nodes": 7458
   },
   {
     "fen": "r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 8",
     "depth": 5,
     "bestmove": "h2h3",
-    "score": 8,
-    "nodes": 11198
+    "score": 10,
+    "nodes": 12679
   },
   {
     "fen": "8/8/8/8/8/2k5/8/R3K3 w - - 0 1",
     "depth": 5,
-    "bestmove": "e1f2",
-    "score": 546,
-    "nodes": 11931
+    "bestmove": "a1b1",
+    "score": 562,
+    "nodes": 8075
   },
   {
     "fen": "8/8/4k3/8/3nK3/8/4B3/8 w - - 0 1",
     "depth": 5,
-    "bestmove": "e2g4",
-    "score": 10,
-    "nodes": 7244
+    "bestmove": "e2f1",
+    "score": 21,
+    "nodes": 4438
   },
   {
     "fen": "8/8/8/3k4/8/3K4/3P4/3B4 w - - 0 1",
     "depth": 5,
     "bestmove": "d1f3",
-    "score": 503,
-    "nodes": 3638
+    "score": 517,
+    "nodes": 4432
   },
   {
     "fen": "4k3/8/8/8/8/8/4R3/4K3 b - - 0 1",
     "depth": 5,
-    "bestmove": "e8f7",
-    "score": -523,
-    "nodes": 6897
+    "bestmove": "e8f8",
+    "score": -529,
+    "nodes": 5509
   },
   {
     "fen": "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
     "depth": 5,
     "bestmove": "a1a8",
     "score": 29999,
-    "nodes": 44
+    "nodes": 46
   }
 ]

@@ -5,28 +5,12 @@ import (
 )
 
 const (
-	// QueenMobilityUnit multiplier for pre-calculated mobility values
-	QueenMobilityUnit = 2
-
 	// QueenOn7thRank bonus for queen on opponent's 7th rank
 	QueenOn7thRank = 20
 
 	// QueenOnOpenFile bonus for queen on open file
 	QueenOnOpenFile = 10
 )
-
-// QueenMobilityTable contains pre-calculated mobility scores per square.
-// This eliminates expensive attack generation during evaluation.
-var QueenMobilityTable = [64]int{
-	12, 14, 14, 14, 14, 14, 14, 12,
-	14, 16, 16, 16, 16, 16, 16, 14,
-	14, 16, 18, 18, 18, 18, 16, 14,
-	14, 16, 18, 20, 20, 18, 16, 14,
-	14, 16, 18, 20, 20, 18, 16, 14,
-	14, 16, 18, 18, 18, 18, 16, 14,
-	14, 16, 16, 16, 16, 16, 16, 14,
-	12, 14, 14, 14, 14, 14, 14, 12,
-}
 
 func evaluateQueens(b *board.Board) int {
 	if b == nil {
@@ -54,6 +38,7 @@ func evaluateQueensForColor(b *board.Board, queensBitboard board.Bitboard, isWhi
 	}
 
 	score := 0
+	area := mobilityArea(b, isWhite)
 
 	for queensBitboard != 0 {
 		square, remaining := queensBitboard.PopLSB()
@@ -62,7 +47,7 @@ func evaluateQueensForColor(b *board.Board, queensBitboard board.Bitboard, isWhi
 		file := square % 8
 		rank := square / 8
 
-		score += QueenMobilityTable[square] * QueenMobilityUnit
+		score += queenMobilityScore(square, b.AllPieces, area)
 
 		if (isWhite && rank == 6) || (!isWhite && rank == 1) {
 			score += QueenOn7thRank

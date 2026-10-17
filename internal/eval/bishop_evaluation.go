@@ -5,14 +5,11 @@ import (
 )
 
 // Bishop evaluation: bishop-pair bonus, bad-bishop penalty for own pawns
-// on the bishop's square color, static mobility and fianchetto tables.
+// on the bishop's square color, attack-based mobility and fianchetto.
 
 const (
 	// BishopPairBonus rewards owning both the light- and dark-squared bishop.
 	BishopPairBonus = 50
-
-	// BishopMobilityUnit multiplies the values in BishopMobilityTable.
-	BishopMobilityUnit = 3
 
 	// BadBishopPenalty applies per own pawn on the bishop's square colour.
 	BadBishopPenalty = -8
@@ -20,20 +17,6 @@ const (
 	// FianchettoBishopBonus rewards a bishop on its fianchetto square.
 	FianchettoBishopBonus = 10
 )
-
-// BishopMobilityTable provides pre-computed mobility approximations for each square
-// Values reflect typical bishop mobility: center squares offer more diagonal access
-// than edges and corners. This avoids expensive move generation during evaluation.
-var BishopMobilityTable = [64]int{
-	7, 7, 7, 7, 7, 7, 7, 7,
-	7, 9, 9, 9, 9, 9, 9, 7,
-	7, 9, 11, 11, 11, 11, 9, 7,
-	7, 9, 11, 13, 13, 11, 9, 7,
-	7, 9, 11, 13, 13, 11, 9, 7,
-	7, 9, 11, 11, 11, 11, 9, 7,
-	7, 9, 9, 9, 9, 9, 9, 7,
-	7, 7, 7, 7, 7, 7, 7, 7,
-}
 
 // Returns positive values favoring White, negative favoring Black
 func evaluateBishops(b *board.Board) int {
@@ -77,6 +60,7 @@ func evaluateBishopsSimple(b *board.Board, bishops board.Bitboard, isWhite bool)
 	}
 
 	score := 0
+	area := mobilityArea(b, isWhite)
 
 	var ownPawns board.Bitboard
 	if isWhite {
@@ -89,7 +73,7 @@ func evaluateBishopsSimple(b *board.Board, bishops board.Bitboard, isWhite bool)
 		square, remaining := bishops.PopLSB()
 		bishops = remaining
 
-		score += BishopMobilityTable[square] * BishopMobilityUnit
+		score += bishopMobilityScore(square, b.AllPieces, area)
 
 		score += evaluateBadBishop(square, ownPawns)
 

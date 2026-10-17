@@ -63,7 +63,7 @@ func TestKnightOutpostDetection(t *testing.T) {
 			score := evaluateKnightsSimple(b, knights, isWhite)
 
 			knightSquare, _ := knights.PopLSB()
-			expectedMobility := KnightMobilityTable[knightSquare] * KnightMobilityUnit
+			expectedMobility := knightMobilityScore(knightSquare, mobilityArea(b, isWhite))
 			hasOutpost := score > expectedMobility // Has outpost bonus if score exceeds mobility
 
 			if hasOutpost != tt.expected {

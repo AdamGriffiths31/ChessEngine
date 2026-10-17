@@ -5,7 +5,7 @@ import (
 )
 
 // Rook evaluation: open/semi-open file control, seventh-rank penetration,
-// static rank mobility, connected-rooks bonus.
+// attack-based mobility, connected-rooks bonus.
 
 const (
 	// RookOpenFileBonus awards rooks on completely open files
@@ -19,17 +19,7 @@ const (
 
 	// RooksConnectedBonus awards rooks protecting each other on same rank/file
 	RooksConnectedBonus = 8
-
-	// RookMobilityUnit multiplier for pre-calculated mobility values
-	RookMobilityUnit = 2
 )
-
-// RookMobilityByRank contains approximate mobility values for each rank
-// Values represent typical number of moves available to a rook on that rank
-// Back ranks (0,7) have lower mobility due to own pieces, middle ranks are optimal
-var RookMobilityByRank = [8]int{
-	12, 14, 14, 14, 14, 14, 14, 12,
-}
 
 // Returns positive values favoring White, negative favoring Black
 func evaluateRooks(b *board.Board) int {
@@ -53,6 +43,8 @@ func evaluateRooksForColor(b *board.Board, rooks board.Bitboard, forWhite bool) 
 	whitePawns := b.GetPieceBitboard(board.WhitePawn)
 	blackPawns := b.GetPieceBitboard(board.BlackPawn)
 
+	area := mobilityArea(b, forWhite)
+
 	firstRookSquare := -1
 
 	for rooks != 0 {
@@ -66,7 +58,7 @@ func evaluateRooksForColor(b *board.Board, rooks board.Bitboard, forWhite bool) 
 
 		score += evaluateRankPenetration(rank, forWhite)
 
-		score += RookMobilityByRank[rank] * RookMobilityUnit
+		score += rookMobilityScore(square, b.AllPieces, area)
 
 		if firstRookSquare != -1 && rookCount == 2 {
 			score += evaluateRookConnection(square, firstRookSquare)

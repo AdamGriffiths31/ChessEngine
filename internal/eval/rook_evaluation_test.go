@@ -18,31 +18,31 @@ func TestEvaluateRooksForColor(t *testing.T) {
 			name:     "rook_open_file",
 			fen:      "8/8/8/8/8/8/8/3R4 w - - 0 1",
 			isWhite:  true,
-			expected: 44, // 20 (open file) + 24 (mobility: 12*2)
+			expected: 72, // 20 (open file) + 52 (mobility: 14 attacked squares)
 		},
 		{
 			name:     "rook_semi_open_file",
 			fen:      "8/3p4/8/8/8/8/8/3R4 w - - 0 1",
 			isWhite:  true,
-			expected: 34, // 10 (semi-open) + 24 (mobility: 12*2)
+			expected: 59, // 10 (semi-open) + 49 (mobility: 13 attacked squares)
 		},
 		{
 			name:     "rook_closed_file",
 			fen:      "8/3p4/8/8/8/8/3P4/3R4 w - - 0 1",
 			isWhite:  true,
-			expected: 24, // 0 (closed file) + 24 (mobility: 12*2)
+			expected: 31, // 0 (closed file) + 31 (mobility: 7 attacked squares, own pawn blocks the file)
 		},
 		{
 			name:     "rook_seventh_rank",
 			fen:      "4k3/3R4/8/8/8/8/8/8 w - - 0 1",
 			isWhite:  true,
-			expected: 73, // 20 (open) + 25 (7th rank) + 28 (mobility: 14*2)
+			expected: 97, // 20 (open) + 25 (7th rank) + 52 (mobility: 14 attacked squares)
 		},
 		{
 			name:     "black_rook_second_rank",
 			fen:      "8/8/8/8/8/8/3r4/4K3 w - - 0 1",
 			isWhite:  false,
-			expected: 73, // 20 (open) + 25 (2nd rank for black) + 28 (mobility: 14*2)
+			expected: 97, // 20 (open) + 25 (2nd rank for black) + 52 (mobility: 14 attacked squares)
 		},
 	}
 
@@ -110,12 +110,10 @@ func TestRookConnectedBehavior(t *testing.T) {
 				square, newRooks := tempRooks.PopLSB()
 				tempRooks = newRooks
 
-				rank := square / 8
-
 				// Open file bonus (both rooks are on open files in these tests)
 				expectedWithoutConnection += RookOpenFileBonus
 
-				expectedWithoutConnection += RookMobilityByRank[rank] * RookMobilityUnit
+				expectedWithoutConnection += rookMobilityScore(square, b.AllPieces, mobilityArea(b, true))
 			}
 
 			connectionBonus := fullScore - expectedWithoutConnection

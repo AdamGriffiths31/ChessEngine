@@ -4,31 +4,14 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Knight evaluation: edge-avoidance mobility table plus a bonus for
+// Knight evaluation: attack-based mobility plus a bonus for
 // pawn-defended outposts in enemy territory.
 
 const (
 	// KnightOutpostBonus rewards a knight on a pawn-defended square in enemy
 	// territory.
 	KnightOutpostBonus = 30
-
-	// KnightMobilityUnit is the score per available square.
-	KnightMobilityUnit = 4
 )
-
-// KnightMobilityTable provides pre-computed mobility approximations for each square
-// Knights in center have 8 moves, corner knights have only 2. This avoids expensive
-// move generation during evaluation.
-var KnightMobilityTable = [64]int{
-	2, 3, 4, 4, 4, 4, 3, 2,
-	3, 4, 6, 6, 6, 6, 4, 3,
-	4, 6, 8, 8, 8, 8, 6, 4,
-	4, 6, 8, 8, 8, 8, 6, 4,
-	4, 6, 8, 8, 8, 8, 6, 4,
-	4, 6, 8, 8, 8, 8, 6, 4,
-	3, 4, 6, 6, 6, 6, 4, 3,
-	2, 3, 4, 4, 4, 4, 3, 2,
-}
 
 // WhiteKnightOutpostRanks defines outpost ranks for white knights (ranks 4-6)
 var WhiteKnightOutpostRanks = [8]bool{false, false, false, true, true, true, false, false}
@@ -58,6 +41,7 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 	}
 
 	score := 0
+	area := mobilityArea(b, isWhite)
 
 	var enemyPawns board.Bitboard
 	var outpostRanks [8]bool
@@ -76,7 +60,7 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 		rank := square / 8
 		file := square % 8
 
-		score += KnightMobilityTable[square] * KnightMobilityUnit
+		score += knightMobilityScore(square, area)
 
 		if outpostRanks[rank] {
 			// Only enemy pawns in front of the knight can ever attack it;
