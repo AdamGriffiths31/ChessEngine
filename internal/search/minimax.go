@@ -26,11 +26,9 @@ type State struct {
 	staticEvalStack [MaxKillerDepth]eval.EvaluationScore
 
 	// Per-search invariants, set at the start of FindBestMove/runIterativeDeepening.
-	board     *board.Board   // Board being searched (single instance, moves made/unmade on it)
-	player    movegen.Player // Side to move at the current node
-	config    Config         // Search configuration for this search
-	pv        *pvTable       // Principal variation storage (allocated per search)
-	collectPV bool           // Whether the current node should record into pv
+	board  *board.Board // Board being searched (single instance, moves made/unmade on it)
+	config Config       // Search configuration for this search
+	pv     *pvTable     // Principal variation storage (allocated per search)
 }
 
 // MinimaxEngine implements negamax search with alpha-beta pruning, transposition table,
@@ -77,10 +75,8 @@ func NewMinimaxEngine() *MinimaxEngine {
 // return (undo, false) - an expected outcome of scanning pseudo-legal moves,
 // not an error.
 //
-// player must be the side making move, captured in a local variable BEFORE
-// this call: m.searchState.player is scratch state mutated by null-move
-// pruning, razoring, and LMR research within a node, so a live read can name
-// the wrong side.
+// player must be the side making move; negamax threads it through as a
+// parameter and passes it here explicitly.
 //
 // MakeMoveWithUndo errors mean the generator emitted a malformed move; that
 // panics loudly rather than silently skipping, so movegen regressions surface.
@@ -177,10 +173,8 @@ func (m *MinimaxEngine) ClearSearchState() {
 	m.searchState.searchCancelled = false
 
 	m.searchState.board = nil
-	m.searchState.player = movegen.White
 	m.searchState.config = Config{}
 	m.searchState.pv = nil
-	m.searchState.collectPV = false
 
 	// Clear repetition history
 	m.zobristHistoryPly = 0

@@ -19,6 +19,18 @@ type Move struct {
 	IsEnPassant bool
 }
 
+// HasPromotion reports whether m promotes. Both Empty ('.') and the zero value
+// count as "no promotion": hand-built Move literals leave Promotion unset,
+// which is not Empty.
+func (m Move) HasPromotion() bool {
+	return m.Promotion != Empty && m.Promotion != 0
+}
+
+// IsQuiet reports whether m is neither a capture nor a promotion.
+func (m Move) IsQuiet() bool {
+	return !m.IsCapture && !m.HasPromotion()
+}
+
 // IsValid reports whether m looks like a plausible, non-degenerate move.
 // It mirrors the TT-move sanity check formerly inlined in negamax: both
 // From.File and To.File must fall within the board's 0-7 range, and From

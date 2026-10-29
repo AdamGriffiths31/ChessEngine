@@ -38,15 +38,36 @@ const (
 	// rule makes a position drawn (50 full moves = 100 plies without a pawn
 	// move or capture).
 	FiftyMoveHalfMoves = 100
+
+	// NullMoveMinDepth is the shallowest remaining depth at which null-move
+	// pruning is tried; NullMoveDeepDepth is where its reduction grows by one
+	// (capped at NullMoveMaxReduction).
+	NullMoveMinDepth     = 3
+	NullMoveDeepDepth    = 6
+	NullMoveMaxReduction = 3
+
+	// Quiescence pruning: a capture is skipped when the stand-pat eval plus the
+	// victim's value (plus a promotion bonus) plus QDeltaMargin still falls
+	// below alpha, or when its SEE is worse than QSEEPruneThreshold.
+	QDeltaMargin       = 200
+	QDeltaPromoBonus   = 800
+	QSEEPruneThreshold = -100
+)
+
+// LMR table dimensions. Depths and move counts beyond the last row/column are
+// clamped to it.
+const (
+	lmrTableDepths = 16
+	lmrTableMoves  = 64
 )
 
 // LMRTable is a pre-calculated reduction table for Late Move Reductions
 // Indexed by [depth][moveCount] to get reduction amount
-var LMRTable [16][64]int
+var LMRTable [lmrTableDepths][lmrTableMoves]int
 
 func init() {
-	for depth := 1; depth < 16; depth++ {
-		for moveCount := 1; moveCount < 64; moveCount++ {
+	for depth := 1; depth < lmrTableDepths; depth++ {
+		for moveCount := 1; moveCount < lmrTableMoves; moveCount++ {
 			LMRTable[depth][moveCount] = int(math.Log(float64(depth)) * math.Log(float64(moveCount)) / 1.8)
 		}
 	}

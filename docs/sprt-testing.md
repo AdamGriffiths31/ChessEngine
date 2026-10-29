@@ -1,96 +1,169 @@
-# SPRT Testing Workflow
+# SPRT Testing
 
-How to compare two builds of the engine (a baseline vs. a candidate change)
-using `bench sprt`, the way this branch's bug-hunting sessions did it.
+Compare two builds of the engine (baseline vs. candidate) with `bench sprt`,
+which drives `cutechess-cli`. Written to be followed step by step by a human or
+an AI agent: every step is a literal command plus the output to expect.
 
-## 1. Build base (baseline) and dev (candidate)
+**Terms:** `base` = known-good build (usually `HEAD`). `dev` = candidate build
+(usually the working tree, including uncommitted changes).
 
-`base` is normally the last commit (`HEAD`) — the known-good state before
-your uncommitted change. `dev` is the current working tree, including
-uncommitted changes.
+## Prerequisites (check first)
 
-```bash
-SCRATCH="/path/to/scratch/dir"   # any writable temp dir
+| Need | How to check | If missing |
+|------|--------------|------------|
+| `cutechess-cli.exe` at `<repo root>/tools/engines/` | `ls tools/engines/cutechess-cli.exe` | See "Git worktrees" below |
+| Openings at `<repo root>/testdata/sprt_openings.epd` | `ls testdata/sprt_openings.epd` | Tracked in git; restore it |
+| Go toolchain | `go version` | Install Go |
+| Free cores | `nproc` | Lower `-concurrency` |
 
-# base: extract HEAD into a clean temp tree and build it there, so
-# uncommitted changes in the working tree don't leak into base.
-rm -rf "$SCRATCH/base-tree"
-mkdir -p "$SCRATCH/base-tree"
-git archive HEAD | tar -x -C "$SCRATCH/base-tree"
-go -C "$SCRATCH/base-tree" build -o "$SCRATCH/base-uci.exe" ./cmd/uci
+`tools/engines/` is **not tracked by git**, so a fresh git worktree does not
+have it. The tool resolves the path from the repo root it runs in, and there is
+no flag to override it.
 
-# dev: build directly from the working tree (includes uncommitted changes).
-go build -o "$SCRATCH/dev-uci.exe" ./cmd/uci
+### Git worktrees
+
+Link the main checkout's folder into the worktree with a junction (no copy,
+nothing for git to track):
+
+```powershell
+New-Item -ItemType Junction -Path "<worktree>\tools\engines" -Target "<main checkout>\tools\engines"
 ```
 
-To compare two specific commits instead of "HEAD vs. working tree", use
-`git archive <commit>` for both sides (e.g. `git archive HEAD~1` for base).
+Remove it when finished. Use `cmd //c rmdir "<worktree>\tools\engines"` (Git
+Bash) or `Remove-Item` on the junction itself. `rmdir` on a junction deletes
+only the link, never the target, but do not use `rm -rf`.
+
+## 1. Build base and dev
+
+Pick a scratch directory outside the repo. Use a literal path in each command;
+do not build the executable path from a shell variable.
+
+```bash
+S="/path/to/scratch"
+
+# base: HEAD extracted into a clean tree, so uncommitted changes cannot leak in.
+rm -rf "$S/base-tree"
+mkdir -p "$S/base-tree"
+git archive HEAD | tar -x -C "$S/base-tree"
+go -C "$S/base-tree" build -o "$S/base-uci.exe" ./cmd/uci
+
+# dev: the working tree as it is now.
+go build -o "$S/dev-uci.exe" ./cmd/uci
+```
+
+To compare two commits, run `git archive <commit>` for each side instead.
+
+**Check:** both `.exe` files exist, and `git status` shows the changes you mean
+to test. If `base` and `dev` are built from identical code the test is
+meaningless.
 
 ## 2. Run the match
 
+This takes minutes to hours. Run it in the background and wait for the
+completion notice; do not poll or sleep.
+
 ```bash
 go run ./cmd/bench sprt \
-  -base "$SCRATCH/base-uci.exe" \
-  -dev  "$SCRATCH/dev-uci.exe" \
+  -base "$S/base-uci.exe" \
+  -dev  "$S/dev-uci.exe" \
   -tc 1+0.05 \
-  -games 500
+  -games 500 \
+  -concurrency 8 \
+  -base-options "Threads=1" \
+  -dev-options  "Threads=1" \
+  > "$S/sprt.log" 2>&1
 ```
 
-- `-tc 1+0.05` — fast time control (1s + 0.05s increment), used throughout
-  this branch's testing for quick turnaround. Use a longer TC (e.g.
-  `10+0.1`) for a more realistic/production-representative result at the
-  cost of much longer wall-clock time.
-- `-games 500` — safety cap on total games; SPRT can stop earlier if the
-  bound is reached. Each invocation starts a **fresh** SPRT sequence — it
-  does not resume or accumulate across separate runs. To get more games'
-  worth of evidence, either raise `-games` in one run or run several
-  same-sized batches and read them together (see below), not both as one
-  continuous test.
-- `-concurrency N` — number of games played in parallel (default 1).
-  Raise this to roughly your physical core count to cut wall-clock time
-  proportionally; e.g. on an 8-core machine:
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `-tc` | `10+0.1` | Time control, `seconds+increment`. `1+0.05` is the fast screening setting; use `10+0.1` for a production-representative result |
+| `-games` | `4000` | Cap on total games. SPRT can stop earlier if a bound is crossed |
+| `-concurrency` | `1` | Games in parallel. Use about half the logical core count (8 on a 16-thread machine) |
+| `-base-options`, `-dev-options` | none | Comma-separated UCI options. Keep `Threads=1` when `-concurrency` > 1 so games do not compete for cores |
+| `-elo0`, `-elo1` | `0`, `5` | SPRT hypotheses |
+| `-alpha`, `-beta` | `0.05` each | Error rates |
+| `-openings` | `testdata/sprt_openings.epd` | EPD opening book |
 
-  ```bash
-  go run ./cmd/bench sprt -base ... -dev ... -tc 1+0.05 -games 500 -concurrency 8
-  ```
+Run `go run ./cmd/bench sprt -h` for the full list.
 
-  A 500-game batch that takes ~55 minutes at concurrency 1 finishes in
-  ~7-10 minutes at 8. Keep `Threads=1` on the engines themselves
-  (`-dev-options`/`-base-options`) when using concurrency, so the games
-  share cores instead of fighting over them.
-- Optional: `-dev-options "Skill Level=5,Threads=1"` / `-base-options ...`
-  to test against a handicapped engine (e.g. Stockfish) instead of two
-  ChessEngine builds — see `go run ./cmd/bench sprt -h` for all flags
-  (elo0/elo1/alpha/beta bounds, openings file, etc.).
+**Rough duration at `-tc 1+0.05`:** 500 games takes about 55 min at
+concurrency 1 and about 7-10 min at concurrency 8.
 
-Output is also appended to `tools/results/sprt_history.md` /
-`sprt_results.jsonl` automatically.
+**Each invocation is a fresh SPRT sequence.** It never resumes or accumulates.
+For more evidence, raise `-games` in one run; do not chain small runs.
+
+**Side effect:** every run appends to `tools/results/sprt_history.md` (tracked
+by git) and `tools/results/sprt_results.jsonl`.
+
+**Keep or discard the history entry:**
+- Keep it when the run tested a real change in playing strength, or the result
+  is something you want on record (a clear H1/H0 verdict, a confirmed
+  regression).
+- Delete it when the change should have **no impact** on play (a refactor,
+  renamed symbols, stats or logging changes) and the run was only a sanity
+  check, or when the run was a failed or aborted attempt. Such entries add
+  noise to the history.
+
+To discard, revert the tracked file:
+
+```bash
+git checkout tools/results/sprt_history.md
+```
+
+Do this before committing so the entry never lands in the diff. If the run
+appended to `sprt_results.jsonl` and that file is tracked too, revert it the
+same way; check with `git status`. Never delete entries from runs you want to
+keep, and never hand-edit older history entries.
 
 ## 3. Read the result
 
-Grep the log for the summary lines:
-
 ```bash
-grep "Elo difference\|LOS" <logfile>
-tail -3 <logfile>                          # final SPRT verdict line
+grep "Elo difference\|LOS" "$S/sprt.log" | tail -3   # point estimate
+tail -3 "$S/sprt.log"                                # SPRT verdict line
 ```
 
-- **SPRT verdict**: `H1 accepted` = dev is stronger (crossed the upper
-  bound), `H0 accepted` = dev is not stronger (crossed the lower bound),
-  `inconclusive` = games cap hit before either bound was reached.
-- **Elo difference: X ± Y, LOS: Z%**: cutechess's own point estimate and
-  confidence interval, useful even when SPRT itself says inconclusive — if
-  the interval sits clearly away from zero (and LOS is high), that's a real
-  signal even without a formal SPRT accept. If the interval straddles zero
-  and LOS sits near 50%, treat it as noise.
+The verdict line looks like:
 
-## 4. Multiple batches don't average automatically — read them together
+```
+SPRT verdict: inconclusive (games cap reached) (llr=0.83, bounds=[-2.94, 2.94], W-L-D=216-168-116, games=500)
+```
 
-Because each `bench sprt` invocation is an independent SPRT sequence, running
-several 500-game batches back to back gives you several independent
-Elo-difference estimates, not one larger sample. To judge the overall
-picture, look at whether the estimates cluster consistently on one side of
-zero (a real effect) or scatter across both sides with overlapping error
-bars (noise around ~0 Elo). If you want one clean, larger-sample answer
-instead of stitching together small batches, run a single larger batch
-(e.g. `-games 5000`) rather than many small ones.
+| Verdict | Meaning |
+|---------|---------|
+| `H1 accepted` | LLR crossed the upper bound: dev is stronger |
+| `H0 accepted` | LLR crossed the lower bound: dev is not stronger |
+| `inconclusive (games cap reached)` | Cap hit before either bound; use the Elo estimate only as a hint |
+
+`Elo difference: X +/- Y, LOS: Z%` is the point estimate with its interval.
+Judge it by these rules:
+
+- Interval clearly away from 0 and high LOS: probably real.
+- Interval straddles 0 and LOS near 50%: noise.
+- **Do not act on a short run.** At 500-1000 games an LOS of 80-99% is
+  routinely noise at this time control. A 500-game run of a change that cannot
+  alter play (a pure refactor) still showed +33 +/- 27 Elo. Confirm any
+  promising signal with 2000+ games before keeping a change.
+
+## 4. Several small runs do not average
+
+Separate batches are independent estimates, not one bigger sample. If you must
+compare them, check whether they land consistently on one side of zero. For a
+single clean answer, run one large batch (`-games 2000` or more).
+
+## Failure modes
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `cutechess-cli not found at .../tools/engines/cutechess-cli.exe` | Running from a worktree without the junction | See "Git worktrees" |
+| Exit code 1 with no games played | Missing `.exe`, bad path, or bad option string | Read the last 20 lines of the log |
+| Result near 0 Elo with huge `+/-` | Too few games | Raise `-games` |
+| Games lose to timeouts | `-concurrency` too high for the core count | Lower it |
+
+## Rules for AI agents
+
+- Run the match in the background and wait for the notification. Do not poll.
+- Never launch `run.ps1` (the Lichess launcher uses a real token) as part of
+  testing. `bench sprt` is the only match runner needed here.
+- Do not commit or push results unless the user asks.
+- Report the verdict line, the Elo line, and the game count. State clearly
+  when the run is too short to trust.

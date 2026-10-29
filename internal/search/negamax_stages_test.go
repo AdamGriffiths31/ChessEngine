@@ -121,7 +121,6 @@ func TestTryRazoring_CutoffIncrementsAllNodes(t *testing.T) {
 	// White is two queens down, so quiescence confirms a fail-low against a high alpha.
 	b := testutil.MustFromFEN(t, "4k3/8/8/8/8/8/8/qq2K3 w - - 0 1")
 	m.searchState.board = b
-	m.searchState.player = movegen.White
 	staticEval := m.evaluator.Evaluate(b)
 
 	beforeCutoffs := m.searchState.searchStats.RazoringCutoffs

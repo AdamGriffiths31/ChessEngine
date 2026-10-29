@@ -11,29 +11,31 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
+// rootSearch holds the per-search state shared by the root-move helpers.
+type rootSearch struct {
+	player, opponent movegen.Player
+	moves            *movegen.MoveList // pseudo-legal root moves, reordered between depths
+
+	// Per-move scores from the current pass, indexed in step with moves.Moves.
+	// exact marks the entries that are exact scores: only a move searched with
+	// a full window is exact; the rest failed low on a null-window scout, so
+	// their score is an upper bound.
+	scores []eval.EvaluationScore
+	exact  []bool
+
+	startTime time.Time
+}
+
 // runIterativeDeepening runs the core iterative deepening search
-//
-//nolint:gocyclo // refactored in Phase 4
 func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Board, player movegen.Player, config Config, startTime time.Time) Result {
 	// Per-search invariants shared with negamax/quiescence via State.
 	m.searchState.board = b
-	m.searchState.player = player
 	m.searchState.config = config
 
 	pseudoMoves := m.generator.GeneratePseudoLegalMoves(b, player)
 	defer movegen.ReleaseMoveList(pseudoMoves)
 
-	var rootTTMove board.Move
-	if m.transpositionTable != nil {
-		hash := b.GetHash()
-		m.searchState.searchStats.TTProbes++
-		if entry, found := m.transpositionTable.Probe(hash); found {
-			m.searchState.searchStats.TTHits++
-			rootTTMove = entry.GetMove()
-		}
-	}
-
-	m.orderMovesAtRoot(b, pseudoMoves, rootTTMove)
+	m.orderMovesAtRoot(b, pseudoMoves, m.probeRootTTMove(b))
 
 	// The first legal move in root order is the answer if no iteration
 	// completes. Pseudo-legal moves can all be illegal (checkmate, stalemate),
@@ -56,21 +58,19 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	lastCompletedDepth := 0
 	var finalStats Stats
 
-	maxPlyDepth := config.MaxDepth + PVArrayMargin
-	m.searchState.pv = newPVTable(maxPlyDepth)
+	m.searchState.pv = newPVTable(config.MaxDepth + PVArrayMargin)
 	pv := m.searchState.pv
 
-	// Per-move scores from the current iteration, used to re-order root moves
-	// between depths (indexed in step with pseudoMoves.Moves)
-	rootScores := make([]eval.EvaluationScore, pseudoMoves.Count)
-	// rootExact marks the entries of rootScores that are exact scores. Only a
-	// move searched with a full window is exact; the rest failed low on a
-	// null-window scout, so their score is an upper bound.
-	rootExact := make([]bool, pseudoMoves.Count)
+	rs := &rootSearch{
+		player:    player,
+		opponent:  oppositePlayer(player),
+		moves:     pseudoMoves,
+		scores:    make([]eval.EvaluationScore, pseudoMoves.Count),
+		exact:     make([]bool, pseudoMoves.Count),
+		startTime: startTime,
+	}
 
-	startingDepth := 1
-
-	for currentDepth := startingDepth; currentDepth <= config.MaxDepth; currentDepth++ {
+	for currentDepth := 1; currentDepth <= config.MaxDepth; currentDepth++ {
 		m.searchState.searchCancelled = false
 
 		pv.reset()
@@ -96,176 +96,16 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			break
 		}
 
-		bestScore := -eval.MateScore - 1
-		var bestMove board.Move
+		bestScore, bestMove, failLows, failHighs := m.searchWithAspiration(ctx, rs, currentDepth, lastCompletedScore)
 
-		useAspirationWindow := currentDepth > 1
-		window := eval.EvaluationScore(AspirationWindow)
-		var failLows, failHighs int
-
-		// Keep trying with wider windows until we get a score within bounds
-		for {
-			// Reset both bounds on every attempt: a failed pass leaves alpha
-			// raised above the window, and re-searching with one-sided bounds
-			// can accept an upper-bound score as exact
-			alpha := -eval.MateScore - 1
-			beta := eval.MateScore + 1
-			if useAspirationWindow {
-				alpha = lastCompletedScore - window
-				beta = lastCompletedScore + window
-			}
-
-			tempBestScore := -eval.MateScore - 1
-			tempBestMove := board.Move{}
-			moveIndex := 0
-
-			for i := range rootScores {
-				rootScores[i] = -eval.MateScore - 1
-				rootExact[i] = false
-			}
-
-			for moveIdx := range pseudoMoves.Count {
-				move := pseudoMoves.Moves[moveIdx]
-				if m.searchState.searchCancelled {
-					break
-				}
-
-				undo, ok := m.tryMove(move, player)
-				if !ok {
-					continue
-				}
-
-				m.addHistory(b.GetHash())
-
-				// Clear the row each root move's search will build into before
-				// evaluating it, mirroring negamax's own per-move
-				// `pv.clearPly(pvPly + 1)`. Without this, a root move whose
-				// own negamax call never improves its (possibly very narrow,
-				// for a null-window scout) alpha never calls pv.store itself,
-				// leaving row 1 holding a PREVIOUS root move's stale line -
-				// which a later move's fail-high (score >= beta, skipping the
-				// full re-search below) can then read and promote into pv[0].
-				pv.clearPly(1)
-
-				var score eval.EvaluationScore
-				windowAlpha := alpha
-				fullWindow := moveIndex == 0
-
-				// The root move has been made on the board, so these negamax
-				// nodes sit one ply below the root: ply == 1. (Formerly this was
-				// originalMaxDepth - depth == currentDepth - (currentDepth-1) == 1.)
-				if moveIndex == 0 {
-					m.searchState.player = oppositePlayer(player)
-					m.searchState.collectPV = true
-					score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1)
-				} else {
-					m.searchState.player = oppositePlayer(player)
-					m.searchState.collectPV = true
-					score = -m.negamax(ctx, currentDepth-1, -alpha-1, -alpha, 1)
-
-					if score > alpha && score < beta {
-						m.searchState.player = oppositePlayer(player)
-						m.searchState.collectPV = true
-						score = -m.negamax(ctx, currentDepth-1, -beta, -alpha, 1)
-						fullWindow = true
-					}
-				}
-
-				b.UnmakeMove(undo)
-
-				m.removeHistory()
-
-				rootScores[moveIdx] = score
-				rootExact[moveIdx] = fullWindow && score > windowAlpha && score < beta
-
-				if score > tempBestScore {
-					tempBestScore = score
-					tempBestMove = move
-
-					if score > alpha {
-						alpha = score
-					}
-
-					pv.store(0, move)
-				}
-
-				moveIndex++
-
-				if config.MaxTime > 0 && time.Since(startTime) >= config.MaxTime {
-					break
-				}
-			}
-
-			if !useAspirationWindow || (tempBestScore > lastCompletedScore-window && tempBestScore < lastCompletedScore+window) {
-				// Score is within aspiration window or we're not using aspiration
-				bestScore = tempBestScore
-				bestMove = tempBestMove
-				break
-			}
-
-			// Aspiration window failed - widen and retry with fresh bounds
-			if tempBestScore <= lastCompletedScore-window {
-				failLows++
-			} else {
-				failHighs++
-			}
-			window *= 2
-
-			// Safety: if window gets too large, drop to a full-width search
-			if window > 1000 {
-				useAspirationWindow = false
-			}
-		}
-
-		finalStats.NodesSearched = m.searchState.searchStats.NodesSearched
+		finalStats.adoptCounters(m.searchState.searchStats)
 		finalStats.Depth = currentDepth
-		finalStats.LMRReductions = m.searchState.searchStats.LMRReductions
-		finalStats.LMRReSearches = m.searchState.searchStats.LMRReSearches
-		finalStats.NullMoves = m.searchState.searchStats.NullMoves
-		finalStats.NullCutoffs = m.searchState.searchStats.NullCutoffs
-		finalStats.NullMoveZugzwangSkipped = m.searchState.searchStats.NullMoveZugzwangSkipped
-		finalStats.NullMoveSparseSkipped = m.searchState.searchStats.NullMoveSparseSkipped
-		finalStats.QNodes = m.searchState.searchStats.QNodes
-		finalStats.TTCutoffs = m.searchState.searchStats.TTCutoffs
-		finalStats.FirstMoveCutoffs = m.searchState.searchStats.FirstMoveCutoffs
-		finalStats.TotalCutoffs = m.searchState.searchStats.TotalCutoffs
-		finalStats.DeltaPruned = m.searchState.searchStats.DeltaPruned
-		finalStats.RFPCutoffs = m.searchState.searchStats.RFPCutoffs
-		finalStats.RazoringAttempts = m.searchState.searchStats.RazoringAttempts
-		finalStats.RazoringCutoffs = m.searchState.searchStats.RazoringCutoffs
-		finalStats.RazoringFailed = m.searchState.searchStats.RazoringFailed
-		finalStats.FutilityPrunes = m.searchState.searchStats.FutilityPrunes
-		finalStats.LMPPrunes = m.searchState.searchStats.LMPPrunes
-		finalStats.TTProbes = m.searchState.searchStats.TTProbes
-		finalStats.TTHits = m.searchState.searchStats.TTHits
-		finalStats.PVNodes = m.searchState.searchStats.PVNodes
-		finalStats.CutNodes = m.searchState.searchStats.CutNodes
-		finalStats.AllNodes = m.searchState.searchStats.AllNodes
-		finalStats.CutoffsByMoveIndex = m.searchState.searchStats.CutoffsByMoveIndex
-		finalStats.NodesByDepth = m.searchState.searchStats.NodesByDepth
 
 		if !m.searchState.searchCancelled && (config.MaxTime == 0 || time.Since(startTime) < config.MaxTime) {
 			lastCompletedBestMove = bestMove
 			lastCompletedScore = bestScore
 			lastCompletedDepth = currentDepth
-			finalStats.Iterations = append(finalStats.Iterations, Iteration{
-				Depth:    currentDepth,
-				Score:    bestScore,
-				BestMove: bestMove,
-				Nodes:    m.searchState.searchStats.NodesSearched,
-				Elapsed:  time.Since(startTime),
-
-				AspirationFailLows:  failLows,
-				AspirationFailHighs: failHighs,
-			})
-			finalStats.RootMoves = topRootMoves(pseudoMoves, rootScores, rootExact, MaxLoggedRootMoves)
-
-			// Re-order root moves by this iteration's scores so the best move
-			// is searched first at the next depth - PVS gives only the first
-			// move a full window and aspiration assumes the score carries over
-			reorderRootMoves(pseudoMoves, rootScores)
-
-			finalStats.PrincipalVariation = pv.lineAt(0)
+			m.recordIteration(&finalStats, rs, currentDepth, bestScore, bestMove, failLows, failHighs)
 
 			// Only break on mate if we found the shortest possible mate (mate in 1)
 			// This allows us to search deeper for accurate mate distance calculation.
@@ -303,6 +143,176 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 		Score:    lastCompletedScore,
 		Stats:    finalStats,
 	}
+}
+
+// probeRootTTMove returns the TT move stored for the root position, if any,
+// to seed the root move ordering.
+func (m *MinimaxEngine) probeRootTTMove(b *board.Board) board.Move {
+	if m.transpositionTable == nil {
+		return board.Move{}
+	}
+	m.searchState.searchStats.TTProbes++
+	entry, found := m.transpositionTable.Probe(b.GetHash())
+	if !found {
+		return board.Move{}
+	}
+	m.searchState.searchStats.TTHits++
+	return entry.GetMove()
+}
+
+// searchWithAspiration searches all root moves at depth, starting from a
+// window around prevScore and widening it until the best score lands inside.
+// It returns the best score and move plus how many times the window failed low
+// and high on the way.
+func (m *MinimaxEngine) searchWithAspiration(ctx context.Context, rs *rootSearch, depth int, prevScore eval.EvaluationScore) (bestScore eval.EvaluationScore, bestMove board.Move, failLows, failHighs int) {
+	useAspirationWindow := depth > 1
+	window := eval.EvaluationScore(AspirationWindow)
+
+	// Keep trying with wider windows until we get a score within bounds
+	for {
+		// Reset both bounds on every attempt: a failed pass leaves alpha
+		// raised above the window, and re-searching with one-sided bounds
+		// can accept an upper-bound score as exact
+		alpha := -eval.MateScore - 1
+		beta := eval.MateScore + 1
+		if useAspirationWindow {
+			alpha = prevScore - window
+			beta = prevScore + window
+		}
+
+		bestScore, bestMove = m.searchRootMoves(ctx, rs, depth, alpha, beta)
+
+		if !useAspirationWindow || (bestScore > prevScore-window && bestScore < prevScore+window) {
+			// Score is within aspiration window or we're not using aspiration
+			return bestScore, bestMove, failLows, failHighs
+		}
+
+		// Aspiration window failed - widen and retry with fresh bounds
+		if bestScore <= prevScore-window {
+			failLows++
+		} else {
+			failHighs++
+		}
+		window *= 2
+
+		// Safety: if window gets too large, drop to a full-width search
+		if window > 1000 {
+			useAspirationWindow = false
+		}
+	}
+}
+
+// searchRootMoves makes one pass over the root moves with the given window,
+// filling rs.scores and rs.exact, and returns the best score and move found.
+func (m *MinimaxEngine) searchRootMoves(ctx context.Context, rs *rootSearch, depth int, alpha, beta eval.EvaluationScore) (bestScore eval.EvaluationScore, bestMove board.Move) {
+	b := m.searchState.board
+	pv := m.searchState.pv
+	maxTime := m.searchState.config.MaxTime
+
+	bestScore = -eval.MateScore - 1
+	searched := 0
+
+	for i := range rs.scores {
+		rs.scores[i] = -eval.MateScore - 1
+		rs.exact[i] = false
+	}
+
+	for moveIdx := range rs.moves.Count {
+		move := rs.moves.Moves[moveIdx]
+		if m.searchState.searchCancelled {
+			break
+		}
+
+		undo, ok := m.tryMove(move, rs.player)
+		if !ok {
+			continue
+		}
+
+		m.addHistory(b.GetHash())
+
+		// Clear the row each root move's search will build into before
+		// evaluating it, mirroring negamax's own per-move
+		// `pv.clearPly(pvPly + 1)`. Without this, a root move whose
+		// own negamax call never improves its (possibly very narrow,
+		// for a null-window scout) alpha never calls pv.store itself,
+		// leaving row 1 holding a PREVIOUS root move's stale line -
+		// which a later move's fail-high (score >= beta, skipping the
+		// full re-search) can then read and promote into pv[0].
+		pv.clearPly(1)
+
+		windowAlpha := alpha
+		score, fullWindow := m.searchRootMove(ctx, rs.opponent, depth, alpha, beta, searched == 0)
+
+		b.UnmakeMove(undo)
+
+		m.removeHistory()
+
+		rs.scores[moveIdx] = score
+		rs.exact[moveIdx] = fullWindow && score > windowAlpha && score < beta
+
+		if score > bestScore {
+			bestScore = score
+			bestMove = move
+
+			if score > alpha {
+				alpha = score
+			}
+
+			pv.store(0, move)
+		}
+
+		searched++
+
+		if maxTime > 0 && time.Since(rs.startTime) >= maxTime {
+			break
+		}
+	}
+
+	return bestScore, bestMove
+}
+
+// searchRootMove scores one root move, already made on the board, from the
+// root player's point of view. The first move gets the full window; later ones
+// a null-window scout, re-searched with the full window if they land inside
+// (alpha, beta). fullWindow reports whether the returned score came from a
+// full-window search.
+//
+// The root move has been made, so these negamax nodes sit one ply below the
+// root: ply == 1.
+func (m *MinimaxEngine) searchRootMove(ctx context.Context, opponent movegen.Player, depth int, alpha, beta eval.EvaluationScore, first bool) (score eval.EvaluationScore, fullWindow bool) {
+	if first {
+		return -m.negamax(ctx, opponent, depth-1, -beta, -alpha, 1, true), true
+	}
+
+	score = -m.negamax(ctx, opponent, depth-1, -alpha-1, -alpha, 1, true)
+	if score > alpha && score < beta {
+		return -m.negamax(ctx, opponent, depth-1, -beta, -alpha, 1, true), true
+	}
+	return score, false
+}
+
+// recordIteration appends a completed iteration to stats and prepares the next
+// one: it logs the top root moves and principal variation, and re-orders the
+// root moves by this iteration's scores.
+func (m *MinimaxEngine) recordIteration(stats *Stats, rs *rootSearch, depth int, bestScore eval.EvaluationScore, bestMove board.Move, failLows, failHighs int) {
+	stats.Iterations = append(stats.Iterations, Iteration{
+		Depth:    depth,
+		Score:    bestScore,
+		BestMove: bestMove,
+		Nodes:    m.searchState.searchStats.NodesSearched,
+		Elapsed:  time.Since(rs.startTime),
+
+		AspirationFailLows:  failLows,
+		AspirationFailHighs: failHighs,
+	})
+	stats.RootMoves = topRootMoves(rs.moves, rs.scores, rs.exact, MaxLoggedRootMoves)
+
+	// Re-order root moves by this iteration's scores so the best move
+	// is searched first at the next depth - PVS gives only the first
+	// move a full window and aspiration assumes the score carries over
+	reorderRootMoves(rs.moves, rs.scores)
+
+	stats.PrincipalVariation = m.searchState.pv.lineAt(0)
 }
 
 // firstLegalRootMove returns the first move in moves that leaves the mover's

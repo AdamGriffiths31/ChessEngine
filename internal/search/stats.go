@@ -113,6 +113,19 @@ type Stats struct {
 	AllNodes int64 // Nodes where all moves were searched
 }
 
+// adoptCounters replaces every search counter in s with the value in counters
+// and keeps the result fields s has accumulated itself (Depth, Time,
+// PrincipalVariation, BookMoveUsed, Iterations, StopReason, RootMoves). The
+// counters are whatever Stats holds beyond those, so a new counter is picked
+// up without touching this function; a new result field must be added to the
+// list below.
+func (s *Stats) adoptCounters(counters Stats) {
+	counters.Depth, counters.Time = s.Depth, s.Time
+	counters.PrincipalVariation, counters.BookMoveUsed = s.PrincipalVariation, s.BookMoveUsed
+	counters.Iterations, counters.StopReason, counters.RootMoves = s.Iterations, s.StopReason, s.RootMoves
+	*s = counters
+}
+
 // EBF returns the effective branching factor: the mean ratio of nodes searched
 // by one iterative-deepening iteration to nodes searched by the one before it.
 // Iteration.Nodes is cumulative, so each iteration's own cost is the difference

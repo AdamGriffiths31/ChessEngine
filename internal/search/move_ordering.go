@@ -11,6 +11,37 @@ type moveScore struct {
 	score int
 }
 
+// Move-ordering score tiers, highest first. Quiet moves score by history alone
+// (+-historyScoreScale x raw), which spans roughly +-260k: below killers, above
+// the losing-capture tiers once well learned. See getCaptureScore.
+const (
+	scoreTTMove        = 3000000
+	scoreGoodCapture   = 1000000 // SEE > 0, or victim worth more than attacker
+	scoreEqualCapture  = 900000  // SEE == 0
+	scoreKiller        = 500000
+	scoreBadCapture    = 50000 // SEE in [-100, 0)
+	scoreWorstCapture  = 25000 // SEE < -100
+	scoreQueenPromo    = 9000
+	scoreRookPromo     = 5000
+	scoreMinorPromo    = 3000
+	historyScoreScale  = 16
+	badCaptureSEEFloor = 100  // lifts SEE in [-100, 0) to a non-negative offset
+	worstCaptureOffset = 1000 // keeps scoreWorstCapture above 0 for very negative SEE
+)
+
+// orderBuffer returns the ply's move-ordering buffer sized for n moves,
+// growing it only when it is too small.
+func (m *MinimaxEngine) orderBuffer(ply, n int) []moveScore {
+	buf := m.searchState.moveOrderBuffers[ply]
+	if cap(buf) < n {
+		buf = make([]moveScore, n)
+	} else {
+		buf = buf[:n]
+	}
+	m.searchState.moveOrderBuffers[ply] = buf
+	return buf
+}
+
 func getAbsPieceValue(piece board.Piece) int {
 	value := eval.GetPieceValue(piece)
 	if value < 0 {
@@ -60,44 +91,38 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *movegen.MoveList, p
 		return
 	}
 
-	if cap(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
-		m.searchState.moveOrderBuffers[ply] = make([]moveScore, moveList.Count)
-	} else if len(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
-		m.searchState.moveOrderBuffers[ply] = m.searchState.moveOrderBuffers[ply][:moveList.Count]
-	}
-
-	buffer := m.searchState.moveOrderBuffers[ply]
+	buffer := m.orderBuffer(ply, moveList.Count)
 
 	for i := range moveList.Count {
 		move := moveList.Moves[i]
 		score := 0
 
 		if move.From == ttMove.From && move.To == ttMove.To && move.Promotion == ttMove.Promotion {
-			score = 3000000
+			score = scoreTTMove
 		} else {
 			if move.IsCapture {
 				score = m.getCaptureScore(b, move)
 			}
 
-			if move.Promotion != board.Empty {
+			if move.HasPromotion() {
 				switch move.Promotion {
 				case board.WhiteQueen, board.BlackQueen:
-					score += 9000
+					score += scoreQueenPromo
 				case board.WhiteRook, board.BlackRook:
-					score += 5000
+					score += scoreRookPromo
 				case board.WhiteBishop, board.BlackBishop, board.WhiteKnight, board.BlackKnight:
-					score += 3000
+					score += scoreMinorPromo
 				}
 			}
 
 			if !move.IsCapture && m.isKillerMove(move, ply) {
-				score = 500000
+				score = scoreKiller
 			}
 
-			if !move.IsCapture && move.Promotion == board.Empty {
+			if move.IsQuiet() {
 				// Quiet moves are ordered by history, scaled x16 (+-262k): below
 				// killers (500k), above losing captures once well learned.
-				score += int(m.getHistoryScore(move)) * 16
+				score += int(m.getHistoryScore(move)) * historyScoreScale
 			}
 		}
 
@@ -123,13 +148,7 @@ func (m *MinimaxEngine) scoreCaptures(moveList *movegen.MoveList, ply int) {
 		return
 	}
 
-	if cap(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
-		m.searchState.moveOrderBuffers[ply] = make([]moveScore, moveList.Count)
-	} else if len(m.searchState.moveOrderBuffers[ply]) < moveList.Count {
-		m.searchState.moveOrderBuffers[ply] = m.searchState.moveOrderBuffers[ply][:moveList.Count]
-	}
-
-	buffer := m.searchState.moveOrderBuffers[ply]
+	buffer := m.orderBuffer(ply, moveList.Count)
 
 	for i := range moveList.Count {
 		move := moveList.Moves[i]
@@ -174,20 +193,20 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 	mvvLvaScore := (victimValue * 10) - attackerValue
 
 	if victimValue > attackerValue {
-		return 1000000 + mvvLvaScore
+		return scoreGoodCapture + mvvLvaScore
 	}
 
 	seeValue := m.seeCalculator.SEE(b, move)
 
 	switch {
 	case seeValue > 0:
-		return 1000000 + seeValue + mvvLvaScore
+		return scoreGoodCapture + seeValue + mvvLvaScore
 	case seeValue == 0:
-		return 900000 + mvvLvaScore
+		return scoreEqualCapture + mvvLvaScore
 	case seeValue >= -100:
-		return 50000 + seeValue + 100 + mvvLvaScore
+		return scoreBadCapture + seeValue + badCaptureSEEFloor + mvvLvaScore
 	}
-	return 25000 + seeValue + 1000 + mvvLvaScore
+	return scoreWorstCapture + seeValue + worstCaptureOffset + mvvLvaScore
 }
 
 func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
