@@ -25,7 +25,7 @@
     "depth": 5,
     "bestmove": "a1a7",
     "score": 29997,
-    "nodes": 16652
+    "nodes": 2366
   },
   {
     "fen": "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
@@ -137,6 +137,6 @@
     "depth": 5,
     "bestmove": "a1a8",
     "score": 29999,
-    "nodes": 46
+    "nodes": 44
   }
 ]

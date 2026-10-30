@@ -60,3 +60,30 @@ func TestMateScoreMatchesPVLength(t *testing.T) {
 		}
 	}
 }
+
+// TestMateDistancePruningStopsAtShortestMate covers a position where a mate
+// in 3 is found first and a mate in 2 has to beat it. Windows that close to
+// mate switch off RFP, null move and quiet pruning, so without mate distance
+// pruning a node that has already found a mate in 1 goes on to search every
+// other move, which took 9.6M nodes here.
+func TestMateDistancePruningStopsAtShortestMate(t *testing.T) {
+	const (
+		fen      = "8/p4P1K/rb1N2Bp/p3P3/N3R1P1/1P1k1P2/1Pbrnp2/2R2Q2 w - - 0 1"
+		maxNodes = 1_000_000
+	)
+
+	engine := NewMinimaxEngine()
+	engine.SetTranspositionTableSize(64)
+	b := testutil.MustFromFEN(t, fen)
+	r := engine.FindBestMove(context.Background(), b, playerFromSide(b.GetSideToMove()), Config{MaxDepth: 8})
+
+	if want := eval.MateScore - 3; r.Score != want {
+		t.Errorf("score = %d, want %d (mate in 2)", r.Score, want)
+	}
+	if got := moveString(r.BestMove); got != "h7h6" {
+		t.Errorf("best move = %s, want h7h6", got)
+	}
+	if r.Stats.NodesSearched > maxNodes {
+		t.Errorf("searched %d nodes, want at most %d", r.Stats.NodesSearched, maxNodes)
+	}
+}

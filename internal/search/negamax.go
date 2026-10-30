@@ -88,6 +88,14 @@ func (m *MinimaxEngine) negamax(ctx context.Context, player movegen.Player, dept
 		return eval.DrawScore
 	}
 
+	// Mate distance pruning: being mated here is no worse than being mated at
+	// this ply, and mating here is no better than mating on the next ply.
+	alpha = max(alpha, -eval.MateScore+eval.EvaluationScore(ply))
+	beta = min(beta, eval.MateScore-eval.EvaluationScore(ply+1))
+	if alpha >= beta {
+		return alpha
+	}
+
 	ttMove, ttScore, ttAlpha, ttBeta, ttDone := m.probeTT(hash, depth, ply, alpha, beta)
 	if ttDone {
 		return ttScore
