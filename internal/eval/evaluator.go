@@ -56,9 +56,6 @@ func (e *StandardEvaluator) evaluateMaterialAndPST(b *board.Board) int {
 		return 0
 	}
 
-	// Tapered positional score: interpolate the middlegame and endgame PST
-	// sums by remaining game phase. Material stays at flat values so every
-	// downstream consumer (SEE, MVV-LVA, delta pruning) keeps its scale.
 	mg := b.GetPSTScore()
 	eg := b.GetPSTScoreEndgame()
 	if mg == eg {
@@ -68,9 +65,6 @@ func (e *StandardEvaluator) evaluateMaterialAndPST(b *board.Board) int {
 	return b.GetMaterialScore() + (mg*phase+eg*(24-phase))/24
 }
 
-// computeGamePhase returns the remaining game phase as 0 (bare endgame) to
-// 24 (full starting material): knights and bishops count 1 each, rooks 2,
-// queens 4, both sides combined. The starting position sums to exactly 24.
 func computeGamePhase(b *board.Board) int {
 	phase := b.GetPieceBitboard(board.WhiteKnight).PopCount() +
 		b.GetPieceBitboard(board.BlackKnight).PopCount() +

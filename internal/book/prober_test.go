@@ -16,9 +16,7 @@ func TestProberProbe(t *testing.T) {
 	}{
 		{"no book files", nil, startFEN, false},
 		{"opening move found", []string{performanceBin}, startFEN, true},
-		// Move 11 is past BookMoveLimit (10), so the book is not consulted.
 		{"past the move limit", []string{performanceBin}, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 11", false},
-		// A bare king ending never occurs in opening theory.
 		{"position not in the book", []string{performanceBin}, "8/8/8/4k3/8/8/4K3/8 w - - 0 1", false},
 	}
 
@@ -45,8 +43,6 @@ func TestProberProbe(t *testing.T) {
 	}
 }
 
-// A book that cannot be loaded is a permanent miss: no panic, and the load is
-// attempted once and never retried.
 func TestProberLoadFailureIsGracefulAndCached(t *testing.T) {
 	p := NewProber([]string{"testdata/does-not-exist.bin"})
 	b, err := board.FromFEN(startFEN)

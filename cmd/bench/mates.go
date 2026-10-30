@@ -18,7 +18,6 @@ import (
 
 const defaultMatesFile = "testdata/matetrack.epd"
 
-// mateResult is one searched position, kept in input order for reporting.
 type mateResult struct {
 	pos        bench.MatePosition
 	engineMate int
@@ -27,10 +26,6 @@ type mateResult struct {
 	err        error
 }
 
-// runMates searches every position of a matetrack EPD with a fixed time
-// budget and reports how many known mates the engine finds, how many at the
-// best distance, and any impossible (shorter-than-proven or wrong-side)
-// mates, which point at a search or mate-scoring bug.
 func runMates(args []string) error {
 	fs := flag.NewFlagSet("bench mates", flag.ExitOnError)
 	file := fs.String("file", defaultMatesFile, "matetrack-format EPD (see docs/sprt-testing.md for where to get it)")
@@ -105,8 +100,6 @@ func runMates(args []string) error {
 	fmt.Printf("Best mates:  %d (%.1f%%)\n", summary.Best, pct(summary.Best))
 	fmt.Printf("Wrong mates: %d (shorter than proven or wrong side; should be 0)\n", summary.Wrong)
 	fmt.Printf("Total time:  %v\n", time.Since(start).Round(time.Second))
-	// A search far over its budget means the hard time limit is not checked
-	// often enough somewhere; the same overrun loses games on time.
 	fmt.Printf("Slowest:     %v (budget %v): %s\n", slowest.elapsed.Round(time.Millisecond), *moveTime, slowest.pos.FEN)
 
 	if summary.Wrong > 0 {
@@ -125,8 +118,6 @@ func searchMate(engine *search.MinimaxEngine, pos bench.MatePosition, config sea
 		player = movegen.Black
 	}
 	engine.ClearSearchState()
-	// Config.MaxTime alone is only checked between root moves; the context
-	// deadline is what stops a search mid-move, as in the UCI and STS paths.
 	ctx, cancel := context.WithTimeout(context.Background(), config.MaxTime)
 	defer cancel()
 	start := time.Now()
@@ -136,8 +127,6 @@ func searchMate(engine *search.MinimaxEngine, pos bench.MatePosition, config sea
 	return mateResult{pos: pos, engineMate: mate, outcome: bench.ClassifyMate(mate, pos.BestMate), elapsed: elapsed}
 }
 
-// mateMoves converts a search score to UCI "mate N" moves, or 0 for a
-// non-mate score. It mirrors the UCI score formatting in internal/uci.
 func mateMoves(score int) int {
 	mate := int(eval.MateScore)
 	switch {

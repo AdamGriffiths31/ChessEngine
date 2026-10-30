@@ -8,8 +8,7 @@ import (
 	"strings"
 )
 
-// SPRTResultsLogger logs SPRT run results to markdown and JSONL files,
-// structurally identical to EloResultsLogger (see elo_results.go).
+// SPRTResultsLogger logs SPRT run results to markdown and JSONL files.
 type SPRTResultsLogger struct {
 	rootPath string
 	mdFile   string
@@ -28,8 +27,8 @@ func NewSPRTResultsLogger(rootPath string) *SPRTResultsLogger {
 // LogResult appends result to sprt_history.md (a markdown summary table)
 // and sprt_results.jsonl (one JSON object per run with full detail).
 func (rl *SPRTResultsLogger) LogResult(result *SPRTResult) error {
-	if err := rl.ensureMarkdownFile(); err != nil {
-		return fmt.Errorf("failed to create sprt_history.md: %w", err)
+	if err := rl.ensureFastchessTable(); err != nil {
+		return fmt.Errorf("failed to prepare sprt_history.md: %w", err)
 	}
 
 	mdFile, err := os.OpenFile(rl.mdFile, os.O_APPEND|os.O_WRONLY, 0600)
@@ -57,17 +56,13 @@ func (rl *SPRTResultsLogger) LogResult(result *SPRTResult) error {
 	return nil
 }
 
-// fastchessTableHeader starts the results table for fastchess runs
-// (pentanomial model, normalized Elo bounds). Runs logged before it used
-// cutechess-cli's trinomial model, so their LLRs are not comparable; a file
-// without this header gets it appended once, below the older table.
 const fastchessTableHeader = `## fastchess runs (pentanomial, normalized Elo)
 
 | Date | Verdict | LLR | Bounds | W-L-D | Ptnml(0-2) | Games | TC | nElo0/nElo1 |
 |------|---------|-----|--------|-------|------------|-------|-----|-------------|
 `
 
-func (rl *SPRTResultsLogger) ensureMarkdownFile() error {
+func (rl *SPRTResultsLogger) ensureFastchessTable() error {
 	if err := os.MkdirAll(filepath.Dir(rl.mdFile), 0750); err != nil {
 		return fmt.Errorf("failed to create results directory: %w", err)
 	}

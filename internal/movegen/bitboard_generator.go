@@ -6,9 +6,7 @@ import (
 )
 
 // BitboardMoveGenerator provides high-performance move generation using bitboard operations
-// This implementation aims for 3-5x performance improvement over array-based generation
 type BitboardMoveGenerator struct {
-	// No fields needed - all operations use pooled MoveList objects
 }
 
 // NewBitboardMoveGenerator creates a new bitboard-based move generator
@@ -17,13 +15,12 @@ func NewBitboardMoveGenerator() *BitboardMoveGenerator {
 }
 
 // GenerateAllMovesBitboard generates all legal moves using bitboard operations
-// This is the main entry point that coordinates all piece-specific generators
 func (bmg *BitboardMoveGenerator) GenerateAllMovesBitboard(b *board.Board, player Player) *MoveList {
 
 	moveList := GetMoveList()
 
 	bmg.generatePawnMovesBitboard(b, player, moveList)
-	bmg.GenerateKnightMovesBitboard(b, player, moveList)
+	bmg.generateKnightMovesBitboard(b, player, moveList)
 	bmg.generateBishopMovesBitboard(b, player, moveList)
 	bmg.generateRookMovesBitboard(b, player, moveList)
 	bmg.generateQueenMovesBitboard(b, player, moveList)
@@ -36,13 +33,12 @@ func (bmg *BitboardMoveGenerator) GenerateAllMovesBitboard(b *board.Board, playe
 
 // GeneratePseudoLegalMoves generates pseudo-legal moves without king safety validation.
 // Callers must verify moves don't leave their own king in check before execution.
-// This method is optimized for search algorithms that use lazy move validation.
 func (bmg *BitboardMoveGenerator) GeneratePseudoLegalMoves(b *board.Board, player Player) *MoveList {
 
 	moveList := GetMoveList()
 
 	bmg.generatePawnMovesBitboard(b, player, moveList)
-	bmg.GenerateKnightMovesBitboard(b, player, moveList)
+	bmg.generateKnightMovesBitboard(b, player, moveList)
 	bmg.generateBishopMovesBitboard(b, player, moveList)
 	bmg.generateRookMovesBitboard(b, player, moveList)
 	bmg.generateQueenMovesBitboard(b, player, moveList)
@@ -52,8 +48,6 @@ func (bmg *BitboardMoveGenerator) GeneratePseudoLegalMoves(b *board.Board, playe
 }
 
 // GenerateCaptures generates pseudo-legal captures and promotions only.
-// This is the move set quiescence search examines; quiet non-promotion moves
-// are never generated, avoiding the cost of building and discarding them.
 func (bmg *BitboardMoveGenerator) GenerateCaptures(b *board.Board, player Player) *MoveList {
 	moveList := GetMoveList()
 
@@ -89,7 +83,6 @@ func (bmg *BitboardMoveGenerator) GenerateCaptures(b *board.Board, player Player
 		bmg.generatePawnCapturesBitboard(b, player, pawns, enemyPieces, moveList, promotionRank)
 		bmg.generateEnPassantCapturesBitboard(b, player, pawns, moveList)
 
-		// Quiet promotions: single pushes onto the promotion rank
 		emptySquares := ^occupancy
 		var promotionPushes board.Bitboard
 		if player == White {
@@ -147,7 +140,6 @@ func (bmg *BitboardMoveGenerator) GenerateCaptures(b *board.Board, player Player
 		bmg.addSlidingPieceMoves(b, moveList, fromSquare, captures, enemyPieces, queenPiece)
 	}
 
-	// King captures (castling is never a capture)
 	kings := b.GetPieceBitboard(kingPiece)
 	if kings != 0 {
 		fromSquare := kings.LSB()

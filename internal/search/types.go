@@ -1,4 +1,3 @@
-// Package search provides chess search types and interfaces.
 package search
 
 import (
@@ -19,7 +18,6 @@ type Config struct {
 	SoftTime  time.Duration
 	DebugMode bool
 
-	// Opening book configuration
 	UseOpeningBook bool
 	BookFiles      []string
 
@@ -27,9 +25,9 @@ type Config struct {
 	// scheme) for the real game so far, oldest first, ending with the hash of
 	// the position being searched (b.GetHash()). Optional: when empty, the
 	// search's repetition detection only sees positions reachable within this
-	// search's own hypothetical lookahead from the current position, exactly
-	// as before this field existed - it cannot recognize that a position has
-	// already repeated via real moves played earlier in the actual game. When
+	// search's own hypothetical lookahead from the current position - it
+	// cannot recognize that a position has already repeated via real moves
+	// played earlier in the actual game. When
 	// provided, it seeds that real history so a hypothetical recurrence found
 	// during search can be correctly recognized as completing a repetition
 	// that started before this search call.
@@ -45,12 +43,9 @@ type Result struct {
 
 // Engine defines the interface for a chess AI engine
 type Engine interface {
-	// FindBestMove searches for the best move in the given position
 	FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config Config) Result
 
-	// SetEvaluator sets the position evaluator
 	SetEvaluator(evaluator eval.Evaluator)
 
-	// GetName returns the engine name
 	GetName() string
 }

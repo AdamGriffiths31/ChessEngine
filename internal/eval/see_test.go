@@ -10,13 +10,10 @@ import (
 
 func TestSEE_XRayBattery(t *testing.T) {
 	t.Parallel()
-	// Doubled white rooks on the d-file vs a pawn defended by a rook.
-	// Rxd5 Rxd5 Rxd5 wins a pawn, but only if SEE discovers the d1 rook
-	// X-raying through the d2 rook after it makes the first capture.
 	fen := "3r3k/8/8/3p4/8/8/3R4/3R3K w - - 0 1"
 	move := board.Move{
-		From:      board.Square{Rank: 1, File: 3}, // d2
-		To:        board.Square{Rank: 4, File: 3}, // d5
+		From:      board.Square{Rank: 1, File: 3},
+		To:        board.Square{Rank: 4, File: 3},
 		Piece:     board.WhiteRook,
 		Captured:  board.BlackPawn,
 		IsCapture: true,
@@ -43,49 +40,49 @@ func TestSEE_SimpleCaptures(t *testing.T) {
 			name: "Pawn takes pawn - equal exchange",
 			fen:  "4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 3, File: 3}, // d4
-				To:        board.Square{Rank: 4, File: 4}, // e5
+				From:      board.Square{Rank: 3, File: 3},
+				To:        board.Square{Rank: 4, File: 4},
 				Piece:     board.WhitePawn,
 				Captured:  board.BlackPawn,
 				IsCapture: true,
 			},
-			expected: 100, // Gain a pawn
+			expected: 100,
 		},
 		{
 			name: "Queen takes pawn - undefended",
 			fen:  "4k3/8/8/4p3/8/8/3Q4/4K3 w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 1, File: 3}, // d2
-				To:        board.Square{Rank: 4, File: 4}, // e5
+				From:      board.Square{Rank: 1, File: 3},
+				To:        board.Square{Rank: 4, File: 4},
 				Piece:     board.WhiteQueen,
 				Captured:  board.BlackPawn,
 				IsCapture: true,
 			},
-			expected: 100, // Gain a pawn
+			expected: 100,
 		},
 		{
 			name: "Queen takes defended pawn - losing capture",
-			fen:  "4k3/8/8/4p3/3p4/8/3Q4/4K3 w - - 0 1", // Pawn on e5 can defend d4, kings added
+			fen:  "4k3/8/8/4p3/3p4/8/3Q4/4K3 w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 1, File: 3}, // d2
-				To:        board.Square{Rank: 3, File: 3}, // d4
+				From:      board.Square{Rank: 1, File: 3},
+				To:        board.Square{Rank: 3, File: 3},
 				Piece:     board.WhiteQueen,
 				Captured:  board.BlackPawn,
 				IsCapture: true,
 			},
-			expected: -800, // Lose queen (900) for pawn (100)
+			expected: -800,
 		},
 		{
 			name: "Rook takes queen - great capture",
 			fen:  "4k3/8/8/4q3/8/8/3R4/4K3 w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 1, File: 3}, // d2
-				To:        board.Square{Rank: 4, File: 4}, // e5
+				From:      board.Square{Rank: 1, File: 3},
+				To:        board.Square{Rank: 4, File: 4},
 				Piece:     board.WhiteRook,
 				Captured:  board.BlackQueen,
 				IsCapture: true,
 			},
-			expected: 900, // Gain a queen
+			expected: 900,
 		},
 	}
 
@@ -114,27 +111,25 @@ func TestSEE_ComplexExchanges(t *testing.T) {
 			name: "Multiple attackers and defenders",
 			fen:  "r3k2r/8/8/4n3/3BNB2/8/8/R3K2R w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 3, File: 3}, // d4 bishop
-				To:        board.Square{Rank: 4, File: 4}, // e5 knight
+				From:      board.Square{Rank: 3, File: 3},
+				To:        board.Square{Rank: 4, File: 4},
 				Piece:     board.WhiteBishop,
 				Captured:  board.BlackKnight,
 				IsCapture: true,
 			},
-			// Analysis: Only Bxe5 possible - black rooks blocked by king on e8
-			// Net: Just gain knight = +320
 			expected: 320,
 		},
 		{
 			name: "X-ray attack with queen behind rook",
 			fen:  "8/8/8/4p3/8/8/3RQ3/8 w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 1, File: 3}, // d2 rook
-				To:        board.Square{Rank: 4, File: 4}, // e5
+				From:      board.Square{Rank: 1, File: 3},
+				To:        board.Square{Rank: 4, File: 4},
 				Piece:     board.WhiteRook,
 				Captured:  board.BlackPawn,
 				IsCapture: true,
 			},
-			expected: 100, // Just gain the pawn (no defenders)
+			expected: 100,
 		},
 	}
 
@@ -154,14 +149,13 @@ func TestSEE_ComplexExchanges(t *testing.T) {
 func TestSEE_EnPassant(t *testing.T) {
 	t.Parallel()
 	b := board.NewBoard()
-	// Place white pawn on e5 and black pawn on d5 (that just moved two squares)
-	b.SetPiece(4, 4, board.WhitePawn)                          // e5
-	b.SetPiece(4, 3, board.BlackPawn)                          // d5
-	b.SetEnPassantTarget(board.Square{Rank: 5, File: 3}, true) // d6
+	b.SetPiece(4, 4, board.WhitePawn)
+	b.SetPiece(4, 3, board.BlackPawn)
+	b.SetEnPassantTarget(board.Square{Rank: 5, File: 3}, true)
 
 	move := board.Move{
-		From:        board.Square{Rank: 4, File: 4}, // e5
-		To:          board.Square{Rank: 5, File: 3}, // d6
+		From:        board.Square{Rank: 4, File: 4},
+		To:          board.Square{Rank: 5, File: 3},
 		Piece:       board.WhitePawn,
 		Captured:    board.BlackPawn,
 		IsEnPassant: true,
@@ -187,13 +181,10 @@ func TestSEE_PromotionCaptures(t *testing.T) {
 	}{
 		{
 			name: "Queen promotion capture, recaptured by rook",
-			// bxa8=Q is met by ...Rxa8 (a5 rook defends a8 up the open file):
-			// net = +rook(500) +promo(900-100) -queen(900) = +400. The buggy
-			// code priced the recapture as taking a pawn (+1200).
-			fen: "r3k3/1P6/8/r7/8/8/8/7K w - - 0 1",
+			fen:  "r3k3/1P6/8/r7/8/8/8/7K w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 6, File: 1}, // b7
-				To:        board.Square{Rank: 7, File: 0}, // a8
+				From:      board.Square{Rank: 6, File: 1},
+				To:        board.Square{Rank: 7, File: 0},
 				Piece:     board.WhitePawn,
 				Captured:  board.BlackRook,
 				Promotion: board.WhiteQueen,
@@ -203,11 +194,10 @@ func TestSEE_PromotionCaptures(t *testing.T) {
 		},
 		{
 			name: "Queen promotion capture, square undefended",
-			// bxa8=Q with no black reply: +knight(320) +promo(900-100) = +1120.
-			fen: "n3k3/1P6/8/8/8/8/8/7K w - - 0 1",
+			fen:  "n3k3/1P6/8/8/8/8/8/7K w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 6, File: 1}, // b7
-				To:        board.Square{Rank: 7, File: 0}, // a8
+				From:      board.Square{Rank: 6, File: 1},
+				To:        board.Square{Rank: 7, File: 0},
 				Piece:     board.WhitePawn,
 				Captured:  board.BlackKnight,
 				Promotion: board.WhiteQueen,
@@ -217,13 +207,10 @@ func TestSEE_PromotionCaptures(t *testing.T) {
 		},
 		{
 			name: "Underpromotion capture to knight, recaptured by king",
-			// bxc8=N with black king adjacent on d8: KxN follows, square
-			// undefended by white, so net = +bishop(330) +promo(320-100)
-			// -knight(320) = +230.
-			fen: "2bk4/1P6/8/8/8/8/8/7K w - - 0 1",
+			fen:  "2bk4/1P6/8/8/8/8/8/7K w - - 0 1",
 			move: board.Move{
-				From:      board.Square{Rank: 6, File: 1}, // b7
-				To:        board.Square{Rank: 7, File: 2}, // c8
+				From:      board.Square{Rank: 6, File: 1},
+				To:        board.Square{Rank: 7, File: 2},
 				Piece:     board.WhitePawn,
 				Captured:  board.BlackBishop,
 				Promotion: board.WhiteKnight,
@@ -249,11 +236,11 @@ func TestSEE_PromotionCaptures(t *testing.T) {
 func TestSEE_NonCapture(t *testing.T) {
 	t.Parallel()
 	b := board.NewBoard()
-	b.SetPiece(1, 3, board.WhiteRook) // d2
+	b.SetPiece(1, 3, board.WhiteRook)
 
 	move := board.Move{
-		From:      board.Square{Rank: 1, File: 3}, // d2
-		To:        board.Square{Rank: 3, File: 3}, // d4
+		From:      board.Square{Rank: 1, File: 3},
+		To:        board.Square{Rank: 3, File: 3},
 		Piece:     board.WhiteRook,
 		Captured:  board.Empty,
 		IsCapture: false,
@@ -312,7 +299,6 @@ func createBoardFromFEN(t testing.TB, fen string) *board.Board {
 		return b
 	}
 
-	// Check if this is a benchmark test by looking at the test name
 	testName := t.Name()
 	if strings.Contains(testName, "Benchmark") {
 		return b

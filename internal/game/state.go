@@ -1,4 +1,4 @@
-// Package game provides the chess game engine with move validation and game state management.
+// Package game provides the chess game engine with game state management.
 package game
 
 import (
@@ -57,11 +57,7 @@ func NewEngine() *Engine {
 // HashHistory returns the real-game position-hash sequence tracked
 // internally for threefold detection: oldest first, ending with the hash of
 // the current position. Reset to just the new starting position by Reset
-// and LoadFromFEN, appended to by MakeMove. Exported so callers (the UCI
-// adapter) can feed the actual game history into
-// search.Config.RepetitionHistory - without it, the search can only
-// see repetitions reachable within its own hypothetical lookahead from the
-// current position, blind to ones that already happened via real moves.
+// and LoadFromFEN, appended to by MakeMove.
 func (e *Engine) HashHistory() []uint64 {
 	return e.hashHistory
 }
@@ -81,12 +77,6 @@ func (e *Engine) GetState() *State {
 
 // MakeMove applies a move to the game board.
 func (e *Engine) MakeMove(move board.Move) error {
-	// board.Board.MakeMove only falls back to looking up the moving piece
-	// when move.Piece == board.Empty; a zero-value (unset) Piece field is
-	// used as-is and silently corrupts the board. Mirror the defensive
-	// lookup that board.Board.MakeMoveWithUndo already performs so callers
-	// that only supply From/To/Promotion (as game.Engine's own tests do)
-	// behave correctly.
 	if move.Piece == board.Empty || move.Piece == 0 {
 		move.Piece = e.state.Board.GetPiece(move.From.Rank, move.From.File)
 	}
@@ -101,8 +91,6 @@ func (e *Engine) MakeMove(move board.Move) error {
 	return nil
 }
 
-// updateGameOverState checks for checkmate, stalemate, the 50-move rule,
-// and threefold repetition, populating State.GameOver/Winner/IsDraw.
 func (e *Engine) updateGameOverState() {
 	hash := book.GetPolyglotHash().HashPosition(e.state.Board)
 	e.hashHistory = append(e.hashHistory, hash)
@@ -129,8 +117,6 @@ func (e *Engine) updateGameOverState() {
 	}
 }
 
-// occursThreeTimes reports whether hash has appeared at least three times
-// in the game's position history (threefold repetition).
 func (e *Engine) occursThreeTimes(hash uint64) bool {
 	count := 0
 	for _, h := range e.hashHistory {

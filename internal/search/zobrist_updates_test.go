@@ -11,42 +11,23 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// zobristSeedBase + the FEN index seeds each playout, so failures reproduce.
 const zobristSeedBase = 20240615
 
-// zobristTestFENs covers the state that feeds the hash: full/partial/no
-// castling rights, en passant for both colors, imminent promotions, and a
-// sparse endgame. Other search tests reuse this list by index.
 var zobristTestFENs = []string{
-	// Standard starting position: full castling rights, no en passant.
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-	// "Kiwipete": full castling rights, busy middlegame.
 	"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-	// Perft position 4: partial castling rights (black only, "kq").
 	"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-	// Partial castling rights (white kingside only, "K").
 	"4k3/8/8/8/8/8/8/R3K2R w K - 0 1",
-	// Perft "position 6": no castling rights, busy middlegame.
 	"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-	// White en passant capture available (d5 pawn can take e6).
 	"4k3/8/8/3Pp3/8/8/8/4K3 w - e6 0 1",
-	// Black en passant capture available (e4 pawn can take d3).
 	"4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1",
-	// White promotion imminent (pawn on b7).
 	"4k3/1P6/8/8/8/8/8/4K3 w - - 0 1",
-	// Black promotion imminent (pawn on b2).
 	"4k3/8/8/8/8/8/1p6/4K3 b - - 0 1",
-	// Sparse late endgame (king and pawn vs king).
 	"8/8/4k3/8/8/4K3/4P3/8 w - - 0 1",
 }
 
-// maxZobristPlies caps the length of each random playout.
 const maxZobristPlies = 40
 
-// TestZobristIncrementalHashRoundTrip plays seeded random legal moves and
-// checks at every ply that the incremental hash matches a from-scratch
-// recompute, that unmake restores the pre-move hash, and that the null-move
-// make/unmake round trip is exact.
 func TestZobristIncrementalHashRoundTrip(t *testing.T) {
 	for idx, fen := range zobristTestFENs {
 
@@ -83,7 +64,6 @@ func runZobristPlayout(t *testing.T, fen string, seed int64) {
 	}
 
 	for ply := range maxZobristPlies {
-		// Null-move round trip at this position.
 		preNullHash := b.GetHash()
 		nullUndo := b.MakeNullMove()
 		if b.GetHash() == preNullHash {
@@ -114,7 +94,6 @@ func runZobristPlayout(t *testing.T, fen string, seed int64) {
 				continue
 			}
 
-			// Legal candidate: make must give the right hash and unmake must restore it.
 			checkHash(fmt.Sprintf("ply %d candidate %s after make", ply, moveString(move)))
 
 			b.UnmakeMove(undo)
@@ -140,7 +119,6 @@ func runZobristPlayout(t *testing.T, fen string, seed int64) {
 		playedMoves = append(playedMoves, moveString(chosen))
 		checkHash(fmt.Sprintf("ply %d chosen move %s after make", ply, moveString(chosen)))
 
-		// Unmake and re-make the chosen move to continue the playout.
 		b.UnmakeMove(undo)
 		if b.GetHash() != preMoveHash {
 			failf("ply %d: hash after unmake of chosen move %s = %#x, want %#x", ply, moveString(chosen), b.GetHash(), preMoveHash)

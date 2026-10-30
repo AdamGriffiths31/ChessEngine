@@ -93,8 +93,8 @@ const (
 
 // Center square masks
 var (
-	CenterFiles = FileMask(3) | FileMask(4) // d and e files
-	CenterRanks = RankMask(3) | RankMask(4) // 4th and 5th ranks
+	CenterFiles = FileMask(3) | FileMask(4)
+	CenterRanks = RankMask(3) | RankMask(4)
 )
 
 // SetBit sets the bit at the given square
@@ -191,12 +191,10 @@ func RankMask(rank int) Bitboard {
 	return Rank1 << (rank * 8)
 }
 
-// String returns a pretty-printed representation of the bitboard
 func (b Bitboard) String() string {
 	var result strings.Builder
 	result.WriteString("  a b c d e f g h\n")
 
-	// Print from rank 8 down to rank 1 (top to bottom visually)
 	for rank := 7; rank >= 0; rank-- {
 		result.WriteString(strconv.Itoa(rank + 1))
 		result.WriteString(" ")

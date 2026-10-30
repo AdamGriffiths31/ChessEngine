@@ -35,8 +35,6 @@ func loadPerftPositions(t *testing.T) []perftPosition {
 	return file.Positions
 }
 
-// perft counts the leaf nodes reachable in depth plies, making and unmaking
-// moves with the same board methods the search uses.
 func perft(t *testing.T, b *board.Board, depth int, player Player, gen *Generator) int64 {
 	moves := gen.GenerateAllMoves(b, player)
 	defer ReleaseMoveList(moves)
@@ -57,8 +55,6 @@ func perft(t *testing.T, b *board.Board, depth int, player Player, gen *Generato
 	return nodes
 }
 
-// TestPerft_StandardPositions checks move generation against published node
-// counts. Set PERFT_MAX_DEPTH to cap the depth; -short caps it at 3.
 func TestPerft_StandardPositions(t *testing.T) {
 	maxDepth := 5
 	if env := os.Getenv("PERFT_MAX_DEPTH"); env != "" {

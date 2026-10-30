@@ -8,9 +8,9 @@ func MoveGivesCheck(b *Board, move Move) bool {
 	}
 
 	var enemyKingBB Bitboard
-	if piece < BlackPawn { // White piece
+	if piece < BlackPawn {
 		enemyKingBB = b.GetPieceBitboard(BlackKing)
-	} else { // Black piece
+	} else {
 		enemyKingBB = b.GetPieceBitboard(WhiteKing)
 	}
 
@@ -22,22 +22,18 @@ func MoveGivesCheck(b *Board, move Move) bool {
 	toSquare := move.To.Rank*8 + move.To.File
 	fromSquare := move.From.Rank*8 + move.From.File
 
-	// 1. Direct check: Does the piece attack the king from its destination?
 	if isDirectCheck(b, piece, toSquare, kingSquare, fromSquare) {
 		return true
 	}
 
-	// 2. Discovered check: Moving this piece might uncover an attack
 	if isDiscoveredCheck(b, fromSquare, toSquare, kingSquare, piece) {
 		return true
 	}
 
-	// 3. Promotion check (special case)
 	if move.Promotion != Empty {
 		return isDirectCheck(b, move.Promotion, toSquare, kingSquare, fromSquare)
 	}
 
-	// 4. En passant discovered check (rare but possible)
 	if move.IsEnPassant {
 		return isEnPassantCheck(b, move, kingSquare)
 	}
@@ -45,12 +41,6 @@ func MoveGivesCheck(b *Board, move Move) bool {
 	return false
 }
 
-// isDirectCheck reports whether piece attacks the enemy king from attackFrom
-// (the move's destination square). moverOrigin is the square the moving piece
-// starts on; slider rays are computed with that square vacated so a piece
-// sliding along its own line attacks through its old square exactly as it
-// will once the move has been made. Without this, a slider retreating away
-// from the king along an open line looked blocked by its own pre-move square.
 func isDirectCheck(b *Board, piece Piece, attackFrom, kingSquare, moverOrigin int) bool {
 	occupancy := b.AllPieces.ClearBit(moverOrigin)
 
@@ -82,7 +72,6 @@ func isDirectCheck(b *Board, piece Piece, attackFrom, kingSquare, moverOrigin in
 }
 
 func isDiscoveredCheck(b *Board, fromSquare, toSquare, kingSquare int, movingPiece Piece) bool {
-	// Quick rejection: if piece isn't between any of our sliders and enemy king, no discovered check
 	fromRank, fromFile := fromSquare/8, fromSquare%8
 	kingRank, kingFile := kingSquare/8, kingSquare%8
 
@@ -97,10 +86,10 @@ func isDiscoveredCheck(b *Board, fromSquare, toSquare, kingSquare int, movingPie
 
 	occupancy := b.AllPieces.ClearBit(fromSquare).SetBit(toSquare)
 
-	if movingPiece < BlackPawn { // White piece moving
+	if movingPiece < BlackPawn {
 		if onSameRank || onSameFile {
 			rooksQueens := b.GetPieceBitboard(WhiteRook) | b.GetPieceBitboard(WhiteQueen)
-			rooksQueens = rooksQueens.ClearBit(fromSquare) // Don't count moving piece
+			rooksQueens = rooksQueens.ClearBit(fromSquare)
 
 			for rooksQueens != 0 {
 				attackerSq := rooksQueens.LSB()
@@ -125,7 +114,7 @@ func isDiscoveredCheck(b *Board, fromSquare, toSquare, kingSquare int, movingPie
 				}
 			}
 		}
-	} else { // Black piece moving
+	} else {
 		if onSameRank || onSameFile {
 			rooksQueens := b.GetPieceBitboard(BlackRook) | b.GetPieceBitboard(BlackQueen)
 			rooksQueens = rooksQueens.ClearBit(fromSquare)
@@ -159,21 +148,20 @@ func isDiscoveredCheck(b *Board, fromSquare, toSquare, kingSquare int, movingPie
 }
 
 func isEnPassantCheck(b *Board, move Move, kingSquare int) bool {
-	// En passant can discover check on the rank
 	fromSquare := move.From.Rank*8 + move.From.File
 	toSquare := move.To.Rank*8 + move.To.File
 
 	capturedPawnSquare := toSquare
-	if move.From.Rank > move.To.Rank { // White capturing
+	if move.From.Rank > move.To.Rank {
 		capturedPawnSquare -= 8
-	} else { // Black capturing
+	} else {
 		capturedPawnSquare += 8
 	}
 
 	occupancy := b.AllPieces.ClearBit(fromSquare).ClearBit(capturedPawnSquare).SetBit(toSquare)
 
 	piece := b.GetPiece(move.From.Rank, move.From.File)
-	if piece < BlackPawn { // White piece
+	if piece < BlackPawn {
 		rooksQueens := b.GetPieceBitboard(WhiteRook) | b.GetPieceBitboard(WhiteQueen)
 		for rooksQueens != 0 {
 			attackerSq := rooksQueens.LSB()
@@ -183,7 +171,7 @@ func isEnPassantCheck(b *Board, move Move, kingSquare int) bool {
 				return true
 			}
 		}
-	} else { // Black piece
+	} else {
 		rooksQueens := b.GetPieceBitboard(BlackRook) | b.GetPieceBitboard(BlackQueen)
 		for rooksQueens != 0 {
 			attackerSq := rooksQueens.LSB()

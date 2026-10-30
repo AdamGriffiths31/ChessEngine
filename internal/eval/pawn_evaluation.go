@@ -4,9 +4,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Pawn evaluation: passed-pawn bonuses by rank, isolated/doubled/backward
-// structure penalties, connected-pawn bonus, cached through PawnHashTable.
-
 const (
 	// IsolatedPawnPenalty applies to a pawn with no friendly pawns on adjacent files.
 	IsolatedPawnPenalty = -15
@@ -23,7 +20,6 @@ const (
 var PassedPawnBonus = [8]int{0, 10, 15, 25, 40, 60, 90, 0}
 
 // PawnHashTable provides global caching for pawn evaluations
-// 16K entries = ~256KB of memory for significant speed improvement
 var PawnHashTable [16384]PawnHashEntry
 
 func evaluatePawnStructure(b *board.Board) int {
@@ -33,8 +29,6 @@ func evaluatePawnStructure(b *board.Board) int {
 	pawnHash := b.GetPawnHash()
 	hashIndex := pawnHash & 16383
 
-	// Entries store hash XOR score so a torn read (hash and score from
-	// different positions) fails validation instead of returning garbage.
 	entry := &PawnHashTable[hashIndex]
 	cachedScore := entry.score
 	if entry.hash^uint64(int64(cachedScore)) == pawnHash {
@@ -51,7 +45,6 @@ func evaluatePawnStructure(b *board.Board) int {
 	return score
 }
 
-// Returns positive values favoring White, negative favoring Black
 func evaluatePawnsSimple(whitePawns, blackPawns board.Bitboard) int {
 	score := 0
 
@@ -109,7 +102,6 @@ func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool
 	return score
 }
 
-// isPassedPawn checks if a pawn is passed (no enemy pawns can stop it)
 func isPassedPawn(square int, enemyPawns board.Bitboard, isWhite bool) bool {
 	file := square % 8
 	rank := square / 8
@@ -135,7 +127,6 @@ func isPassedPawn(square int, enemyPawns board.Bitboard, isWhite bool) bool {
 	return true
 }
 
-// isIsolatedPawn checks if a pawn has no friendly pawns on adjacent files
 func isIsolatedPawn(friendlyPawns board.Bitboard, file int) bool {
 	if file > 0 && (friendlyPawns&board.FileMask(file-1)) != 0 {
 		return false
@@ -148,9 +139,6 @@ func isIsolatedPawn(friendlyPawns board.Bitboard, file int) bool {
 	return true
 }
 
-// isConnectedPawn checks if a pawn is protected by another friendly pawn
-// Support comes from behind relative to the pawn's direction of travel:
-// rank-1 for White, rank+1 for Black
 func isConnectedPawn(friendlyPawns board.Bitboard, square int, isWhite bool) bool {
 	file := square % 8
 	rank := square / 8
@@ -174,14 +162,10 @@ func isConnectedPawn(friendlyPawns board.Bitboard, square int, isWhite bool) boo
 	return false
 }
 
-// isBackwardPawn checks if a pawn has fallen behind its neighbors and cannot
-// advance safely: no friendly pawn on an adjacent file is level with it or
-// behind it, and its stop square is covered by an enemy pawn
 func isBackwardPawn(square int, friendlyPawns, enemyPawns board.Bitboard, isWhite bool) bool {
 	file := square % 8
 	rank := square / 8
 
-	// A pawn that can still be supported from behind is not backward
 	for _, f := range [2]int{file - 1, file + 1} {
 		if f < 0 || f > 7 {
 			continue
@@ -197,7 +181,6 @@ func isBackwardPawn(square int, friendlyPawns, enemyPawns board.Bitboard, isWhit
 		}
 	}
 
-	// Backward only if the stop square is covered by an enemy pawn
 	var stopRank, attackerRank int
 	if isWhite {
 		stopRank = rank + 1

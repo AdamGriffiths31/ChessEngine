@@ -21,13 +21,11 @@ const (
 	BookLeft = "left_book"
 )
 
-// bookOutcome says whether the book supplied the move and, if not, why.
 type bookOutcome struct {
 	Used   bool
 	Reason string
 }
 
-// moveLog is everything handleGo knows about one move once its search ends.
 type moveLog struct {
 	fen     string
 	player  movegen.Player
@@ -40,14 +38,6 @@ type moveLog struct {
 	book    bookOutcome
 }
 
-// logMove writes one structured "move" record at Info level. It is a no-op
-// unless the default slog logger has Info enabled (cmd/uci enables it when a
-// debug log file is configured), so normal play pays nothing for it.
-//
-// Scores are in centipawns from the side to move's point of view (score_cp_stm).
-// The search group is search.Stats marshaled as-is, so it already carries the
-// per-iteration trace, stop reason and pruning counters for this one search;
-// tt_cumulative is the table's lifetime counters, not per move.
 func (ue *Engine) logMove(m moveLog) {
 	ctx := context.Background()
 	if !slog.Default().Enabled(ctx, slog.LevelInfo) {

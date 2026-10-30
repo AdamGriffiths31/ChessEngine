@@ -4,9 +4,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Knight evaluation: attack-based mobility plus a bonus for
-// pawn-defended outposts in enemy territory.
-
 const (
 	// KnightOutpostBonus rewards a knight on a pawn-defended square in enemy
 	// territory.
@@ -19,7 +16,6 @@ var WhiteKnightOutpostRanks = [8]bool{false, false, false, true, true, true, fal
 // BlackKnightOutpostRanks defines outpost ranks for black knights (ranks 3-5)
 var BlackKnightOutpostRanks = [8]bool{false, false, true, true, true, false, false, false}
 
-// Returns positive values favoring White, negative favoring Black
 func evaluateKnights(b *board.Board) int {
 	if b == nil {
 		return 0
@@ -63,8 +59,6 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 		score += knightMobilityScore(square, area)
 
 		if outpostRanks[rank] {
-			// Only enemy pawns in front of the knight can ever attack it;
-			// pawns level with or behind it are past the square for good
 			var aheadMask board.Bitboard
 			if isWhite {
 				aheadMask = board.Bitboard(^uint64(0)) << ((rank + 1) * 8)
@@ -87,7 +81,6 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 				var friendlyPawns board.Bitboard
 				if isWhite {
 					friendlyPawns = b.GetPieceBitboard(board.WhitePawn)
-					// Check for pawn support from behind (rank-1)
 					if rank > 0 {
 						supportRank := rank - 1
 						if file > 0 && friendlyPawns.HasBit(supportRank*8+(file-1)) {
@@ -99,7 +92,6 @@ func evaluateKnightsSimple(b *board.Board, knights board.Bitboard, isWhite bool)
 					}
 				} else {
 					friendlyPawns = b.GetPieceBitboard(board.BlackPawn)
-					// Check for pawn support from behind (rank+1)
 					if rank < 7 {
 						supportRank := rank + 1
 						if file > 0 && friendlyPawns.HasBit(supportRank*8+(file-1)) {

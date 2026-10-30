@@ -7,7 +7,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// testBookConfig is a weighted-random config with no book files.
 func testBookConfig() Config {
 	return Config{Enabled: true, SelectionMode: SelectWeightedRandom, WeightThreshold: 1}
 }
@@ -91,7 +90,7 @@ func TestMoveSelection(t *testing.T) {
 func TestWeightedRandomSelection(t *testing.T) {
 	config := testBookConfig()
 	config.SelectionMode = SelectWeightedRandom
-	config.RandomSeed = 12345 // Fixed seed for reproducible tests
+	config.RandomSeed = 12345
 
 	service := NewLookupService(config)
 
@@ -125,7 +124,6 @@ func TestWeightedRandomSelection(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Run multiple selections to ensure it doesn't crash
 			for range 100 {
 				selected := service.selectMove(test.bookMoves)
 

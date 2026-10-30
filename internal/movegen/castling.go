@@ -26,7 +26,6 @@ const (
 	B8 = 57
 )
 
-// generateCastlingMovesBitboard generates castling moves using bitboard path checking
 func (bmg *BitboardMoveGenerator) generateCastlingMovesBitboard(b *board.Board, player Player, kingSquare int, moveList *MoveList) {
 	castlingRights := b.GetCastlingRights()
 	if castlingRights == "-" {
@@ -98,7 +97,6 @@ func (bmg *BitboardMoveGenerator) generateCastlingMovesBitboard(b *board.Board, 
 	}
 
 	if strings.ContainsRune(castlingRights, rune(queenside)) {
-		// Check if path is clear (queenside includes an extra square)
 		pathMask := board.Bitboard(0)
 		pathMask = pathMask.SetBit(queensideRookTarget).SetBit(queensideKingTarget).SetBit(B1)
 		if player == Black {
@@ -106,7 +104,6 @@ func (bmg *BitboardMoveGenerator) generateCastlingMovesBitboard(b *board.Board, 
 		}
 
 		if (b.AllPieces & pathMask) == 0 {
-			// Check if king or key path squares are under attack
 			if !b.IsSquareAttackedByColor(kingSquare, oppositeColor) &&
 				!b.IsSquareAttackedByColor(queensideRookTarget, oppositeColor) &&
 				!b.IsSquareAttackedByColor(queensideKingTarget, oppositeColor) {

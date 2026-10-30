@@ -2,24 +2,19 @@ package board
 
 // Precomputed attack tables for chess pieces
 var (
-	// File and rank masks
 	FileMasks [8]Bitboard
 	RankMasks [8]Bitboard
 
-	// Non-sliding piece attacks
 	KnightAttacks [64]Bitboard
 	KingAttacks   [64]Bitboard
 
-	// Pawn attacks (separate for each color)
 	WhitePawnAttacks [64]Bitboard
 	BlackPawnAttacks [64]Bitboard
 
-	BetweenTable [64][64]Bitboard // Squares between two squares (exclusive)
-	LineTable    [64][64]Bitboard // All squares on the line between two squares (inclusive)
-
+	BetweenTable [64][64]Bitboard
+	LineTable    [64][64]Bitboard
 )
 
-// init automatically initializes attack tables when the package is loaded
 func init() {
 	initializeFilesAndRanks()
 	initializeKnightAttacks()
@@ -92,15 +87,12 @@ func initializePawnAttacks() {
 	for square := range 64 {
 		file, rank := SquareToFileRank(square)
 
-		// White pawn attacks (moving up the board)
 		var whiteAttacks Bitboard
-		if rank < 7 { // Not on 8th rank
-			// Attack to the left (southwest)
+		if rank < 7 {
 			if file > 0 {
 				targetSquare := FileRankToSquare(file-1, rank+1)
 				whiteAttacks = whiteAttacks.SetBit(targetSquare)
 			}
-			// Attack to the right (southeast)
 			if file < 7 {
 				targetSquare := FileRankToSquare(file+1, rank+1)
 				whiteAttacks = whiteAttacks.SetBit(targetSquare)
@@ -108,15 +100,12 @@ func initializePawnAttacks() {
 		}
 		WhitePawnAttacks[square] = whiteAttacks
 
-		// Black pawn attacks (moving down the board)
 		var blackAttacks Bitboard
-		if rank > 0 { // Not on 1st rank
-			// Attack to the left (northwest)
+		if rank > 0 {
 			if file > 0 {
 				targetSquare := FileRankToSquare(file-1, rank-1)
 				blackAttacks = blackAttacks.SetBit(targetSquare)
 			}
-			// Attack to the right (northeast)
 			if file < 7 {
 				targetSquare := FileRankToSquare(file+1, rank-1)
 				blackAttacks = blackAttacks.SetBit(targetSquare)
@@ -138,9 +127,7 @@ func initializeBetweenTable() {
 				fileDiff := file2 - file1
 				rankDiff := rank2 - rank1
 
-				// Check if squares are on the same line (rank, file, or diagonal)
 				if fileDiff == 0 || rankDiff == 0 || abs(fileDiff) == abs(rankDiff) {
-					// Normalize direction
 					fileStep := 0
 					rankStep := 0
 					if fileDiff != 0 {
@@ -150,7 +137,6 @@ func initializeBetweenTable() {
 						rankStep = rankDiff / abs(rankDiff)
 					}
 
-					// Add squares between sq1 and sq2 (exclusive)
 					currentFile := file1 + fileStep
 					currentRank := rank1 + rankStep
 
@@ -180,7 +166,6 @@ func initializeLineTable() {
 				fileDiff := file2 - file1
 				rankDiff := rank2 - rank1
 
-				// Check if squares are on the same line (rank, file, or diagonal)
 				if fileDiff == 0 || rankDiff == 0 || abs(fileDiff) == abs(rankDiff) {
 					line = line.SetBit(sq1).SetBit(sq2)
 

@@ -55,7 +55,6 @@ func TestParseEPD(t *testing.T) {
 	}
 }
 
-// Comment and blank lines in a file are skipped, not reported as errors.
 func TestParseEPDFile(t *testing.T) {
 	t.Parallel()
 	content := `1R6/1brk2p1/4p2p/p1P1Pp2/P7/6P1/1P4P1/2R3K1 w - - 0 1 bm b8b7

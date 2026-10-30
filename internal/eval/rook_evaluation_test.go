@@ -18,31 +18,31 @@ func TestEvaluateRooksForColor(t *testing.T) {
 			name:     "rook_open_file",
 			fen:      "8/8/8/8/8/8/8/3R4 w - - 0 1",
 			isWhite:  true,
-			expected: 72, // 20 (open file) + 52 (mobility: 14 attacked squares)
+			expected: 72,
 		},
 		{
 			name:     "rook_semi_open_file",
 			fen:      "8/3p4/8/8/8/8/8/3R4 w - - 0 1",
 			isWhite:  true,
-			expected: 59, // 10 (semi-open) + 49 (mobility: 13 attacked squares)
+			expected: 59,
 		},
 		{
 			name:     "rook_closed_file",
 			fen:      "8/3p4/8/8/8/8/3P4/3R4 w - - 0 1",
 			isWhite:  true,
-			expected: 31, // 0 (closed file) + 31 (mobility: 7 attacked squares, own pawn blocks the file)
+			expected: 31,
 		},
 		{
 			name:     "rook_seventh_rank",
 			fen:      "4k3/3R4/8/8/8/8/8/8 w - - 0 1",
 			isWhite:  true,
-			expected: 97, // 20 (open) + 25 (7th rank) + 52 (mobility: 14 attacked squares)
+			expected: 97,
 		},
 		{
 			name:     "black_rook_second_rank",
 			fen:      "8/8/8/8/8/8/3r4/4K3 w - - 0 1",
 			isWhite:  false,
-			expected: 97, // 20 (open) + 25 (2nd rank for black) + 52 (mobility: 14 attacked squares)
+			expected: 97,
 		},
 	}
 
@@ -101,7 +101,6 @@ func TestRookConnectedBehavior(t *testing.T) {
 
 			whiteRooks := b.GetPieceBitboard(board.WhiteRook)
 
-			// Calculate only the connected rooks bonus from full evaluation
 			fullScore := evaluateRooksForColor(b, whiteRooks, true)
 
 			expectedWithoutConnection := 0
@@ -110,7 +109,6 @@ func TestRookConnectedBehavior(t *testing.T) {
 				square, newRooks := tempRooks.PopLSB()
 				tempRooks = newRooks
 
-				// Open file bonus (both rooks are on open files in these tests)
 				expectedWithoutConnection += RookOpenFileBonus
 
 				expectedWithoutConnection += rookMobilityScore(square, b.AllPieces, mobilityArea(b, true))

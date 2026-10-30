@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"time"
@@ -15,12 +16,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
-// runProfile provides CPU and memory profiling utilities for the chess engine.
-//
-// Profile setup and write failures are returned as errors, so the deferred
-// cleanup (closing the profile files, stopping the CPU profile) still runs.
-//
-//nolint:gocyclo // linear sequence of flag/mode branches in a CLI entrypoint;
+//nolint:gocyclo
 func runProfile(args []string) error {
 	fs := flag.NewFlagSet("bench profile", flag.ExitOnError)
 	var (
@@ -178,18 +174,13 @@ func runProfile(args []string) error {
 	return nil
 }
 
-// runProfileSample profiles requestedCount positions sampled evenly across
-// positions (by index) as one combined CPU/memory capture, so a single
-// profile reflects a spread of position types rather than one tree shape.
-// Each position gets a fresh engine (no shared TT/killer/history state
-// across unrelated positions).
 func runProfileSample(positions []*epd.Position, fileName string, requestedCount int, searchTime time.Duration, cpuProfile, memProfile string, ttSize int, showDetails bool) error {
 	indices := evenlySpacedIndices(requestedCount, len(positions))
 	fmt.Printf("\nProfiling %d position(s) sampled from %s (of %d total)\n", len(indices), fileName, len(positions))
 	fmt.Printf("Search time per position: %v, TT: %dMB\n\n", searchTime, ttSize)
 
 	if cpuProfile != "" {
-		f, err := os.Create(cpuProfile) // #nosec G304 - path comes from the -cpuprofile flag
+		f, err := os.Create(filepath.Clean(cpuProfile))
 		if err != nil {
 			return fmt.Errorf("failed to create CPU profile: %w", err)
 		}
@@ -284,7 +275,7 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 	}
 
 	if memProfile != "" {
-		f, err := os.Create(memProfile) // #nosec G304 - path comes from the -memprofile flag
+		f, err := os.Create(filepath.Clean(memProfile))
 		if err != nil {
 			return fmt.Errorf("failed to create memory profile: %w", err)
 		}
@@ -300,10 +291,6 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 	return nil
 }
 
-// evenlySpacedIndices returns up to count indices spread evenly across
-// [0, total). If count >= total, all indices are returned. Rounding can
-// produce duplicate indices when count is large relative to total, so the
-// result may contain fewer than count entries.
 func evenlySpacedIndices(count, total int) []int {
 	if total <= 0 {
 		return nil
@@ -318,15 +305,10 @@ func evenlySpacedIndices(count, total int) []int {
 	if count == 1 {
 		return []int{0}
 	}
-	seen := make(map[int]bool, count)
 	indices := make([]int, 0, count)
 	step := float64(total-1) / float64(count-1)
 	for i := range count {
-		idx := int(math.Round(float64(i) * step))
-		if !seen[idx] {
-			seen[idx] = true
-			indices = append(indices, idx)
-		}
+		indices = append(indices, int(math.Round(float64(i)*step)))
 	}
 	return indices
 }

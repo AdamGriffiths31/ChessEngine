@@ -12,44 +12,26 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// roundtripSeedBase + the FEN index seeds each playout, so failures reproduce.
 const roundtripSeedBase = 20240701
 
-// roundtripTestFENs is the same set as zobristTestFENs in internal/search.
 var roundtripTestFENs = []string{
-	// Standard starting position: full castling rights, no en passant.
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-	// "Kiwipete": full castling rights, busy middlegame.
 	"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-	// Perft position 4: partial castling rights (black only, "kq").
 	"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-	// Partial castling rights (white kingside only, "K").
 	"4k3/8/8/8/8/8/8/R3K2R w K - 0 1",
-	// Perft "position 6": no castling rights, busy middlegame.
 	"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-	// White en passant capture available (d5 pawn can take e6).
 	"4k3/8/8/3Pp3/8/8/8/4K3 w - e6 0 1",
-	// Black en passant capture available (e4 pawn can take d3).
 	"4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1",
-	// White promotion imminent (pawn on b7).
 	"4k3/1P6/8/8/8/8/8/4K3 w - - 0 1",
-	// Black promotion imminent (pawn on b2).
 	"4k3/8/8/8/8/8/1p6/4K3 b - - 0 1",
-	// Sparse late endgame (king and pawn vs king).
 	"8/8/4k3/8/8/4K3/4P3/8 w - - 0 1",
 }
 
-// maxRoundtripPlies caps the length of each random playout.
 const maxRoundtripPlies = 40
 
-// TestMakeUnmakeStateRoundTrip plays seeded random moves and checks at every
-// ply that MakeMoveWithUndo followed by UnmakeMove restores the exact prior
-// board state, for every accepted move (legal or not), plus the null-move
-// round trip.
 func TestMakeUnmakeStateRoundTrip(t *testing.T) {
 	t.Parallel()
 	for idx, fen := range roundtripTestFENs {
-
 		seed := int64(roundtripSeedBase + idx)
 		t.Run(fmt.Sprintf("fen%d", idx), func(t *testing.T) {
 			runRoundtripPlayout(t, fen, seed)
@@ -73,7 +55,6 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 	}
 
 	for ply := range maxRoundtripPlies {
-		// Null-move round trip at this position.
 		preNull := *b
 		nullUndo := b.MakeNullMove()
 		b.UnmakeNullMove(nullUndo)
@@ -121,7 +102,6 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 		}
 		playedMoves = append(playedMoves, moveString(chosen))
 
-		// Unmake and re-make the chosen move to continue the playout.
 		b.UnmakeMove(undo)
 		post := *b
 		if ok, diff := boardsEqual(&pre, &post); !ok {
@@ -136,11 +116,6 @@ func runRoundtripPlayout(t *testing.T, fen string, seed int64) {
 	}
 }
 
-// boardsEqual reports whether two boards are in the same state and, if not,
-// what differs. reflect.DeepEqual is safe here because the unexported history
-// slices are only appended to and re-sliced, never mutated in place. When it
-// fails, the accessor comparison names the difference; if none is found, the
-// mismatch is in unexported bookkeeping (e.g. a leaked history entry).
 func boardsEqual(pre, post *board.Board) (bool, string) {
 	if reflect.DeepEqual(*pre, *post) {
 		return true, ""
@@ -214,7 +189,6 @@ func opposite(p movegen.Player) movegen.Player {
 	return movegen.White
 }
 
-// moveString renders a move in coordinate notation ("e2e4", "a7a8q").
 func moveString(move board.Move) string {
 	s := move.From.String() + move.To.String()
 	if move.Promotion != board.Empty {

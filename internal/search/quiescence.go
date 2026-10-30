@@ -1,4 +1,3 @@
-// Package search provides chess move search algorithms and transposition table implementation.
 package search
 
 import (
@@ -9,10 +8,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-// quiescence performs quiescence search to avoid the horizon effect.
-// Only searches "quiet" positions by examining tactical sequences (captures and checks)
-// until a stable position is reached. This prevents the engine from making decisions
-// based on incomplete tactical analysis at the end of main search depth.
 func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, alpha, beta evalpkg.EvaluationScore, ply int) evalpkg.EvaluationScore {
 	b := m.searchState.board
 
@@ -45,16 +40,12 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 
 	var movesToSearch *movegen.MoveList
 	if inCheck {
-		// When in check, we must consider ALL legal moves (including quiet escapes)
-		// This is the idiomatic approach used by strong chess engines
 		movesToSearch = m.generator.GeneratePseudoLegalMoves(b, player)
 	} else {
-		// Normal quiescence - only captures and promotions
 		movesToSearch = m.generator.GenerateCaptures(b, player)
 	}
 	defer movegen.ReleaseMoveList(movesToSearch)
 
-	// Use ply as buffer index for buffer selection
 	bufferPly := min(ply, MaxKillerDepth-1)
 
 	if inCheck {
@@ -66,10 +57,6 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 	legalMoveCount := 0
 	bestScore := standPat
 	if inCheck {
-		// Standing pat is illegal in check, so the node must not be floored at
-		// the static eval: start below every possible evasion score so the best
-		// (possibly losing) legal move is what gets returned/stored. Otherwise a
-		// mated-in-qsearch side could report its own positive eval.
 		bestScore = -evalpkg.MateScore - 1
 	}
 
@@ -88,13 +75,11 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 
 		legalMoveCount++
 
-		// Pruning applies only to captures, and never in check.
 		if !inCheck && move.IsCapture && m.shouldPruneCapture(b, move, standPat, alpha) {
 			b.UnmakeMove(undo)
 			continue
 		}
 
-		// Move is already made and verified as legal above
 		score := -m.quiescence(ctx, oppositePlayer(player), -beta, -alpha, ply+1)
 		b.UnmakeMove(undo)
 
@@ -112,11 +97,8 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 
 	if legalMoveCount == 0 {
 		if inCheck {
-			// Checkmate - no legal moves when in check. ply is the distance
-			// from the search root, which is the mate distance the score encodes.
 			return -evalpkg.MateScore + evalpkg.EvaluationScore(ply)
 		}
-		// No captures to search: the static eval stands.
 		return standPat
 	}
 
@@ -124,9 +106,6 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 	return bestScore
 }
 
-// probeQuiescenceTT probes the TT at quiescence depth. It returns a cutoff
-// score with done=true when the entry's bound settles the window; otherwise
-// it returns alpha and beta, narrowed by any bound the entry implies.
 func (m *MinimaxEngine) probeQuiescenceTT(hash uint64, ply int, alpha, beta evalpkg.EvaluationScore) (score, alphaOut, betaOut evalpkg.EvaluationScore, done bool) {
 	if m.transpositionTable == nil {
 		return 0, alpha, beta, false
@@ -159,10 +138,6 @@ func (m *MinimaxEngine) probeQuiescenceTT(hash uint64, ply int, alpha, beta eval
 	return 0, alpha, beta, false
 }
 
-// shouldPruneCapture reports whether a capture (already made on b) can be
-// skipped: delta pruning drops captures that cannot lift the stand-pat eval to
-// alpha even with the victim's value and a margin, and SEE pruning drops
-// captures that lose material outright.
 func (m *MinimaxEngine) shouldPruneCapture(b *board.Board, move board.Move, standPat, alpha evalpkg.EvaluationScore) bool {
 	gain := deltaCaptureValue(move.Captured)
 	if move.HasPromotion() {
@@ -175,7 +150,6 @@ func (m *MinimaxEngine) shouldPruneCapture(b *board.Board, move board.Move, stan
 	return m.seeCalculator.SEE(b, move) < QSEEPruneThreshold
 }
 
-// deltaCaptureValue is the coarse victim value used by delta pruning.
 func deltaCaptureValue(victim board.Piece) evalpkg.EvaluationScore {
 	switch victim {
 	case board.WhitePawn, board.BlackPawn:
@@ -190,7 +164,6 @@ func deltaCaptureValue(victim board.Piece) evalpkg.EvaluationScore {
 	return 0
 }
 
-// storeQuiescenceResult stores a searched quiescence node in the TT at depth 0.
 func (m *MinimaxEngine) storeQuiescenceResult(hash uint64, ply int, originalAlpha, beta, bestScore evalpkg.EvaluationScore) {
 	if m.transpositionTable == nil || m.searchState.searchCancelled {
 		return
@@ -207,7 +180,6 @@ func (m *MinimaxEngine) storeQuiescenceResult(hash uint64, ply int, originalAlph
 	m.transpositionTable.Store(hash, 0, scoreToTT(bestScore, ply), entryType, board.Move{})
 }
 
-// oppositePlayer returns the opposite player
 func oppositePlayer(player movegen.Player) movegen.Player {
 	if player == movegen.White {
 		return movegen.Black

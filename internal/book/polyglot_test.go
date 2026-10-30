@@ -7,7 +7,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// polyglotEncode builds a raw Polyglot move from 0-indexed squares.
 func polyglotEncode(fromFile, fromRank, toFile, toRank int) uint16 {
 	from := fromRank*8 + fromFile
 	to := toRank*8 + toFile
@@ -18,8 +17,6 @@ func queenPromotion(encoded uint16) uint16 {
 	return encoded | uint16(PromotionQueen<<PromotionShift)
 }
 
-// Polyglot writes castling as the king moving onto its own rook (e1-h1), so
-// decodeMove must remap it to the king's real destination with IsCastling set.
 func TestDecodeMove(t *testing.T) {
 	const startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR %s KQkq - 0 1"
 	tests := []struct {
@@ -65,14 +62,12 @@ func TestDecodeMove(t *testing.T) {
 	}
 }
 
-// A decoded move must apply cleanly to a real board: the castling rook moves
-// too, and en passant removes the captured pawn.
 func TestDecodedMovesApplyToBoard(t *testing.T) {
 	tests := []struct {
 		name    string
 		fen     string
 		encoded uint16
-		want    map[[2]int]board.Piece // [rank, file] -> piece after the move
+		want    map[[2]int]board.Piece
 	}{
 		{
 			name:    "white kingside castling",
@@ -87,7 +82,7 @@ func TestDecodedMovesApplyToBoard(t *testing.T) {
 			fen:     "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
 			encoded: polyglotEncode(4, 4, 3, 5),
 			want: map[[2]int]board.Piece{
-				{5, 3}: board.WhitePawn, {4, 4}: board.Empty, {4, 3}: board.Empty, // d6, e5, captured d5
+				{5, 3}: board.WhitePawn, {4, 4}: board.Empty, {4, 3}: board.Empty,
 			},
 		},
 	}

@@ -69,9 +69,6 @@ func TestSPRTLogResultWritesBothFiles(t *testing.T) {
 	}
 }
 
-// TestSPRTLogResultAddsFastchessTableOnce checks an existing history file
-// (from the cutechess era) gets the fastchess table header appended exactly
-// once, with the old rows left untouched above it.
 func TestSPRTLogResultAddsFastchessTableOnce(t *testing.T) {
 	root := t.TempDir()
 	mdPath := filepath.Join(root, "tools", "results", "sprt_history.md")

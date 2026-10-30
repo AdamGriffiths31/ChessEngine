@@ -70,7 +70,6 @@ func TestAllocateTimeOverheadReducesBudget(t *testing.T) {
 }
 
 func TestAllocateTimeBigIncrementTinyClock(t *testing.T) {
-	// 1s on the clock with a 10s increment must not be spent in one move.
 	b := allocateTime(time.Second, 10*time.Second, 0, 50*time.Millisecond)
 	if b.Hard > 800*time.Millisecond {
 		t.Errorf("hard = %v, want at most 80%% of usable clock", b.Hard)

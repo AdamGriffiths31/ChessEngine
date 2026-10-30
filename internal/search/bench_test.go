@@ -2,8 +2,6 @@ package search
 
 import "testing"
 
-// TestRunBenchDeterministic guards the bench signature's core property: two
-// runs of the same build at the same depth search exactly the same nodes.
 func TestRunBenchDeterministic(t *testing.T) {
 	const depth = 4
 	first, err := RunBench(depth)

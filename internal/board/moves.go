@@ -19,9 +19,7 @@ type Move struct {
 	IsEnPassant bool
 }
 
-// HasPromotion reports whether m promotes. Both Empty ('.') and the zero value
-// count as "no promotion": hand-built Move literals leave Promotion unset,
-// which is not Empty.
+// HasPromotion reports whether m promotes.
 func (m Move) HasPromotion() bool {
 	return m.Promotion != Empty && m.Promotion != 0
 }
@@ -32,11 +30,6 @@ func (m Move) IsQuiet() bool {
 }
 
 // IsValid reports whether m looks like a plausible, non-degenerate move.
-// It mirrors the TT-move sanity check formerly inlined in negamax: both
-// From.File and To.File must fall within the board's 0-7 range, and From
-// must differ from To. Note that only the File components are range-checked
-// here (Rank is not) — that asymmetry matches the original inline check
-// exactly and is preserved intentionally.
 func (m Move) IsValid() bool {
 	if m.From.File < 0 || m.From.File > 7 || m.To.File < 0 || m.To.File > 7 {
 		return false
@@ -75,19 +68,17 @@ func (s Square) String() string {
 
 // MakeMoveWithUndo makes a move and returns undo information
 func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
-	// Ensure move.Piece is set for proper undo
 	if move.Piece == Empty || move.Piece == 0 {
 		move.Piece = b.GetPiece(move.From.Rank, move.From.File)
 	}
 
-	// For en passant moves, we need to capture the piece from the correct square
 	var capturedPiece Piece
 	if move.IsEnPassant {
 		var captureRank int
 		if move.Piece == WhitePawn {
-			captureRank = 4 // Black pawn on rank 5
+			captureRank = 4
 		} else {
-			captureRank = 3 // White pawn on rank 4
+			captureRank = 3
 		}
 		capturedPiece = b.GetPiece(captureRank, move.To.File)
 	} else {
@@ -95,7 +86,7 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 	}
 
 	undo := MoveUndo{
-		Move:            move, // This now has the correct piece
+		Move:            move,
 		CapturedPiece:   capturedPiece,
 		CastlingRights:  b.castlingRights,
 		EnPassantSquare: b.enPassantSquare,
@@ -110,7 +101,6 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 
 	b.PushEvalState()
 
-	// Capture old state for incremental hash update
 	oldState := b.GetCurrentBoardState()
 
 	err := b.MakeMove(move)
@@ -137,13 +127,8 @@ func (b *Board) MakeNullMove() MoveUndo {
 		Hash:            b.GetHash(),
 	}
 
-	// Increment half move clock (null moves don't reset 50-move rule)
 	b.halfMoveClock++
 
-	// Compute the hash delta while the pre-null state is still intact (EP
-	// target live, side-to-move unflipped), then mutate and apply it. See the
-	// HashUpdater.GetNullMoveDelta contract: a live, capturable EP target was
-	// contributing its file key to the hash, and this null move removes it.
 	var nullDelta uint64
 	if b.hashUpdater != nil {
 		nullDelta = b.hashUpdater.GetNullMoveDelta(b)
@@ -156,10 +141,7 @@ func (b *Board) MakeNullMove() MoveUndo {
 		b.fullMoveNumber++
 	}
 
-	// Clear en passant target (opportunity expires when turn passes)
 	b.hasEnPassant = false
-
-	// Castling rights remain unchanged (no pieces moved)
 
 	if b.hashUpdater != nil {
 		b.UpdateHash(nullDelta)
@@ -170,7 +152,6 @@ func (b *Board) MakeNullMove() MoveUndo {
 
 // UnmakeNullMove reverses a null move using the stored undo information
 func (b *Board) UnmakeNullMove(undo MoveUndo) {
-	// Restore all board state (no pieces to move since it was a null move)
 	b.castlingRights = undo.CastlingRights
 	b.enPassantSquare = undo.EnPassantSquare
 	b.hasEnPassant = undo.HasEnPassant
@@ -193,7 +174,6 @@ func (b *Board) MakeMove(move Move) error {
 		}
 	}
 
-	// Auto-detect en passant if not already set
 	if !move.IsEnPassant && (piece == WhitePawn || piece == BlackPawn) {
 		targetPiece := b.GetPiece(move.To.Rank, move.To.File)
 		if targetPiece == Empty && move.From.File != move.To.File {
@@ -203,7 +183,6 @@ func (b *Board) MakeMove(move Move) error {
 		}
 	}
 
-	// Store captured piece before making move
 	capturedPiece := b.GetPiece(move.To.Rank, move.To.File)
 
 	b.SetPiece(move.From.Rank, move.From.File, Empty)
@@ -237,10 +216,10 @@ func (b *Board) handleCastling(move Move) error {
 	var rookFrom, rookTo Square
 
 	switch move.To.File {
-	case 6: // King-side castling (O-O)
+	case 6:
 		rookFrom = Square{File: 7, Rank: move.From.Rank}
 		rookTo = Square{File: 5, Rank: move.From.Rank}
-	case 2: // Queen-side castling (O-O-O)
+	case 2:
 		rookFrom = Square{File: 0, Rank: move.From.Rank}
 		rookTo = Square{File: 3, Rank: move.From.Rank}
 	default:
@@ -274,7 +253,6 @@ func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
 		b.fullMoveNumber++
 	}
 
-	// Update half move clock - reset if pawn move, capture, or en passant
 	if piece == WhitePawn || piece == BlackPawn || capturedPiece != Empty || move.IsEnPassant {
 		b.halfMoveClock = 0
 	} else {
@@ -288,11 +266,7 @@ func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
 
 // UpdateCastlingRights clears whichever castling rights move invalidates:
 // the king or rook moving, or a rook being captured on its home square by
-// any piece. Exported so movegen.Generator.updateBoardState (used by
-// perft, a different move-application path than MakeMove) can share this
-// logic instead of reimplementing it - the two implementations diverged
-// once already, and reimplementing this a second time would just create
-// the same drift risk again.
+// any piece.
 func (b *Board) UpdateCastlingRights(move Move, piece Piece) {
 	switch piece {
 	case WhiteKing:
@@ -303,41 +277,34 @@ func (b *Board) UpdateCastlingRights(move Move, piece Piece) {
 		b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
 	}
 
-	// If rook moved from initial position, remove corresponding castling right
 	switch piece {
 	case WhiteRook:
 		if move.From.Rank == 0 && move.From.File == 0 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "") // queenside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "")
 		} else if move.From.Rank == 0 && move.From.File == 7 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "") // kingside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
 		}
 	case BlackRook:
 		if move.From.Rank == 7 && move.From.File == 0 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "") // queenside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
 		} else if move.From.Rank == 7 && move.From.File == 7 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "") // kingside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "")
 		}
 	}
 
-	// If a rook is captured on its home square, the corresponding right is
-	// gone too, regardless of what piece did the capturing. Without this, a
-	// captured rook's castling right survives indefinitely, and movegen
-	// later offers a "castle" with no rook to move - a corrupted, actually
-	// illegal position.
 	if move.IsCapture {
 		switch {
 		case move.To.Rank == 0 && move.To.File == 0:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "") // white queenside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "")
 		case move.To.Rank == 0 && move.To.File == 7:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "") // white kingside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
 		case move.To.Rank == 7 && move.To.File == 0:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "") // black queenside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
 		case move.To.Rank == 7 && move.To.File == 7:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "") // black kingside
+			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "")
 		}
 	}
 
-	// If no castling rights remain, set to "-"
 	if b.castlingRights == "" {
 		b.castlingRights = "-"
 	}
@@ -361,11 +328,10 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 
 	var movedPiece Piece
 	if move.Promotion != Empty && move.Promotion != 0 {
-		// For promotion moves, restore the original pawn
 		switch move.To.Rank {
-		case 7: // White promotion (to rank 8)
+		case 7:
 			movedPiece = WhitePawn
-		case 0: // Black promotion (to rank 1)
+		case 0:
 			movedPiece = BlackPawn
 		default:
 			movedPiece = move.Piece
@@ -380,9 +346,6 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 		return
 	}
 
-	// Handle special moves first (order matters)
-
-	// Undo castling - must be done before moving the king back
 	if move.IsCastling {
 		b.undoCastling(move)
 	}
@@ -393,11 +356,9 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 
 	b.SetPiece(move.From.Rank, move.From.File, movedPiece)
 
-	// For en passant, the destination square should be empty (pawn was captured elsewhere)
 	if move.IsEnPassant {
 		b.SetPiece(move.To.Rank, move.To.File, Empty)
 	} else {
-		// For normal moves, restore whatever was captured (or Empty)
 		b.SetPiece(move.To.Rank, move.To.File, undo.CapturedPiece)
 	}
 
@@ -417,10 +378,10 @@ func (b *Board) undoCastling(move Move) {
 	var rookFrom, rookTo Square
 
 	switch move.To.File {
-	case 6: // King-side castling
+	case 6:
 		rookFrom = Square{File: 5, Rank: move.From.Rank}
 		rookTo = Square{File: 7, Rank: move.From.Rank}
-	case 2: // Queen-side castling
+	case 2:
 		rookFrom = Square{File: 3, Rank: move.From.Rank}
 		rookTo = Square{File: 0, Rank: move.From.Rank}
 	}
@@ -431,15 +392,10 @@ func (b *Board) undoCastling(move Move) {
 }
 
 func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
-	// In en passant, the captured pawn is not on the destination square
-	// It's on the same rank as the capturing pawn started, same file as destination
-
 	var captureRank int
 	if move.Piece == WhitePawn || (move.Piece == Empty && move.From.Rank < move.To.Rank) {
-		// White pawn captured - black pawn was on rank 5 (index 4)
 		captureRank = 4
 	} else {
-		// Black pawn captured - white pawn was on rank 4 (index 3)
 		captureRank = 3
 	}
 
@@ -450,9 +406,8 @@ func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
 func (b *Board) ToFEN() string {
 	var fen strings.Builder
 
-	// FEN ranks start from 8 (top) and go down to 1 (bottom)
 	for rankIndex := range 8 {
-		rank := 7 - rankIndex // Convert FEN rank to board array index
+		rank := 7 - rankIndex
 		emptyCount := 0
 
 		for file := range 8 {
@@ -478,7 +433,6 @@ func (b *Board) ToFEN() string {
 		}
 	}
 
-	// Add FEN metadata: side to move, castling rights, en passant, halfmove clock, fullmove number
 	fen.WriteString(" ")
 	fen.WriteString(b.sideToMove)
 	fen.WriteString(" ")

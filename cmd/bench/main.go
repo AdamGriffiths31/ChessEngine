@@ -1,11 +1,4 @@
-// Package main provides the "bench" multi-tool binary, which bundles the
-// chess engine's benchmarking utilities behind subcommands:
-//
-//	bench sts       - Strategic Test Suite benchmark (formerly cmd/sts)
-//	bench profile   - CPU/memory profiling utility (formerly cmd/profile)
-//	bench report    - regenerate the STS history table from tools/results/*.jsonl
-//	bench sprt      - SPRT regression test between two UCI binaries
-//	bench mates     - matetrack mate-finding suite
+// Package main is the bench multi-tool binary. See usage for its subcommands.
 package main
 
 import (

@@ -224,7 +224,7 @@ func (sm *STSMode) runSTSBenchmark(config STSConfig, epdFiles []string) (*STSRes
 		fmt.Printf("Processing %s...\n", filepath.Base(epdFile))
 		fmt.Println("==================================")
 
-		content, err := os.ReadFile(epdFile) // #nosec G304
+		content, err := os.ReadFile(filepath.Clean(epdFile))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read EPD file %s: %w", epdFile, err)
 		}
@@ -377,7 +377,7 @@ func (sm *STSMode) saveResults(results *STSResults) error {
 		}
 	}
 
-	f, err := os.OpenFile(resultsFile, os.O_APPEND|os.O_WRONLY, 0600) // #nosec G304
+	f, err := os.OpenFile(filepath.Clean(resultsFile), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -413,7 +413,7 @@ func (sm *STSMode) saveResults(results *STSResults) error {
 }
 
 func (sm *STSMode) createResultsFile(filename string) error {
-	f, err := os.Create(filename) // #nosec G304
+	f, err := os.Create(filepath.Clean(filename))
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,10 @@
-// Package book provides Polyglot binary format opening book implementation.
 package book
 
 import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
@@ -53,12 +53,12 @@ func NewPolyglotBook() *PolyglotBook {
 
 // LoadFromFile loads a Polyglot opening book from a binary file
 func (pb *PolyglotBook) LoadFromFile(filename string) error {
-	file, err := os.Open(filename) // #nosec G304 - opening book files are trusted config
+	file, err := os.Open(filepath.Clean(filename))
 	if err != nil {
 		return fmt.Errorf("failed to open book file: %w", err)
 	}
 	defer func() {
-		_ = file.Close() // Ignore error on close for read operation
+		_ = file.Close()
 	}()
 
 	stat, err := file.Stat()
@@ -159,7 +159,6 @@ func (pb *PolyglotBook) GetBookInfo() Info {
 	return pb.info
 }
 
-// decodeMove converts a 16-bit Polyglot move encoding to a board.Move
 func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, error) {
 	toSquare := int(encoded & ToSquareMask)
 	fromSquare := int((encoded & FromSquareMask) >> FromSquareShift)
@@ -183,13 +182,13 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 	isCastling := false
 	if (movingPiece == board.WhiteKing || movingPiece == board.BlackKing) && fromFile == 4 {
 		switch {
-		case fromRank == 0 && toRank == 0 && toFile == 7: // White kingside e1-h1
+		case fromRank == 0 && toRank == 0 && toFile == 7:
 			toFile, isCastling = 6, true
-		case fromRank == 0 && toRank == 0 && toFile == 0: // White queenside e1-a1
+		case fromRank == 0 && toRank == 0 && toFile == 0:
 			toFile, isCastling = 2, true
-		case fromRank == 7 && toRank == 7 && toFile == 7: // Black kingside e8-h8
+		case fromRank == 7 && toRank == 7 && toFile == 7:
 			toFile, isCastling = 6, true
-		case fromRank == 7 && toRank == 7 && toFile == 0: // Black queenside e8-a8
+		case fromRank == 7 && toRank == 7 && toFile == 0:
 			toFile, isCastling = 2, true
 		}
 	}

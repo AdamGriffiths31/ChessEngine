@@ -6,36 +6,27 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/uci"
 )
 
-// defaultBookPath is the opening book used when present relative to the working
-// directory at startup. Absent the file, the engine runs with no book.
 const defaultBookPath = "internal/book/testdata/performance.bin"
 
-// envDebugLog names the environment variable that supplies the default for the
-// -debug-log flag, for wrappers (such as lichess-bot) that cannot pass
-// command-line arguments to the engine.
 const envDebugLog = "CHESS_DEBUG_LOG"
 
-// debugLogDefault returns the default -debug-log path: the value of
-// CHESS_DEBUG_LOG, or empty when it is unset.
 func debugLogDefault() string {
 	return os.Getenv(envDebugLog)
 }
 
-// setupLogging wires the default slog logger. With no flag, warnings and
-// above are written as text to stderr. When debugLogPath is non-empty, a JSON
-// handler at Debug level writes to that file instead; stdout is never
-// touched, since it is the UCI protocol channel.
+// stdout is never touched, since it is the UCI protocol channel.
 func setupLogging(debugLogPath string) (closeFn func(), err error) {
 	if debugLogPath == "" {
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})))
 		return func() {}, nil
 	}
 
-	f, err := os.OpenFile(debugLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600) // #nosec G304 - path from CLI flag
+	f, err := os.OpenFile(filepath.Clean(debugLogPath), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open debug log file %s: %w", debugLogPath, err)
 	}
@@ -61,8 +52,6 @@ func run() error {
 	}
 	defer closeLog()
 
-	// "uci bench [depth]" prints the bench signature and exits, so scripts and
-	// OpenBench-style tooling can get it without a UCI session.
 	if flag.Arg(0) == "bench" {
 		report, err := uci.BenchReport(flag.Args()[1:])
 		if err != nil {

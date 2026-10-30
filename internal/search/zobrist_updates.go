@@ -1,4 +1,3 @@
-// Package search provides chess move search algorithms and transposition table implementation.
 package search
 
 import (
@@ -85,13 +84,6 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 
 	newEP, newHasEP := b.GetEnPassantTarget()
 
-	// HashPosition only XORs the en-passant key when the side to move has a
-	// pawn adjacent to the en-passant file that could actually capture. XOR
-	// out the old position's key (evaluated against the PRE-move board — the
-	// move may have relocated the very pawn that made the capture possible)
-	// and XOR in the new position's key (evaluated against the post-move
-	// board, which b already is). If both terms apply to the same file the
-	// XORs cancel, matching HashPosition.
 	if oldState.HasEnPassant && hadAdjacentCapturingPawnBeforeMove(b, move, oldState.EnPassantSquare, oldState.SideToMove) {
 		hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantSquare.File)
 	}
@@ -107,8 +99,7 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 // side-to-move and a live en-passant target. The delta flips the
 // side-to-move key and, if the EP target was actually hashed (a capturing
 // pawn existed - the non-perturbation rule), removes its file key, since the
-// null move clears that target. Skipping the EP term here left a stale key
-// in every null subtree's hashes whenever NMP fired after a double push.
+// null move clears that target.
 func (m *MinimaxEngine) GetNullMoveDelta(b *board.Board) uint64 {
 	delta := m.zobrist.GetSideKey()
 	if ep, hasEP := b.GetEnPassantTarget(); hasEP && hasAdjacentCapturingPawn(b, ep, b.GetSideToMove()) {
@@ -117,10 +108,6 @@ func (m *MinimaxEngine) GetNullMoveDelta(b *board.Board) uint64 {
 	return delta
 }
 
-// epCapturerRankAndPiece returns the rank index and pawn piece of the pawns
-// belonging to sideToMove that could capture on an en-passant target square,
-// mirroring HashPosition's convention: white to move captures with a white
-// pawn on rank index 4; black to move with a black pawn on rank index 3.
 func epCapturerRankAndPiece(sideToMove string) (int, board.Piece) {
 	if sideToMove == "w" {
 		return 4, board.WhitePawn
@@ -128,10 +115,6 @@ func epCapturerRankAndPiece(sideToMove string) (int, board.Piece) {
 	return 3, board.BlackPawn
 }
 
-// hasAdjacentCapturingPawn checks if sideToMove (the side to move in the
-// position represented by b) has a pawn adjacent to the en passant target
-// file that can capture. This implements the same logic as the full
-// HashPosition function.
 func hasAdjacentCapturingPawn(b *board.Board, epTarget board.Square, sideToMove string) bool {
 	pawnRank, pawnPiece := epCapturerRankAndPiece(sideToMove)
 
@@ -147,10 +130,6 @@ func hasAdjacentCapturingPawn(b *board.Board, epTarget board.Square, sideToMove 
 	return false
 }
 
-// hadAdjacentCapturingPawnBeforeMove is hasAdjacentCapturingPawn evaluated
-// against the position as it was BEFORE move was applied to b. GetHashDelta
-// runs after MakeMove has mutated the board, but whether the old en-passant
-// key was part of the old hash depends on the old board's pawn layout.
 func hadAdjacentCapturingPawnBeforeMove(b *board.Board, move board.Move, epTarget board.Square, sideToMove string) bool {
 	pawnRank, pawnPiece := epCapturerRankAndPiece(sideToMove)
 
@@ -166,11 +145,6 @@ func hadAdjacentCapturingPawnBeforeMove(b *board.Board, move board.Move, epTarge
 	return false
 }
 
-// pieceBeforeMove returns the piece that occupied (rank, file) before move
-// was applied to b. Only the squares a move can change are reconstructed:
-// move.From, move.To, and (for en passant) the captured pawn's square.
-// Castling rook squares are not reconstructed: they lie on ranks 0 and 7,
-// and this helper is only used for en-passant checks on ranks 3 and 4.
 func pieceBeforeMove(b *board.Board, move board.Move, rank, file int) board.Piece {
 	if move.From.Rank == rank && move.From.File == file {
 		return move.Piece

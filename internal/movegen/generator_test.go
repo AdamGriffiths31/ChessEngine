@@ -7,9 +7,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// TestGenerateCapturesMatchesFilteredPseudoLegal verifies that GenerateCaptures
-// produces exactly the captures and promotions that quiescence search previously
-// obtained by generating all pseudo-legal moves and filtering.
 func TestGenerateCapturesMatchesFilteredPseudoLegal(t *testing.T) {
 	testPositions := []struct {
 		name string
@@ -101,8 +98,6 @@ func TestGenerateCapturesMatchesFilteredPseudoLegal(t *testing.T) {
 	}
 }
 
-// formatMove renders a move with its flags, so the set comparison above also
-// distinguishes castling, en passant and capture variants.
 func formatMove(move board.Move) string {
 	from := fmt.Sprintf("%c%d", 'a'+move.From.File, move.From.Rank+1)
 	to := fmt.Sprintf("%c%d", 'a'+move.To.File, move.To.Rank+1)

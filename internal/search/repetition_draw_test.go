@@ -10,11 +10,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-// TestRepetitionHistory_DetectsRepeatViaMakeUnmake shuffles both knights out
-// and back twice from the start position, recording hashes the way negamax
-// does (addHistory after each move, removeHistory with each unmake).
-// isDrawByRepetition needs only ONE prior match, so it reports a repeat from
-// ply 4 on; the second cycle (ply 8) is a genuine threefold.
 func TestRepetitionHistory_DetectsRepeatViaMakeUnmake(t *testing.T) {
 	const startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 	b, err := board.FromFEN(startFEN)
@@ -34,11 +29,9 @@ func TestRepetitionHistory_DetectsRepeatViaMakeUnmake(t *testing.T) {
 	nb8c6 := board.Move{From: sq(1, 7), To: sq(2, 5), Promotion: board.Empty}
 	nc6b8 := board.Move{From: sq(2, 5), To: sq(1, 7), Promotion: board.Empty}
 
-	// One 4-ply cycle reproduces the starting hash exactly.
 	cycle := []board.Move{nb1c3, nb8c6, nc3b1, nc6b8}
 	moves := append(append([]board.Move{}, cycle...), cycle...)
 
-	// ply (1-indexed) -> expected isDrawByRepetition after that move.
 	wantRepeatAtPly := map[int]bool{
 		1: false, 2: false, 3: false,
 		4: true, 5: true, 6: true, 7: true, 8: true,
@@ -68,7 +61,6 @@ func TestRepetitionHistory_DetectsRepeatViaMakeUnmake(t *testing.T) {
 		}
 	}
 
-	// Unwind and confirm the history shrinks back to nothing.
 	for i := len(moves) - 1; i >= 0; i-- {
 		b.UnmakeMove(undos[i])
 		engine.removeHistory()
@@ -78,10 +70,6 @@ func TestRepetitionHistory_DetectsRepeatViaMakeUnmake(t *testing.T) {
 	}
 }
 
-// TestFindBestMove_SeedsRepetitionHistoryFromConfig is a regression test:
-// FindBestMove used to reset repetition history to just the root, so it never
-// saw repetitions already played in the real game. After a search with
-// Config.RepetitionHistory set, the seeded hashes must still be there.
 func TestFindBestMove_SeedsRepetitionHistoryFromConfig(t *testing.T) {
 	const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 	b, err := board.FromFEN(fen)
@@ -94,7 +82,6 @@ func TestFindBestMove_SeedsRepetitionHistoryFromConfig(t *testing.T) {
 	b.InitializeHashFromPosition(engine.zobrist.HashPosition)
 	rootHash := b.GetHash()
 
-	// Oldest first, ending with the current position, as the UCI adapter builds it.
 	seeded := []uint64{0x1111111111111111, 0x2222222222222222, rootHash}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -116,11 +103,6 @@ func TestFindBestMove_SeedsRepetitionHistoryFromConfig(t *testing.T) {
 	}
 }
 
-// TestFindBestMove_ReturnsDrawScoreOnUnavoidableRepetition searches K+N vs
-// K+N, where neither side can force mate. The score is checked against a
-// tolerance, not exactly DrawScore: under the tapered eval, leaves beyond the
-// repetition horizon leak small static-eval noise (measured 7-25cp across
-// depths 5-9). What must hold is that the engine never sees a real advantage.
 func TestFindBestMove_ReturnsDrawScoreOnUnavoidableRepetition(t *testing.T) {
 	const fen = "7k/8/8/4n3/4N3/8/8/7K w - - 0 1"
 	b, err := board.FromFEN(fen)
@@ -143,9 +125,6 @@ func TestFindBestMove_ReturnsDrawScoreOnUnavoidableRepetition(t *testing.T) {
 	}
 }
 
-// TestFindBestMove_WinningSideAvoidsRepetition adds a white queen to the
-// position above. The knight shuffle still offers a repetition draw, but the
-// search must prefer the winning line and score far above DrawScore.
 func TestFindBestMove_WinningSideAvoidsRepetition(t *testing.T) {
 	const fen = "7k/8/8/4n3/4N3/8/8/3Q3K w - - 0 1"
 	b, err := board.FromFEN(fen)
@@ -170,10 +149,6 @@ func TestFindBestMove_WinningSideAvoidsRepetition(t *testing.T) {
 	}
 }
 
-// A repeat of a position from before the root is only a draw once it would be
-// the third occurrence: the opponent need not repeat, so one earlier visit in
-// the real game proves nothing. A repeat inside the search path, from the root
-// down, is the usual two-fold draw.
 func TestIsDrawByRepetition_GameHistoryNeedsThreefold(t *testing.T) {
 	const (
 		p, q, r, x, y = 0xA1, 0xA2, 0xA3, 0xA4, 0xA5
@@ -181,8 +156,8 @@ func TestIsDrawByRepetition_GameHistoryNeedsThreefold(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		history []uint64 // real game, oldest first, ending with the root
-		path    []uint64 // positions entered below the root, in order
+		history []uint64
+		path    []uint64
 		want    bool
 	}{
 		{"seen once before the root", []uint64{p, x, r}, []uint64{p}, false},

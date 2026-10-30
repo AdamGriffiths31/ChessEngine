@@ -13,8 +13,7 @@ import (
 // RunSPRT runs fastchess with cfg, streaming its stdout to os.Stdout
 // (so a long-running SPRT test is observable live) while tracking the
 // latest SPRT status, score and pentanomial lines. It returns once fastchess's
-// process exits, which happens either when the SPRT bound is reached or
-// cfg.MaxGames is hit.
+// process exits.
 func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	if _, err := os.Stat(cfg.BasePath); err != nil {
 		return nil, fmt.Errorf("base binary not found at %s: %w", cfg.BasePath, err)
@@ -31,7 +30,7 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 
 	start := time.Now()
 	args := BuildSPRTArgs(cfg)
-	cmd := exec.CommandContext(ctx, cfg.Fastchess, args...) // #nosec G204 - binary/args built from local config, not untrusted input
+	cmd := exec.CommandContext(ctx, cfg.Fastchess, args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -46,9 +45,10 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	var (
 		rawLog                     strings.Builder
 		latestStatus               sprtStatus
-		haveStatus                 bool
+		verdict                    SPRTVerdict
 		wins, losses, draws, total int
 		pentanomial                [5]int
+		parseErr                   error
 	)
 
 	scanner := bufio.NewScanner(stdout)
@@ -61,16 +61,23 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 
 		if status, ok := parseSPRTStatus(line); ok {
 			latestStatus = status
-			haveStatus = true
 		}
-		// Dev is engine 1 (see BuildSPRTArgs's doc comment), so these are
-		// directly Dev's results.
+		if stop, ok := parseSPRTStop(line); ok {
+			verdict = stop
+		}
 		if m := gamesPattern.FindStringSubmatch(line); m != nil {
-			n := parseIntMatches(m)
-			total, wins, losses, draws = n[0], n[1], n[2], n[3]
+			if n, err := parseIntMatches(m); err != nil {
+				parseErr = err
+			} else {
+				total, wins, losses, draws = n[0], n[1], n[2], n[3]
+			}
 		}
 		if m := pentanomialPattern.FindStringSubmatch(line); m != nil {
-			copy(pentanomial[:], parseIntMatches(m))
+			if n, err := parseIntMatches(m); err != nil {
+				parseErr = err
+			} else {
+				copy(pentanomial[:], n)
+			}
 		}
 	}
 
@@ -78,6 +85,10 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	duration := time.Since(start)
 
 	result := &SPRTResult{
+		Verdict:     verdict,
+		LLR:         latestStatus.llr,
+		LBound:      latestStatus.lbound,
+		UBound:      latestStatus.ubound,
 		Wins:        wins,
 		Losses:      losses,
 		Draws:       draws,
@@ -88,14 +99,6 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 		Duration:    duration,
 		RawLog:      rawLog.String(),
 	}
-	if haveStatus {
-		result.LLR = latestStatus.llr
-		result.LBound = latestStatus.lbound
-		result.UBound = latestStatus.ubound
-		result.Verdict = verdictFromStatus(latestStatus)
-	} else {
-		result.Verdict = SPRTContinue
-	}
 
 	if ctx.Err() != nil {
 		return result, fmt.Errorf("SPRT run cancelled: %w", ctx.Err())
@@ -103,11 +106,13 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	if waitErr != nil {
 		return result, fmt.Errorf("fastchess exited with error: %w\nlast output:\n%s", waitErr, tail(rawLog.String(), 20))
 	}
+	if parseErr != nil {
+		return result, fmt.Errorf("failed to parse fastchess output: %w", parseErr)
+	}
 
 	return result, nil
 }
 
-// tail returns the last n lines of s, for error context.
 func tail(s string, n int) string {
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
 	if len(lines) <= n {

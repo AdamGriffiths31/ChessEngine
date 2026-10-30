@@ -2,9 +2,6 @@ package board
 
 import "testing"
 
-// IsValid is the sanity check for moves read back from the transposition
-// table: From and To files must be in [0,7] and From must differ from To. Ranks
-// are deliberately not range-checked.
 func TestMoveIsValid(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {

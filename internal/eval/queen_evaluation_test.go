@@ -16,25 +16,25 @@ func TestIsFileOpen(t *testing.T) {
 	}{
 		{
 			fen:         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			file:        3, // d-file
+			file:        3,
 			description: "d-file closed in starting position",
 			expected:    false,
 		},
 		{
 			fen:         "rnbqkbnr/ppp1pppp/8/8/8/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1",
-			file:        3, // d-file
+			file:        3,
 			description: "d-file open after both pawns moved",
 			expected:    true,
 		},
 		{
 			fen:         "rnbqkbnr/pppppppp/8/8/8/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1",
-			file:        3, // d-file
+			file:        3,
 			description: "d-file semi-open (only white pawn missing)",
 			expected:    false,
 		},
 		{
 			fen:         "rnbqkbnr/8/8/8/8/8/8/RNBQKBNR w KQkq - 0 1",
-			file:        4, // e-file
+			file:        4,
 			description: "e-file completely open",
 			expected:    true,
 		},
@@ -54,5 +54,3 @@ func TestIsFileOpen(t *testing.T) {
 		})
 	}
 }
-
-// abs function is already defined in evaluator.go

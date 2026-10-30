@@ -15,14 +15,10 @@ const (
 	blackPromoFEN = "4k3/8/8/8/8/8/p7/4K3 b - - 0 1"
 )
 
-// sq builds a Square from algebraic notation ("e4"), independently of the
-// production parser.
 func sq(name string) board.Square {
 	return board.Square{File: int(name[0] - 'a'), Rank: int(name[1] - '1')}
 }
 
-// mv builds a Move the way the move generator does (no promotion, nothing
-// captured), then applies any modifiers.
 func mv(from, to string, piece board.Piece, mods ...func(*board.Move)) board.Move {
 	m := board.Move{From: sq(from), To: sq(to), Piece: piece, Promotion: board.Empty, Captured: board.Empty}
 	for _, mod := range mods {
@@ -59,16 +55,11 @@ func TestMoveConverter_ToUCI(t *testing.T) {
 		{"black promotion", mv("h2", "h1", board.BlackPawn, promotesTo(board.BlackKnight)), "h2h1n"},
 		{"off-board square", offBoard, "0000"},
 
-		// Opening-book castling is stored as king-takes-rook; ToUCI rewrites it
-		// to the standard king destination, but only when IsCastling is set.
 		{"white kingside castling", mv("e1", "h1", board.WhiteKing, castling), "e1g1"},
 		{"white queenside castling", mv("e1", "a1", board.WhiteKing, castling), "e1c1"},
 		{"black kingside castling", mv("e8", "h8", board.BlackKing, castling), "e8g8"},
 		{"black queenside castling", mv("e8", "a8", board.BlackKing, castling), "e8c8"},
 
-		// Regression: a rook lifted to e1 and moving back to a1 shares its
-		// squares with queenside castling. It was rewritten to e1c1, desyncing
-		// the recorded game from what was sent to the opponent.
 		{"rook move sharing castling squares", mv("e1", "a1", board.WhiteRook), "e1a1"},
 	}
 
@@ -109,8 +100,6 @@ func TestMoveConverter_FromUCI(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FromUCI(%q): %v", tt.uci, err)
 			}
-			// FromUCI leaves Promotion as the zero value for non-promotions
-			// rather than board.Empty; treat the two as equal here.
 			if got.Promotion == 0 {
 				got.Promotion = board.Empty
 			}

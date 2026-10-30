@@ -1,9 +1,5 @@
 package board
 
-// Test-only helpers. Production code never converts between square indices and
-// strings this way.
-
-// SquareToString converts a square index to algebraic notation (0 -> "a1").
 func SquareToString(square int) string {
 	if square < 0 || square > 63 {
 		return "invalid"
@@ -12,7 +8,6 @@ func SquareToString(square int) string {
 	return string(rune('a'+file)) + string(rune('1'+rank))
 }
 
-// StringToSquare converts algebraic notation to a square index ("a1" -> 0).
 func StringToSquare(square string) int {
 	if len(square) != 2 {
 		return -1
@@ -25,7 +20,6 @@ func StringToSquare(square string) int {
 	return FileRankToSquare(file, rank)
 }
 
-// bitboardOf returns a Bitboard with exactly the given squares set.
 func bitboardOf(squares ...int) Bitboard {
 	var bb Bitboard
 	for _, sq := range squares {

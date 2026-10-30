@@ -28,29 +28,22 @@ const (
 
 // Engine wraps the chess engine with UCI protocol support.
 type Engine struct {
-	engine      *game.Engine
-	aiEngine    search.Engine
-	converter   *MoveConverter
-	protocol    *ProtocolHandler
-	options     map[string]string
-	searching   bool
-	stopChannel chan struct{}
-	output      io.Writer
-	moveNumber  int
-	// session identifies this engine process in the structured move log, and
-	// gameNumber counts "ucinewgame" commands, so one log file can hold many
-	// games. prevMoveFromBook lets the log say when the engine left the book.
+	engine           *game.Engine
+	aiEngine         search.Engine
+	converter        *MoveConverter
+	protocol         *ProtocolHandler
+	options          map[string]string
+	searching        bool
+	stopChannel      chan struct{}
+	output           io.Writer
+	moveNumber       int
 	session          string
 	gameNumber       int
 	prevMoveFromBook bool
-	// uciLogEnabled caches slog's Debug-level enablement at construction time
-	// so the per-line UCI communication tee (see send/Run) is a near-zero-cost
-	// no-op when disabled. slog's level is fixed at startup (see cmd/uci/main.go
-	// setupLogging), so this cache never needs to be refreshed.
-	uciLogEnabled bool
-	bookFile      string
-	prober        *book.Prober
-	generator     *movegen.Generator
+	uciLogEnabled    bool
+	bookFile         string
+	prober           *book.Prober
+	generator        *movegen.Generator
 }
 
 // NewUCIEngine creates a new UCI engine wrapper.
@@ -120,11 +113,6 @@ func (ue *Engine) Run(input io.Reader, output io.Writer) error {
 	return scanner.Err()
 }
 
-// send writes a single line to the UCI output stream, terminated with a
-// newline (matching the previous per-call-site fmt.Fprint* behavior exactly),
-// and tees it to slog at Debug level (direction=out) when enabled. This is
-// the single write choke point for the protocol writer, so every outgoing
-// line is captured in one place instead of at each call site.
 func (ue *Engine) send(line string) {
 	if ue.uciLogEnabled {
 		slog.Debug("uci", "dir", "out", "line", line)
@@ -167,8 +155,6 @@ func (ue *Engine) HandleCommand(input string) string {
 	}
 }
 
-// handleBench runs the fixed bench suite ("bench [depth]") and reports the
-// total node count, the search signature quoted in commit messages.
 func (ue *Engine) handleBench(args []string) string {
 	report, err := BenchReport(args)
 	if err != nil {
@@ -263,8 +249,6 @@ func (ue *Engine) handleGo(args []string) {
 	stopCtx, stopCancel := context.WithCancel(ctx)
 	defer stopCancel()
 
-	// Pass this search's own channel to the goroutine: reading ue.stopChannel
-	// from it would race with the next "go" command replacing the field.
 	stop := ue.stopChannel
 	go func() {
 		select {
@@ -323,11 +307,6 @@ func (ue *Engine) handleGo(args []string) {
 	ue.searching = false
 }
 
-// buildSearchConfig assembles the search configuration for a "go" command from
-// the parsed parameters and the configured opening book. MaxTime is set to the
-// default budget here; handleGo overrides it with searchTimeout. The opening
-// book is driven entirely by the BookFile UCI option (ue.bookFile); the old
-// executable-relative filesystem walk has been removed.
 func (ue *Engine) buildSearchConfig(params SearchParams) search.Config {
 	var bookFiles []string
 	if ue.bookFile != "" {
@@ -350,11 +329,6 @@ func (ue *Engine) buildSearchConfig(params SearchParams) search.Config {
 	return config
 }
 
-// searchTimeout determines the time budget for a "go" command. Precedence
-// mirrors the original handleGo logic: default move time, then an explicit
-// movetime (minus a safety margin), then infinite, then clock-based management
-// when wtime/btime are supplied.
-// Only clock-based searches get a soft limit.
 func (ue *Engine) searchTimeout(params SearchParams, player movegen.Player) timeBudget {
 	overhead := ue.moveOverhead()
 	budget := timeBudget{Hard: DefaultMoveTime}
@@ -376,7 +350,6 @@ func (ue *Engine) searchTimeout(params SearchParams, player movegen.Player) time
 	return budget
 }
 
-// moveOverhead returns the "Move Overhead" option, or the default if unset or invalid.
 func (ue *Engine) moveOverhead() time.Duration {
 	var ms int
 	if v, ok := ue.options["Move Overhead"]; ok {
@@ -387,9 +360,6 @@ func (ue *Engine) moveOverhead() time.Duration {
 	return DefaultMoveOverhead
 }
 
-// runSearch produces a search result for the current position. It first
-// consults the opening book; on a miss it runs the engine search guarded by a
-// panic recovery that plays a fallback move instead of forfeiting the game.
 func (ue *Engine) runSearch(ctx context.Context, config search.Config, player movegen.Player) (search.Result, bookOutcome) {
 	bookMove, outcome := ue.probeBook(config)
 	ue.prevMoveFromBook = outcome.Used
@@ -404,11 +374,6 @@ func (ue *Engine) runSearch(ctx context.Context, config search.Config, player mo
 	return ue.searchWithFallback(ctx, config, player), outcome
 }
 
-// searchWithFallback runs the engine search and recovers from any panic. A UCI
-// engine that dies mid-search would forfeit, so on panic we log the context and
-// play the first legal move rather than re-panicking. If no legal move exists,
-// we emit the UCI null move (bestmove 0000) via an out-of-range move that the
-// converter renders as "0000".
 func (ue *Engine) searchWithFallback(ctx context.Context, config search.Config, player movegen.Player) (result search.Result) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -423,10 +388,6 @@ func (ue *Engine) searchWithFallback(ctx context.Context, config search.Config, 
 	return result
 }
 
-// fallbackResult selects the first legal move in the current position so the
-// engine can respond after a search panic. If there are no legal moves it
-// returns an out-of-range move that the converter renders as the UCI null move
-// "0000".
 func (ue *Engine) fallbackResult(player movegen.Player) search.Result {
 	moves := ue.generator.GenerateAllMoves(ue.engine.GetState().Board, player)
 	defer movegen.ReleaseMoveList(moves)
@@ -449,12 +410,6 @@ func (ue *Engine) fallbackResult(player movegen.Player) search.Result {
 	}
 }
 
-// probeBook consults the opening book for the current position before a
-// search is started. The book.Prober is created lazily on first use with a
-// non-empty file list and reused afterward, so the book is loaded from disk
-// at most once per Engine lifetime (matching the previous engine-side
-// lazy-init behavior); a load failure is logged once by the Prober itself
-// and every subsequent call cheaply reports a miss.
 func (ue *Engine) probeBook(config search.Config) (board.Move, bookOutcome) {
 	if !config.UseOpeningBook || len(config.BookFiles) == 0 {
 		return board.Move{}, bookOutcome{Reason: BookNotConfigured}
@@ -497,7 +452,6 @@ func (ue *Engine) handleSetOption(args []string) string {
 			}
 		}
 	case "BookFile":
-		// Applied only if set before the first "go"; see SetBookFile/probeBook.
 		ue.SetBookFile(value)
 	}
 

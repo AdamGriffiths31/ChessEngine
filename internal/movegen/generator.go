@@ -9,7 +9,6 @@ type MoveGenerator interface {
 }
 
 // Generator implements the MoveGenerator interface for complete chess move generation.
-// Uses high-performance bitboard operations for all move types.
 type Generator struct {
 	bitboardGenerator *BitboardMoveGenerator
 }
@@ -33,7 +32,6 @@ func (g *Generator) GenerateAllMoves(b *board.Board, player Player) *MoveList {
 
 // GeneratePseudoLegalMoves generates pseudo-legal moves without king safety validation.
 // Callers must verify moves don't leave their own king in check before execution.
-// This method is optimized for search algorithms that use lazy move validation.
 // Returns an empty list if board is nil.
 func (g *Generator) GeneratePseudoLegalMoves(b *board.Board, player Player) *MoveList {
 	if b == nil {
@@ -44,7 +42,6 @@ func (g *Generator) GeneratePseudoLegalMoves(b *board.Board, player Player) *Mov
 }
 
 // GenerateCaptures generates pseudo-legal captures and promotions only.
-// Intended for quiescence search; quiet non-promotion moves are not generated.
 // Returns an empty list if board is nil.
 func (g *Generator) GenerateCaptures(b *board.Board, player Player) *MoveList {
 	if b == nil {

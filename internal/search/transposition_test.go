@@ -9,9 +9,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 )
 
-// TestTranspositionEntrySize pins the entry to 16 bytes so four entries fit in a
-// 64-byte cache line. Probe latency is dominated by the DRAM fetch of the entry,
-// so accidental padding growth (e.g. from field reordering) is a real regression.
 func TestTranspositionEntrySize(t *testing.T) {
 	const wantSize = 16
 	if size := unsafe.Sizeof(TranspositionEntry{}); size != wantSize {
@@ -19,8 +16,6 @@ func TestTranspositionEntrySize(t *testing.T) {
 	}
 }
 
-// TestTranspositionTableEntryCount verifies the table allocates entries based on
-// the actual entry size, so the requested memory budget is used, not overshot.
 func TestTranspositionTableEntryCount(t *testing.T) {
 	const sizeMB = 8
 	tt := NewTranspositionTable(sizeMB)
@@ -32,15 +27,11 @@ func TestTranspositionTableEntryCount(t *testing.T) {
 	if usedBytes > budgetBytes {
 		t.Errorf("table uses %d bytes, exceeds %dMB budget", usedBytes, sizeMB)
 	}
-	// The table is sized to the largest power of two within budget; anything
-	// under half the budget means the entry-size constant is out of date.
 	if usedBytes*2 <= budgetBytes {
 		t.Errorf("table uses only %d of %d budget bytes; entry size constant likely stale", usedBytes, budgetBytes)
 	}
 }
 
-// TestStoreProbeRoundTrip_AllEntryTypes checks that every EntryType survives
-// Store then Probe intact.
 func TestStoreProbeRoundTrip_AllEntryTypes(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -84,13 +75,7 @@ func TestStoreProbeRoundTrip_AllEntryTypes(t *testing.T) {
 	}
 }
 
-// TestProbeTT_BoundBasedCutoffDecisions drives probeTT with each entry type:
-// exact always cuts off; a lower bound cuts off only at or above beta, else
-// may raise alpha; an upper bound cuts off only at or below alpha, else may
-// lower beta. Cutoffs must also classify the node (PV/Cut/All) as the normal
-// move loop would have.
-//
-//nolint:gocyclo // one table of cases per entry type; splitting would scatter the contract
+//nolint:gocyclo
 func TestProbeTT_BoundBasedCutoffDecisions(t *testing.T) {
 	newEngineWithEntry := func(depth int, score eval.EvaluationScore, entryType EntryType, move board.Move) (*MinimaxEngine, uint64) {
 		engine := NewMinimaxEngine()
@@ -175,8 +160,6 @@ func TestProbeTT_BoundBasedCutoffDecisions(t *testing.T) {
 	})
 
 	t.Run("upper bound cuts off when score falls to alpha WITHOUT counting as a TTCutoff", func(t *testing.T) {
-		// Documented asymmetry: exact and lower-bound cutoffs count as
-		// TTCutoffs, upper-bound cutoffs do not.
 		engine, hash := newEngineWithEntry(4, 50, EntryUpperBound, storedMove)
 
 		_, score, _, _, done := engine.probeTT(hash, 4, 0, 100, 200)
@@ -238,7 +221,6 @@ func TestProbeTT_BoundBasedCutoffDecisions(t *testing.T) {
 		if alphaOut != 100 || betaOut != 200 {
 			t.Errorf("bounds = (%d,%d), want unchanged (100,200)", alphaOut, betaOut)
 		}
-		// The move is still returned for move ordering.
 		if ttMove != storedMove {
 			t.Errorf("ttMove = %+v, want %+v (TT move still returned for ordering)", ttMove, storedMove)
 		}
@@ -251,7 +233,6 @@ func TestProbeTT_BoundBasedCutoffDecisions(t *testing.T) {
 	})
 
 	t.Run("invalid stored move is sanitized to the zero move", func(t *testing.T) {
-		// board.Move{} fails IsValid; probeTT must not return it for ordering.
 		engine, hash := newEngineWithEntry(4, 250, EntryExact, board.Move{})
 
 		ttMove, _, _, _, _ := engine.probeTT(hash, 4, 0, 100, 200)
@@ -282,16 +263,13 @@ func TestProbeTT_BoundBasedCutoffDecisions(t *testing.T) {
 	})
 }
 
-// TestScoreToFromTT_MateDistanceRoundTrip checks scoreToTT/scoreFromTT are
-// inverses at several plies for both mate signs: positive mate scores gain
-// `ply` going into the table and lose it coming out; negative ones the reverse.
 func TestScoreToFromTT_MateDistanceRoundTrip(t *testing.T) {
 	plies := []int{0, 1, 5, 30}
 	mateScores := []eval.EvaluationScore{
-		eval.MateScore,      // mate delivered this move
-		eval.MateScore - 1,  // mate in 2
-		eval.MateScore - 49, // still within the mate band (threshold is 1000)
-		-eval.MateScore,     // about to be mated this move
+		eval.MateScore,
+		eval.MateScore - 1,
+		eval.MateScore - 49,
+		-eval.MateScore,
 		-eval.MateScore + 1,
 		-eval.MateScore + 49,
 	}
@@ -317,8 +295,6 @@ func TestScoreToFromTT_MateDistanceRoundTrip(t *testing.T) {
 	}
 }
 
-// TestScoreToFromTT_NonMateScoresPassThrough checks ordinary scores are not
-// ply-adjusted.
 func TestScoreToFromTT_NonMateScoresPassThrough(t *testing.T) {
 	plies := []int{0, 1, 5, 30}
 	scores := []eval.EvaluationScore{0, 1, -1, 500, -500, eval.DrawScore}
@@ -335,22 +311,18 @@ func TestScoreToFromTT_NonMateScoresPassThrough(t *testing.T) {
 	}
 }
 
-// TestShouldReplace_SameHashGatedByDepthOnly: re-storing the same position is
-// governed by depth alone (shallower rejected, deeper accepted), never age.
 func TestShouldReplace_SameHashGatedByDepthOnly(t *testing.T) {
 	tt := NewTranspositionTable(1)
 	hash := uint64(777)
 
 	tt.Store(hash, 3, 100, EntryExact, board.Move{})
 
-	// Shallower re-store of the same position must not replace.
 	tt.Store(hash, 2, 999, EntryExact, board.Move{})
 	entry, found := tt.Probe(hash)
 	if !found || entry.Score != 100 || entry.GetDepth() != 3 {
 		t.Fatalf("shallower same-hash store replaced a deeper entry: entry=%+v found=%v", entry, found)
 	}
 
-	// Deeper re-store of the same position must replace.
 	tt.Store(hash, 5, 555, EntryExact, board.Move{})
 	entry, found = tt.Probe(hash)
 	if !found || entry.Score != 555 || entry.GetDepth() != 5 {
@@ -358,21 +330,16 @@ func TestShouldReplace_SameHashGatedByDepthOnly(t *testing.T) {
 	}
 }
 
-// TestShouldReplace_CollisionGatedByAgeNotDepth: a colliding entry from the
-// same search generation is never evicted whatever its depth, but after
-// IncrementAge a stale entry is replaceable by a shallower one. hashB and
-// hashC share hashA's first bucket so the collision path is the one tested.
 func TestShouldReplace_CollisionGatedByAgeNotDepth(t *testing.T) {
 	tt := NewTranspositionTable(1)
 	tableSize := tt.mask + 1
 
 	hashA := uint64(5)
-	hashB := hashA + tableSize   // same first-bucket index as hashA
-	hashC := hashA + 2*tableSize // same first-bucket index as hashA
+	hashB := hashA + tableSize
+	hashC := hashA + 2*tableSize
 
-	tt.Store(hashA, 5, 100, EntryExact, board.Move{}) // deep entry, generation 0
+	tt.Store(hashA, 5, 100, EntryExact, board.Move{})
 
-	// Same generation: must not evict hashA; falls to the second bucket.
 	tt.Store(hashB, 1, 200, EntryExact, board.Move{})
 
 	entryA, foundA := tt.Probe(hashA)
@@ -387,10 +354,8 @@ func TestShouldReplace_CollisionGatedByAgeNotDepth(t *testing.T) {
 		t.Fatalf("expected the hashA/hashB collision to be counted, collisions=%d", tt.collisions)
 	}
 
-	// Cross the age-generation boundary.
 	tt.IncrementAge()
 
-	// New generation: replaces regardless of depth (1 < 5).
 	tt.Store(hashC, 1, 300, EntryExact, board.Move{})
 
 	if _, found := tt.Probe(hashA); found {
@@ -402,22 +367,15 @@ func TestShouldReplace_CollisionGatedByAgeNotDepth(t *testing.T) {
 	}
 }
 
-// TestShouldReplace_AgingSurvivesTwoGenerations pins the reason age got a
-// second bit. With 1-bit aging, generation N and generation N+2 shared the
-// same parity, so a table filled during search 0 became un-evictable again
-// during search 2: collisions never replaced anything and fresh stores were
-// silently dropped for entire searches. Ages now cycle over 4 generations,
-// so entries two generations apart MUST collide-replace.
 func TestShouldReplace_AgingSurvivesTwoGenerations(t *testing.T) {
 	tt := NewTranspositionTable(1)
 	tableSize := tt.mask + 1
 
 	hashA := uint64(7)
-	hashD := hashA + tableSize // same first-bucket index as hashA
+	hashD := hashA + tableSize
 
-	tt.Store(hashA, 5, 100, EntryExact, board.Move{}) // generation 0
+	tt.Store(hashA, 5, 100, EntryExact, board.Move{})
 
-	// Jump straight to generation 2 - the parity trap of the old 1-bit scheme.
 	tt.IncrementAge()
 	tt.IncrementAge()
 
@@ -432,10 +390,6 @@ func TestShouldReplace_AgingSurvivesTwoGenerations(t *testing.T) {
 	}
 }
 
-// TestPackDepthAge_ClampsDeepDepths verifies the 4-bit depth field saturates
-// instead of wrapping: a depth-40 store must come back as depth 15, not as
-// some small value that probes and evicts incorrectly (the old 5-bit field
-// silently truncated 32 -> 0).
 func TestPackDepthAge_ClampsDeepDepths(t *testing.T) {
 	packed := packDepthAge(40, EntryExact, 2)
 	depth, entryType, age := unpackDepthAge(packed)
@@ -450,9 +404,6 @@ func TestPackDepthAge_ClampsDeepDepths(t *testing.T) {
 	}
 }
 
-// TestUnpackMove_RoundTrip covers every move shape the packed format
-// distinguishes. Piece and Captured are never packed, and fields not preserved
-// for a move type (e.g. IsCapture on a promotion) come back zeroed.
 func TestUnpackMove_RoundTrip(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -502,8 +453,7 @@ func TestUnpackMove_RoundTrip(t *testing.T) {
 		{
 			name:  "white promotion to knight (capturing)",
 			input: board.Move{From: sq(1, 6), To: sq(2, 7), Promotion: board.WhiteKnight, IsCapture: true},
-			// packMove does not encode capture for promotions.
-			want: board.Move{From: sq(1, 6), To: sq(2, 7), Promotion: board.WhiteKnight},
+			want:  board.Move{From: sq(1, 6), To: sq(2, 7), Promotion: board.WhiteKnight},
 		},
 		{
 			name:  "black promotion to queen",
@@ -554,11 +504,8 @@ func TestUnpackMove_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestStats_DoesNotScanTable is a regression test: Stats() once walked every
-// entry, and the UCI adapter calls it after every search, so it must stay O(1)
-// on a realistic (128MB) table.
 func TestStats_DoesNotScanTable(t *testing.T) {
-	tt := NewTranspositionTable(128) // ~8M entries, matching the UCI default Hash size
+	tt := NewTranspositionTable(128)
 
 	start := time.Now()
 	tt.Stats()

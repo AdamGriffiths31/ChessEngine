@@ -7,9 +7,9 @@ import (
 func TestBitboardBasicOperations(t *testing.T) {
 	t.Parallel()
 	var bb Bitboard
-	bb = bb.SetBit(0)  // a1
-	bb = bb.SetBit(63) // h8
-	bb = bb.SetBit(28) // e4
+	bb = bb.SetBit(0)
+	bb = bb.SetBit(63)
+	bb = bb.SetBit(28)
 
 	if !bb.HasBit(0) {
 		t.Error("Expected bit 0 (a1) to be set")
@@ -32,11 +32,11 @@ func TestBitboardBasicOperations(t *testing.T) {
 		t.Error("Other bits should remain set")
 	}
 
-	bb = bb.ToggleBit(28) // Should set it again
+	bb = bb.ToggleBit(28)
 	if !bb.HasBit(28) {
 		t.Error("Expected bit 28 (e4) to be set after toggle")
 	}
-	bb = bb.ToggleBit(28) // Should clear it
+	bb = bb.ToggleBit(28)
 	if bb.HasBit(28) {
 		t.Error("Expected bit 28 (e4) to be cleared after second toggle")
 	}
@@ -52,7 +52,7 @@ func TestBitboardBitScanning(t *testing.T) {
 		t.Error("MSB of empty bitboard should be -1")
 	}
 
-	bb := Bitboard(0).SetBit(28) // e4
+	bb := Bitboard(0).SetBit(28)
 	if bb.LSB() != 28 {
 		t.Errorf("Expected LSB to be 28, got %d", bb.LSB())
 	}
@@ -82,10 +82,8 @@ func TestBitboardBitScanning(t *testing.T) {
 
 func TestBitboardShifts(t *testing.T) {
 	t.Parallel()
-	// e4 square (bit 28)
 	bb := Bitboard(0).SetBit(28)
 
-	// North shift should move to e5 (bit 36)
 	north := bb.ShiftNorth()
 	if !north.HasBit(36) {
 		t.Error("ShiftNorth from e4 should set e5")
@@ -94,32 +92,27 @@ func TestBitboardShifts(t *testing.T) {
 		t.Error("ShiftNorth should clear original bit")
 	}
 
-	// South shift should move to e3 (bit 20)
 	south := bb.ShiftSouth()
 	if !south.HasBit(20) {
 		t.Error("ShiftSouth from e4 should set e3")
 	}
 
-	// East shift should move to f4 (bit 29)
 	east := bb.ShiftEast()
 	if !east.HasBit(29) {
 		t.Error("ShiftEast from e4 should set f4")
 	}
 
-	// West shift should move to d4 (bit 27)
 	west := bb.ShiftWest()
 	if !west.HasBit(27) {
 		t.Error("ShiftWest from e4 should set d4")
 	}
 
-	// Test edge cases - h-file should not wrap to a-file
 	hFile := Bitboard(0).SetBit(H4)
 	eastH := hFile.ShiftEast()
 	if eastH != 0 {
 		t.Error("ShiftEast from h-file should result in empty bitboard")
 	}
 
-	// Test edge cases - a-file should not wrap to h-file
 	aFile := Bitboard(0).SetBit(A4)
 	westA := aFile.ShiftWest()
 	if westA != 0 {

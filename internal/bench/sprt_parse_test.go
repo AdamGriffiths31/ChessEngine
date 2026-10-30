@@ -47,34 +47,39 @@ func TestParseSPRTStatus(t *testing.T) {
 	}
 }
 
-func TestVerdictFromStatus(t *testing.T) {
+func TestParseSPRTStop(t *testing.T) {
 	tests := []struct {
 		name   string
-		status sprtStatus
+		line   string
 		want   SPRTVerdict
+		wantOK bool
 	}{
-		{"below lbound accepts H0", sprtStatus{llr: -3.0, lbound: -2.94, ubound: 2.94}, SPRTAcceptH0},
-		{"above ubound accepts H1", sprtStatus{llr: 3.0, lbound: -2.94, ubound: 2.94}, SPRTAcceptH1},
-		{"between bounds continues", sprtStatus{llr: 0.1, lbound: -2.94, ubound: 2.94}, SPRTContinue},
+		{"H0 accepted", "SPRT ([0.00, 200.00]) completed - H0 was accepted", SPRTAcceptH0, true},
+		{"H1 accepted", "SPRT ([0.00, 2.00]) completed - H1 was accepted", SPRTAcceptH1, true},
+		{"status line", "LLR: 2.95 (100.2%) (-2.94, 2.94) [0.00, 2.00]", SPRTContinue, false},
+		{"cutechess line", "SPRT: llr 2.95 (100.2%), lbound -2.94, ubound 2.94 - H1 was accepted", SPRTContinue, false},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := verdictFromStatus(tc.status); got != tc.want {
-				t.Errorf("verdictFromStatus(%+v) = %v, want %v", tc.status, got, tc.want)
+			got, ok := parseSPRTStop(tc.line)
+			if got != tc.want || ok != tc.wantOK {
+				t.Errorf("parseSPRTStop(%q) = %v, %v, want %v, %v", tc.line, got, ok, tc.want, tc.wantOK)
 			}
 		})
 	}
 }
 
-// TestScoreLinePatterns checks the score and pentanomial patterns against
-// lines captured from a real fastchess 1.8.2 run.
 func TestScoreLinePatterns(t *testing.T) {
 	games := gamesPattern.FindStringSubmatch("Games: 16, Wins: 11, Losses: 3, Draws: 2, Points: 12.0 (75.00 %)")
 	if games == nil {
 		t.Fatal("gamesPattern did not match a fastchess Games line")
 	}
-	if got, want := parseIntMatches(games), []int{16, 11, 3, 2}; !slices.Equal(got, want) {
+	got, err := parseIntMatches(games)
+	if err != nil {
+		t.Fatalf("parseIntMatches(games): %v", err)
+	}
+	if want := []int{16, 11, 3, 2}; !slices.Equal(got, want) {
 		t.Errorf("games = %v, want %v", got, want)
 	}
 
@@ -82,7 +87,17 @@ func TestScoreLinePatterns(t *testing.T) {
 	if ptnml == nil {
 		t.Fatal("pentanomialPattern did not match a fastchess Ptnml line")
 	}
-	if got, want := parseIntMatches(ptnml), []int{0, 0, 3, 2, 3}; !slices.Equal(got, want) {
+	got, err = parseIntMatches(ptnml)
+	if err != nil {
+		t.Fatalf("parseIntMatches(ptnml): %v", err)
+	}
+	if want := []int{0, 0, 3, 2, 3}; !slices.Equal(got, want) {
 		t.Errorf("ptnml = %v, want %v", got, want)
+	}
+}
+
+func TestParseIntMatchesRejectsOverflow(t *testing.T) {
+	if _, err := parseIntMatches([]string{"full", "99999999999999999999"}); err == nil {
+		t.Error("parseIntMatches accepted a count that overflows int")
 	}
 }

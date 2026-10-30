@@ -9,7 +9,7 @@ import (
 
 // FromFEN creates a new board from FEN (Forsyth-Edwards Notation) string
 //
-//nolint:gocyclo // refactored in Phase 4
+//nolint:gocyclo
 func FromFEN(fen string) (*Board, error) {
 	if fen == "" {
 		return nil, errors.New("invalid FEN: missing board position")
@@ -30,9 +30,6 @@ func FromFEN(fen string) (*Board, error) {
 	board := NewBoard()
 
 	for rankIndex, rankStr := range ranks {
-		// FEN ranks start from 8 (top) and go down to 1 (bottom)
-		// Array index 0 should be rank 1, index 7 should be rank 8
-		// So FEN rank 8 (rankIndex 0) goes to array index 7
 		actualRank := 7 - rankIndex
 		file := 0
 		for _, char := range rankStr {
@@ -81,8 +78,6 @@ func FromFEN(fen string) (*Board, error) {
 			}
 			file := int(enPassantStr[0] - 'a')
 			rank := int(enPassantStr[1] - '1')
-			// A legal en passant target is always on rank 3 or rank 6
-			// (index 2 or 5), the square a pawn lands on behind a double push.
 			if file < 0 || file > 7 || (rank != 2 && rank != 5) {
 				return nil, errors.New("invalid FEN: invalid en passant square")
 			}

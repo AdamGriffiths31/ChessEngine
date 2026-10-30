@@ -38,10 +38,8 @@ type OpeningBook interface {
 type Move struct {
 	Move board.Move
 
-	// Weight represents the relative frequency/strength of this move
 	Weight uint16
 
-	// Learn contains learning data (wins, losses, draws)
 	Learn uint32
 }
 
@@ -51,19 +49,15 @@ type Info struct {
 
 	EntryCount int
 
-	// FileSize is the size of the book file in bytes
 	FileSize int64
 }
 
 // PolyglotEntry represents a single entry in a Polyglot opening book file
 type PolyglotEntry struct {
-	// Hash is the 64-bit Zobrist hash of the position
 	Hash uint64
 
-	// Move is the 16-bit encoded move
 	Move uint16
 
-	// Weight is the relative frequency/strength of this move
 	Weight uint16
 
 	Learn uint32

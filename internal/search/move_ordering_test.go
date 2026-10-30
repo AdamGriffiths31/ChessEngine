@@ -8,10 +8,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// Quiet moves are ordered by history alone: a quiet move with learned history
-// must outrank a quiet move that merely attacks an enemy piece.
 func TestScoreMoves_HistoryBeatsMereAttack(t *testing.T) {
-	// White knight on b1 can go to a3 (attacks nothing), c3 (attacks the Black rook on e4) or d2.
 	b := testutil.MustFromFEN(t, "7k/8/8/8/4r3/8/8/KN6 w - - 0 1")
 	m := NewMinimaxEngine()
 
@@ -28,8 +25,8 @@ func TestScoreMoves_HistoryBeatsMereAttack(t *testing.T) {
 		t.Fatalf("no knight move to %v", to)
 		return board.Move{}
 	}
-	attacking := find(board.Square{File: 2, Rank: 2}) // c3, attacks e4
-	learned := find(board.Square{File: 0, Rank: 2})   // a3, no attack
+	attacking := find(board.Square{File: 2, Rank: 2})
+	learned := find(board.Square{File: 0, Rank: 2})
 
 	for range 8 {
 		m.historyTable.Bonus(learned, 6)

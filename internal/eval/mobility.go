@@ -2,12 +2,8 @@ package eval
 
 import "github.com/AdamGriffiths31/ChessEngine/internal/board"
 
-// Attack-based mobility: a piece scores for the number of squares it attacks
-// inside its side's mobility area, not for a fixed per-square estimate.
-//
-// Each piece type scores Base + Unit*(count - Neutral). Base is the average
-// value the former static tables contributed, so piece values stay on the same
-// scale; only the deviation from a typical count now moves the score.
+// Attack-based mobility: a piece scores Base + Unit*(count - Neutral), where
+// count is the number of squares it attacks inside its side's mobility area.
 const (
 	KnightMobilityUnit    = 4
 	KnightMobilityNeutral = 4
@@ -26,8 +22,6 @@ const (
 	QueenMobilityBase    = 32
 )
 
-// mobilityArea returns the squares that count towards a side's piece mobility:
-// everything except its own pawns and king and the squares enemy pawns attack.
 func mobilityArea(b *board.Board, isWhite bool) board.Bitboard {
 	var ownPawns, ownKing, enemyPawns board.Bitboard
 	if isWhite {
@@ -44,7 +38,6 @@ func mobilityArea(b *board.Board, isWhite bool) board.Bitboard {
 	notFileH := ^board.FileMask(7)
 	var enemyPawnAttacks board.Bitboard
 	if isWhite {
-		// Black pawns capture towards lower ranks.
 		enemyPawnAttacks = (enemyPawns>>7)&notFileA | (enemyPawns>>9)&notFileH
 	} else {
 		enemyPawnAttacks = (enemyPawns<<7)&notFileH | (enemyPawns<<9)&notFileA

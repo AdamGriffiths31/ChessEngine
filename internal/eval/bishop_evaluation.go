@@ -4,9 +4,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Bishop evaluation: bishop-pair bonus, bad-bishop penalty for own pawns
-// on the bishop's square color, attack-based mobility and fianchetto.
-
 const (
 	// BishopPairBonus rewards owning both the light- and dark-squared bishop.
 	BishopPairBonus = 50
@@ -18,7 +15,6 @@ const (
 	FianchettoBishopBonus = 10
 )
 
-// Returns positive values favoring White, negative favoring Black
 func evaluateBishops(b *board.Board) int {
 	if b == nil {
 		return 0
@@ -83,7 +79,6 @@ func evaluateBishopsSimple(b *board.Board, bishops board.Bitboard, isWhite bool)
 	return score
 }
 
-// evaluateBadBishop calculates penalty for bishops restricted by own pawns
 func evaluateBadBishop(bishopSquare int, ownPawns board.Bitboard) int {
 	bishopOnLightSquare := board.LightSquares.HasBit(bishopSquare)
 

@@ -34,9 +34,6 @@ func loadBook(t testing.TB, path string) *PolyglotBook {
 	return pb
 }
 
-// writeRawBook writes entries as 16-byte big-endian Polyglot records in the
-// given order, followed by any trailing bytes, so tests can build both valid
-// and malformed book files.
 func writeRawBook(t *testing.T, name string, entries []PolyglotEntry, trailing []byte) string {
 	t.Helper()
 	var buf bytes.Buffer
@@ -54,8 +51,6 @@ func writeRawBook(t *testing.T, name string, entries []PolyglotEntry, trailing [
 	return path
 }
 
-// startMoves are the start-position book entries used by these tests: e2e4
-// (weight 100), d2d4 (80) and g1f3 (60).
 func startMoves(hash uint64) []PolyglotEntry {
 	return []PolyglotEntry{
 		{Hash: hash, Move: polyglotEncode(4, 1, 4, 3), Weight: 100},
@@ -64,8 +59,6 @@ func startMoves(hash uint64) []PolyglotEntry {
 	}
 }
 
-// startBook writes a valid book holding the three start-position moves plus
-// one unrelated entry (hash 1, which sorts first).
 func startBook(t *testing.T) string {
 	t.Helper()
 	hash := GetPolyglotHash().HashPosition(startBoard(t))
@@ -112,7 +105,7 @@ func TestPolyglotBook_LoadFromFileRejectsBadFiles(t *testing.T) {
 	tests := []struct {
 		name    string
 		path    string
-		wantErr error // nil means any error is acceptable
+		wantErr error
 	}{
 		{"missing_file", "testdata/does-not-exist.bin", nil},
 		{"size_not_multiple_of_16", writeRawBook(t, "ragged.bin", sorted, []byte{0xFF}), ErrInvalidBookFile},
@@ -135,8 +128,6 @@ func TestPolyglotBook_LoadFromFileRejectsBadFiles(t *testing.T) {
 	}
 }
 
-// Looks up the start position and checks the moves decoded from the raw entries
-// (e2e4, d2d4, g1f3) come back in file order with their weights.
 func TestPolyglotBook_LookupMoveFromFile(t *testing.T) {
 	pb := loadBook(t, startBook(t))
 	b := startBoard(t)

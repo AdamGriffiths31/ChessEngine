@@ -61,46 +61,40 @@ type Square struct {
 }
 
 // EvalState stores incremental evaluation scores for undo operations.
-// These scores are maintained incrementally during moves and restored during unmake.
 type EvalState struct {
 	MaterialScore int
-	PSTScore      int // Middlegame PST sum
-	PSTScoreEG    int // Endgame PST sum (differs from MG only for pawns/kings)
+	PSTScore      int
+	PSTScoreEG    int
 }
 
 // Board represents a chess board with piece positions and game state
 type Board struct {
-	castlingRights  string // KQkq format
-	enPassantSquare Square // en passant target square (only valid if hasEnPassant is true)
+	castlingRights  string
+	enPassantSquare Square
 	hasEnPassant    bool
 	halfMoveClock   int
 	fullMoveNumber  int
-	sideToMove      string // "w" or "b"
+	sideToMove      string
 
-	// Bitboard representation (12 piece types)
-	PieceBitboards [12]Bitboard // [WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing, BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing]
+	PieceBitboards [12]Bitboard
 
-	// Mailbox representation for O(1) piece lookup
-	Mailbox [64]Piece // Direct piece lookup by square index
+	Mailbox [64]Piece
 
-	// Color bitboards (derived from piece bitboards)
-	WhitePieces Bitboard // All white pieces
-	BlackPieces Bitboard // All black pieces
-	AllPieces   Bitboard // All occupied squares
+	WhitePieces Bitboard
+	BlackPieces Bitboard
+	AllPieces   Bitboard
 
-	// Zobrist hash for incremental updates
 	currentHash uint64
-	hashHistory []uint64    // Stack for unmake operations
-	hashUpdater HashUpdater // For incremental hash updates
+	hashHistory []uint64
+	hashUpdater HashUpdater
 
-	// Incremental evaluation scores (from White's perspective)
-	materialScore int         // Sum of all piece values
-	pstScore      int         // Sum of middlegame positional bonuses
-	pstScoreEG    int         // Sum of endgame positional bonuses
-	evalHistory   []EvalState // Stack for unmake operations
+	materialScore int
+	pstScore      int
+	pstScoreEG    int
+	evalHistory   []EvalState
 }
 
-// Define square color masks if not already available
+// LightSquares and DarkSquares are the masks of each square color.
 var (
 	LightSquares Bitboard
 	DarkSquares  Bitboard
@@ -156,7 +150,7 @@ func (b *Board) GetHash() uint64 {
 	return b.currentHash
 }
 
-// SetHash sets the current zobrist hash (for initialization)
+// SetHash sets the current zobrist hash
 func (b *Board) SetHash(hash uint64) {
 	b.currentHash = hash
 }
@@ -195,7 +189,7 @@ func (b *Board) GetPSTScore() int {
 }
 
 // GetPSTScoreEndgame returns the endgame PST score, maintained in parallel
-// with the middlegame score. The evaluator blends the two by game phase.
+// with the middlegame score.
 func (b *Board) GetPSTScoreEndgame() int {
 	return b.pstScoreEG
 }
@@ -287,8 +281,6 @@ func (b *Board) GetPawnHash() uint64 {
 	whitePawns := b.GetPieceBitboard(WhitePawn)
 	blackPawns := b.GetPieceBitboard(BlackPawn)
 
-	// Simple but effective hash: combine white and black pawn bitboards
-	// Multiply by different primes to distinguish white vs black pawns
 	return uint64(whitePawns)*17 + uint64(blackPawns)*23
 }
 
@@ -335,7 +327,7 @@ func PieceToBitboardIndex(piece Piece) int {
 	case BlackKing:
 		return BlackKingIndex
 	default:
-		return -1 // Invalid piece
+		return -1
 	}
 }
 
@@ -364,7 +356,6 @@ func (b *Board) setPieceBitboard(rank, file int, piece Piece) {
 		squareBit := Bitboard(1) << square
 		b.PieceBitboards[index] = b.PieceBitboards[index].SetBit(square)
 
-		// Incrementally update derived bitboards
 		if IsWhitePiece(piece) {
 			b.WhitePieces |= squareBit
 		} else {
@@ -382,7 +373,6 @@ func (b *Board) removePieceBitboard(rank, file int, piece Piece) {
 		squareBit := Bitboard(1) << square
 		b.PieceBitboards[index] = b.PieceBitboards[index].ClearBit(square)
 
-		// Incrementally update derived bitboards
 		if IsWhitePiece(piece) {
 			b.WhitePieces &= ^squareBit
 		} else {

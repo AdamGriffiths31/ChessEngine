@@ -7,7 +7,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// pvMove builds a distinct move, identified by its destination file.
 func pvMove(file int) board.Move {
 	return board.Move{
 		From: board.Square{File: 0, Rank: 1},
@@ -15,8 +14,6 @@ func pvMove(file int) board.Move {
 	}
 }
 
-// A line is built from the deepest ply up, as negamax does on successive alpha
-// improvements, and the root line reads back in order.
 func TestPVTable_StoresAndPropagatesLine(t *testing.T) {
 	pt := newPVTable(10)
 	a, b, c := pvMove(4), pvMove(5), pvMove(6)
@@ -32,7 +29,6 @@ func TestPVTable_StoresAndPropagatesLine(t *testing.T) {
 	}
 }
 
-// Copying a child line that would overflow the row stops at capacity.
 func TestPVTable_TruncatesAtRowCapacity(t *testing.T) {
 	pt := newPVTable(2)
 	c, d := pvMove(6), pvMove(7)
@@ -67,7 +63,6 @@ func TestPVTable_ClearAndReset(t *testing.T) {
 	}
 }
 
-// Out-of-range plies are ignored instead of panicking.
 func TestPVTable_OutOfRangeIsNoOp(t *testing.T) {
 	pt := newPVTable(3)
 

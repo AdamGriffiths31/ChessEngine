@@ -187,8 +187,7 @@ var PawnTable = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-// PawnTableEndgame contains endgame pawn bonuses: advancement dominates over
-// shape, so a passed pawn's march is worth far more than its file.
+// PawnTableEndgame contains endgame pawn bonuses.
 // Oriented a1-first like PawnTable.
 var PawnTableEndgame = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -201,11 +200,8 @@ var PawnTableEndgame = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-// KingTableEndgame contains endgame king bonuses: centralization. In the
-// middlegame the king scores from KingTable (safety corners); blending this
-// table in by game phase is what replaces the former hard <14-pieces switch
-// that scored endgame kings with the middlegame safety table.
-// Oriented a1-first like KingTable (symmetric under left-right flip).
+// KingTableEndgame contains endgame king bonuses.
+// Oriented a1-first like KingTable.
 var KingTableEndgame = [64]int{
 	-50, -40, -30, -20, -20, -30, -40, -50,
 	-30, -20, -10, 0, 0, -10, -20, -30,

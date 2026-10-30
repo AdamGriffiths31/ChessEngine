@@ -7,18 +7,12 @@ import (
 )
 
 // Prober wraps a LookupService with caller-side lazy loading and the
-// opening-phase move-number gate. It used to live inside the search engine
-// (MinimaxEngine.FindBestMove); it now lives here so that callers of the
-// search engine (internal/uci) can consult the opening book
-// before invoking the engine at all, keeping FindBestMove a pure searcher.
+// opening-phase move-number gate.
 //
 // A Prober is constructed once per set of book files and reused across
 // moves: the underlying book is loaded from disk at most once (on the first
 // Probe call within the opening phase), and a load failure is logged once
-// and never retried. The old engine-side code retried a failed load
-// (and re-warned) on every move within the opening phase; this Prober
-// deliberately loads and warns at most once and never retries —
-// an intentional improvement, not behavior parity.
+// and never retried.
 type Prober struct {
 	files     []string
 	service   *LookupService
@@ -58,10 +52,6 @@ func (p *Prober) Probe(b *board.Board) (*board.Move, bool) {
 	return move, true
 }
 
-// ensureLoaded loads the configured book files at most once. On failure it
-// logs a single warning and leaves p.service nil, so every subsequent Probe
-// call cheaply reports a miss instead of retrying the load (and re-logging)
-// on every move.
 func (p *Prober) ensureLoaded() {
 	if p.attempted {
 		return
@@ -71,7 +61,7 @@ func (p *Prober) ensureLoaded() {
 	cfg := Config{
 		Enabled:       true,
 		BookFiles:     p.files,
-		SelectionMode: SelectBest, // Always pick best move, as the engine did.
+		SelectionMode: SelectBest,
 	}
 
 	service := NewLookupService(cfg)

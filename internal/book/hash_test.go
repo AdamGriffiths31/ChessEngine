@@ -7,11 +7,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Tests in this package do not use t.Parallel(): GetPolyglotHash lazily
-// initialises a package-level singleton without synchronisation, which
-// `go test -race` flags as a data race when tests run concurrently.
-
-// parseTestMove parses a plain four-character move such as "e2e4".
 func parseTestMove(s string) (board.Move, error) {
 	if len(s) != 4 {
 		return board.Move{}, fmt.Errorf("unsupported move %q", s)
@@ -26,9 +21,6 @@ func parseTestMove(s string) (board.Move, error) {
 	}, nil
 }
 
-// TestSpecificPositionHashes checks published Polyglot keys, both for the FEN
-// directly and for the position reached by playing the listed moves from the
-// start. The keys are the ground truth that opening books are looked up by.
 func TestSpecificPositionHashes(t *testing.T) {
 	zobrist := GetPolyglotHash()
 

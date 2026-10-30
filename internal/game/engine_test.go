@@ -33,12 +33,6 @@ func TestNewEngine(t *testing.T) {
 	}
 }
 
-// TestEngineHashHistoryTracksRealMoves verifies HashHistory() exposes the
-// real-game position-hash sequence (oldest first, ending with the current
-// position) that MakeMove already accumulates internally for threefold
-// detection - this is what internal/uci feeds into
-// search.Config.RepetitionHistory so the search can recognize
-// repetitions that started before its own hypothetical lookahead.
 func TestEngineHashHistoryTracksRealMoves(t *testing.T) {
 	engine := NewEngine()
 
@@ -48,8 +42,8 @@ func TestEngineHashHistoryTracksRealMoves(t *testing.T) {
 	startHash := engine.HashHistory()[0]
 
 	move := board.Move{
-		From:      board.Square{File: 4, Rank: 1}, // e2
-		To:        board.Square{File: 4, Rank: 3}, // e4
+		From:      board.Square{File: 4, Rank: 1},
+		To:        board.Square{File: 4, Rank: 3},
 		Promotion: board.Empty,
 	}
 	if err := engine.MakeMove(move); err != nil {
@@ -73,8 +67,8 @@ func TestEngineReset(t *testing.T) {
 	engine := NewEngine()
 
 	move := board.Move{
-		From:      board.Square{File: 4, Rank: 1}, // e2
-		To:        board.Square{File: 4, Rank: 3}, // e4
+		From:      board.Square{File: 4, Rank: 1},
+		To:        board.Square{File: 4, Rank: 3},
 		Promotion: board.Empty,
 	}
 	if err := engine.MakeMove(move); err != nil {
@@ -97,7 +91,7 @@ func TestEngineReset(t *testing.T) {
 		t.Errorf("Expected game to not be over after reset")
 	}
 
-	piece := state.Board.GetPiece(1, 4) // e2
+	piece := state.Board.GetPiece(1, 4)
 	if piece != board.WhitePawn {
 		t.Errorf("Expected white pawn at e2 after reset, got %c", piece)
 	}
@@ -105,16 +99,12 @@ func TestEngineReset(t *testing.T) {
 
 func TestEngineDetectsCheckmate(t *testing.T) {
 	engine := NewEngine()
-	// Fool's mate: 1.f3 e5 2.g4 Qh4# - White to move, checkmated.
-	// Engine only updates GameOver inside MakeMove, so load the position
-	// one ply before the mating move (queen still on d8) and play Qh4#
-	// so MakeMove's detection actually runs.
 	if err := engine.LoadFromFEN("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2"); err != nil {
 		t.Fatalf("failed to load FEN: %v", err)
 	}
 	queenMove := board.Move{
-		From:      board.Square{File: 3, Rank: 7}, // d8
-		To:        board.Square{File: 7, Rank: 3}, // h4
+		From:      board.Square{File: 3, Rank: 7},
+		To:        board.Square{File: 7, Rank: 3},
 		Promotion: board.Empty,
 	}
 	if err := engine.MakeMove(queenMove); err != nil {
@@ -135,16 +125,12 @@ func TestEngineDetectsCheckmate(t *testing.T) {
 
 func TestEngineDetectsStalemate(t *testing.T) {
 	engine := NewEngine()
-	// Classic K+Q vs K stalemate: White king h1, White queen b6, Black
-	// king a8, Black to move, no legal moves, not in check. Load the
-	// position one ply before (queen still on b5, not yet on b6) and
-	// play the move that delivers stalemate so MakeMove's detection runs.
 	if err := engine.LoadFromFEN("k7/8/8/1Q6/8/8/8/7K w - - 0 1"); err != nil {
 		t.Fatalf("failed to load FEN: %v", err)
 	}
 	queenMove := board.Move{
-		From:      board.Square{File: 1, Rank: 4}, // b5
-		To:        board.Square{File: 1, Rank: 5}, // b6
+		From:      board.Square{File: 1, Rank: 4},
+		To:        board.Square{File: 1, Rank: 5},
 		Promotion: board.Empty,
 	}
 	if err := engine.MakeMove(queenMove); err != nil {
@@ -162,15 +148,13 @@ func TestEngineDetectsStalemate(t *testing.T) {
 
 func TestEngineDetects50MoveRule(t *testing.T) {
 	engine := NewEngine()
-	// Two lone kings, halfmove clock already at 99: one more quiet move
-	// pushes it to 100, triggering the 50-move rule.
 	if err := engine.LoadFromFEN("8/8/4k3/8/8/4K3/8/8 w - - 99 50"); err != nil {
 		t.Fatalf("failed to load FEN: %v", err)
 	}
 
 	kingMove := board.Move{
-		From:      board.Square{File: 4, Rank: 2}, // e3
-		To:        board.Square{File: 4, Rank: 3}, // e4
+		From:      board.Square{File: 4, Rank: 2},
+		To:        board.Square{File: 4, Rank: 3},
 		Promotion: board.Empty,
 	}
 	if err := engine.MakeMove(kingMove); err != nil {
@@ -192,17 +176,15 @@ func TestEngineDetectsThreefoldRepetition(t *testing.T) {
 		t.Fatalf("failed to load FEN: %v", err)
 	}
 
-	// Shuffle kings back to the starting position twice more (3 total
-	// occurrences of the starting position's hash).
 	shuffle := []board.Move{
-		{From: board.Square{File: 4, Rank: 2}, To: board.Square{File: 4, Rank: 3}, Promotion: board.Empty}, // Ke3-e4
-		{From: board.Square{File: 4, Rank: 5}, To: board.Square{File: 4, Rank: 6}, Promotion: board.Empty}, // Ke6-e7
-		{From: board.Square{File: 4, Rank: 3}, To: board.Square{File: 4, Rank: 2}, Promotion: board.Empty}, // Ke4-e3
-		{From: board.Square{File: 4, Rank: 6}, To: board.Square{File: 4, Rank: 5}, Promotion: board.Empty}, // Ke7-e6 (2nd occurrence)
-		{From: board.Square{File: 4, Rank: 2}, To: board.Square{File: 4, Rank: 3}, Promotion: board.Empty}, // Ke3-e4
-		{From: board.Square{File: 4, Rank: 5}, To: board.Square{File: 4, Rank: 6}, Promotion: board.Empty}, // Ke6-e7
-		{From: board.Square{File: 4, Rank: 3}, To: board.Square{File: 4, Rank: 2}, Promotion: board.Empty}, // Ke4-e3
-		{From: board.Square{File: 4, Rank: 6}, To: board.Square{File: 4, Rank: 5}, Promotion: board.Empty}, // Ke7-e6 (3rd occurrence)
+		{From: board.Square{File: 4, Rank: 2}, To: board.Square{File: 4, Rank: 3}, Promotion: board.Empty},
+		{From: board.Square{File: 4, Rank: 5}, To: board.Square{File: 4, Rank: 6}, Promotion: board.Empty},
+		{From: board.Square{File: 4, Rank: 3}, To: board.Square{File: 4, Rank: 2}, Promotion: board.Empty},
+		{From: board.Square{File: 4, Rank: 6}, To: board.Square{File: 4, Rank: 5}, Promotion: board.Empty},
+		{From: board.Square{File: 4, Rank: 2}, To: board.Square{File: 4, Rank: 3}, Promotion: board.Empty},
+		{From: board.Square{File: 4, Rank: 5}, To: board.Square{File: 4, Rank: 6}, Promotion: board.Empty},
+		{From: board.Square{File: 4, Rank: 3}, To: board.Square{File: 4, Rank: 2}, Promotion: board.Empty},
+		{From: board.Square{File: 4, Rank: 6}, To: board.Square{File: 4, Rank: 5}, Promotion: board.Empty},
 	}
 
 	var state *State

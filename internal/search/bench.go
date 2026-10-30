@@ -14,8 +14,6 @@ import (
 // deliberately and note it in the commit message.
 const DefaultBenchDepth = 9
 
-// benchTTSizeMB is the transposition table size used by RunBench. It is fixed
-// (not the UCI Hash option) so the node count depends only on the code.
 const benchTTSizeMB = 16
 
 // BenchFENs is the fixed position set for the bench signature. Never reorder

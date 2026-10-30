@@ -2,10 +2,10 @@ package board
 
 // MagicEntry represents a magic number entry for a square
 type MagicEntry struct {
-	Mask   Bitboard // Relevant occupancy mask (excludes edges for sliding pieces)
-	Magic  uint64   // Magic number for multiplication
-	Shift  int      // Right shift amount after magic multiplication
-	Offset int      // Offset into the attack table
+	Mask   Bitboard
+	Magic  uint64
+	Shift  int
+	Offset int
 }
 
 var (
@@ -25,8 +25,6 @@ var (
 	BishopRelevantBits [64]int
 )
 
-// Pre-computed rook magic numbers
-// These are verified collision-free for the 64-square chess board
 var rookMagicNumbers = [64]uint64{
 	0x8a80104000800020, 0x140002000100040, 0x2801880a0017001, 0x100081001000420,
 	0x200020010080420, 0x3001c0002010008, 0x8480008002000100, 0x2080088004402900,
@@ -46,8 +44,6 @@ var rookMagicNumbers = [64]uint64{
 	0x20030a0244872, 0x12001008414402, 0x2006104900a0804, 0x1004081002402,
 }
 
-// Pre-computed bishop magic numbers
-// These are verified collision-free for the 64-square chess board with proper relevant occupancy masks
 var bishopMagicNumbers = [64]uint64{
 	0x89a1121896040240, 0x2004844802002010, 0x2068080051921000, 0x62880a0220200808,
 	0x4042004000000, 0x100822020200011, 0xc00444222012000a, 0x28808801216001,
@@ -67,7 +63,6 @@ var bishopMagicNumbers = [64]uint64{
 	0x1000042304105, 0x10008830412a00, 0x2520081090008908, 0x40102000a0a60140,
 }
 
-// init automatically initializes magic bitboard tables when the package is loaded
 func init() {
 	initializeRelevantOccupancy()
 	initializeRookMagics()
@@ -85,7 +80,6 @@ func rookRelevantOccupancy(square int) Bitboard {
 	var mask Bitboard
 	file, rank := SquareToFileRank(square)
 
-	// Horizontal (exclude board edges, but include squares next to edges)
 	for f := file + 1; f <= 6; f++ {
 		mask = mask.SetBit(FileRankToSquare(f, rank))
 	}
@@ -93,7 +87,6 @@ func rookRelevantOccupancy(square int) Bitboard {
 		mask = mask.SetBit(FileRankToSquare(f, rank))
 	}
 
-	// Vertical (exclude board edges, but include squares next to edges)
 	for r := rank + 1; r <= 6; r++ {
 		mask = mask.SetBit(FileRankToSquare(file, r))
 	}
@@ -108,22 +101,18 @@ func bishopRelevantOccupancy(square int) Bitboard {
 	var mask Bitboard
 	file, rank := SquareToFileRank(square)
 
-	// Diagonal up-right (exclude board edges)
 	for f, r := file+1, rank+1; f <= 6 && r <= 6; f, r = f+1, r+1 {
 		mask = mask.SetBit(FileRankToSquare(f, r))
 	}
 
-	// Diagonal up-left (exclude board edges)
 	for f, r := file-1, rank+1; f >= 1 && r <= 6; f, r = f-1, r+1 {
 		mask = mask.SetBit(FileRankToSquare(f, r))
 	}
 
-	// Diagonal down-right (exclude board edges)
 	for f, r := file+1, rank-1; f <= 6 && r >= 1; f, r = f+1, r-1 {
 		mask = mask.SetBit(FileRankToSquare(f, r))
 	}
 
-	// Diagonal down-left (exclude board edges)
 	for f, r := file-1, rank-1; f >= 1 && r >= 1; f, r = f-1, r-1 {
 		mask = mask.SetBit(FileRankToSquare(f, r))
 	}
@@ -145,7 +134,6 @@ func initializeRookMagics() {
 			Offset: offset,
 		}
 
-		// Generate all possible occupancy variations
 		occupancyVariations := 1 << relevantBits
 		offset += occupancyVariations
 	}
@@ -179,7 +167,6 @@ func initializeBishopMagics() {
 			Offset: offset,
 		}
 
-		// Generate all possible occupancy variations
 		occupancyVariations := 1 << relevantBits
 		offset += occupancyVariations
 	}
@@ -199,7 +186,6 @@ func initializeBishopMagics() {
 	}
 }
 
-// indexToOccupancy converts an index to an occupancy bitboard based on a mask
 func indexToOccupancy(index int, mask Bitboard) Bitboard {
 	var occupancy Bitboard
 	bits := mask.BitList()
@@ -213,13 +199,10 @@ func indexToOccupancy(index int, mask Bitboard) Bitboard {
 	return occupancy
 }
 
-// calculateRookAttacks generates rook attacks for a given square and occupancy
-// Used during magic table initialization and testing
 func calculateRookAttacks(square int, occupancy Bitboard) Bitboard {
 	var attacks Bitboard
 	file, rank := SquareToFileRank(square)
 
-	// North
 	for r := rank + 1; r <= 7; r++ {
 		targetSquare := FileRankToSquare(file, r)
 		attacks = attacks.SetBit(targetSquare)
@@ -228,7 +211,6 @@ func calculateRookAttacks(square int, occupancy Bitboard) Bitboard {
 		}
 	}
 
-	// South
 	for r := rank - 1; r >= 0; r-- {
 		targetSquare := FileRankToSquare(file, r)
 		attacks = attacks.SetBit(targetSquare)
@@ -237,7 +219,6 @@ func calculateRookAttacks(square int, occupancy Bitboard) Bitboard {
 		}
 	}
 
-	// East
 	for f := file + 1; f <= 7; f++ {
 		targetSquare := FileRankToSquare(f, rank)
 		attacks = attacks.SetBit(targetSquare)
@@ -246,7 +227,6 @@ func calculateRookAttacks(square int, occupancy Bitboard) Bitboard {
 		}
 	}
 
-	// West
 	for f := file - 1; f >= 0; f-- {
 		targetSquare := FileRankToSquare(f, rank)
 		attacks = attacks.SetBit(targetSquare)
@@ -258,13 +238,10 @@ func calculateRookAttacks(square int, occupancy Bitboard) Bitboard {
 	return attacks
 }
 
-// calculateBishopAttacks generates bishop attacks for a given square and occupancy
-// Used during magic table initialization and testing
 func calculateBishopAttacks(square int, occupancy Bitboard) Bitboard {
 	var attacks Bitboard
 	file, rank := SquareToFileRank(square)
 
-	// Northeast
 	for f, r := file+1, rank+1; f <= 7 && r <= 7; f, r = f+1, r+1 {
 		targetSquare := FileRankToSquare(f, r)
 		attacks = attacks.SetBit(targetSquare)
@@ -273,7 +250,6 @@ func calculateBishopAttacks(square int, occupancy Bitboard) Bitboard {
 		}
 	}
 
-	// Northwest
 	for f, r := file-1, rank+1; f >= 0 && r <= 7; f, r = f-1, r+1 {
 		targetSquare := FileRankToSquare(f, r)
 		attacks = attacks.SetBit(targetSquare)
@@ -282,7 +258,6 @@ func calculateBishopAttacks(square int, occupancy Bitboard) Bitboard {
 		}
 	}
 
-	// Southeast
 	for f, r := file+1, rank-1; f <= 7 && r >= 0; f, r = f+1, r-1 {
 		targetSquare := FileRankToSquare(f, r)
 		attacks = attacks.SetBit(targetSquare)
@@ -291,7 +266,6 @@ func calculateBishopAttacks(square int, occupancy Bitboard) Bitboard {
 		}
 	}
 
-	// Southwest
 	for f, r := file-1, rank-1; f >= 0 && r >= 0; f, r = f-1, r-1 {
 		targetSquare := FileRankToSquare(f, r)
 		attacks = attacks.SetBit(targetSquare)

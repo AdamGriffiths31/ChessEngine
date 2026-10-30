@@ -38,7 +38,6 @@ const (
 	BlackColor
 )
 
-// String returns string representation of piece color
 func (pc PieceColor) String() string {
 	switch pc {
 	case WhiteColor:

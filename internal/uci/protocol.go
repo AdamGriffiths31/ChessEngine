@@ -80,7 +80,7 @@ func (ph *ProtocolHandler) ParsePosition(args []string) (fen string, moves []str
 
 // ParseGo parses a 'go' command into SearchParams.
 //
-//nolint:gocyclo // refactored in Phase 4
+//nolint:gocyclo
 func (ph *ProtocolHandler) ParseGo(args []string) SearchParams {
 	params := SearchParams{}
 

@@ -4,7 +4,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// generatePawnMovesBitboard generates pawn moves using bitboard shifts and attack patterns
 func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var pawnPiece board.Piece
 	var bitboardColor board.BitboardColor
@@ -13,13 +12,13 @@ func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, play
 	if player == White {
 		pawnPiece = board.WhitePawn
 		bitboardColor = board.BitboardWhite
-		startRank = 1     // 2nd rank (rank index 1)
-		promotionRank = 7 // 8th rank (rank index 7) - where pawn arrives to promote
+		startRank = 1
+		promotionRank = 7
 	} else {
 		pawnPiece = board.BlackPawn
 		bitboardColor = board.BitboardBlack
-		startRank = 6     // 7th rank (rank index 6)
-		promotionRank = 0 // 1st rank (rank index 0) - where pawn arrives to promote
+		startRank = 6
+		promotionRank = 0
 	}
 
 	pawns := b.GetPieceBitboard(pawnPiece)
@@ -27,7 +26,7 @@ func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, play
 		return
 	}
 
-	emptySquares := ^b.AllPieces // Invert to get empty squares
+	emptySquares := ^b.AllPieces
 	enemyPieces := b.GetColorBitboard(board.OppositeBitboardColor(bitboardColor))
 
 	var singlePushes board.Bitboard
@@ -43,9 +42,9 @@ func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, play
 
 		var fromSquare int
 		if player == White {
-			fromSquare = toSquare - 8 // Move came from south
+			fromSquare = toSquare - 8
 		} else {
-			fromSquare = toSquare + 8 // Move came from north
+			fromSquare = toSquare + 8
 		}
 
 		toFile, toRank := board.SquareToFileRank(toSquare)
@@ -66,7 +65,6 @@ func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, play
 		}
 	}
 
-	// Important: both the single push square AND double push square must be empty
 	var doublePushes board.Bitboard
 	if player == White {
 		startingPawns := pawns & board.RankMask(startRank)
@@ -84,9 +82,9 @@ func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, play
 
 		var fromSquare int
 		if player == White {
-			fromSquare = toSquare - 16 // Move came from 2 squares south
+			fromSquare = toSquare - 16
 		} else {
-			fromSquare = toSquare + 16 // Move came from 2 squares north
+			fromSquare = toSquare + 16
 		}
 
 		toFile, toRank := board.SquareToFileRank(toSquare)
@@ -174,14 +172,11 @@ func (bmg *BitboardMoveGenerator) generateEnPassantCapturesBitboard(b *board.Boa
 		capturedPiece = board.WhitePawn
 	}
 
-	// En passant is only valid for pawns on the correct rank:
-	// - White pawns must be on 5th rank (rank index 4)
-	// - Black pawns must be on 4th rank (rank index 3)
 	var enPassantRank int
 	if player == White {
-		enPassantRank = 4 // 5th rank
+		enPassantRank = 4
 	} else {
-		enPassantRank = 3 // 4th rank
+		enPassantRank = 3
 	}
 
 	enPassantPawns := pawns & board.RankMask(enPassantRank)

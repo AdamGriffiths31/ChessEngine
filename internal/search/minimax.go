@@ -1,4 +1,3 @@
-// Package search provides chess move search algorithms and transposition table implementation.
 package search
 
 import (
@@ -15,20 +14,16 @@ import (
 // State contains transient state for a single search operation
 type State struct {
 	killerTable      [MaxKillerDepth][2]board.Move
-	moveOrderBuffers [MaxKillerDepth][]moveScore // Per-ply buffers for move ordering
+	moveOrderBuffers [MaxKillerDepth][]moveScore
 	searchStats      Stats
 	searchParams     Params
 	searchCancelled  bool
 
-	// staticEvalStack[ply] is the side-to-move static eval at each node on the
-	// current line, or noStaticEval when in check. Read two plies back to
-	// decide whether the position is improving.
 	staticEvalStack [MaxKillerDepth]eval.EvaluationScore
 
-	// Per-search invariants, set at the start of FindBestMove/runIterativeDeepening.
-	board  *board.Board // Board being searched (single instance, moves made/unmade on it)
-	config Config       // Search configuration for this search
-	pv     *pvTable     // Principal variation storage (allocated per search)
+	board  *board.Board
+	config Config
+	pv     *pvTable
 }
 
 // MinimaxEngine implements negamax search with alpha-beta pruning, transposition table,
@@ -44,11 +39,8 @@ type MinimaxEngine struct {
 	seeCalculator      *eval.SEECalculator
 	searchState        State
 
-	// Repetition detection
 	zobristHistory    [MaxGamePly]uint64
 	zobristHistoryPly uint16
-	// repetitionRootPly is the history index of the search root. Entries
-	// before it are real game positions, entries from it up are the search path.
 	repetitionRootPly uint16
 }
 
@@ -70,16 +62,6 @@ func NewMinimaxEngine() *MinimaxEngine {
 	return engine
 }
 
-// tryMove makes move on the search board and verifies it is legal (does not
-// leave the mover's own king in check). Illegal pseudo-legal moves unmake and
-// return (undo, false) - an expected outcome of scanning pseudo-legal moves,
-// not an error.
-//
-// player must be the side making move; negamax threads it through as a
-// parameter and passes it here explicitly.
-//
-// MakeMoveWithUndo errors mean the generator emitted a malformed move; that
-// panics loudly rather than silently skipping, so movegen regressions surface.
 func (m *MinimaxEngine) tryMove(move board.Move, player movegen.Player) (undo board.MoveUndo, ok bool) {
 	b := m.searchState.board
 
@@ -176,7 +158,6 @@ func (m *MinimaxEngine) ClearSearchState() {
 	m.searchState.config = Config{}
 	m.searchState.pv = nil
 
-	// Clear repetition history
 	m.zobristHistoryPly = 0
 	m.repetitionRootPly = 0
 

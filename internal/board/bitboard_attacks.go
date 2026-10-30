@@ -1,7 +1,6 @@
 package board
 
 // IsSquareAttackedByColor checks if a square is attacked by pieces of a given color
-// Uses bitboard operations for maximum performance
 func (b *Board) IsSquareAttackedByColor(square int, color BitboardColor) bool {
 	if square < 0 || square > 63 {
 		return false
@@ -27,8 +26,6 @@ func (b *Board) IsSquareAttackedByColor(square int, color BitboardColor) bool {
 }
 
 func (b *Board) isSquareAttackedByPawns(square int, color BitboardColor) bool {
-	// Get pawn attack pattern for the opposite color (pawns attack forward)
-	// If we're checking for white pawn attacks, we look at black pawn attack patterns from the target square
 	oppositeColor := OppositeBitboardColor(color)
 	pawnAttacks := GetPawnAttacks(square, oppositeColor)
 
@@ -100,8 +97,7 @@ func (b *Board) GetAttackersToSquare(square int, color BitboardColor) Bitboard {
 
 // GetAttackersToSquareWithOccupancy returns a bitboard of all pieces of the given color that
 // attack the square, computing sliding attacks against the supplied occupancy instead of the
-// board's current occupancy. This lets callers (e.g. SEE) reveal X-ray attackers by removing
-// pieces from the occupancy without mutating the board.
+// board's current occupancy.
 func (b *Board) GetAttackersToSquareWithOccupancy(square int, color BitboardColor, occupancy Bitboard) Bitboard {
 	var attackers Bitboard
 
@@ -210,11 +206,9 @@ func (b *Board) GetAllAttackedSquares(color BitboardColor) Bitboard {
 	var pawnBitboard Bitboard
 	if color == BitboardWhite {
 		pawnBitboard = b.GetPieceBitboard(WhitePawn)
-		// White pawns attack northeast and northwest
 		attacks |= pawnBitboard.ShiftNorthEast() | pawnBitboard.ShiftNorthWest()
 	} else {
 		pawnBitboard = b.GetPieceBitboard(BlackPawn)
-		// Black pawns attack southeast and southwest
 		attacks |= pawnBitboard.ShiftSouthEast() | pawnBitboard.ShiftSouthWest()
 	}
 
@@ -279,7 +273,7 @@ func (b *Board) IsSquareEmptyBitboard(square int) bool {
 	return !b.AllPieces.HasBit(square)
 }
 
-// GetPieceOnSquare returns the piece on a square using bitboards (faster than array lookup)
+// GetPieceOnSquare returns the piece on a square using bitboards
 func (b *Board) GetPieceOnSquare(square int) Piece {
 	if square < 0 || square > 63 {
 		return Empty

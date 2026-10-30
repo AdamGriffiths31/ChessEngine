@@ -221,8 +221,6 @@ func displayResults(results epd.STSSuiteResult, verbose bool, totalTime time.Dur
 	fmt.Printf("Nodes per second: %s\n", formatNodes(int64(agg.NodesPerSec)))
 }
 
-// calculateSTSRating estimates STS rating based on percentage score.
-// This is a simplified approximation based on known engine performance.
 func calculateSTSRating(scorePercent float64) int {
 
 	switch {

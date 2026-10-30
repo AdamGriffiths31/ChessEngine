@@ -13,7 +13,7 @@ import (
 type SelectionMode int
 
 const (
-	// SelectRandom chooses randomly based on weights
+	// SelectRandom chooses uniformly at random, ignoring weights
 	SelectRandom SelectionMode = iota
 
 	// SelectBest always chooses the highest-weighted move
@@ -131,7 +131,6 @@ func (bls *LookupService) selectBestMove(bookMoves []Move) Move {
 	return best
 }
 
-// selectRandomMove returns a random move (equal probability)
 func (bls *LookupService) selectRandomMove(bookMoves []Move) Move {
 	index := bls.rng.Intn(len(bookMoves))
 	return bookMoves[index]

@@ -6,7 +6,7 @@ import (
 
 // SEECalculator implements Static Exchange Evaluation
 type SEECalculator struct {
-	gain [32]int // Reusable gain array to avoid allocations
+	gain [32]int
 }
 
 // NewSEECalculator creates a new SEE calculator
@@ -34,16 +34,8 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 		see.gain[depth] = 100
 	}
 
-	// Promotion-capture: the promoted piece is part of the exchange. Its
-	// arrival adds net material up front (promoted value minus the pawn), and
-	// it is the piece exposed to recapture on the target square - without
-	// this, exd8=Q met by Rxd8 was priced as winning a rook for a pawn
-	// instead of losing a queen. Both Empty ('.') and the zero value count
-	// as "no promotion": hand-built Move literals leave Promotion unset,
-	// which is not Empty.
-	promoted := move.Promotion
-	if promoted != board.Empty && promoted != 0 {
-		see.gain[depth] += see.getPieceValue(promoted) - see.getPieceValue(move.Piece)
+	if move.HasPromotion() {
+		see.gain[depth] += see.getPieceValue(move.Promotion) - see.getPieceValue(move.Piece)
 	}
 
 	occupied := b.AllPieces
@@ -57,19 +49,16 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 	occupied = occupied.ClearBit(fromSquare)
 
 	if move.IsEnPassant {
-		// The captured pawn sits beside the target square, not on it
 		capturedPawnSquare := board.FileRankToSquare(move.To.File, move.From.Rank)
 		occupied = occupied.ClearBit(capturedPawnSquare)
 	}
 
-	see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, fromSquare, occupied)
+	see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, occupied)
 
 	sideToMove := see.getOppositeSide(move.Piece)
 	attackingPiece := move.Piece
-	if promoted != board.Empty && promoted != 0 {
-		// A recapturer takes the promoted piece standing on the target
-		// square, not the pawn that moved there.
-		attackingPiece = promoted
+	if move.HasPromotion() {
+		attackingPiece = move.Promotion
 	}
 
 	for {
@@ -88,11 +77,6 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 			break
 		}
 
-		// King handling: a king recapture only happens when the target square
-		// is undefended by the opposing side; otherwise the king may not take
-		// and the exchange genuinely ends. Blindly stopping here overvalued
-		// captures like QxP where the enemy king was the pawn's sole guard:
-		// the code returned +100 while Kxd4 wins the queen (-800).
 		if nextAttacker.piece == board.WhiteKing || nextAttacker.piece == board.BlackKing {
 			occAfterKingCapture := occupied.ClearBit(nextAttacker.square)
 			var defenders board.Bitboard
@@ -104,8 +88,6 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 			if defenders != 0 {
 				break
 			}
-			// Legal king capture: fall through and apply it like any other;
-			// the opponent has no reply, so the next iteration ends cleanly.
 		}
 
 		capturedValue := see.getPieceValue(attackingPiece)
@@ -114,7 +96,7 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 
 		occupied = occupied.ClearBit(nextAttacker.square)
 
-		see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, nextAttacker.square, occupied)
+		see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, occupied)
 
 		if sideToMove == "w" {
 			sideToMove = "b"
@@ -163,11 +145,9 @@ func (see *SEECalculator) getLeastValuableAttacker(b *board.Board, attackers *bo
 	return attacker{piece: board.Empty, square: -1}
 }
 
-func (see *SEECalculator) updateAttackersAfterMove(b *board.Board, whiteAttackers, blackAttackers *board.Bitboard, target board.Square, _ int, occupied board.Bitboard) {
+func (see *SEECalculator) updateAttackersAfterMove(b *board.Board, whiteAttackers, blackAttackers *board.Bitboard, target board.Square, occupied board.Bitboard) {
 	targetSquareIndex := board.FileRankToSquare(target.File, target.Rank)
 
-	// Recompute sliding attacks against the reduced occupancy so pieces standing
-	// behind a removed attacker (X-rays) are discovered as new attackers.
 	newWhiteAttackers := b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardWhite, occupied) & occupied
 	newBlackAttackers := b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardBlack, occupied) & occupied
 
@@ -187,7 +167,6 @@ func (see *SEECalculator) getPieceValue(piece board.Piece) int {
 	return value
 }
 
-// getPieceOrderForSide returns pieces in order from least to most valuable
 func (see *SEECalculator) getPieceOrderForSide(side string) []board.Piece {
 	if side == "w" {
 		return []board.Piece{

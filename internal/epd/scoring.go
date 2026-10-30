@@ -80,7 +80,7 @@ func (scorer *STSScorer) ScorePosition(ctx context.Context, position *Position) 
 	return STSResult{
 		Position:      position,
 		EngineMove:    searchResult.BestMove,
-		EngineMoveStr: engineMoveStr + "/" + algebraicMove, // Show both notations
+		EngineMoveStr: engineMoveStr + "/" + algebraicMove,
 		Score:         score,
 		Result:        searchResult,
 		TestDuration:  duration,
@@ -88,17 +88,14 @@ func (scorer *STSScorer) ScorePosition(ctx context.Context, position *Position) 
 }
 
 func (scorer *STSScorer) calculateScore(position *Position, engineMove board.Move, engineMoveStr, algebraicMove string) int {
-	// If we have detailed move scores from STS format, use them
 	if len(position.MoveScores) > 0 {
 		return scorer.calculateSTSScore(position, engineMove, engineMoveStr, algebraicMove)
 	}
 
-	// Fallback to simple scoring for basic EPD format
 	return scorer.calculateSimpleScore(position, engineMove, engineMoveStr, algebraicMove)
 }
 
 func (scorer *STSScorer) calculateSTSScore(position *Position, engineMove board.Move, engineMoveStr, algebraicMove string) int {
-	// Check each scored move using multiple comparison methods
 	for _, moveScore := range position.MoveScores {
 		if engineMoveStr == moveScore.Move ||
 			algebraicMove == moveScore.Move ||
@@ -111,20 +108,19 @@ func (scorer *STSScorer) calculateSTSScore(position *Position, engineMove board.
 		if engineMoveStr == position.AvoidMove ||
 			algebraicMove == position.AvoidMove ||
 			scorer.moveMatches(engineMove, position.AvoidMove) {
-			return 0 // No points for avoided move
+			return 0
 		}
 	}
 
-	return 1 // Minimal points for any legal move not explicitly scored
+	return 1
 }
 
 func (scorer *STSScorer) calculateSimpleScore(position *Position, engineMove board.Move, engineMoveStr, algebraicMove string) int {
 	if position.BestMove != "" {
-		// Try multiple comparison methods
 		if engineMoveStr == position.BestMove ||
 			algebraicMove == position.BestMove ||
 			scorer.moveMatches(engineMove, position.BestMove) {
-			return 10 // Full points for match
+			return 10
 		}
 	}
 
@@ -132,11 +128,11 @@ func (scorer *STSScorer) calculateSimpleScore(position *Position, engineMove boa
 		if engineMoveStr == position.AvoidMove ||
 			algebraicMove == position.AvoidMove ||
 			scorer.moveMatches(engineMove, position.AvoidMove) {
-			return 0 // No points for avoided move
+			return 0
 		}
 	}
 
-	return 1 // Minimal points for any legal move that's not avoided
+	return 1
 }
 
 func moveToString(move board.Move) string {
@@ -144,7 +140,6 @@ func moveToString(move board.Move) string {
 }
 
 func (scorer *STSScorer) moveMatches(engineMove board.Move, expectedMove string) bool {
-	// Handle castling notation variations
 	if expectedMove == "e1g1" || expectedMove == "0-0" || expectedMove == "O-O" {
 		return engineMove.From.File == 4 && engineMove.From.Rank == 0 &&
 			engineMove.To.File == 6 && engineMove.To.Rank == 0
@@ -162,7 +157,6 @@ func (scorer *STSScorer) moveMatches(engineMove board.Move, expectedMove string)
 			engineMove.To.File == 2 && engineMove.To.Rank == 7
 	}
 
-	// Try to parse algebraic moves like "Rad1", "Nf3", "exd5"
 	return scorer.parseAndMatchAlgebraic(engineMove, expectedMove)
 }
 
@@ -171,7 +165,6 @@ func (scorer *STSScorer) parseAndMatchAlgebraic(engineMove board.Move, expectedM
 		return false
 	}
 
-	// For moves like "Rad1", "Nf3", "exd5", the destination is the last 2 chars
 	if len(expectedMove) >= 2 {
 		destSquareStr := expectedMove[len(expectedMove)-2:]
 
@@ -184,11 +177,9 @@ func (scorer *STSScorer) parseAndMatchAlgebraic(engineMove board.Move, expectedM
 
 			if engineMove.To.File == expectedFile && engineMove.To.Rank == expectedRank {
 
-				// If it's a piece move (starts with capital letter), check piece type matches
 				if len(expectedMove) > 2 {
 					firstChar := expectedMove[0]
 					if firstChar >= 'A' && firstChar <= 'Z' {
-						// Get engine piece type (convert to uppercase)
 						enginePiece := engineMove.Piece
 						if enginePiece >= 'a' && enginePiece <= 'z' {
 							enginePiece = enginePiece - 'a' + 'A'
@@ -198,7 +189,6 @@ func (scorer *STSScorer) parseAndMatchAlgebraic(engineMove board.Move, expectedM
 					}
 				}
 
-				// For pawn moves or exact destination matches, accept it
 				return true
 			}
 		}
@@ -214,7 +204,7 @@ func (scorer *STSScorer) parseAndMatchAlgebraic(engineMove board.Move, expectedM
 func (scorer *STSScorer) ScoreSuite(ctx context.Context, positions []*Position, suiteName string, onResult func(STSResult)) STSSuiteResult {
 	results := make([]STSResult, 0, len(positions))
 	totalScore := 0
-	maxScore := len(positions) * 10 // Maximum possible score
+	maxScore := len(positions) * 10
 	totalTime := time.Duration(0)
 
 	for i, position := range positions {
@@ -251,8 +241,6 @@ func (scorer *STSScorer) ScoreSuite(ctx context.Context, positions []*Position, 
 	}
 }
 
-// printPositionResult logs the result of a single position immediately
-// (verbose mode).
 func (scorer *STSScorer) printPositionResult(posNum int, result STSResult) {
 	display := ""
 	if result.Position.ID != "" {
@@ -266,7 +254,6 @@ func (scorer *STSScorer) printPositionResult(posNum int, result STSResult) {
 		}
 	}
 
-	// Add FEN at the end for easy analysis
 	if display != "" {
 		display += " | FEN: " + result.Position.Board.ToFEN()
 	} else {
@@ -286,10 +273,9 @@ func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) st
 	piece := board.GetPiece(move.From.Rank, move.From.File)
 
 	if move.IsCastling {
-		if move.To.File == 6 { // Kingside
+		if move.To.File == 6 {
 			return "O-O"
 		}
-		// Queenside
 		return "O-O-O"
 	}
 
@@ -306,7 +292,7 @@ func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) st
 	case 'N', 'n':
 		pieceChar = "N"
 	case 'P', 'p':
-		pieceChar = "" // Pawns don't have piece letters
+		pieceChar = ""
 	}
 
 	toSquare := move.To.String()
@@ -315,7 +301,6 @@ func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) st
 
 	algebraic := pieceChar
 
-	// For pawn captures, include the file
 	if piece == 'P' || piece == 'p' {
 		if isCapture {
 			algebraic = string('a'+rune(move.From.File)) + "x"

@@ -4,8 +4,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// GenerateKnightMovesBitboard generates knight moves using precomputed attack patterns (exported for testing)
-func (bmg *BitboardMoveGenerator) GenerateKnightMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
+func (bmg *BitboardMoveGenerator) generateKnightMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var knightPiece board.Piece
 	var bitboardColor board.BitboardColor
 
@@ -29,7 +28,6 @@ func (bmg *BitboardMoveGenerator) GenerateKnightMovesBitboard(b *board.Board, pl
 		knights = newBitboard
 
 		attacks := board.GetKnightAttacks(fromSquare)
-		// Remove squares occupied by friendly pieces
 		validMoves := attacks &^ friendlyPieces
 
 		for validMoves != 0 {
@@ -57,7 +55,6 @@ func (bmg *BitboardMoveGenerator) GenerateKnightMovesBitboard(b *board.Board, pl
 	}
 }
 
-// generateKingMovesBitboard generates king moves including castling
 func (bmg *BitboardMoveGenerator) generateKingMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var kingPiece board.Piece
 	var bitboardColor board.BitboardColor
@@ -77,14 +74,12 @@ func (bmg *BitboardMoveGenerator) generateKingMovesBitboard(b *board.Board, play
 
 	friendlyPieces := b.GetColorBitboard(bitboardColor)
 
-	// Should only be one king
 	kingSquare := kings.LSB()
 	if kingSquare == -1 {
 		return
 	}
 
 	attacks := board.GetKingAttacks(kingSquare)
-	// Remove squares occupied by friendly pieces
 	validMoves := attacks &^ friendlyPieces
 
 	fromFile, fromRank := board.SquareToFileRank(kingSquare)

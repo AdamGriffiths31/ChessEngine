@@ -2,16 +2,15 @@ package board
 
 import "testing"
 
-// One white piece of each type, then spot-checks of which squares are attacked.
 func TestIsSquareAttackedByColor(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
-	board.SetPiece(1, 1, WhitePawn)   // b2
-	board.SetPiece(2, 2, WhiteKnight) // c3
-	board.SetPiece(0, 0, WhiteRook)   // a1
-	board.SetPiece(3, 3, WhiteBishop) // d4
-	board.SetPiece(4, 4, WhiteQueen)  // e5
-	board.SetPiece(0, 4, WhiteKing)   // e1
+	board.SetPiece(1, 1, WhitePawn)
+	board.SetPiece(2, 2, WhiteKnight)
+	board.SetPiece(0, 0, WhiteRook)
+	board.SetPiece(3, 3, WhiteBishop)
+	board.SetPiece(4, 4, WhiteQueen)
+	board.SetPiece(0, 4, WhiteKing)
 
 	tests := []struct {
 		square string
@@ -39,12 +38,11 @@ func TestIsSquareAttackedByColor(t *testing.T) {
 	}
 }
 
-// Sliders attack up to and including the first blocker, and nothing beyond it.
 func TestSlidingPieceAttacksWithBlockers(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
-	board.SetPiece(0, 0, WhiteRook) // a1
-	board.SetPiece(0, 3, BlackPawn) // d1, blocker
+	board.SetPiece(0, 0, WhiteRook)
+	board.SetPiece(0, 3, BlackPawn)
 
 	for _, square := range []string{"b1", "c1", "d1"} {
 		if !board.IsSquareAttackedByColor(StringToSquare(square), BitboardWhite) {
@@ -61,10 +59,10 @@ func TestSlidingPieceAttacksWithBlockers(t *testing.T) {
 func TestGetAttackersToSquare(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
-	board.SetPiece(2, 3, WhitePawn)   // d3 attacks e4
-	board.SetPiece(2, 2, WhiteKnight) // c3 attacks e4
-	board.SetPiece(3, 0, WhiteRook)   // a4 attacks e4
-	board.SetPiece(1, 1, WhiteBishop) // b2 does not attack e4
+	board.SetPiece(2, 3, WhitePawn)
+	board.SetPiece(2, 2, WhiteKnight)
+	board.SetPiece(3, 0, WhiteRook)
+	board.SetPiece(1, 1, WhiteBishop)
 
 	got := board.GetAttackersToSquare(StringToSquare("e4"), BitboardWhite)
 	want := bitboardOf(StringToSquare("d3"), StringToSquare("c3"), StringToSquare("a4"))
@@ -124,19 +122,18 @@ func TestGetPieceAttacks(t *testing.T) {
 func TestGetAllAttackedSquares(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
-	board.SetPiece(1, 4, WhitePawn)   // e2
-	board.SetPiece(2, 1, WhiteKnight) // b3
-	board.SetPiece(0, 4, WhiteKing)   // e1
+	board.SetPiece(1, 4, WhitePawn)
+	board.SetPiece(2, 1, WhiteKnight)
+	board.SetPiece(0, 4, WhiteKing)
 
 	attacks := board.GetAllAttackedSquares(BitboardWhite)
-	for _, square := range []string{"d3", "f3" /* pawn */, "d4", "a5" /* knight */, "d1", "f1" /* king */} {
+	for _, square := range []string{"d3", "f3", "d4", "a5", "d1", "f1"} {
 		if !attacks.HasBit(StringToSquare(square)) {
 			t.Errorf("%s should be among White's attacked squares", square)
 		}
 	}
 }
 
-// Square accessors tolerate out-of-range indices instead of panicking.
 func TestSquareAccessors(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
@@ -159,7 +156,6 @@ func TestSquareAccessors(t *testing.T) {
 	}
 }
 
-// The benchmarks below cover the hot paths used by move legality checks.
 func benchBoard(b *testing.B) *Board {
 	b.Helper()
 	board, err := FromFEN("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")

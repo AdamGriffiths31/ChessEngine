@@ -8,7 +8,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 )
 
-// Reasons a search stopped, reported in Stats.StopReason.
 const (
 	// StopReasonDepth means every iteration up to Config.MaxDepth completed.
 	StopReasonDepth = "depth"
@@ -57,7 +56,7 @@ type Stats struct {
 	Depth              int
 	Time               time.Duration
 	PrincipalVariation []board.Move
-	BookMoveUsed       bool // True if move came from opening book
+	BookMoveUsed       bool
 
 	// Iterations lists each completed iteration in depth order; StopReason says
 	// why the search ended (one of the StopReason constants).
@@ -69,56 +68,41 @@ type Stats struct {
 	// always first; the others raised alpha before a better move was found.
 	RootMoves []RootMove
 
-	// Late Move Reductions (LMR) statistics
-	LMRReductions int64 // Number of moves reduced
-	LMRReSearches int64 // Number of re-searches performed
+	LMRReductions int64
+	LMRReSearches int64
 
-	// Null move pruning statistics
-	NullMoves               int64 // Number of null move attempts
-	NullCutoffs             int64 // Number of successful null move cutoffs
+	NullMoves               int64
+	NullCutoffs             int64
 	NullMoveZugzwangSkipped int64 // Null move declined: side to move has no non-pawn material
 	NullMoveSparseSkipped   int64 // Null move declined: board has NullMoveMaxPieces pieces or fewer
 
-	QNodes           int64 // Quiescence search nodes
-	TTCutoffs        int64 // Beta cutoffs from transposition table
-	FirstMoveCutoffs int64 // Beta cutoffs on first move tried
-	TotalCutoffs     int64 // Total beta cutoffs (for move ordering calculation)
-	DeltaPruned      int64 // Captures skipped by delta pruning
+	QNodes           int64
+	TTCutoffs        int64
+	FirstMoveCutoffs int64
+	TotalCutoffs     int64
+	DeltaPruned      int64
 
-	// Reverse futility pruning statistics
-	RFPCutoffs int64 // Nodes pruned as fail-high by static eval minus margin
+	RFPCutoffs int64
 
-	// Razoring statistics
-	RazoringAttempts int64 // Number of razoring attempts
-	RazoringCutoffs  int64 // Successful razoring cutoffs
-	RazoringFailed   int64 // Razoring attempts that failed verification
+	RazoringAttempts int64
+	RazoringCutoffs  int64
+	RazoringFailed   int64
 
-	// Quiet-move pruning statistics
-	FutilityPrunes int64 // Quiets skipped because eval + margin cannot reach alpha
-	LMPPrunes      int64 // Late quiets skipped outright (late move pruning)
+	FutilityPrunes int64
+	LMPPrunes      int64
 
-	// Move ordering effectiveness
-	CutoffsByMoveIndex [64]int64 // Histogram of which move caused beta cutoff
+	CutoffsByMoveIndex [64]int64
 
-	// Transposition table effectiveness
-	TTProbes int64 // Total TT lookups attempted
-	TTHits   int64 // Successful TT hits
+	TTProbes int64
+	TTHits   int64
 
-	// Effective branching factor calculation
 	NodesByDepth [100]int64 // Nodes searched at each depth from root
 
-	// Node type distribution
-	PVNodes  int64 // Principal variation nodes (best move found)
-	CutNodes int64 // Nodes that caused beta cutoff
-	AllNodes int64 // Nodes where all moves were searched
+	PVNodes  int64
+	CutNodes int64
+	AllNodes int64
 }
 
-// adoptCounters replaces every search counter in s with the value in counters
-// and keeps the result fields s has accumulated itself (Depth, Time,
-// PrincipalVariation, BookMoveUsed, Iterations, StopReason, RootMoves). The
-// counters are whatever Stats holds beyond those, so a new counter is picked
-// up without touching this function; a new result field must be added to the
-// list below.
 func (s *Stats) adoptCounters(counters Stats) {
 	counters.Depth, counters.Time = s.Depth, s.Time
 	counters.PrincipalVariation, counters.BookMoveUsed = s.PrincipalVariation, s.BookMoveUsed
@@ -132,10 +116,6 @@ func (s *Stats) adoptCounters(counters Stats) {
 // from its predecessor. Iterations with no nodes of their own are skipped
 // rather than treated as zero, and it returns 0 when fewer than two iterations
 // qualify, never NaN or Inf.
-//
-// NodesByDepth is deliberately not used: it counts nodes by distance from the
-// root within the whole search, so the shrinking tail beyond the nominal depth
-// drags a per-ply ratio well below the true branching factor.
 func (s *Stats) EBF() float64 {
 	var sum float64
 	var count int
@@ -187,10 +167,6 @@ func (s *Stats) NullMoveEfficiency() float64 {
 	return float64(s.NullCutoffs) / float64(s.NullMoves)
 }
 
-// searchStatsJSON mirrors Stats for marshaling: it fixes the field
-// order (struct field order, not map iteration order, so json.Marshal output
-// is deterministic and diff-stable) and adds the derived metrics alongside
-// the raw counters. Field names are snake_case per the task brief.
 type searchStatsJSON struct {
 	NodesSearched      int64    `json:"nodes_searched"`
 	Depth              int      `json:"depth"`
@@ -242,8 +218,6 @@ type searchStatsJSON struct {
 	NullMoveEfficiency float64 `json:"null_move_efficiency"`
 }
 
-// iterationJSON is the marshaled form of Iteration: the score is in centipawns
-// from the side to move's point of view, the best move in UCI notation.
 type iterationJSON struct {
 	Depth     int    `json:"depth"`
 	ScoreCP   int    `json:"score_cp"`
@@ -255,19 +229,11 @@ type iterationJSON struct {
 	AspirationFailHighs int `json:"aspiration_fail_highs"`
 }
 
-// rootMoveJSON is the marshaled form of RootMove.
 type rootMoveJSON struct {
 	Move    string `json:"move"`
 	ScoreCP int    `json:"score_cp"`
 }
 
-// nonZeroPrefix returns arr truncated after the last non-zero element (empty
-// if arr is entirely zero). NodesByDepth and CutoffsByMoveIndex are fixed-size
-// arrays sized for the deepest/widest search the engine could ever run, so
-// most entries are trailing zeros for any given search; truncating to the
-// non-zero prefix keeps the JSON output compact and its length meaningful
-// (e.g. len(nodes_by_depth) approximates the depth reached) instead of always
-// emitting 100 or 64 entries.
 func nonZeroPrefix(arr []int64) []int64 {
 	last := -1
 	for i, v := range arr {
@@ -288,13 +254,6 @@ func nonZeroPrefix(arr []int64) []int64 {
 // NullMoveEfficiency). NodesByDepth and CutoffsByMoveIndex are truncated to
 // their non-zero prefix (see nonZeroPrefix); PrincipalVariation is rendered
 // as UCI move strings (e.g. "e2e4", "e7e8q").
-//
-// This uses a value receiver (rather than pointer) so that json.Marshal
-// invokes it even when Stats is embedded by value in another struct
-// (e.g. Result.Stats) and the top-level value passed to json.Marshal
-// is not itself a pointer — encoding/json only auto-takes the address of
-// addressable values, and a struct field of a non-pointer argument to
-// json.Marshal is not addressable.
 func (s Stats) MarshalJSON() ([]byte, error) {
 	pv := make([]string, len(s.PrincipalVariation))
 	for i, m := range s.PrincipalVariation {
@@ -374,10 +333,6 @@ func (s Stats) MarshalJSON() ([]byte, error) {
 	return json.Marshal(snapshot)
 }
 
-// moveToUCI renders m in UCI long algebraic notation (e.g. "e2e4", "e7e8q"),
-// matching the format used by internal/uci.MoveConverter.ToUCI. It is
-// reimplemented locally (rather than imported) because internal/uci imports
-// internal/search, so importing internal/uci here would create a cycle.
 func moveToUCI(m board.Move) string {
 	uciMove := m.From.String() + m.To.String()
 	if m.Promotion != board.Empty {
@@ -386,8 +341,6 @@ func moveToUCI(m board.Move) string {
 	return uciMove
 }
 
-// toLowerRune lowercases a single ASCII letter rune. Promotion pieces are
-// stored uppercase (e.g. 'Q'); UCI notation requires lowercase (e.g. 'q').
 func toLowerRune(r rune) rune {
 	if r >= 'A' && r <= 'Z' {
 		return r + ('a' - 'A')

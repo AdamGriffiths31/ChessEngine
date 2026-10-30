@@ -10,10 +10,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// A depth-99 search would run effectively forever. With a 500ms context it must
-// return promptly with a legal move from its last completed iteration. The 2s
-// budget is deliberately loose: it catches a search that ignores cancellation,
-// not exact polling latency, which would be flaky under CI load.
 func TestCancellationResponsiveness(t *testing.T) {
 	engine := NewMinimaxEngine()
 	engine.SetTranspositionTableSize(64)
@@ -37,8 +33,6 @@ func TestCancellationResponsiveness(t *testing.T) {
 	assertLegalMove(t, engine, b, player, result.BestMove)
 }
 
-// cancelAfterEvals cancels a search after a fixed number of evaluations, which
-// interrupts it at a repeatable point, unlike a wall-clock deadline.
 type cancelAfterEvals struct {
 	eval.Evaluator
 	remaining int
@@ -53,10 +47,6 @@ func (c *cancelAfterEvals) Evaluate(b *board.Board) eval.EvaluationScore {
 	return c.Evaluator.Evaluate(b)
 }
 
-// A root move that finishes during an interrupted iteration has a real score:
-// only the moves after it are unknown. Interrupting the iteration that first
-// proves a mate must therefore still report that mate. The sweep looks for an
-// interruption point that falls between the proof and the end of the iteration.
 func TestInterruptedIterationKeepsFinishedRootMove(t *testing.T) {
 	const fen = "8/p4P1K/rb1N2Bp/p3P3/N3R1P1/1P1k1P2/1Pbrnp2/2R2Q2 w - - 0 1"
 

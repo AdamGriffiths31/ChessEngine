@@ -17,13 +17,12 @@ type MatePosition struct {
 	BestMate int
 }
 
-// bmMatePattern matches matetrack's "bm #N" opcode.
 var bmMatePattern = regexp.MustCompile(`\bbm #(-?\d+)`)
 
 // ParseMatetrack reads a matetrack-format EPD (e.g. vondele/matetrack's
 // matetrack.epd): four FEN fields followed by "bm #N;" and other opcodes.
 // Lines without a bm #N opcode are skipped. Returned FENs get " 0 1" move
-// counters appended so board.FromFEN accepts them.
+// counters appended.
 func ParseMatetrack(r io.Reader) ([]MatePosition, error) {
 	var positions []MatePosition
 	sc := bufio.NewScanner(r)

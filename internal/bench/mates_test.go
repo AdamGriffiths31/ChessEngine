@@ -9,7 +9,7 @@ func TestParseMatetrack(t *testing.T) {
 	input := strings.Join([]string{
 		"5K2/8/2qk4/2nPp3/3r4/6B1/B7/3R4 w - e6 bm #1; ep; 00:00;",
 		`8/8/8/8/8/8/8/k1K5 b - - bm #-3; c0 "from a game";`,
-		"8/8/8/8/8/8/8/k1K5 w - - ce 0;", // no bm: skipped
+		"8/8/8/8/8/8/8/k1K5 w - - ce 0;",
 		"",
 	}, "\n")
 

@@ -13,8 +13,6 @@ import (
 )
 
 func TestSearchStatsEBF(t *testing.T) {
-	// Iteration.Nodes is cumulative; the helper builds iterations from the
-	// cumulative totals at the end of each one.
 	iterations := func(cumulative ...int64) []Iteration {
 		its := make([]Iteration, len(cumulative))
 		for i, n := range cumulative {
@@ -32,19 +30,16 @@ func TestSearchStatsEBF(t *testing.T) {
 		{name: "single iteration - no ratio possible", its: iterations(20), want: 0},
 		{
 			name: "two iterations, exact ratio",
-			// own nodes 20 then 100: 100/20 = 5
 			its:  iterations(20, 120),
 			want: 5,
 		},
 		{
 			name: "uneven ratios averaged",
-			// own nodes 20, 40, 400: (40/20 + 400/40) / 2 = 6
 			its:  iterations(20, 60, 460),
 			want: 6,
 		},
 		{
 			name: "iteration with no nodes of its own is skipped",
-			// own nodes 20, 0, 100: the empty iteration is ignored, 100/20 = 5
 			its:  iterations(20, 20, 120),
 			want: 5,
 		},
@@ -83,7 +78,7 @@ func TestTopRootMoves(t *testing.T) {
 
 	want := []RootMove{
 		{Move: moves.Moves[1], Score: 120},
-		{Move: moves.Moves[3], Score: 120}, // tie keeps root order
+		{Move: moves.Moves[3], Score: 120},
 		{Move: moves.Moves[0], Score: 50},
 	}
 	if len(got) != len(want) {
@@ -96,8 +91,6 @@ func TestTopRootMoves(t *testing.T) {
 	}
 }
 
-// The derived ratios must return 0, never NaN/Inf, when the denominator is
-// zero (including degenerate inputs where the numerator is nonzero).
 func TestSearchStatsRatios(t *testing.T) {
 	tests := []struct {
 		name string
@@ -158,10 +151,6 @@ func TestNonZeroPrefix(t *testing.T) {
 	}
 }
 
-// TestSearchStatsMarshalJSONFieldOrder locks in the stable field order of the
-// marshaled JSON so an accidental switch back to map-based marshaling (which
-// would randomize key order across runs) is caught by a plain byte-for-byte
-// diff.
 func TestSearchStatsMarshalJSONFieldOrder(t *testing.T) {
 	var s Stats
 	data, err := json.Marshal(s)
@@ -185,13 +174,6 @@ func TestSearchStatsMarshalJSONFieldOrder(t *testing.T) {
 	}
 }
 
-// Stats must describe only the latest FindBestMove call. The UCI adapter
-// reuses one engine across a game's moves without ClearSearchState, and the
-// counters used to accumulate across calls.
-//
-// Two different positions are searched: repeating one would let the warm TT
-// legitimately shrink the second node count. A 10% tolerance absorbs the history
-// table carrying over; the bug would add the first search's whole node count.
 func TestFindBestMove_StatsAreNotCumulativeAcrossCalls(t *testing.T) {
 	cfg := Config{MaxDepth: 5, UseOpeningBook: false}
 	search := func(engine *MinimaxEngine, fen string) Result {

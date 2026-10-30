@@ -12,7 +12,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-// testMove builds a distinct move identified by its destination square.
 func testMove(toSquare int) board.Move {
 	return board.Move{
 		From: board.Square{File: 0, Rank: 0},
@@ -31,8 +30,6 @@ func buildMoveList(count int) *movegen.MoveList {
 const unscored = -eval.MateScore - 1
 
 func TestReorderRootMoves_UnscoredMovesSinkToBack(t *testing.T) {
-	// Illegal or unsearched moves keep the sentinel score and must end up
-	// behind every scored move, preserving their own relative order
 	ml := buildMoveList(5)
 	scores := []eval.EvaluationScore{unscored, 20, unscored, 40, -300}
 
@@ -50,9 +47,6 @@ func TestReorderRootMoves_UnscoredMovesSinkToBack(t *testing.T) {
 }
 
 func TestReorderRootMoves_KeepsMovesAndScoresAligned(t *testing.T) {
-	// Property test against a reference stable sort: after reordering, every
-	// move must still carry the exact score it earned. Misalignment here would
-	// make the engine play a move other than the one it evaluated best.
 	rng := rand.New(rand.NewSource(42))
 
 	for trial := range 100 {
@@ -62,11 +56,10 @@ func TestReorderRootMoves_KeepsMovesAndScoresAligned(t *testing.T) {
 
 		wantScoreByMove := make(map[board.Move]eval.EvaluationScore, count)
 		for i := range scores {
-			scores[i] = eval.EvaluationScore(rng.Intn(21) - 10) // few values, many ties
+			scores[i] = eval.EvaluationScore(rng.Intn(21) - 10)
 			wantScoreByMove[ml.Moves[i]] = scores[i]
 		}
 
-		// Reference: stable sort of (move, score) pairs by score descending
 		type pair struct {
 			move  board.Move
 			score eval.EvaluationScore
@@ -92,7 +85,6 @@ func TestReorderRootMoves_KeepsMovesAndScoresAligned(t *testing.T) {
 }
 
 func TestReorderRootMoves_ScoresShorterThanMoveList(t *testing.T) {
-	// Defensive: must not panic or disturb moves beyond len(scores)
 	ml := buildMoveList(6)
 	scores := []eval.EvaluationScore{10, 30, 20}
 
@@ -124,9 +116,6 @@ func findBestMove(t *testing.T, fen string, player movegen.Player, depth int) bo
 	return result.BestMove
 }
 
-// End to end: with root reordering active between iterations, the search still
-// finds the winning capture. A move/score misalignment in the reordering would
-// show up as a wrong best move.
 func TestFindBestMove_TacticalCorrectnessAcrossIterations(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -139,22 +128,20 @@ func TestFindBestMove_TacticalCorrectnessAcrossIterations(t *testing.T) {
 			name:   "white rook wins hanging queen",
 			fen:    "4k3/8/8/4q3/8/8/4R3/4K3 w - - 0 1",
 			player: movegen.White,
-			from:   board.Square{File: 4, Rank: 1}, // e2
-			to:     board.Square{File: 4, Rank: 4}, // e5
+			from:   board.Square{File: 4, Rank: 1},
+			to:     board.Square{File: 4, Rank: 4},
 		},
 		{
 			name:   "black rook wins hanging queen",
 			fen:    "4k3/3r4/8/8/3Q4/8/8/4K3 b - - 0 1",
 			player: movegen.Black,
-			from:   board.Square{File: 3, Rank: 6}, // d7
-			to:     board.Square{File: 3, Rank: 3}, // d4
+			from:   board.Square{File: 3, Rank: 6},
+			to:     board.Square{File: 3, Rank: 3},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Depth 5 guarantees several completed iterations, so the root
-			// list has been reordered multiple times before the final answer
 			got := findBestMove(t, tt.fen, tt.player, 5)
 			if got.From != tt.from || got.To != tt.to {
 				t.Errorf("expected %v->%v, got %v->%v", tt.from, tt.to, got.From, got.To)

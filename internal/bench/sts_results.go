@@ -38,11 +38,9 @@ func NewSTSPositionRecord(r epd.STSResult) PositionRecord {
 	}
 }
 
-// STSSummaryRecord is the trailing JSONL line of an STS run: aggregate
-// statistics used both for the human-readable summary printed at the end of
-// a run and to regenerate the sts_history.md-style table (see `bench
-// report`). Type is always "summary" so a reader can distinguish it from the
-// per-position PositionRecord lines that precede it in the same file.
+// STSSummaryRecord is the trailing JSONL line of an STS run. Type is always
+// "summary" so a reader can distinguish it from the per-position
+// PositionRecord lines that precede it in the same file.
 type STSSummaryRecord struct {
 	Type            string   `json:"type"`
 	Timestamp       string   `json:"timestamp"` // "2006-01-02 15:04"
@@ -64,9 +62,8 @@ type STSSummaryRecord struct {
 	Notes           string   `json:"notes"`
 }
 
-// STSAggregates holds derived statistics computed once from a set of scored
-// STS results, shared by the human-readable summary and the JSONL summary
-// record so both are computed from the same numbers.
+// STSAggregates holds derived statistics computed from a set of scored STS
+// results.
 type STSAggregates struct {
 	CorrectMoves int
 	TotalNodes   int64
@@ -103,36 +100,37 @@ type JSONLWriter struct {
 	Path string
 }
 
-// newJSONLWriter creates tools/results/<prefix>_<timestamp>.jsonl under
-// rootPath and returns a writer for it. If a file with that timestamp already
-// exists (collision when two runs start in the same second), it appends a
-// numeric suffix (_2, _3, etc.) to the filename before the .jsonl extension,
-// up to 100 attempts before returning an error.
 func newJSONLWriter(rootPath, prefix string) (*JSONLWriter, error) {
 	dir := filepath.Join(rootPath, "tools", "results")
 	if err := os.MkdirAll(dir, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create results directory: %w", err)
 	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open results directory: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+
 	timestamp := time.Now().Format("20060102_150405")
-	basePath := filepath.Join(dir, fmt.Sprintf("%s_%s", prefix, timestamp))
+	baseName := fmt.Sprintf("%s_%s", prefix, timestamp)
 
 	for attempt := range 100 {
-		var path string
+		var name string
 		if attempt == 0 {
-			path = basePath + ".jsonl"
+			name = baseName + ".jsonl"
 		} else {
-			path = basePath + fmt.Sprintf("_%d.jsonl", attempt+1)
+			name = baseName + fmt.Sprintf("_%d.jsonl", attempt+1)
 		}
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0600) // #nosec G304 - path built from rootPath+timestamp, not user input
+		path := filepath.Join(dir, name)
+		f, err := root.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0600)
 		if err == nil {
 			return &JSONLWriter{file: f, Path: path}, nil
 		}
 		if !os.IsExist(err) {
 			return nil, fmt.Errorf("failed to create %s: %w", path, err)
 		}
-		// File exists, try next suffix
 	}
-	return nil, fmt.Errorf("failed to create collision-free JSONL file after 100 attempts for %s", basePath)
+	return nil, fmt.Errorf("failed to create collision-free JSONL file after 100 attempts for %s", filepath.Join(dir, baseName))
 }
 
 // NewSTSResultsWriter creates tools/results/sts_<timestamp>.jsonl under

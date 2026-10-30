@@ -17,36 +17,36 @@ func TestIsPassedPawn(t *testing.T) {
 	}{
 		{
 			name:       "white_passed_pawn_clear_path",
-			pawnSquare: 28, // e4
+			pawnSquare: 28,
 			enemyPawns: []int{},
 			isWhite:    true,
 			expected:   true,
 		},
 		{
 			name:       "white_blocked_by_enemy_pawn_ahead",
-			pawnSquare: 28,        // e4
-			enemyPawns: []int{36}, // e5
+			pawnSquare: 28,
+			enemyPawns: []int{36},
 			isWhite:    true,
 			expected:   false,
 		},
 		{
 			name:       "white_blocked_by_diagonal_enemy",
-			pawnSquare: 28,        // e4
-			enemyPawns: []int{35}, // d5 - can capture if white advances
+			pawnSquare: 28,
+			enemyPawns: []int{35},
 			isWhite:    true,
 			expected:   false,
 		},
 		{
 			name:       "black_passed_pawn_clear_path",
-			pawnSquare: 36, // e5
+			pawnSquare: 36,
 			enemyPawns: []int{},
 			isWhite:    false,
 			expected:   true,
 		},
 		{
 			name:       "black_blocked_by_enemy_pawn",
-			pawnSquare: 36,        // e5
-			enemyPawns: []int{28}, // e4
+			pawnSquare: 36,
+			enemyPawns: []int{28},
 			isWhite:    false,
 			expected:   false,
 		},
@@ -77,26 +77,26 @@ func TestIsIsolatedPawn(t *testing.T) {
 	}{
 		{
 			name:          "isolated_e_file",
-			friendlyPawns: []int{20}, // e3
-			file:          4,         // e-file
+			friendlyPawns: []int{20},
+			file:          4,
 			expected:      true,
 		},
 		{
 			name:          "not_isolated_with_left_neighbor",
-			friendlyPawns: []int{20, 19}, // e3, d3
-			file:          4,             // e-file
+			friendlyPawns: []int{20, 19},
+			file:          4,
 			expected:      false,
 		},
 		{
 			name:          "not_isolated_with_right_neighbor",
-			friendlyPawns: []int{20, 21}, // e3, f3
-			file:          4,             // e-file
+			friendlyPawns: []int{20, 21},
+			file:          4,
 			expected:      false,
 		},
 		{
 			name:          "edge_file_isolated",
-			friendlyPawns: []int{16}, // a3
-			file:          0,         // a-file
+			friendlyPawns: []int{16},
+			file:          0,
 			expected:      true,
 		},
 	}
@@ -127,57 +127,57 @@ func TestIsConnectedPawn(t *testing.T) {
 	}{
 		{
 			name:          "connected_diagonal_support",
-			friendlyPawns: []int{20, 11}, // e3, d2
-			pawnSquare:    20,            // e3
+			friendlyPawns: []int{20, 11},
+			pawnSquare:    20,
 			isWhite:       true,
 			expected:      true,
 		},
 		{
 			name:          "not_connected_no_support",
-			friendlyPawns: []int{20}, // e3 only
-			pawnSquare:    20,        // e3
+			friendlyPawns: []int{20},
+			pawnSquare:    20,
 			isWhite:       true,
 			expected:      false,
 		},
 		{
 			name:          "connected_right_diagonal",
-			friendlyPawns: []int{20, 13}, // e3, f2
-			pawnSquare:    20,            // e3
+			friendlyPawns: []int{20, 13},
+			pawnSquare:    20,
 			isWhite:       true,
 			expected:      true,
 		},
 		{
 			name:          "edge_pawn_no_connection",
-			friendlyPawns: []int{16}, // a3
-			pawnSquare:    16,        // a3
+			friendlyPawns: []int{16},
+			pawnSquare:    16,
 			isWhite:       true,
 			expected:      false,
 		},
 		{
 			name:          "not_connected_forward_left_diagonal",
-			friendlyPawns: []int{20, 27}, // e3, d4 (pawn in front diagonally)
-			pawnSquare:    20,            // e3
+			friendlyPawns: []int{20, 27},
+			pawnSquare:    20,
 			isWhite:       true,
 			expected:      false,
 		},
 		{
 			name:          "not_connected_forward_right_diagonal",
-			friendlyPawns: []int{20, 29}, // e3, f4 (right diagonal in front)
-			pawnSquare:    20,            // e3
+			friendlyPawns: []int{20, 29},
+			pawnSquare:    20,
 			isWhite:       true,
 			expected:      false,
 		},
 		{
 			name:          "black_connected_support_from_above",
-			friendlyPawns: []int{44, 53}, // e6, f7 (black: f7 defends e6)
-			pawnSquare:    44,            // e6
+			friendlyPawns: []int{44, 53},
+			pawnSquare:    44,
 			isWhite:       false,
 			expected:      true,
 		},
 		{
 			name:          "black_not_connected_pawn_in_front",
-			friendlyPawns: []int{44, 35}, // e6, d5 (d5 is in front of a black pawn)
-			pawnSquare:    44,            // e6
+			friendlyPawns: []int{44, 35},
+			pawnSquare:    44,
 			isWhite:       false,
 			expected:      false,
 		},
@@ -198,7 +198,6 @@ func TestIsConnectedPawn(t *testing.T) {
 	}
 }
 
-// The passed-pawn bonus grows with every rank advanced.
 func TestPassedPawnBonusGrowsTowardPromotion(t *testing.T) {
 	t.Parallel()
 	for rank := 1; rank < 6; rank++ {
@@ -210,9 +209,6 @@ func TestPassedPawnBonusGrowsTowardPromotion(t *testing.T) {
 }
 
 func TestPawnHashCaching(t *testing.T) {
-	// Not parallel: exercises the package-level PawnHashTable cache
-	// directly; see TestEvaluatePawnStructure for why this can't run
-	// concurrently with other tests that touch the same cache.
 	fen := "8/8/4P3/8/8/8/8/8 w - - 0 1"
 
 	b1, err := board.FromFEN(fen)
@@ -227,7 +223,7 @@ func TestPawnHashCaching(t *testing.T) {
 		t.Errorf("Cached result should match original: %d != %d", score1, score2)
 	}
 
-	fen2 := "8/8/8/8/8/1P1P1P2/8/8 w - - 0 1" // Isolated pawns
+	fen2 := "8/8/8/8/8/1P1P1P2/8/8 w - - 0 1"
 	b2, err := board.FromFEN(fen2)
 	if err != nil {
 		t.Fatalf("Failed to create board from FEN: %v", err)
@@ -239,8 +235,6 @@ func TestPawnHashCaching(t *testing.T) {
 	}
 }
 
-// Structure scores are compared, not pinned, so retuning the weights does not
-// break them: only the direction of each rule matters.
 func TestPawnStructureRules(t *testing.T) {
 	t.Parallel()
 	score := func(white ...int) int {

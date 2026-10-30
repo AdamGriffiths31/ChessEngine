@@ -15,12 +15,12 @@ func TestEvaluateBishopPairBonus(t *testing.T) {
 	}{
 		{
 			name:     "white_bishop_pair",
-			fen:      "8/8/8/3B4/8/8/1B6/8 w - - 0 1", // d5 and b2
+			fen:      "8/8/8/3B4/8/8/1B6/8 w - - 0 1",
 			expected: BishopPairBonus,
 		},
 		{
 			name:     "black_bishop_pair",
-			fen:      "8/1b6/8/2b5/8/8/8/8 w - - 0 1", // b7 (light) and c5 (dark)
+			fen:      "8/1b6/8/2b5/8/8/8/8 w - - 0 1",
 			expected: -BishopPairBonus,
 		},
 		{
@@ -63,17 +63,17 @@ func TestEvaluateBadBishop(t *testing.T) {
 		{
 			name:     "bad_light_bishop",
 			fen:      "8/8/8/2P1P3/1P1B1P2/2P1P3/8/8 w - - 0 1",
-			expected: -48, // Bishop on d4 (dark) with all 6 pawns on dark squares: 6 * -8
+			expected: -48,
 		},
 		{
 			name:     "good_bishop_different_colors",
 			fen:      "8/8/8/1p1p4/2B5/1p1p4/8/8 w - - 0 1",
-			expected: 0, // No own pawns blocking
+			expected: 0,
 		},
 		{
 			name:     "bad_dark_bishop",
 			fen:      "8/8/1p2p3/p1b1p3/1p2p3/8/8/8 w - - 0 1",
-			expected: -32, // Bishop on c5 (dark) with pawns b6/a5/e5/b4 on dark squares: 4 * -8
+			expected: -32,
 		},
 	}
 
@@ -86,7 +86,7 @@ func TestEvaluateBadBishop(t *testing.T) {
 
 			var bishops board.Bitboard
 			var ownPawns board.Bitboard
-			isWhite := tt.name != "bad_dark_bishop" // Determine from test name for simplicity
+			isWhite := tt.name != "bad_dark_bishop"
 
 			if isWhite {
 				bishops = b.GetPieceBitboard(board.WhiteBishop)
@@ -119,31 +119,31 @@ func TestEvaluateFianchetto(t *testing.T) {
 	}{
 		{
 			name:     "white_b2_fianchetto",
-			square:   9, // b2
+			square:   9,
 			isWhite:  true,
 			expected: FianchettoBishopBonus,
 		},
 		{
 			name:     "white_g2_fianchetto",
-			square:   14, // g2
+			square:   14,
 			isWhite:  true,
 			expected: FianchettoBishopBonus,
 		},
 		{
 			name:     "black_b7_fianchetto",
-			square:   49, // b7
+			square:   49,
 			isWhite:  false,
 			expected: FianchettoBishopBonus,
 		},
 		{
 			name:     "black_g7_fianchetto",
-			square:   54, // g7
+			square:   54,
 			isWhite:  false,
 			expected: FianchettoBishopBonus,
 		},
 		{
 			name:     "not_fianchetto_square",
-			square:   27, // d4
+			square:   27,
 			isWhite:  true,
 			expected: 0,
 		},

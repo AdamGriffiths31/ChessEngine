@@ -47,8 +47,6 @@ func TestSufficientMaterialNotDraw(t *testing.T) {
 }
 
 func TestFiftyMoveRuleScoresDraw(t *testing.T) {
-	// At clock 99 every non-capturing, non-pawn move reaches clock 100, so a
-	// king-and-rook side with no pawn move or capture available is drawn.
 	if got := searchScore(t, "8/8/4k3/8/8/4K3/8/R7 w - - 99 100", 6); got != 0 {
 		t.Errorf("KRvK at halfmove 99: score = %d, want 0", got)
 	}
@@ -58,8 +56,6 @@ func TestFiftyMoveRuleScoresDraw(t *testing.T) {
 }
 
 func TestFiftyMoveRuleMateTakesPrecedence(t *testing.T) {
-	// Back-rank mate in one with the clock at 99: Ra8# is a pawn-less rook
-	// move that makes the clock 100 but delivers checkmate, which wins.
 	if got := searchScore(t, "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 99 100", 4); got < 29000 {
 		t.Errorf("mate on the 100th halfmove: score = %d, want a mate score", got)
 	}

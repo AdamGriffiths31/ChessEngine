@@ -15,15 +15,13 @@ type SPRTConfig struct {
 	Beta         float64  // max probability of accepting H0 when H1 is true
 	TimeControl  string   // fastchess tc= syntax, e.g. "10+0.1"
 	OpeningsFile string   // path to an EPD opening book
-	Concurrency  int      // concurrent games; keep engine Threads=1 so games share cores
+	Concurrency  int      // concurrent games
 	MaxGames     int      // safety cap if SPRT never reaches a bound
 	Fastchess    string   // path to the fastchess binary
 }
 
-// DefaultSPRTConfig returns the standard STC bounds: normalized Elo [0, 2],
-// as used by fishtest and OpenBench for gainers. Concurrency defaults
-// to 1 for deterministic, low-interference runs; raise it via the -concurrency
-// flag to trade some determinism for wall-clock speed.
+// DefaultSPRTConfig returns the standard STC bounds: normalized Elo [0, 2].
+// Concurrency defaults to 1.
 func DefaultSPRTConfig(rootPath string) SPRTConfig {
 	return SPRTConfig{
 		Elo0:         0,
@@ -42,7 +40,8 @@ func DefaultSPRTConfig(rootPath string) SPRTConfig {
 type SPRTVerdict int
 
 const (
-	// SPRTContinue means the games cap was reached with no decision.
+	// SPRTContinue means fastchess accepted neither hypothesis: the games cap
+	// was reached or the run ended early.
 	SPRTContinue SPRTVerdict = iota
 	// SPRTAcceptH0 means the dev binary's Elo advantage is below Elo0 -
 	// not a real improvement.
@@ -64,8 +63,7 @@ func (v SPRTVerdict) String() string {
 }
 
 // SPRTResult is the outcome of one SPRT run. Wins/Losses/Draws are all from
-// the Dev binary's perspective (a Dev win is a Base loss), matching the
-// "is Dev stronger than Base" framing SPRT answers.
+// the Dev binary's perspective (a Dev win is a Base loss).
 type SPRTResult struct {
 	Verdict    SPRTVerdict
 	LLR        float64

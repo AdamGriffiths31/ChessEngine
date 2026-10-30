@@ -7,16 +7,11 @@ import (
 )
 
 const (
-	// preAllocCapacity is the backing-array size of a new pooled list, sized for
-	// typical positions.
-	preAllocCapacity = 128
-	// maxPooledCapacity is the largest list kept on release; bigger ones are
-	// dropped so the pool does not hold on to outliers.
+	preAllocCapacity  = 128
 	maxPooledCapacity = 512
 )
 
 // MoveListPool manages a pool of reusable MoveList objects to reduce allocation overhead.
-// Uses sync.Pool for efficient object pooling with automatic garbage collection integration.
 type MoveListPool struct {
 	pool sync.Pool
 }
@@ -39,7 +34,6 @@ func GetMoveList() *MoveList {
 	item := globalMoveListPool.pool.Get()
 	ml, ok := item.(*MoveList)
 	if !ok {
-		// This should never happen if the pool is used correctly
 		return &MoveList{}
 	}
 	ml.Clear()

@@ -8,9 +8,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/bench"
 )
 
-// runReport regenerates the STS history table from the JSONL
-// result files under tools/results (sts_*.jsonl),
-// replacing the hand-maintained sts_history.md table.
 func runReport(args []string) error {
 	fs := flag.NewFlagSet("bench report", flag.ExitOnError)
 	dir := fs.String("dir", "tools/results", "directory containing sts_*.jsonl")

@@ -1,4 +1,3 @@
-// Package book provides Zobrist hashing functionality for chess positions compatible with Polyglot opening book format.
 package book
 
 import (
@@ -11,7 +10,7 @@ var polyglotZobrist *ZobristHash
 // Compatible with Polyglot opening book format
 type ZobristHash struct {
 	pieceKeys     [64][12]uint64
-	castleKeys    [16]uint64
+	castleKeys    [4]uint64
 	enPassantKeys [8]uint64
 	sideKey       uint64
 }
@@ -90,7 +89,6 @@ func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 	return hash
 }
 
-// getPieceIndex converts a board piece to Zobrist array index
 // Official Polyglot order: BP(0), WP(1), BN(2), WN(3), BB(4), WB(5), BR(6), WR(7), BQ(8), WQ(9), BK(10), WK(11)
 func (zh *ZobristHash) getPieceIndex(piece board.Piece) int {
 	switch piece {
@@ -121,15 +119,6 @@ func (zh *ZobristHash) getPieceIndex(piece board.Piece) int {
 	default:
 		return 0
 	}
-}
-
-// HashMove generates a hash for a specific move (for move validation)
-func (zh *ZobristHash) HashMove(move board.Move) uint64 {
-	return uint64(move.From.File) |
-		(uint64(move.From.Rank) << 3) |
-		(uint64(move.To.File) << 6) |
-		(uint64(move.To.Rank) << 9) |
-		(uint64(move.Promotion) << 12)
 }
 
 // GetSideKey returns the zobrist key for side to move

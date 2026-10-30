@@ -10,9 +10,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// mirrorFEN returns the color-flipped FEN: ranks reversed, piece case
-// swapped, side to move flipped, castling rights swapped between colors,
-// en-passant rank mirrored (3<->6). Halfmove/fullmove kept as-is.
 func mirrorFEN(fen string) string {
 	fields := strings.Fields(fen)
 
@@ -30,7 +27,6 @@ func mirrorFEN(fen string) string {
 	castling := fields[2]
 	if castling != "-" {
 		castling = swapCase(castling)
-		// Normalize to conventional KQkq order
 		ordered := ""
 		for _, c := range []string{"K", "Q", "k", "q"} {
 			if strings.Contains(castling, c) {
@@ -90,7 +86,6 @@ func TestMirrorFEN(t *testing.T) {
 			t.Errorf("mirrorFEN(%q):\n got %q\nwant %q", tt.in, got, tt.want)
 		}
 	}
-	// Mirror must be its own inverse
 	for _, tt := range tests {
 		if got := mirrorFEN(mirrorFEN(tt.in)); got != tt.in {
 			t.Errorf("mirrorFEN not involutive for %q: got %q", tt.in, got)
@@ -98,20 +93,13 @@ func TestMirrorFEN(t *testing.T) {
 	}
 }
 
-// loadTestFENs returns a few hand-picked positions plus the FEN prefix (first
-// 4 fields) of every line in the STS EPD files. It parses them locally because
-// importing the epd package here would create an import cycle.
 func loadTestFENs(t *testing.T) []string {
 	t.Helper()
 	fens := []string{
 		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-		// White castled short, Black castled long
 		"2kr3r/pppq1ppp/2n2n2/4p3/4P3/2N2N2/PPPQ1PPP/R4RK1 w - - 8 12",
-		// Passed pawns for both sides
 		"8/2p5/8/1P6/8/5p2/6P1/4K2k w - - 0 40",
-		// Fianchetto structures
 		"rnbqk2r/ppppppbp/5np1/8/8/5NP1/PPPPPPBP/RNBQK2R w KQkq - 4 4",
-		// En passant available
 		"rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
 	}
 	for i := 1; i <= 6; i++ {
@@ -131,11 +119,7 @@ func loadTestFENs(t *testing.T) []string {
 	return fens
 }
 
-// TestEvaluationSymmetry requires Evaluate(position) == -Evaluate(mirror) for
-// about 1,500 positions. It catches colour-specific bugs in any evaluation
-// term, including ones the hand-built per-piece tests do not exercise.
 func TestEvaluationSymmetry(t *testing.T) {
-	// Not parallel: Evaluate() shares the unsynchronised PawnHashTable cache.
 	evaluator := NewEvaluator()
 	failures := 0
 	for _, fen := range loadTestFENs(t) {

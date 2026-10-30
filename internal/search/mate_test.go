@@ -14,26 +14,15 @@ const (
 	mateTTSizeMB    = 64
 )
 
-// Expected scores: the root score for a forced mate is MateScore - truePlies,
-// where truePlies is the length of the mating line from the root. Check
-// extensions and LMR/null reductions do not affect the encoded distance.
-//
-//   - mate in 1:  1 ply  -> MateScore-1
-//   - mate in 2:  3 plies -> MateScore-3
-//   - mate in 3:  5 plies -> MateScore-5
 type mateCase struct {
 	name      string
 	fen       string
-	line      string // the forced line the score was derived from
+	line      string
 	wantScore eval.EvaluationScore
-	// wantMove is only set for mate-in-1, where the mating move is unique.
-	// Longer mates can have several equal key moves, so only the score and
-	// legality are checked.
-	wantMove string
+	wantMove  string
 }
 
 var mateCases = []mateCase{
-	// --- mate in 1, white to move: score exactly MateScore, unique move ---
 	{
 		name:      "mate1_white_back_rank_rook",
 		fen:       "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
@@ -42,9 +31,7 @@ var mateCases = []mateCase{
 		wantMove:  "a1a8",
 	},
 	{
-		name: "mate1_white_scholars_mate",
-		// Regression: the TT re-probe during the root PVS re-search used to
-		// return 29999 instead of 30000 here.
+		name:      "mate1_white_scholars_mate",
 		fen:       "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
 		line:      "1.Qxf7#",
 		wantScore: eval.MateScore - 1,
@@ -79,7 +66,6 @@ var mateCases = []mateCase{
 		wantMove:  "h1h8",
 	},
 
-	// --- mate in 1, black to move ---
 	{
 		name:      "mate1_black_back_rank_rook",
 		fen:       "r5k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1",
@@ -95,11 +81,7 @@ var mateCases = []mateCase{
 		wantMove:  "a2a1",
 	},
 
-	// --- mate in 2, white to move: quiet key move, mate on the 2nd ---
 	{
-		// Zugzwang mate: after 1.Ra6! every Black move loses. Doubles as a
-		// null-move-pruning sentinel, since letting Black "pass" refutes the
-		// mate and any NMP cutoff here hides a real mate.
 		name:      "mate2_white_rook_sac_pawn_mate",
 		fen:       "kbK5/pp6/1P6/8/8/8/8/R7 w - - 0 1",
 		line:      "1.Ra6! bxa6 2.b7#  (3 plies; zugzwang - every Black move loses)",
@@ -118,7 +100,6 @@ var mateCases = []mateCase{
 		wantScore: eval.MateScore - 3,
 	},
 
-	// --- mate in 2, black to move ---
 	{
 		name:      "mate2_black_two_rook_ladder",
 		fen:       "1r4k1/r7/8/8/8/8/8/7K b - - 0 1",
@@ -132,7 +113,6 @@ var mateCases = []mateCase{
 		wantScore: eval.MateScore - 3,
 	},
 
-	// --- mate in 3: forced king hunts, every mating move checks ---
 	{
 		name:      "mate3_black_king_hunt",
 		fen:       "r1b1kb1r/pppp1ppp/5q2/4n3/3KP3/2N3PN/PPP4P/R1BQ1B1R b kq - 0 1",
@@ -140,23 +120,17 @@ var mateCases = []mateCase{
 		wantScore: eval.MateScore - 5,
 	},
 	{
-		name: "mate3_white_king_hunt",
-		// Color-mirror of mate3_black_king_hunt.
+		name:      "mate3_white_king_hunt",
 		fen:       "r1bq1b1r/ppp4p/2n3pn/3kp3/4N3/5Q2/PPPP1PPP/R1B1KB1R w KQ - 0 1",
 		line:      "1.Bc4+ Kxc4 2.Qb3+ Kd4 3.Qd3#  (5 plies, 3 checks)",
 		wantScore: eval.MateScore - 5,
 	},
 }
 
-// TestFindBestMove_MateInN asserts the exact mate score for every case (and
-// the exact move for mate-in-1). The exact scores guard the TT mate round-trip:
-// handleNoLegalMoves must store with the same raw ply that probeTT decodes
-// with, or re-probes come back one ply off (29999 instead of 30000).
 func TestFindBestMove_MateInN(t *testing.T) {
 	for _, tc := range mateCases {
 
 		t.Run(tc.name, func(t *testing.T) {
-			// Fresh engine per position: no cross-position TT state.
 			engine := NewMinimaxEngine()
 			engine.SetTranspositionTableSize(mateTTSizeMB)
 

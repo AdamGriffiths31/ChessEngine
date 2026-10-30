@@ -10,12 +10,8 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-// e2eHardTimeout caps the scripted session. Engine.Run has no cancellation,
-// so a hang would otherwise wedge the test process; Run is raced against this.
 const e2eHardTimeout = 10 * time.Second
 
-// sessionTimeout is e2eHardTimeout, shortened to fit under the test deadline
-// so a hang fails with a clear message instead of a go test panic.
 func sessionTimeout(t *testing.T) time.Duration {
 	t.Helper()
 	timeout := e2eHardTimeout
@@ -27,11 +23,6 @@ func sessionTimeout(t *testing.T) time.Duration {
 	return timeout
 }
 
-// TestEngine_EndToEndProtocolSession drives Engine.Run in-process with a
-// scripted UCI session and checks what a GUI would see: id lines then uciok,
-// readyok, an info line before a bestmove that is legal after 1.e4, and a
-// clean exit on "quit". A bad BookFile path set mid-session must not disrupt
-// any of it.
 func TestEngine_EndToEndProtocolSession(t *testing.T) {
 	engine := NewUCIEngine()
 
@@ -72,8 +63,6 @@ func TestEngine_EndToEndProtocolSession(t *testing.T) {
 	assertBestMoveIsLegalAfterE2E4(t, lines)
 }
 
-// assertResponseOrder checks the ordering a GUI depends on: id lines before
-// uciok, readyok after it, an info line before bestmove, bestmove last.
 func assertResponseOrder(t *testing.T, lines []string) {
 	t.Helper()
 
@@ -132,8 +121,6 @@ func assertResponseOrder(t *testing.T, lines []string) {
 	}
 }
 
-// assertBestMoveIsLegalAfterE2E4 checks the final bestmove against legal moves
-// generated independently for the position after 1.e4.
 func assertBestMoveIsLegalAfterE2E4(t *testing.T, lines []string) {
 	t.Helper()
 
@@ -181,7 +168,6 @@ func assertBestMoveIsLegalAfterE2E4(t *testing.T, lines []string) {
 	}
 }
 
-// nonEmptyLines splits output into lines, dropping blanks.
 func nonEmptyLines(output string) []string {
 	rawLines := strings.Split(output, "\n")
 	lines := make([]string, 0, len(rawLines))

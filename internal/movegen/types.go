@@ -12,7 +12,6 @@ const (
 	Black
 )
 
-// String returns string representation of player
 func (p Player) String() string {
 	if p == White {
 		return "White"

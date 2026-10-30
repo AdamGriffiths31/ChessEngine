@@ -6,14 +6,8 @@ import (
 )
 
 // BuildSPRTArgs constructs the fastchess argument list for an SPRT run
-// between cfg.BasePath and cfg.DevPath. Pure function: no I/O, no process
-// spawning - see sprt_runner.go for that. Dev registers before Base because
+// between cfg.BasePath and cfg.DevPath. Dev registers before Base because
 // fastchess reports results and the LLR from the first engine's perspective.
-//
-// Each engine runs with its binary's directory as working directory. Our UCI
-// binary loads internal/book/testdata/performance.bin relative to its working
-// directory, so running from the repo root would let both sides play book
-// moves on top of the test openings (and pay the book's load time on move 1).
 //
 // Games are played in pairs (-games 2 -repeat): each opening once with each
 // colour, which is what the pentanomial model expects.

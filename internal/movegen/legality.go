@@ -4,8 +4,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// filterLegalMovesInPlace filters out moves that would leave the king in check
-// Optimized implementation using pin analysis instead of make/unmake
 func (bmg *BitboardMoveGenerator) filterLegalMovesInPlace(b *board.Board, player Player, moves *MoveList) {
 	var ourKingPiece board.Piece
 	var opponentColor board.BitboardColor
@@ -61,12 +59,10 @@ func (bmg *BitboardMoveGenerator) calculatePinnedPieces(b *board.Board, kingSqua
 		attackerSquare, newBitboard := rookAttackers.PopLSB()
 		rookAttackers = newBitboard
 
-		// Check if attacker and king are on the same rank or file (rooks can't pin diagonally)
 		if bmg.areOnSameRankOrFile(attackerSquare, kingSquare) {
 			between := board.GetBetween(attackerSquare, kingSquare)
 			blockers := between & b.AllPieces
 			if blockers.PopCount() == 1 {
-				// Exactly one piece between attacker and king - it's pinned
 				pinnedPieces |= blockers
 			}
 		}
@@ -77,12 +73,10 @@ func (bmg *BitboardMoveGenerator) calculatePinnedPieces(b *board.Board, kingSqua
 		attackerSquare, newBitboard := bishopAttackers.PopLSB()
 		bishopAttackers = newBitboard
 
-		// Only consider diagonal lines for bishop pins (not rank/file lines)
 		if bmg.areOnSameDiagonal(attackerSquare, kingSquare) {
 			between := board.GetBetween(attackerSquare, kingSquare)
 			blockers := between & b.AllPieces
 			if blockers.PopCount() == 1 {
-				// Exactly one piece between attacker and king - it's pinned
 				pinnedPieces |= blockers
 			}
 		}
@@ -96,9 +90,9 @@ func (bmg *BitboardMoveGenerator) enPassantCapturesAttacker(move board.Move, att
 
 	var capturedPawnSquare int
 	if move.Piece == board.WhitePawn {
-		capturedPawnSquare = toSquare - 8 // Black pawn is one rank below en passant destination
+		capturedPawnSquare = toSquare - 8
 	} else {
-		capturedPawnSquare = toSquare + 8 // White pawn is one rank above en passant destination
+		capturedPawnSquare = toSquare + 8
 	}
 
 	return capturedPawnSquare == attackerSquare
@@ -119,7 +113,6 @@ func (bmg *BitboardMoveGenerator) areOnSameDiagonal(square1, square2 int) bool {
 	file2 := square2 % 8
 	rank2 := square2 / 8
 
-	// Check if the absolute difference in files equals the absolute difference in ranks
 	fileDiff := file1 - file2
 	rankDiff := rank1 - rank2
 
@@ -133,30 +126,23 @@ func (bmg *BitboardMoveGenerator) areOnSameDiagonal(square1, square2 int) bool {
 	return fileDiff == rankDiff && fileDiff != 0
 }
 
-// isMoveLegal checks if a move is legal without making/unmaking it
 func (bmg *BitboardMoveGenerator) isMoveLegal(b *board.Board, move board.Move, kingSquare int, pinnedPieces board.Bitboard, inCheck bool, opponentColor board.BitboardColor) bool {
 	fromSquare := move.From.Rank*8 + move.From.File
 	toSquare := move.To.Rank*8 + move.To.File
 
 	if move.Piece == board.WhiteKing || move.Piece == board.BlackKing {
-		// For king moves, we need to check if the destination would be attacked
-		// with the king on the new square (not the old one)
-		return bmg.isKingMoveIntoSafety(b, move, kingSquare, toSquare, opponentColor)
+		return bmg.isKingMoveIntoSafety(b, kingSquare, toSquare, opponentColor)
 	}
 
-	// If we're in double check, only king moves are legal (already handled above)
 	if inCheck {
 		attackers := bmg.getAttackersToSquare(b, kingSquare, opponentColor)
 		if attackers.PopCount() > 1 {
 			return false
 		}
 
-		// Single check - move must block check or capture attacking piece
 		attackerSquare := attackers.LSB()
 
-		// Capturing the attacker (including en passant captures)
 		if toSquare == attackerSquare || (move.IsEnPassant && bmg.enPassantCapturesAttacker(move, attackerSquare)) {
-			// Still need to check if moving piece is pinned
 			if pinnedPieces.HasBit(fromSquare) {
 				pinRay := board.GetLine(kingSquare, bmg.findPinningPiece(b, fromSquare, kingSquare, opponentColor))
 				return pinRay.HasBit(toSquare)
@@ -164,10 +150,8 @@ func (bmg *BitboardMoveGenerator) isMoveLegal(b *board.Board, move board.Move, k
 			return true
 		}
 
-		// Blocking the check (only works against sliding pieces)
 		between := board.GetBetween(attackerSquare, kingSquare)
 		if between.HasBit(toSquare) {
-			// Still need to check if moving piece is pinned
 			if pinnedPieces.HasBit(fromSquare) {
 				pinRay := board.GetLine(kingSquare, bmg.findPinningPiece(b, fromSquare, kingSquare, opponentColor))
 				return pinRay.HasBit(toSquare)
@@ -178,7 +162,6 @@ func (bmg *BitboardMoveGenerator) isMoveLegal(b *board.Board, move board.Move, k
 		return false
 	}
 
-	// Handle pinned pieces - they can only move along the pin ray
 	if pinnedPieces.HasBit(fromSquare) {
 		pinningPieceSquare := bmg.findPinningPiece(b, fromSquare, kingSquare, opponentColor)
 		if pinningPieceSquare == -1 {
@@ -189,7 +172,6 @@ func (bmg *BitboardMoveGenerator) isMoveLegal(b *board.Board, move board.Move, k
 		return pinRay.HasBit(toSquare)
 	}
 
-	// Special case: En passant can expose king to rank attacks
 	if move.IsEnPassant {
 		return bmg.isEnPassantLegal(b, move, kingSquare, opponentColor)
 	}
@@ -201,7 +183,7 @@ func (bmg *BitboardMoveGenerator) getAttackersToSquare(b *board.Board, square in
 	var attackers board.Bitboard
 
 	if attackerColor == board.BitboardWhite {
-		whitePawnAttacks := board.GetPawnAttacks(square, board.BitboardBlack) // Reverse direction
+		whitePawnAttacks := board.GetPawnAttacks(square, board.BitboardBlack)
 		attackers |= whitePawnAttacks & b.GetPieceBitboard(board.WhitePawn)
 
 		knightAttacks := board.GetKnightAttacks(square)
@@ -216,7 +198,7 @@ func (bmg *BitboardMoveGenerator) getAttackersToSquare(b *board.Board, square in
 		kingAttacks := board.GetKingAttacks(square)
 		attackers |= kingAttacks & b.GetPieceBitboard(board.WhiteKing)
 	} else {
-		blackPawnAttacks := board.GetPawnAttacks(square, board.BitboardWhite) // Reverse direction
+		blackPawnAttacks := board.GetPawnAttacks(square, board.BitboardWhite)
 		attackers |= blackPawnAttacks & b.GetPieceBitboard(board.BlackPawn)
 
 		knightAttacks := board.GetKnightAttacks(square)
@@ -252,7 +234,6 @@ func (bmg *BitboardMoveGenerator) findPinningPiece(b *board.Board, pinnedSquare,
 			between := board.GetBetween(attackerSquare, kingSquare)
 			blockers := between & b.AllPieces
 
-			// If exactly one piece between attacker and king, and it's our pinned piece
 			if blockers.PopCount() == 1 && blockers.HasBit(pinnedSquare) {
 				return attackerSquare
 			}
@@ -262,25 +243,21 @@ func (bmg *BitboardMoveGenerator) findPinningPiece(b *board.Board, pinnedSquare,
 	return -1
 }
 
-// isEnPassantLegal checks if an en passant move is legal (doesn't expose king to rank attacks)
 func (bmg *BitboardMoveGenerator) isEnPassantLegal(b *board.Board, move board.Move, kingSquare int, opponentColor board.BitboardColor) bool {
-	// En passant captures remove a pawn from a different square than the destination
-	// This can potentially expose the king to rank attacks
-
 	fromSquare := move.From.Rank*8 + move.From.File
 	toSquare := move.To.Rank*8 + move.To.File
 
 	var capturedPawnSquare int
 	if move.Piece == board.WhitePawn {
-		capturedPawnSquare = toSquare - 8 // Black pawn is one rank below
+		capturedPawnSquare = toSquare - 8
 	} else {
-		capturedPawnSquare = toSquare + 8 // White pawn is one rank above
+		capturedPawnSquare = toSquare + 8
 	}
 
 	kingRank := kingSquare / 8
 	moveRank := fromSquare / 8
 	if kingRank != moveRank {
-		return true // No rank attack possible
+		return true
 	}
 
 	var opponentRooksQueens board.Bitboard
@@ -294,10 +271,9 @@ func (bmg *BitboardMoveGenerator) isEnPassantLegal(b *board.Board, move board.Mo
 	rankAttackers := opponentRooksQueens & rankMask
 
 	if rankAttackers == 0 {
-		return true // No rank attackers
+		return true
 	}
 
-	// Simulate the en passant capture by temporarily removing both pawns
 	occupancyAfterMove := b.AllPieces
 	occupancyAfterMove = occupancyAfterMove.ClearBit(fromSquare)
 	occupancyAfterMove = occupancyAfterMove.ClearBit(capturedPawnSquare)
@@ -309,16 +285,14 @@ func (bmg *BitboardMoveGenerator) isEnPassantLegal(b *board.Board, move board.Mo
 
 		attackRay := board.GetRookAttacks(attackerSquare, occupancyAfterMove)
 		if attackRay.HasBit(kingSquare) {
-			return false // En passant would expose king
+			return false
 		}
 	}
 
 	return true
 }
 
-func (bmg *BitboardMoveGenerator) isKingMoveIntoSafety(b *board.Board, _ board.Move, fromSquare, toSquare int, opponentColor board.BitboardColor) bool {
-	// For king moves, we need to temporarily remove the king from its current square
-	// and check if the destination square would be attacked
+func (bmg *BitboardMoveGenerator) isKingMoveIntoSafety(b *board.Board, fromSquare, toSquare int, opponentColor board.BitboardColor) bool {
 	modifiedOccupancy := b.AllPieces
 	modifiedOccupancy = modifiedOccupancy.ClearBit(fromSquare)
 
@@ -331,7 +305,7 @@ func (bmg *BitboardMoveGenerator) isSquareAttackedByColorWithOccupancy(b *board.
 	}
 
 	if attackerColor == board.BitboardWhite {
-		whitePawnAttacks := board.GetPawnAttacks(square, board.BitboardBlack) // Reverse direction
+		whitePawnAttacks := board.GetPawnAttacks(square, board.BitboardBlack)
 		if (whitePawnAttacks & b.GetPieceBitboard(board.WhitePawn)) != 0 {
 			return true
 		}
@@ -351,13 +325,12 @@ func (bmg *BitboardMoveGenerator) isSquareAttackedByColorWithOccupancy(b *board.
 			return true
 		}
 
-		// Check king attacks (but not the moving king)
 		kingAttacks := board.GetKingAttacks(square)
 		if (kingAttacks & b.GetPieceBitboard(board.WhiteKing)) != 0 {
 			return true
 		}
 	} else {
-		blackPawnAttacks := board.GetPawnAttacks(square, board.BitboardWhite) // Reverse direction
+		blackPawnAttacks := board.GetPawnAttacks(square, board.BitboardWhite)
 		if (blackPawnAttacks & b.GetPieceBitboard(board.BlackPawn)) != 0 {
 			return true
 		}
@@ -377,7 +350,6 @@ func (bmg *BitboardMoveGenerator) isSquareAttackedByColorWithOccupancy(b *board.
 			return true
 		}
 
-		// Check king attacks (but not the moving king)
 		kingAttacks := board.GetKingAttacks(square)
 		if (kingAttacks & b.GetPieceBitboard(board.BlackKing)) != 0 {
 			return true

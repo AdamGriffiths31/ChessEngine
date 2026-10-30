@@ -6,23 +6,17 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// History table configuration constants
 const (
 	// HistoryMaxScore bounds every entry via gravity clamping: updates follow
 	// entry += bonus - entry*|bonus|/HistoryMaxScore, so scores asymptotically
-	// approach +-HistoryMaxScore instead of hitting a hard clamp. This keeps
-	// frequently-repeated bonuses meaningful while allowing negative (malus)
-	// values, which the linear bonus/hard-cap scheme could never produce.
+	// approach +-HistoryMaxScore instead of hitting a hard clamp.
 	HistoryMaxScore = 16384
 
-	// HistoryDecayFactor halves all entries once per search (called from
-	// FindBestMove), so stale signal fades within a few moves instead of
-	// persisting across eight.
+	// HistoryDecayFactor halves all entries once per search.
 	HistoryDecayFactor = 2
 )
 
 // HistoryTable tracks the success rate of moves based on from/to square combinations
-// Uses a butterfly table approach for better cache locality
 type HistoryTable struct {
 	table [64][64]atomic.Int32
 }
@@ -32,14 +26,11 @@ func NewHistoryTable() *HistoryTable {
 	return &HistoryTable{}
 }
 
-// historyBonus returns the per-update magnitude: quadratic in remaining depth,
-// so cutoffs found deeper in the tree (more evidence of a good move) shift
-// history more than shallow ones. Matches modern engine practice.
 func historyBonus(depth int) int32 {
 	if depth < 0 {
 		return 0
 	}
-	return int32(depth * depth) // #nosec G115 - depth is small, intentional conversion
+	return int32(depth * depth)
 }
 
 // Bonus credits a quiet move that caused a beta cutoff.
@@ -47,15 +38,11 @@ func (h *HistoryTable) Bonus(move board.Move, depth int) {
 	h.apply(move, historyBonus(depth))
 }
 
-// Malus penalizes a quiet move that was searched but did not cause the
-// cutoff. Negative entries are what make the LMR "reduce bad-history moves"
-// threshold (params.HistoryLowThreshold) reachable at all.
+// Malus penalizes a quiet move that was searched but did not cause the cutoff.
 func (h *HistoryTable) Malus(move board.Move, depth int) {
 	h.apply(move, -historyBonus(depth))
 }
 
-// apply adjusts one entry by bonus using the gravity formula above, bounding
-// the result to (-HistoryMaxScore, +HistoryMaxScore) without a hard clamp.
 func (h *HistoryTable) apply(move board.Move, bonus int32) {
 	if !isValidSquare(move.From) || !isValidSquare(move.To) || bonus == 0 {
 		return

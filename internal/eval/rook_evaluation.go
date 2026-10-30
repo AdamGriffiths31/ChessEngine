@@ -4,9 +4,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// Rook evaluation: open/semi-open file control, seventh-rank penetration,
-// attack-based mobility, connected-rooks bonus.
-
 const (
 	// RookOpenFileBonus awards rooks on completely open files
 	RookOpenFileBonus = 20
@@ -21,7 +18,6 @@ const (
 	RooksConnectedBonus = 8
 )
 
-// Returns positive values favoring White, negative favoring Black
 func evaluateRooks(b *board.Board) int {
 	if b == nil {
 		return 0

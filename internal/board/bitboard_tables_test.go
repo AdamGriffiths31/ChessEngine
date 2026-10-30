@@ -9,9 +9,9 @@ func TestKnightAttackPatterns(t *testing.T) {
 		want []int
 	}{
 		{E4, []int{D2, F2, C3, G3, C5, G5, D6, F6}},
-		{A1, []int{B3, C2}},         // corner
-		{H8, []int{F7, G6}},         // corner
-		{D1, []int{B2, F2, C3, E3}}, // edge
+		{A1, []int{B3, C2}},
+		{H8, []int{F7, G6}},
+		{D1, []int{B2, F2, C3, E3}},
 	}
 	for _, tt := range tests {
 		if got, want := GetKnightAttacks(tt.from), bitboardOf(tt.want...); got != want {
@@ -27,9 +27,9 @@ func TestKingAttackPatterns(t *testing.T) {
 		want []int
 	}{
 		{E4, []int{D3, E3, F3, D4, F4, D5, E5, F5}},
-		{A1, []int{A2, B1, B2}},         // corner
-		{H8, []int{G7, G8, H7}},         // corner
-		{E1, []int{D1, F1, D2, E2, F2}}, // edge
+		{A1, []int{A2, B1, B2}},
+		{H8, []int{G7, G8, H7}},
+		{E1, []int{D1, F1, D2, E2, F2}},
 	}
 	for _, tt := range tests {
 		if got, want := GetKingAttacks(tt.from), bitboardOf(tt.want...); got != want {

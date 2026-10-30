@@ -166,10 +166,8 @@ func TestUnmakeMoveWithMissingPiece(t *testing.T) {
 	move := Move{
 		From: Square{4, 1},
 		To:   Square{4, 3},
-		// Piece is intentionally not set
 	}
 
-	// MakeMoveWithUndo should fill in the piece
 	undo, err := board.MakeMoveWithUndo(move)
 	if err != nil {
 		t.Fatalf("MakeMoveWithUndo failed: %v", err)
@@ -203,14 +201,12 @@ func BenchmarkUnmakeMove(b *testing.B) {
 	}
 }
 
-// A null move passes the turn: side flips, half-move clock ticks, en passant is
-// cleared and castling rights are kept. Unmaking restores the exact position.
 func TestNullMove(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
 		fen  string
-		want string // FEN after the null move
+		want string
 	}{
 		{"white to move",
 			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",

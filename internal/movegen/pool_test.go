@@ -41,7 +41,6 @@ func TestMoveListPool(t *testing.T) {
 	}
 }
 
-// Oversized lists are dropped on release rather than kept in the pool.
 func TestMoveListPoolDropsOversizedLists(t *testing.T) {
 	ml := GetMoveList()
 	fillMoves(ml, maxPooledCapacity+1)

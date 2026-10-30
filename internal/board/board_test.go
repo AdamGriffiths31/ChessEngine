@@ -35,8 +35,6 @@ func TestFromFEN_InvalidCases(t *testing.T) {
 	}
 }
 
-// The en-passant field must be "-" or a square on rank 3 or 6; anything else is
-// an error, never a panic.
 func TestFromFEN_EnPassantField(t *testing.T) {
 	t.Parallel()
 	const boardPart = "8/8/8/8/8/8/8/8"
@@ -51,9 +49,7 @@ func TestFromFEN_EnPassantField(t *testing.T) {
 		{name: "dash_no_en_passant", fen: boardPart + " w - - 0 1", wantErr: false, wantHasEnPassant: false},
 		{name: "valid_e3", fen: boardPart + " w - e3 0 1", wantErr: false, wantHasEnPassant: true, wantFile: 4, wantRank: 2},
 		{name: "valid_e6", fen: boardPart + " w - e6 0 1", wantErr: false, wantHasEnPassant: true, wantFile: 4, wantRank: 5},
-		// Regression: a 1-char field once indexed out of range.
 		{name: "one_char_crasher", fen: boardPart + " w - e 0 1", wantErr: true},
-		// Doubled space leaves an empty field.
 		{name: "empty_field", fen: boardPart + " w -  0 1", wantErr: true},
 		{name: "three_char", fen: boardPart + " w - e34 0 1", wantErr: true},
 		{name: "out_of_range_square", fen: boardPart + " w - z9 0 1", wantErr: true},
@@ -98,12 +94,11 @@ func TestPieceToBitboardIndexRejectsNonPieces(t *testing.T) {
 	}
 }
 
-// SetPiece keeps the mailbox and every bitboard in step: place, replace, clear.
 func TestSetPieceUpdatesAllRepresentations(t *testing.T) {
 	t.Parallel()
 	board := NewBoard()
 
-	board.SetPiece(3, 4, WhiteQueen) // e4
+	board.SetPiece(3, 4, WhiteQueen)
 
 	if board.GetPiece(3, 4) != WhiteQueen {
 		t.Error("Array representation should have white queen on e4")
@@ -117,7 +112,7 @@ func TestSetPieceUpdatesAllRepresentations(t *testing.T) {
 		t.Error("Should have exactly one white queen")
 	}
 
-	board.SetPiece(3, 4, BlackRook) // e4
+	board.SetPiece(3, 4, BlackRook)
 
 	if board.GetPieceBitboard(WhiteQueen).HasBit(FileRankToSquare(4, 3)) {
 		t.Error("White queen should be removed from bitboard")
@@ -154,28 +149,28 @@ func TestFENToBitboards(t *testing.T) {
 			name:     "starting position white king",
 			fen:      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			piece:    WhiteKing,
-			square:   FileRankToSquare(4, 0), // e1
+			square:   FileRankToSquare(4, 0),
 			expected: true,
 		},
 		{
 			name:     "starting position black queen",
 			fen:      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 			piece:    BlackQueen,
-			square:   FileRankToSquare(3, 7), // d8
+			square:   FileRankToSquare(3, 7),
 			expected: true,
 		},
 		{
 			name:     "middle game position",
 			fen:      "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
 			piece:    WhiteBishop,
-			square:   FileRankToSquare(2, 3), // c4
+			square:   FileRankToSquare(2, 3),
 			expected: true,
 		},
 		{
 			name:     "empty square in middle game",
 			fen:      "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
 			piece:    WhitePawn,
-			square:   FileRankToSquare(3, 3), // d4
+			square:   FileRankToSquare(3, 3),
 			expected: false,
 		},
 	}
@@ -220,7 +215,6 @@ func TestBitboardConsistency(t *testing.T) {
 		board.SetPiece(move.rank, move.file, move.piece)
 	}
 
-	// Verify that derived bitboards match the sum of piece bitboards
 	var calculatedWhite, calculatedBlack Bitboard
 
 	for i := WhitePawnIndex; i <= WhiteKingIndex; i++ {
@@ -243,7 +237,6 @@ func TestBitboardConsistency(t *testing.T) {
 		t.Error("All pieces bitboard doesn't match union of color bitboards")
 	}
 
-	// Verify that array and bitboard representations are consistent
 	for rank := range 8 {
 		for file := range 8 {
 			square := FileRankToSquare(file, rank)
@@ -297,20 +290,20 @@ func TestIncrementalEvalInitialization(t *testing.T) {
 		{
 			name:             "starting position",
 			fen:              "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			expectedMaterial: 0, // Symmetric position
-			expectedPST:      0, // Symmetric PST bonuses
+			expectedMaterial: 0,
+			expectedPST:      0,
 		},
 		{
 			name:             "white advantage",
-			fen:              "8/8/8/8/8/8/4P3/8 w - - 0 1", // White pawn on e2
+			fen:              "8/8/8/8/8/8/4P3/8 w - - 0 1",
 			expectedMaterial: 100,
-			expectedPST:      -20, // e2 pawn gets -20 from PST
+			expectedPST:      -20,
 		},
 		{
 			name:             "black advantage",
-			fen:              "8/4p3/8/8/8/8/8/8 w - - 0 1", // Black pawn on e7
+			fen:              "8/4p3/8/8/8/8/8/8 w - - 0 1",
 			expectedMaterial: -100,
-			expectedPST:      20, // e7 black pawn gets bonus (flipped)
+			expectedPST:      20,
 		},
 	}
 

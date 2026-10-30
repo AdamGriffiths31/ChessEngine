@@ -1,4 +1,3 @@
-// Package uci provides Universal Chess Interface protocol implementation.
 package uci
 
 import (
@@ -28,20 +27,15 @@ func (mc *MoveConverter) ToUCI(move board.Move) string {
 
 	uciMove := from + to
 
-	// Convert Chess960 castling notation to standard UCI notation. This fixes
-	// opening book data that contains Chess960 format moves. Gated on
-	// IsCastling: matching on the From/To squares alone would also rewrite an
-	// ordinary rook move sharing the same squares (e.g. a rook lifted to e1
-	// moving back to a1) into a completely different destination.
 	if move.IsCastling {
 		switch uciMove {
-		case "e1h1": // White kingside castling
+		case "e1h1":
 			uciMove = "e1g1"
-		case "e1a1": // White queenside castling
+		case "e1a1":
 			uciMove = "e1c1"
-		case "e8h8": // Black kingside castling
+		case "e8h8":
 			uciMove = "e8g8"
-		case "e8a8": // Black queenside castling
+		case "e8a8":
 			uciMove = "e8c8"
 		}
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
-// mockEngine implements search.Engine for testing
 type mockEngine struct {
 	moveToReturn  board.Move
 	scoreToReturn eval.EvaluationScore
@@ -54,13 +53,13 @@ func TestCalculateScore(t *testing.T) {
 			name:          "No match with best move",
 			bestMove:      "e2e4",
 			engineMove:    board.Move{From: board.Square{File: 3, Rank: 1}, To: board.Square{File: 3, Rank: 3}},
-			expectedScore: 1, // Partial credit for legal move
+			expectedScore: 1,
 		},
 		{
 			name:          "Avoided move played",
 			avoidMove:     "e2e4",
 			engineMove:    board.Move{From: board.Square{File: 4, Rank: 1}, To: board.Square{File: 4, Rank: 3}},
-			expectedScore: 0, // No points for avoided move
+			expectedScore: 0,
 		},
 	}
 
@@ -171,11 +170,10 @@ func TestScoreSuite(t *testing.T) {
 		t.Errorf("Expected 2 positions, got %d", result.PositionCount)
 	}
 
-	if result.MaxScore != 20 { // 2 positions * 10 points each
+	if result.MaxScore != 20 {
 		t.Errorf("Expected max score 20, got %d", result.MaxScore)
 	}
 
-	// First position should get 10 points (exact match), second gets 1 (no match but legal)
 	expectedTotalScore := 11
 	if result.TotalScore != expectedTotalScore {
 		t.Errorf("Expected total score %d, got %d", expectedTotalScore, result.TotalScore)

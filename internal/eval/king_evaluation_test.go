@@ -17,20 +17,20 @@ func TestEvaluateOpenFilesNearKing(t *testing.T) {
 		{
 			name:       "no_open_files",
 			fen:        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-			kingSquare: 4, // e1
-			expected:   0, // No open files
+			kingSquare: 4,
+			expected:   0,
 		},
 		{
 			name:       "one_open_file",
 			fen:        "rnbqkbnr/pp1ppppp/8/8/8/8/PP1PPPPP/RNBQKBNR w KQkq - 0 1",
-			kingSquare: 4, // e1
-			expected:   0, // Actual observed value: only d-file and f-file are checked for king on e1
+			kingSquare: 4,
+			expected:   0,
 		},
 		{
 			name:       "multiple_open_files",
 			fen:        "rnbqkbnr/p2p2pp/8/8/8/8/P2P2PP/RNBQKBNR w KQkq - 0 1",
-			kingSquare: 4,   // e1
-			expected:   -40, // Actual observed value: two open files (d-file and f-file)
+			kingSquare: 4,
+			expected:   -40,
 		},
 	}
 
@@ -56,13 +56,13 @@ func TestKingSafetyZonePrecomputation(t *testing.T) {
 	}
 
 	expectedA1Zone := board.Bitboard(0)
-	expectedA1Zone = expectedA1Zone.SetBit(0).SetBit(1).SetBit(8).SetBit(9) // a1, b1, a2, b2
+	expectedA1Zone = expectedA1Zone.SetBit(0).SetBit(1).SetBit(8).SetBit(9)
 	if KingSafetyZone[0] != expectedA1Zone {
 		t.Errorf("KingSafetyZone[0] (a1) incorrect: expected %d, got %d", expectedA1Zone, KingSafetyZone[0])
 	}
 
 	d4Zone := KingSafetyZone[27]
-	expectedSquares := []int{18, 19, 20, 26, 27, 28, 34, 35, 36} // 3x3 around d4
+	expectedSquares := []int{18, 19, 20, 26, 27, 28, 34, 35, 36}
 	actualCount := d4Zone.PopCount()
 	if actualCount != 9 {
 		t.Errorf("KingSafetyZone[27] (d4) should have 9 squares, has %d", actualCount)

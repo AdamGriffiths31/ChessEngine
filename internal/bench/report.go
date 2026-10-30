@@ -12,13 +12,7 @@ import (
 )
 
 // GenerateReport regenerates the STS history table from the JSONL
-// result files under resultsDir (tools/results by default), replacing the
-// hand-maintained sts_history.md table with data derived straight from
-// tools/results/sts_*.jsonl.
-//
-// Only JSONL-era runs are reproduced: historical rows that predate per-run
-// JSONL output are not present in the source files and so cannot appear
-// here.
+// result files under resultsDir.
 func GenerateReport(resultsDir string) (string, error) {
 	stsTable, err := GenerateSTSHistoryTable(resultsDir)
 	if err != nil {
@@ -33,9 +27,7 @@ func GenerateReport(resultsDir string) (string, error) {
 }
 
 // GenerateSTSHistoryTable builds a markdown table (one row per file) from
-// the trailing summary line of every tools/results/sts_*.jsonl file under
-// resultsDir, in the same column layout as the hand-maintained
-// tools/results/sts_history.md.
+// the trailing summary line of every sts_*.jsonl file under resultsDir.
 func GenerateSTSHistoryTable(resultsDir string) (string, error) {
 	pattern := filepath.Join(resultsDir, "sts_*.jsonl")
 	files, err := filepath.Glob(pattern)
@@ -53,7 +45,7 @@ func GenerateSTSHistoryTable(resultsDir string) (string, error) {
 	b.WriteString("|------|--------|----------|-----------|-------|-----|---------|------------|---------|-------|---------|----------|------------|-----|-----------|-------|\n")
 
 	for _, f := range files {
-		summary, err := readSTSSummary(f)
+		summary, err := readSTSSummary(resultsDir, filepath.Base(f))
 		if err != nil {
 			slog.Warn("bench report: skipping STS results file", "path", f, "error", err)
 			continue
@@ -65,13 +57,16 @@ func GenerateSTSHistoryTable(resultsDir string) (string, error) {
 	return b.String(), nil
 }
 
-// readSTSSummary reads path (a sts_<timestamp>.jsonl file) and returns its
-// trailing summary record - the last non-empty line, which the STS runner
-// always writes after every per-position record.
-func readSTSSummary(path string) (STSSummaryRecord, error) {
-	data, err := os.ReadFile(path) // #nosec G304 - path comes from filepath.Glob over a fixed results directory
+func readSTSSummary(resultsDir, name string) (STSSummaryRecord, error) {
+	root, err := os.OpenRoot(resultsDir)
 	if err != nil {
-		return STSSummaryRecord{}, fmt.Errorf("failed to read %s: %w", path, err)
+		return STSSummaryRecord{}, fmt.Errorf("failed to open %s: %w", resultsDir, err)
+	}
+	defer func() { _ = root.Close() }()
+
+	data, err := root.ReadFile(name)
+	if err != nil {
+		return STSSummaryRecord{}, fmt.Errorf("failed to read %s: %w", name, err)
 	}
 
 	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
@@ -82,18 +77,16 @@ func readSTSSummary(path string) (STSSummaryRecord, error) {
 		}
 		var summary STSSummaryRecord
 		if err := json.Unmarshal([]byte(line), &summary); err != nil {
-			return STSSummaryRecord{}, fmt.Errorf("failed to parse last line of %s: %w", path, err)
+			return STSSummaryRecord{}, fmt.Errorf("failed to parse last line of %s: %w", name, err)
 		}
 		if summary.Type != "summary" {
-			return STSSummaryRecord{}, fmt.Errorf("last line of %s is not a summary record (type=%q)", path, summary.Type)
+			return STSSummaryRecord{}, fmt.Errorf("last line of %s is not a summary record (type=%q)", name, summary.Type)
 		}
 		return summary, nil
 	}
-	return STSSummaryRecord{}, fmt.Errorf("%s has no data lines", path)
+	return STSSummaryRecord{}, fmt.Errorf("%s has no data lines", name)
 }
 
-// formatSTSHistoryRow renders one markdown table row from an STS summary
-// record, matching the column layout of tools/results/sts_history.md.
 func formatSTSHistoryRow(s STSSummaryRecord) string {
 	avgTime := (time.Duration(s.AvgTimeMS) * time.Millisecond).Round(time.Millisecond)
 	totalTime := (time.Duration(s.TotalTimeMS) * time.Millisecond).Round(time.Second)
@@ -118,8 +111,6 @@ func formatSTSHistoryRow(s STSSummaryRecord) string {
 	)
 }
 
-// formatNodeCount renders a nodes-per-second figure compactly (e.g.
-// "1.4M", "76.9K"), matching the style used elsewhere for node counts.
 func formatNodeCount(nodes float64) string {
 	switch {
 	case nodes >= 1_000_000:

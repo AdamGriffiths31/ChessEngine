@@ -1,4 +1,3 @@
-// Package search provides chess move search algorithms and transposition table implementation.
 package search
 
 import (
@@ -24,14 +23,9 @@ const (
 	PVArrayMargin = 20
 
 	// NullMoveMaxPieces is the piece count above which null-move pruning is
-	// trusted. At or below it, null-move cutoffs are skipped: sparse positions
-	// are where zugzwang lives, and even one immobile minor piece (e.g. a bishop
-	// jailed by its own pawns) can lose to a forced tempo, which
-	// hasNonPawnMaterial alone does not catch.
+	// trusted. At or below it, null-move cutoffs are skipped.
 	NullMoveMaxPieces = 8
 
-	// noStaticEval marks a staticEvalStack slot with no usable eval (side in
-	// check, or the root, which negamax does not record).
 	noStaticEval = eval.EvaluationScore(-32001)
 
 	// FiftyMoveHalfMoves is the halfmove-clock value at which the fifty-move
@@ -40,22 +34,22 @@ const (
 	FiftyMoveHalfMoves = 100
 
 	// NullMoveMinDepth is the shallowest remaining depth at which null-move
-	// pruning is tried; NullMoveDeepDepth is where its reduction grows by one
-	// (capped at NullMoveMaxReduction).
-	NullMoveMinDepth     = 3
-	NullMoveDeepDepth    = 6
+	// pruning is tried.
+	NullMoveMinDepth = 3
+	// NullMoveDeepDepth is the depth at which the null-move reduction grows by one.
+	NullMoveDeepDepth = 6
+	// NullMoveMaxReduction caps the null-move reduction.
 	NullMoveMaxReduction = 3
 
-	// Quiescence pruning: a capture is skipped when the stand-pat eval plus the
-	// victim's value (plus a promotion bonus) plus QDeltaMargin still falls
-	// below alpha, or when its SEE is worse than QSEEPruneThreshold.
-	QDeltaMargin       = 200
-	QDeltaPromoBonus   = 800
+	// QDeltaMargin is added to the stand-pat eval and the victim's value. A
+	// capture is skipped when the total still falls below alpha.
+	QDeltaMargin = 200
+	// QDeltaPromoBonus is added to that total for promotions.
+	QDeltaPromoBonus = 800
+	// QSEEPruneThreshold is the SEE below which quiescence skips a capture.
 	QSEEPruneThreshold = -100
 )
 
-// LMR table dimensions. Depths and move counts beyond the last row/column are
-// clamped to it.
 const (
 	lmrTableDepths = 16
 	lmrTableMoves  = 64
@@ -80,7 +74,6 @@ type Params struct {
 	HistoryMedThreshold  int32
 	HistoryLowThreshold  int32
 
-	// NullMoveEnabled toggles null-move pruning (see tryNullMove). Defaults to true.
 	NullMoveEnabled bool
 
 	// Reverse futility pruning (static null move): in non-PV nodes at shallow
@@ -90,15 +83,13 @@ type Params struct {
 	RFPMaxDepth int
 	RFPMargin   eval.EvaluationScore // Per-ply margin: eval - depth*RFPMargin >= beta
 
-	// Razoring parameters
 	RazoringEnabled  bool
 	RazoringMargins  [5]eval.EvaluationScore // Margins for depths 1-4 (index 0 unused)
-	RazoringMaxDepth int                     // Maximum depth to apply razoring
+	RazoringMaxDepth int
 
 	// Internal futility pruning: at shallow depth, skip quiet moves when the
-	// static eval plus a depth-scaled margin still cannot reach alpha. The
-	// move cannot improve on alpha by enough to matter, so searching it is
-	// wasted work. Giving-check moves are exempt (they are free tactics).
+	// static eval plus a depth-scaled margin still cannot reach alpha.
+	// Giving-check moves are exempt.
 	FutilityEnabled  bool
 	FutilityMaxDepth int
 	FutilityMargins  [6]eval.EvaluationScore // Indexed by depth (index 0 unused)
@@ -108,49 +99,35 @@ type Params struct {
 	LMPEnabled  bool
 	LMPMaxDepth int
 
-	// Late Move Reductions (LMR) configuration
-	LMREnabled  bool // Whether LMR is applied at all (see calculateLMRReduction). Defaults to true.
-	LMRMinDepth int  // Minimum depth to apply LMR (default: 3)
-	LMRMinMoves int  // Number of moves to search at full depth (default: 4)
+	LMREnabled  bool
+	LMRMinDepth int
+	LMRMinMoves int
 }
 
-// getParams returns well-tuned search parameters
 func getParams() Params {
 	return Params{
-		NullMoveReduction:    2,    // Conservative null move
-		HistoryHighThreshold: 2000, // Well-tested history values
+		NullMoveReduction:    2,
+		HistoryHighThreshold: 2000,
 		HistoryMedThreshold:  500,
 		HistoryLowThreshold:  -500,
 
 		NullMoveEnabled: true,
 
-		// Reverse futility pruning.
 		RFPEnabled:  true,
 		RFPMaxDepth: 6,
 		RFPMargin:   90,
 
-		// Razoring: Like Stockfish, only apply at depth 1
-		// Applying at deeper depths is too risky in tactical positions
-		// Margin of 125cp is conservative enough to avoid pruning tactics
 		RazoringEnabled:  true,
 		RazoringMargins:  [5]eval.EvaluationScore{0, 125, 175, 225, 275},
 		RazoringMaxDepth: 1,
 
-		// Futility pruning: at depth <= FutilityMaxDepth a quiet move is skipped
-		// when static eval + FutilityMargins[depth] cannot reach alpha.
-		// FutilityMargins has no entry past depth 4, so FutilityMaxDepth must not
-		// exceed 4 without extending it.
 		FutilityEnabled:  true,
 		FutilityMaxDepth: 4,
 		FutilityMargins:  [6]eval.EvaluationScore{0, 150, 250, 350, 450},
 
-		// LMP skips quiets after 3+depth^2 searched (doubled when improving)
-		// and never runs in PV nodes. Without the improving split and PV
-		// exclusion it lost Elo in testing.
 		LMPEnabled:  true,
 		LMPMaxDepth: 5,
 
-		// Late Move Reductions: matches the UCI engine defaults.
 		LMREnabled:  true,
 		LMRMinDepth: 3,
 		LMRMinMoves: 4,

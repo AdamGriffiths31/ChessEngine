@@ -10,35 +10,29 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
-// stageTTHash is an arbitrary non-zero hash (zero marks an empty TT slot).
 const stageTTHash uint64 = 0x123456789ABCDEF0
 
-// stageMove is a quiet e2e4.
 func stageMove() board.Move {
 	return board.Move{
-		From: board.Square{File: 4, Rank: 1}, // e2
-		To:   board.Square{File: 4, Rank: 3}, // e4
+		From: board.Square{File: 4, Rank: 1},
+		To:   board.Square{File: 4, Rank: 3},
 	}
 }
 
-// newEngineWithTT builds an engine with a small transposition table.
 func newEngineWithTT() *MinimaxEngine {
 	m := NewMinimaxEngine()
 	m.SetTranspositionTableSize(1)
 	return m
 }
 
-// Null-move pruning must decline, without counting an attempt, when the side to
-// move is in check, beta is near the mate bound, only a king and pawns remain
-// (zugzwang risk), or the board is sparse.
 func TestTryNullMove_Declines(t *testing.T) {
 	tests := []struct {
 		name         string
 		fen          string
 		beta         eval.EvaluationScore
 		inCheck      bool
-		wantZugzwang int64 // expected NullMoveZugzwangSkipped
-		wantSparse   int64 // expected NullMoveSparseSkipped
+		wantZugzwang int64
+		wantSparse   int64
 	}{
 		{"in check", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 100, true, 0, 0},
 		{"beta at the mate bound", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", eval.MateScore, false, 0, 0},
@@ -74,9 +68,6 @@ func TestTryNullMove_Declines(t *testing.T) {
 	}
 }
 
-// Black is a queen down on a full board, so passing leaves it lost and the
-// reduced-depth search fails high against a low beta. The board must be dense:
-// sparse boards skip null-move cutoffs entirely (see params.go).
 func TestTryNullMove_CutsOffWhenOpponentIsLost(t *testing.T) {
 	m := NewMinimaxEngine()
 	b := testutil.MustFromFEN(t, "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -101,7 +92,6 @@ func TestTryRazoring_DeclinesWhenDisabled(t *testing.T) {
 	m := NewMinimaxEngine()
 	m.searchState.searchParams.RazoringEnabled = false
 
-	// Otherwise-qualifying conditions, but razoring is off: decline, no attempt counted.
 	score, done := m.tryRazoring(context.Background(), movegen.White, 1, 100, 200, 1, -500, false)
 
 	if done {
@@ -118,7 +108,6 @@ func TestTryRazoring_DeclinesWhenDisabled(t *testing.T) {
 func TestTryRazoring_CutoffIncrementsAllNodes(t *testing.T) {
 	m := NewMinimaxEngine()
 	m.searchState.searchParams.RazoringEnabled = true
-	// White is two queens down, so quiescence confirms a fail-low against a high alpha.
 	b := testutil.MustFromFEN(t, "4k3/8/8/8/8/8/8/qq2K3 w - - 0 1")
 	m.searchState.board = b
 	staticEval := m.evaluator.Evaluate(b)
@@ -139,7 +128,7 @@ func TestTryRazoring_CutoffIncrementsAllNodes(t *testing.T) {
 
 func TestRecordCutoff_StoresKillerAndHistoryForQuietMove(t *testing.T) {
 	m := newEngineWithTT()
-	move := stageMove() // quiet, non-capture
+	move := stageMove()
 	const ply = 3
 	const depth = 4
 
@@ -173,10 +162,10 @@ func TestRecordCutoff_MalusesEarlierQuietMoves(t *testing.T) {
 	const ply = 3
 	const depth = 4
 
-	hero := stageMove() // quiet, non-capture
+	hero := stageMove()
 	earlier := board.Move{
-		From:  board.Square{File: 0, Rank: 1}, // a2
-		To:    board.Square{File: 0, Rank: 2}, // a3
+		From:  board.Square{File: 0, Rank: 1},
+		To:    board.Square{File: 0, Rank: 2},
 		Piece: board.WhitePawn,
 	}
 
@@ -197,7 +186,7 @@ func TestRecordCutoff_MalusesEarlierQuietMoves(t *testing.T) {
 func TestRecordCutoff_SkipsKillerAndHistoryForCapture(t *testing.T) {
 	m := newEngineWithTT()
 	move := stageMove()
-	move.IsCapture = true // capture: killer/history must be skipped
+	move.IsCapture = true
 	const ply = 3
 	const depth = 4
 
@@ -209,7 +198,6 @@ func TestRecordCutoff_SkipsKillerAndHistoryForCapture(t *testing.T) {
 	if m.getHistoryScore(move) != 0 {
 		t.Errorf("capture history should stay 0, got %d", m.getHistoryScore(move))
 	}
-	// Stats bookkeeping still runs for captures.
 	if m.searchState.searchStats.TotalCutoffs != 1 {
 		t.Errorf("TotalCutoffs = %d, want 1", m.searchState.searchStats.TotalCutoffs)
 	}

@@ -4,9 +4,6 @@ import (
 	"testing"
 )
 
-// Hand-checked attack sets: each slider stops at (and includes) the first
-// blocker in every direction. This is the ground truth that the consistency
-// test below compares the magic lookup against.
 func TestSlidingAttacksWithBlockers(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -32,8 +29,8 @@ func TestSlidingAttacksWithBlockers(t *testing.T) {
 			attacks:   GetQueenAttacks,
 			occupancy: []int{E6, G6},
 			want: []int{
-				E5, E6, E3, E2, E1, A4, B4, C4, D4, F4, G4, H4, // rook lines
-				F5, G6, D5, C6, B7, A8, D3, C2, B1, F3, G2, H1, // bishop lines
+				E5, E6, E3, E2, E1, A4, B4, C4, D4, F4, G4, H4,
+				F5, G6, D5, C6, B7, A8, D3, C2, B1, F3, G2, H1,
 			},
 		},
 	}
@@ -49,15 +46,14 @@ func TestSlidingAttacksWithBlockers(t *testing.T) {
 func TestSlidingPieceAttacksConsistency(t *testing.T) {
 	t.Parallel()
 
-	// Magic lookups must equal the slow on-the-fly calculation.
 	testSquares := []int{A1, E4, H8, D5}
 
 	for _, square := range testSquares {
 		occupancies := []Bitboard{
-			0,                            // Empty board
-			Bitboard(0x0F0F0F0F0F0F0F0F), // Alternating pattern
-			Bitboard(0x8142241818244281), // Random pattern
-			Bitboard(0xFFFFFFFFFFFFFFFF), // Full board
+			0,
+			Bitboard(0x0F0F0F0F0F0F0F0F),
+			Bitboard(0x8142241818244281),
+			Bitboard(0xFFFFFFFFFFFFFFFF),
 		}
 
 		for _, occupancy := range occupancies {
@@ -101,7 +97,6 @@ func TestInvalidSquareInputs(t *testing.T) {
 
 func TestRelevantOccupancyMasks(t *testing.T) {
 	t.Parallel()
-	// Relevant-occupancy masks exclude edge squares and the piece's own square.
 	testCases := []struct {
 		square      int
 		rookBits    int

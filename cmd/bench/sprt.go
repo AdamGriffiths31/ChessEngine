@@ -11,9 +11,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/bench"
 )
 
-// parseEngineOptions splits a comma-separated "Name=Value,Name2=Value2"
-// flag value into individual "Name=Value" entries, e.g. for Stockfish's
-// "Skill Level=5,Threads=1". Empty input yields no options.
 func parseEngineOptions(s string) []string {
 	if s == "" {
 		return nil
@@ -21,9 +18,6 @@ func parseEngineOptions(s string) []string {
 	return strings.Split(s, ",")
 }
 
-// runSPRT runs an SPRT regression test between two UCI engines via
-// fastchess and logs the result. See docs/sprt-testing.md for the full
-// workflow; -base/-dev accept any UCI engine (e.g. handicapped Stockfish).
 func runSPRT(args []string) error {
 	rootPath, err := os.Getwd()
 	if err != nil {

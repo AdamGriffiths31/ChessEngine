@@ -44,7 +44,6 @@ func ParseEPD(epdLine string) (*Position, error) {
 	var fenParts []string
 	var annotationStart int
 
-	// Check if parts[4] and parts[5] look like halfmove/fullmove counters
 	if len(parts) >= 6 {
 		if isNumeric(parts[4]) && isNumeric(parts[5]) {
 			fenParts = parts[:6]
@@ -58,7 +57,6 @@ func ParseEPD(epdLine string) (*Position, error) {
 		annotationStart = 4
 	}
 
-	// If we only have 4 parts (no halfmove/fullmove), add defaults
 	var fen string
 	if len(fenParts) == 4 {
 		fen = strings.Join(fenParts, " ") + " 0 1"
@@ -86,7 +84,6 @@ func ParseEPD(epdLine string) (*Position, error) {
 }
 
 func parseAnnotations(position *Position, annotationStr string) *Position {
-	// Split by semicolon to handle EPD annotations properly
 	annotations := strings.Split(annotationStr, ";")
 
 	for _, annotation := range annotations {
@@ -102,15 +99,12 @@ func parseAnnotations(position *Position, annotationStr string) *Position {
 
 		switch annotParts[0] {
 		case "bm":
-			// Best move annotation: bm Ba7
 			position.BestMove = annotParts[1]
 
 		case "am":
-			// Avoid move annotation: am Nf3
 			position.AvoidMove = annotParts[1]
 
 		case "c0":
-			// Comment annotation: c0 "Ba7=10, Qf6+=3, a5=3, h5=5"
 			comment := strings.Join(annotParts[1:], " ")
 			comment = strings.Trim(comment, "\"")
 			position.Comment = comment
@@ -118,7 +112,6 @@ func parseAnnotations(position *Position, annotationStr string) *Position {
 			position.MoveScores = parseMoveScores(comment)
 
 		case "id":
-			// ID annotation: id "STS(v2.2) Open Files and Diagonals.001"
 			id := strings.Join(annotParts[1:], " ")
 			id = strings.Trim(id, "\"")
 			position.ID = id
@@ -136,7 +129,6 @@ func ParseEPDFile(content string) ([]*Position, error) {
 	for lineNum, line := range lines {
 		position, err := ParseEPD(line)
 		if err != nil {
-			// Skip empty lines and comments, but report other parsing errors
 			if !strings.Contains(err.Error(), "empty or comment line") {
 				return nil, fmt.Errorf("error parsing line %d: %w", lineNum+1, err)
 			}
@@ -152,13 +144,12 @@ func ParseEPDFile(content string) ([]*Position, error) {
 func parseMoveScores(comment string) []MoveScore {
 	var moveScores []MoveScore
 
-	// Pattern to match move=score pairs like "Ba7=10" or "Qf6+=3"
 	re := regexp.MustCompile(`([A-Za-z0-9+=-]+)=(\d+)`)
 	matches := re.FindAllStringSubmatch(comment, -1)
 
 	for _, match := range matches {
 		if len(match) >= 3 {
-			move := strings.TrimSuffix(match[1], "+") // Remove + suffix if present
+			move := strings.TrimSuffix(match[1], "+")
 			if points, err := strconv.Atoi(match[2]); err == nil {
 				moveScores = append(moveScores, MoveScore{
 					Move:   move,

@@ -320,8 +320,6 @@ func TestProtocolHandler_ParseSetOption(t *testing.T) {
 	}
 }
 
-// Mate scores encode the plies to mate as MateScore - plies; UCI reports them in
-// moves, positive for the side delivering mate and negative for the side mated.
 func TestFormatScore(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -347,7 +345,6 @@ func TestFormatScore(t *testing.T) {
 	}
 }
 
-// info lines report time in milliseconds and a derived nodes-per-second figure.
 func TestProtocolHandler_FormatInfo(t *testing.T) {
 	handler := NewProtocolHandler()
 
@@ -358,8 +355,6 @@ func TestProtocolHandler_FormatInfo(t *testing.T) {
 	}
 }
 
-// TestEngine_BenchCommand checks "bench <depth>" reports the bench line, and
-// that a bad depth yields no output instead of a search.
 func TestEngine_BenchCommand(t *testing.T) {
 	engine := NewUCIEngine()
 

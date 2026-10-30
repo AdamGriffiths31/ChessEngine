@@ -4,7 +4,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-// generateBishopMovesBitboard generates bishop moves using magic bitboards
 func (bmg *BitboardMoveGenerator) generateBishopMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var bishopPiece board.Piece
 	var bitboardColor, enemyColor board.BitboardColor
@@ -33,14 +32,12 @@ func (bmg *BitboardMoveGenerator) generateBishopMovesBitboard(b *board.Board, pl
 		bishops = newBitboard
 
 		attacks := board.GetBishopAttacks(fromSquare, occupancy)
-		// Remove squares occupied by friendly pieces
 		validMoves := attacks &^ friendlyPieces
 
 		bmg.addSlidingPieceMoves(b, moveList, fromSquare, validMoves, enemyPieces, bishopPiece)
 	}
 }
 
-// generateRookMovesBitboard generates rook moves using magic bitboards
 func (bmg *BitboardMoveGenerator) generateRookMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var rookPiece board.Piece
 	var bitboardColor, enemyColor board.BitboardColor
@@ -69,14 +66,12 @@ func (bmg *BitboardMoveGenerator) generateRookMovesBitboard(b *board.Board, play
 		rooks = newBitboard
 
 		attacks := board.GetRookAttacks(fromSquare, occupancy)
-		// Remove squares occupied by friendly pieces
 		validMoves := attacks &^ friendlyPieces
 
 		bmg.addSlidingPieceMoves(b, moveList, fromSquare, validMoves, enemyPieces, rookPiece)
 	}
 }
 
-// generateQueenMovesBitboard generates queen moves using optimized separate rook/bishop processing
 func (bmg *BitboardMoveGenerator) generateQueenMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
 	var queenPiece board.Piece
 	var bitboardColor, enemyColor board.BitboardColor
@@ -104,12 +99,10 @@ func (bmg *BitboardMoveGenerator) generateQueenMovesBitboard(b *board.Board, pla
 		fromSquare, newBitboard := queens.PopLSB()
 		queens = newBitboard
 
-		// Generate rook-like moves for this queen
 		rookAttacks := board.GetRookAttacks(fromSquare, occupancy)
 		rookValidMoves := rookAttacks &^ friendlyPieces
 		bmg.addSlidingPieceMoves(b, moveList, fromSquare, rookValidMoves, enemyPieces, queenPiece)
 
-		// Generate bishop-like moves for this queen
 		bishopAttacks := board.GetBishopAttacks(fromSquare, occupancy)
 		bishopValidMoves := bishopAttacks &^ friendlyPieces
 		bmg.addSlidingPieceMoves(b, moveList, fromSquare, bishopValidMoves, enemyPieces, queenPiece)
