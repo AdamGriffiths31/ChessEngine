@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
@@ -24,6 +25,8 @@ const (
 	// DefaultMoveTime is the per-move time budget used when a "go" command
 	// specifies neither a move time nor clock times.
 	DefaultMoveTime = 5 * time.Second
+
+	emptyOptionValue = "<empty>"
 )
 
 // Engine wraps the chess engine with UCI protocol support.
@@ -33,8 +36,9 @@ type Engine struct {
 	converter        *MoveConverter
 	protocol         *ProtocolHandler
 	options          map[string]string
-	searching        bool
-	stopChannel      chan struct{}
+	cancelSearch     context.CancelFunc
+	searchDone       chan struct{}
+	outputMu         sync.Mutex
 	output           io.Writer
 	moveNumber       int
 	session          string
@@ -57,8 +61,6 @@ func NewUCIEngine() *Engine {
 		converter:     NewMoveConverter(),
 		protocol:      NewProtocolHandler(),
 		options:       make(map[string]string),
-		searching:     false,
-		stopChannel:   make(chan struct{}),
 		session:       fmt.Sprintf("%d-%d", time.Now().Unix(), os.Getpid()),
 		uciLogEnabled: slog.Default().Enabled(context.Background(), slog.LevelDebug),
 		generator:     movegen.NewGenerator(),
@@ -69,11 +71,11 @@ func NewUCIEngine() *Engine {
 
 // SetBookFile configures the opening book path used to build the book prober.
 // The prober is constructed once, on the first "go" command that finds a
-// non-empty book file (see probeBook); therefore a BookFile set BEFORE the
-// first search takes effect, while later changes are ignored. Passing an empty
+// non-empty book file after a change of path (see probeBook). Passing an empty
 // path disables the opening book. The choice is logged at Info level.
 func (ue *Engine) SetBookFile(path string) {
 	ue.bookFile = path
+	ue.prober = nil
 	if path != "" {
 		slog.Info("book file set", "path", path)
 	} else {
@@ -98,25 +100,57 @@ func (ue *Engine) Run(input io.Reader, output io.Writer) error {
 			slog.Debug("uci", "dir", "in", "line", line)
 		}
 
-		response := ue.HandleCommand(line)
-
-		if response != "" {
-			ue.send(response)
+		cmd := ue.protocol.ParseCommand(line)
+		switch cmd.Name {
+		case "go":
+			ue.startSearch(cmd.Args)
+			continue
+		case "quit":
+			ue.handleStop()
+			ue.waitForSearch()
+			return scanner.Err()
+		case "position", "setoption", "ucinewgame", "bench":
+			ue.waitForSearch()
 		}
 
-		cmd := ue.protocol.ParseCommand(line)
-		if cmd.Name == "quit" {
-			break
+		if response := ue.HandleCommand(line); response != "" {
+			ue.send(response)
 		}
 	}
 
+	ue.waitForSearch()
 	return scanner.Err()
+}
+
+func (ue *Engine) startSearch(args []string) {
+	ue.waitForSearch()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	ue.cancelSearch = cancel
+	ue.searchDone = done
+
+	go func() {
+		defer close(done)
+		defer cancel()
+		ue.handleGo(ctx, args)
+	}()
+}
+
+func (ue *Engine) waitForSearch() {
+	if ue.searchDone != nil {
+		<-ue.searchDone
+		ue.searchDone = nil
+		ue.cancelSearch = nil
+	}
 }
 
 func (ue *Engine) send(line string) {
 	if ue.uciLogEnabled {
 		slog.Debug("uci", "dir", "out", "line", line)
 	}
+	ue.outputMu.Lock()
+	defer ue.outputMu.Unlock()
 	if _, err := fmt.Fprintln(ue.output, line); err != nil {
 		slog.Error("failed to write response", "error", err)
 	}
@@ -138,7 +172,7 @@ func (ue *Engine) HandleCommand(input string) string {
 	case "position":
 		return ue.handlePosition(cmd.Args)
 	case "go":
-		ue.handleGo(cmd.Args)
+		ue.handleGo(context.Background(), cmd.Args)
 		return ""
 	case "stop":
 		return ue.handleStop()
@@ -188,6 +222,7 @@ func (ue *Engine) handleUCI() string {
 		"id author Adam Griffiths",
 		"option name Hash type spin default 128 min 1 max 1024",
 		"option name Move Overhead type spin default 50 min 0 max 5000",
+		"option name BookFile type string default " + emptyOptionValue,
 		"uciok",
 	}
 
@@ -227,42 +262,23 @@ func (ue *Engine) handlePosition(args []string) string {
 	return ""
 }
 
-func (ue *Engine) handleGo(args []string) {
-	if ue.searching {
-		return
-	}
-
+func (ue *Engine) handleGo(ctx context.Context, args []string) {
 	params := ue.protocol.ParseGo(args)
 	player := ue.engine.GetCurrentPlayer()
-
-	ue.searching = true
-	ue.stopChannel = make(chan struct{})
 
 	config := ue.buildSearchConfig(params)
 	budget := ue.searchTimeout(params, player)
 	config.MaxTime = budget.Hard
 	config.SoftTime = budget.Soft
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.MaxTime)
+	ctx, cancel := context.WithTimeout(ctx, config.MaxTime)
 	defer cancel()
-
-	stopCtx, stopCancel := context.WithCancel(ctx)
-	defer stopCancel()
-
-	stop := ue.stopChannel
-	go func() {
-		select {
-		case <-stop:
-			stopCancel()
-		case <-ctx.Done():
-		}
-	}()
 
 	ue.moveNumber++
 
 	searchFEN := ue.engine.GetCurrentFEN()
 	searchStart := time.Now()
-	result, bookOutcome := ue.runSearch(stopCtx, config, player)
+	result, bookOutcome := ue.runSearch(ctx, config, player)
 	searchDuration := time.Since(searchStart)
 
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
@@ -304,7 +320,6 @@ func (ue *Engine) handleGo(args []string) {
 	}
 
 	ue.send(formattedBestMove)
-	ue.searching = false
 }
 
 func (ue *Engine) buildSearchConfig(params SearchParams) search.Config {
@@ -333,13 +348,12 @@ func (ue *Engine) searchTimeout(params SearchParams, player movegen.Player) time
 	overhead := ue.moveOverhead()
 	budget := timeBudget{Hard: DefaultMoveTime}
 
-	if params.MoveTime > 0 {
-		budget.Hard = max(params.MoveTime-overhead, time.Millisecond)
-	}
-	if params.Infinite {
+	switch {
+	case params.Infinite:
 		budget.Hard = 24 * time.Hour
-	}
-	if params.WTime > 0 || params.BTime > 0 {
+	case params.MoveTime > 0:
+		budget.Hard = max(params.MoveTime-overhead, time.Millisecond)
+	case params.WTime > 0 || params.BTime > 0:
 		timeLeft, increment := params.WTime, params.WInc
 		if player == movegen.Black {
 			timeLeft, increment = params.BTime, params.BInc
@@ -428,8 +442,8 @@ func (ue *Engine) probeBook(config search.Config) (board.Move, bookOutcome) {
 }
 
 func (ue *Engine) handleStop() string {
-	if ue.searching {
-		close(ue.stopChannel)
+	if ue.cancelSearch != nil {
+		ue.cancelSearch()
 	}
 	return ""
 }
@@ -452,6 +466,9 @@ func (ue *Engine) handleSetOption(args []string) string {
 			}
 		}
 	case "BookFile":
+		if value == emptyOptionValue {
+			value = ""
+		}
 		ue.SetBookFile(value)
 	}
 

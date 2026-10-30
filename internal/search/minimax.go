@@ -92,6 +92,12 @@ func (m *MinimaxEngine) tryMove(move board.Move, player movegen.Player) (undo bo
 // search cannot recognize repetitions that happened before this call
 // (see that field's doc comment).
 func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config Config) Result {
+	if config.MaxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.MaxTime)
+		defer cancel()
+	}
+
 	m.searchState.searchStats = Stats{}
 
 	b.SetHashUpdater(m)

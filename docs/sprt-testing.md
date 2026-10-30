@@ -162,10 +162,12 @@ single clean answer, run one large batch (`-games 2000` or more).
 | Games lose to timeouts | `-concurrency` too high for the core count | Lower it |
 | `config.json` appears in the repo root | fastchess saves its tournament state at the end of a match | Ignored by git; delete it |
 
-Each engine runs with its binary's directory as working directory, so the
-engine's opening book (`internal/book/testdata/performance.bin`, loaded relative
-to the working directory) is **not** used during SPRT games. Keep the built
-binaries outside the repo root, as step 1 does.
+The engine's opening book (`internal/book/testdata/performance.bin`, loaded
+relative to the working directory) is **not** used during SPRT games.
+`bench sprt` passes `option.BookFile=<empty>` to both engines. Builds without
+that option print a harmless `doesn't have option BookFile` warning and rely on
+running from their binary's directory, so keep the built binaries outside the
+repo root, as step 1 does.
 
 ## Rules for AI agents
 

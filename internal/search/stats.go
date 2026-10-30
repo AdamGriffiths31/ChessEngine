@@ -257,7 +257,7 @@ func nonZeroPrefix(arr []int64) []int64 {
 func (s Stats) MarshalJSON() ([]byte, error) {
 	pv := make([]string, len(s.PrincipalVariation))
 	for i, m := range s.PrincipalVariation {
-		pv[i] = moveToUCI(m)
+		pv[i] = m.UCI()
 	}
 
 	iterations := make([]iterationJSON, len(s.Iterations))
@@ -265,7 +265,7 @@ func (s Stats) MarshalJSON() ([]byte, error) {
 		iterations[i] = iterationJSON{
 			Depth:     it.Depth,
 			ScoreCP:   int(it.Score),
-			BestMove:  moveToUCI(it.BestMove),
+			BestMove:  it.BestMove.UCI(),
 			Nodes:     it.Nodes,
 			ElapsedMS: it.Elapsed.Milliseconds(),
 
@@ -276,7 +276,7 @@ func (s Stats) MarshalJSON() ([]byte, error) {
 
 	rootMoves := make([]rootMoveJSON, len(s.RootMoves))
 	for i, rm := range s.RootMoves {
-		rootMoves[i] = rootMoveJSON{Move: moveToUCI(rm.Move), ScoreCP: int(rm.Score)}
+		rootMoves[i] = rootMoveJSON{Move: rm.Move.UCI(), ScoreCP: int(rm.Score)}
 	}
 
 	snapshot := searchStatsJSON{
@@ -331,19 +331,4 @@ func (s Stats) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(snapshot)
-}
-
-func moveToUCI(m board.Move) string {
-	uciMove := m.From.String() + m.To.String()
-	if m.Promotion != board.Empty {
-		uciMove += string(toLowerRune(rune(m.Promotion)))
-	}
-	return uciMove
-}
-
-func toLowerRune(r rune) rune {
-	if r >= 'A' && r <= 'Z' {
-		return r + ('a' - 'A')
-	}
-	return r
 }

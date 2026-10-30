@@ -110,7 +110,7 @@ func TestCastlingMoveMatches(t *testing.T) {
 		{
 			name:         "O-O notation",
 			expectedMove: "O-O",
-			engineMove:   board.Move{From: board.Square{File: 4, Rank: 0}, To: board.Square{File: 6, Rank: 0}},
+			engineMove:   board.Move{From: board.Square{File: 4, Rank: 0}, To: board.Square{File: 6, Rank: 0}, Piece: board.WhiteKing},
 			shouldMatch:  true,
 		},
 		{

@@ -31,10 +31,25 @@ func (m Move) IsQuiet() bool {
 
 // IsValid reports whether m looks like a plausible, non-degenerate move.
 func (m Move) IsValid() bool {
-	if m.From.File < 0 || m.From.File > 7 || m.To.File < 0 || m.To.File > 7 {
-		return false
+	return m.onBoard() && m.From != m.To
+}
+
+func (m Move) onBoard() bool {
+	return m.From.File >= 0 && m.From.File <= 7 && m.From.Rank >= 0 && m.From.Rank <= 7 &&
+		m.To.File >= 0 && m.To.File <= 7 && m.To.Rank >= 0 && m.To.Rank <= 7
+}
+
+// UCI returns the move in UCI notation (e.g. "e2e4", "e7e8q"), or "0000" when
+// a square is off the board.
+func (m Move) UCI() string {
+	if !m.onBoard() {
+		return "0000"
 	}
-	return m.From != m.To
+	uciMove := m.From.String() + m.To.String()
+	if m.HasPromotion() {
+		uciMove += strings.ToLower(string(m.Promotion))
+	}
+	return uciMove
 }
 
 // MoveUndo stores the state needed to undo a move

@@ -8,7 +8,7 @@ func MoveGivesCheck(b *Board, move Move) bool {
 	}
 
 	var enemyKingBB Bitboard
-	if piece < BlackPawn {
+	if IsWhitePiece(piece) {
 		enemyKingBB = b.GetPieceBitboard(BlackKing)
 	} else {
 		enemyKingBB = b.GetPieceBitboard(WhiteKing)
@@ -30,7 +30,7 @@ func MoveGivesCheck(b *Board, move Move) bool {
 		return true
 	}
 
-	if move.Promotion != Empty {
+	if move.HasPromotion() {
 		return isDirectCheck(b, move.Promotion, toSquare, kingSquare, fromSquare)
 	}
 
@@ -85,103 +85,55 @@ func isDiscoveredCheck(b *Board, fromSquare, toSquare, kingSquare int, movingPie
 	}
 
 	occupancy := b.AllPieces.ClearBit(fromSquare).SetBit(toSquare)
+	rooksQueens, bishopsQueens := sliders(b, IsWhitePiece(movingPiece))
 
-	if movingPiece < BlackPawn {
-		if onSameRank || onSameFile {
-			rooksQueens := b.GetPieceBitboard(WhiteRook) | b.GetPieceBitboard(WhiteQueen)
-			rooksQueens = rooksQueens.ClearBit(fromSquare)
-
-			for rooksQueens != 0 {
-				attackerSq := rooksQueens.LSB()
-				rooksQueens = rooksQueens.ClearBit(attackerSq)
-
-				if GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
-					return true
-				}
-			}
-		}
-
-		if onSameDiagonal || onSameAntiDiag {
-			bishopsQueens := b.GetPieceBitboard(WhiteBishop) | b.GetPieceBitboard(WhiteQueen)
-			bishopsQueens = bishopsQueens.ClearBit(fromSquare)
-
-			for bishopsQueens != 0 {
-				attackerSq := bishopsQueens.LSB()
-				bishopsQueens = bishopsQueens.ClearBit(attackerSq)
-
-				if GetBishopAttacks(attackerSq, occupancy).HasBit(kingSquare) {
-					return true
-				}
-			}
-		}
-	} else {
-		if onSameRank || onSameFile {
-			rooksQueens := b.GetPieceBitboard(BlackRook) | b.GetPieceBitboard(BlackQueen)
-			rooksQueens = rooksQueens.ClearBit(fromSquare)
-
-			for rooksQueens != 0 {
-				attackerSq := rooksQueens.LSB()
-				rooksQueens = rooksQueens.ClearBit(attackerSq)
-
-				if GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
-					return true
-				}
-			}
-		}
-
-		if onSameDiagonal || onSameAntiDiag {
-			bishopsQueens := b.GetPieceBitboard(BlackBishop) | b.GetPieceBitboard(BlackQueen)
-			bishopsQueens = bishopsQueens.ClearBit(fromSquare)
-
-			for bishopsQueens != 0 {
-				attackerSq := bishopsQueens.LSB()
-				bishopsQueens = bishopsQueens.ClearBit(attackerSq)
-
-				if GetBishopAttacks(attackerSq, occupancy).HasBit(kingSquare) {
-					return true
-				}
-			}
-		}
+	if (onSameRank || onSameFile) && rookSliderAttacks(rooksQueens.ClearBit(fromSquare), kingSquare, occupancy) {
+		return true
 	}
 
-	return false
+	return (onSameDiagonal || onSameAntiDiag) && bishopSliderAttacks(bishopsQueens.ClearBit(fromSquare), kingSquare, occupancy)
 }
 
 func isEnPassantCheck(b *Board, move Move, kingSquare int) bool {
 	fromSquare := move.From.Rank*8 + move.From.File
 	toSquare := move.To.Rank*8 + move.To.File
-
-	capturedPawnSquare := toSquare
-	if move.From.Rank > move.To.Rank {
-		capturedPawnSquare -= 8
-	} else {
-		capturedPawnSquare += 8
-	}
+	capturedPawnSquare := move.From.Rank*8 + move.To.File
 
 	occupancy := b.AllPieces.ClearBit(fromSquare).ClearBit(capturedPawnSquare).SetBit(toSquare)
+	rooksQueens, bishopsQueens := sliders(b, IsWhitePiece(b.GetPiece(move.From.Rank, move.From.File)))
 
-	piece := b.GetPiece(move.From.Rank, move.From.File)
-	if piece < BlackPawn {
-		rooksQueens := b.GetPieceBitboard(WhiteRook) | b.GetPieceBitboard(WhiteQueen)
-		for rooksQueens != 0 {
-			attackerSq := rooksQueens.LSB()
-			rooksQueens = rooksQueens.ClearBit(attackerSq)
+	return rookSliderAttacks(rooksQueens, kingSquare, occupancy) || bishopSliderAttacks(bishopsQueens, kingSquare, occupancy)
+}
 
-			if GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
-				return true
-			}
-		}
-	} else {
-		rooksQueens := b.GetPieceBitboard(BlackRook) | b.GetPieceBitboard(BlackQueen)
-		for rooksQueens != 0 {
-			attackerSq := rooksQueens.LSB()
-			rooksQueens = rooksQueens.ClearBit(attackerSq)
+func sliders(b *Board, white bool) (rooksQueens, bishopsQueens Bitboard) {
+	if white {
+		queens := b.GetPieceBitboard(WhiteQueen)
+		return b.GetPieceBitboard(WhiteRook) | queens, b.GetPieceBitboard(WhiteBishop) | queens
+	}
+	queens := b.GetPieceBitboard(BlackQueen)
+	return b.GetPieceBitboard(BlackRook) | queens, b.GetPieceBitboard(BlackBishop) | queens
+}
 
-			if GetRookAttacks(attackerSq, occupancy).HasBit(kingSquare) {
-				return true
-			}
+func rookSliderAttacks(attackers Bitboard, target int, occupancy Bitboard) bool {
+	for attackers != 0 {
+		attackerSq := attackers.LSB()
+		attackers = attackers.ClearBit(attackerSq)
+
+		if GetRookAttacks(attackerSq, occupancy).HasBit(target) {
+			return true
 		}
 	}
+	return false
+}
 
+func bishopSliderAttacks(attackers Bitboard, target int, occupancy Bitboard) bool {
+	for attackers != 0 {
+		attackerSq := attackers.LSB()
+		attackers = attackers.ClearBit(attackerSq)
+
+		if GetBishopAttacks(attackerSq, occupancy).HasBit(target) {
+			return true
+		}
+	}
 	return false
 }

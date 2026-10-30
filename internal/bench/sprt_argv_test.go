@@ -24,7 +24,7 @@ func TestBuildSPRTArgs(t *testing.T) {
 	want := []string{
 		"-engine", "cmd=/bin/dev-uci", "name=Dev", "dir=" + filepath.Dir("/bin/dev-uci"),
 		"-engine", "cmd=/bin/base-uci", "name=Base", "dir=" + filepath.Dir("/bin/base-uci"),
-		"-each", "proto=uci", "tc=10+0.1",
+		"-each", "proto=uci", "tc=10+0.1", "option.BookFile=<empty>",
 		"-rounds", "2000",
 		"-games", "2",
 		"-repeat",
@@ -63,7 +63,7 @@ func TestBuildSPRTArgsWithEngineOptions(t *testing.T) {
 		"-engine", "cmd=/bin/dev-uci", "name=Dev", "dir=" + filepath.Dir("/bin/dev-uci"),
 		"option.Skill Level=5", "option.Threads=1",
 		"-engine", "cmd=/bin/base-uci", "name=Base", "dir=" + filepath.Dir("/bin/base-uci"),
-		"-each", "proto=uci", "tc=10+0.1",
+		"-each", "proto=uci", "tc=10+0.1", "option.BookFile=<empty>",
 		"-rounds", "2000",
 		"-games", "2",
 		"-repeat",

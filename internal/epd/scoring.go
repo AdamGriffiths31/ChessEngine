@@ -3,6 +3,8 @@ package epd
 import (
 	"context"
 	"log/slog"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
@@ -139,62 +141,57 @@ func moveToString(move board.Move) string {
 	return move.From.String() + move.To.String()
 }
 
+var sanPattern = regexp.MustCompile(`^([KQRBN])?([a-h])?([1-8])?x?([a-h][1-8])(?:=?([QRBNqrbn]))?$`)
+
 func (scorer *STSScorer) moveMatches(engineMove board.Move, expectedMove string) bool {
-	if expectedMove == "e1g1" || expectedMove == "0-0" || expectedMove == "O-O" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 0 &&
-			engineMove.To.File == 6 && engineMove.To.Rank == 0
-	}
-	if expectedMove == "e1c1" || expectedMove == "0-0-0" || expectedMove == "O-O-O" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 0 &&
-			engineMove.To.File == 2 && engineMove.To.Rank == 0
-	}
-	if expectedMove == "e8g8" || expectedMove == "o-o" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 7 &&
-			engineMove.To.File == 6 && engineMove.To.Rank == 7
-	}
-	if expectedMove == "e8c8" || expectedMove == "o-o-o" {
-		return engineMove.From.File == 4 && engineMove.From.Rank == 7 &&
-			engineMove.To.File == 2 && engineMove.To.Rank == 7
+	expectedMove = strings.TrimRight(expectedMove, "+#!?")
+
+	switch expectedMove {
+	case "O-O", "0-0", "o-o":
+		return isCastlingTo(engineMove, 6)
+	case "O-O-O", "0-0-0", "o-o-o":
+		return isCastlingTo(engineMove, 2)
 	}
 
-	return scorer.parseAndMatchAlgebraic(engineMove, expectedMove)
+	return matchesSAN(engineMove, expectedMove)
 }
 
-func (scorer *STSScorer) parseAndMatchAlgebraic(engineMove board.Move, expectedMove string) bool {
-	if len(expectedMove) < 2 {
+func isCastlingTo(move board.Move, kingFile int) bool {
+	return (move.Piece == board.WhiteKing || move.Piece == board.BlackKing) &&
+		move.From.File == 4 && move.To.File == kingFile && move.From.Rank == move.To.Rank
+}
+
+func matchesSAN(move board.Move, san string) bool {
+	m := sanPattern.FindStringSubmatch(san)
+	if m == nil {
+		return false
+	}
+	piece, fromFile, fromRank, to, promotion := m[1], m[2], m[3], m[4], m[5]
+
+	if move.To.File != int(to[0]-'a') || move.To.Rank != int(to[1]-'1') {
+		return false
+	}
+	if fromFile != "" && move.From.File != int(fromFile[0]-'a') {
+		return false
+	}
+	if fromRank != "" && move.From.Rank != int(fromRank[0]-'1') {
 		return false
 	}
 
-	if len(expectedMove) >= 2 {
-		destSquareStr := expectedMove[len(expectedMove)-2:]
-
-		if len(destSquareStr) == 2 &&
-			destSquareStr[0] >= 'a' && destSquareStr[0] <= 'h' &&
-			destSquareStr[1] >= '1' && destSquareStr[1] <= '8' {
-
-			expectedFile := int(destSquareStr[0] - 'a')
-			expectedRank := int(destSquareStr[1] - '1')
-
-			if engineMove.To.File == expectedFile && engineMove.To.Rank == expectedRank {
-
-				if len(expectedMove) > 2 {
-					firstChar := expectedMove[0]
-					if firstChar >= 'A' && firstChar <= 'Z' {
-						enginePiece := engineMove.Piece
-						if enginePiece >= 'a' && enginePiece <= 'z' {
-							enginePiece = enginePiece - 'a' + 'A'
-						}
-
-						return rune(firstChar) == rune(enginePiece)
-					}
-				}
-
-				return true
-			}
+	isCoordinate := piece == "" && fromFile != "" && fromRank != ""
+	if !isCoordinate {
+		if piece == "" {
+			piece = "P"
+		}
+		if strings.ToUpper(string(move.Piece)) != piece {
+			return false
 		}
 	}
 
-	return false
+	if promotion == "" {
+		return !move.HasPromotion()
+	}
+	return move.HasPromotion() && strings.EqualFold(string(move.Promotion), promotion)
 }
 
 // ScoreSuite runs a complete test suite and returns aggregated results.

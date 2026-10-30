@@ -17,7 +17,9 @@ type PawnHashEntry struct {
 }
 
 // StandardEvaluator evaluates positions based on material balance and piece-square tables.
-type StandardEvaluator struct{}
+type StandardEvaluator struct {
+	pawnHashTable [16384]PawnHashEntry
+}
 
 // NewEvaluator creates a new evaluator.
 func NewEvaluator() *StandardEvaluator {
@@ -39,7 +41,7 @@ func (e *StandardEvaluator) Evaluate(b *board.Board) EvaluationScore {
 		return EvaluationScore(score)
 	}
 
-	pawnScore := evaluatePawnStructure(b)
+	pawnScore := e.evaluatePawnStructure(b)
 	score += pawnScore
 
 	if abs(score) < 500 {

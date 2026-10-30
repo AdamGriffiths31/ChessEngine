@@ -55,10 +55,8 @@ func TestMoveConverter_ToUCI(t *testing.T) {
 		{"black promotion", mv("h2", "h1", board.BlackPawn, promotesTo(board.BlackKnight)), "h2h1n"},
 		{"off-board square", offBoard, "0000"},
 
-		{"white kingside castling", mv("e1", "h1", board.WhiteKing, castling), "e1g1"},
-		{"white queenside castling", mv("e1", "a1", board.WhiteKing, castling), "e1c1"},
-		{"black kingside castling", mv("e8", "h8", board.BlackKing, castling), "e8g8"},
-		{"black queenside castling", mv("e8", "a8", board.BlackKing, castling), "e8c8"},
+		{"white kingside castling", mv("e1", "g1", board.WhiteKing, castling), "e1g1"},
+		{"black queenside castling", mv("e8", "c8", board.BlackKing, castling), "e8c8"},
 
 		{"rook move sharing castling squares", mv("e1", "a1", board.WhiteRook), "e1a1"},
 	}
@@ -99,9 +97,6 @@ func TestMoveConverter_FromUCI(t *testing.T) {
 			got, err := converter.FromUCI(tt.uci, b)
 			if err != nil {
 				t.Fatalf("FromUCI(%q): %v", tt.uci, err)
-			}
-			if got.Promotion == 0 {
-				got.Promotion = board.Empty
 			}
 			if got != tt.want {
 				t.Errorf("FromUCI(%q) =\n  %+v\nwant\n  %+v", tt.uci, got, tt.want)
@@ -151,8 +146,8 @@ func TestUCISquare(t *testing.T) {
 	}
 	for _, tt := range valid {
 		t.Run(tt.text, func(t *testing.T) {
-			if got := squareToUCI(tt.square); got != tt.text {
-				t.Errorf("squareToUCI(%+v) = %q, want %q", tt.square, got, tt.text)
+			if got := tt.square.String(); got != tt.text {
+				t.Errorf("Square.String(%+v) = %q, want %q", tt.square, got, tt.text)
 			}
 			got, err := parseUCISquare(tt.text)
 			if err != nil {

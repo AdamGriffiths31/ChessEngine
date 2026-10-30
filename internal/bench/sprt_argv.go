@@ -11,6 +11,9 @@ import (
 //
 // Games are played in pairs (-games 2 -repeat): each opening once with each
 // colour, which is what the pentanomial model expects.
+//
+// option.BookFile=<empty> turns the opening book off. Engines also run from their
+// binary's directory, which keeps it off for builds without that option.
 func BuildSPRTArgs(cfg SPRTConfig) []string {
 	args := []string{
 		"-engine", fmt.Sprintf("cmd=%s", cfg.DevPath), "name=Dev", fmt.Sprintf("dir=%s", filepath.Dir(cfg.DevPath)),
@@ -23,7 +26,7 @@ func BuildSPRTArgs(cfg SPRTConfig) []string {
 		args = append(args, fmt.Sprintf("option.%s", opt))
 	}
 	args = append(args,
-		"-each", "proto=uci", fmt.Sprintf("tc=%s", cfg.TimeControl),
+		"-each", "proto=uci", fmt.Sprintf("tc=%s", cfg.TimeControl), "option.BookFile=<empty>",
 		"-rounds", fmt.Sprintf("%d", (cfg.MaxGames+1)/2),
 		"-games", "2",
 		"-repeat",

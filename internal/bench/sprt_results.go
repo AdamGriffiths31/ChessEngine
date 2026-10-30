@@ -79,7 +79,7 @@ a baseline and candidate ChessEngine build.
 	if err != nil {
 		return err
 	}
-	if strings.Contains(string(existing), fastchessTableHeader) {
+	if strings.Contains(strings.ReplaceAll(string(existing), "\r\n", "\n"), fastchessTableHeader) {
 		return nil
 	}
 	f, err := os.OpenFile(rl.mdFile, os.O_APPEND|os.O_WRONLY, 0600)

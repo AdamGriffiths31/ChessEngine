@@ -94,7 +94,10 @@ func (e *Engine) MakeMove(move board.Move) error {
 func (e *Engine) updateGameOverState() {
 	hash := book.GetPolyglotHash().HashPosition(e.state.Board)
 	e.hashHistory = append(e.hashHistory, hash)
+	e.checkGameOver(hash)
+}
 
+func (e *Engine) checkGameOver(hash uint64) {
 	currentPlayer := e.GetCurrentPlayer()
 	legalMoves := e.generator.GenerateAllMoves(e.state.Board, currentPlayer)
 	legalCount := legalMoves.Count
@@ -162,9 +165,12 @@ func (e *Engine) LoadFromFEN(fen string) error {
 		return fmt.Errorf("failed to parse FEN %q: %w", fen, err)
 	}
 
-	e.state.Board = newBoard
-	e.state.GameOver = false
-	e.state.IsDraw = false
-	e.hashHistory = []uint64{book.GetPolyglotHash().HashPosition(newBoard)}
+	e.state = &State{
+		Board:     newBoard,
+		MoveCount: newBoard.GetFullMoveNumber(),
+	}
+	hash := book.GetPolyglotHash().HashPosition(newBoard)
+	e.hashHistory = []uint64{hash}
+	e.checkGameOver(hash)
 	return nil
 }

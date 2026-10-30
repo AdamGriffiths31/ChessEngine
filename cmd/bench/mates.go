@@ -118,10 +118,8 @@ func searchMate(engine *search.MinimaxEngine, pos bench.MatePosition, config sea
 		player = movegen.Black
 	}
 	engine.ClearSearchState()
-	ctx, cancel := context.WithTimeout(context.Background(), config.MaxTime)
-	defer cancel()
 	start := time.Now()
-	result := engine.FindBestMove(ctx, b, player, config)
+	result := engine.FindBestMove(context.Background(), b, player, config)
 	elapsed := time.Since(start)
 	mate := mateMoves(int(result.Score))
 	return mateResult{pos: pos, engineMate: mate, outcome: bench.ClassifyMate(mate, pos.BestMate), elapsed: elapsed}

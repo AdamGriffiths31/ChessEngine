@@ -216,8 +216,9 @@ func TestPawnHashCaching(t *testing.T) {
 		t.Fatalf("Failed to create board from FEN: %v", err)
 	}
 
-	score1 := evaluatePawnStructure(b1)
-	score2 := evaluatePawnStructure(b1)
+	evaluator := NewEvaluator()
+	score1 := evaluator.evaluatePawnStructure(b1)
+	score2 := evaluator.evaluatePawnStructure(b1)
 
 	if score1 != score2 {
 		t.Errorf("Cached result should match original: %d != %d", score1, score2)
@@ -229,7 +230,7 @@ func TestPawnHashCaching(t *testing.T) {
 		t.Fatalf("Failed to create board from FEN: %v", err)
 	}
 
-	score3 := evaluatePawnStructure(b2)
+	score3 := evaluator.evaluatePawnStructure(b2)
 	if score1 == score3 {
 		t.Errorf("Different pawn structures should give different scores: %d == %d", score1, score3)
 	}

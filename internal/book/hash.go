@@ -1,10 +1,15 @@
 package book
 
 import (
+	"sync"
+
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-var polyglotZobrist *ZobristHash
+var (
+	polyglotZobrist *ZobristHash
+	polyglotOnce    sync.Once
+)
 
 // ZobristHash generates a Zobrist hash for a chess position
 // Compatible with Polyglot opening book format
@@ -17,14 +22,14 @@ type ZobristHash struct {
 
 // GetPolyglotHash returns the Zobrist hash instance for Polyglot compatibility
 func GetPolyglotHash() *ZobristHash {
-	if polyglotZobrist == nil {
+	polyglotOnce.Do(func() {
 		polyglotZobrist = &ZobristHash{
 			pieceKeys:     officialPolyglotPieceKeys,
 			castleKeys:    officialPolyglotCastlingKeys,
 			enPassantKeys: officialPolyglotEnPassantKeys,
 			sideKey:       officialPolyglotSideKey,
 		}
-	}
+	})
 	return polyglotZobrist
 }
 

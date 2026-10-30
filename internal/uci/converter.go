@@ -2,7 +2,6 @@ package uci
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
@@ -17,35 +16,7 @@ func NewMoveConverter() *MoveConverter {
 
 // ToUCI converts an internal Move to UCI notation (e.g., "e2e4", "e7e8q").
 func (mc *MoveConverter) ToUCI(move board.Move) string {
-	if move.From.File < 0 || move.From.File > 7 || move.From.Rank < 0 || move.From.Rank > 7 ||
-		move.To.File < 0 || move.To.File > 7 || move.To.Rank < 0 || move.To.Rank > 7 {
-		return "0000"
-	}
-
-	from := squareToUCI(move.From)
-	to := squareToUCI(move.To)
-
-	uciMove := from + to
-
-	if move.IsCastling {
-		switch uciMove {
-		case "e1h1":
-			uciMove = "e1g1"
-		case "e1a1":
-			uciMove = "e1c1"
-		case "e8h8":
-			uciMove = "e8g8"
-		case "e8a8":
-			uciMove = "e8c8"
-		}
-	}
-
-	if move.Promotion != board.Empty {
-		promotion := strings.ToLower(string(move.Promotion))
-		return uciMove + promotion
-	}
-
-	return uciMove
+	return move.UCI()
 }
 
 // FromUCI converts UCI notation to internal Move representation.
@@ -79,6 +50,7 @@ func (mc *MoveConverter) FromUCI(uciMove string, b *board.Board) (board.Move, er
 		To:        toSquare,
 		Piece:     piece,
 		Captured:  captured,
+		Promotion: board.Empty,
 		IsCapture: captured != board.Empty,
 	}
 
@@ -91,16 +63,6 @@ func (mc *MoveConverter) FromUCI(uciMove string, b *board.Board) (board.Move, er
 	move.IsEnPassant = mc.isEnPassantMove(move, piece, b)
 
 	return move, nil
-}
-
-func squareToUCI(square board.Square) string {
-	if square.File < 0 || square.File > 7 || square.Rank < 0 || square.Rank > 7 {
-		return "0000"
-	}
-
-	file := rune('a' + square.File)
-	rank := rune('1' + square.Rank)
-	return string(file) + string(rank)
 }
 
 func parseUCISquare(uciSquare string) (board.Square, error) {

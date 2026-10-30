@@ -19,17 +19,14 @@ const (
 // Index represents rank (0-7), values increase exponentially toward promotion
 var PassedPawnBonus = [8]int{0, 10, 15, 25, 40, 60, 90, 0}
 
-// PawnHashTable provides global caching for pawn evaluations
-var PawnHashTable [16384]PawnHashEntry
-
-func evaluatePawnStructure(b *board.Board) int {
+func (e *StandardEvaluator) evaluatePawnStructure(b *board.Board) int {
 	if b == nil {
 		return 0
 	}
 	pawnHash := b.GetPawnHash()
 	hashIndex := pawnHash & 16383
 
-	entry := &PawnHashTable[hashIndex]
+	entry := &e.pawnHashTable[hashIndex]
 	cachedScore := entry.score
 	if entry.hash^uint64(int64(cachedScore)) == pawnHash {
 		return cachedScore

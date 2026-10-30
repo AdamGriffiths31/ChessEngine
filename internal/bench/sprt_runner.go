@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -81,6 +82,11 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 		}
 	}
 
+	scanErr := scanner.Err()
+	if scanErr != nil {
+		_, _ = io.Copy(io.Discard, stdout)
+	}
+
 	waitErr := cmd.Wait()
 	duration := time.Since(start)
 
@@ -105,6 +111,9 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	}
 	if waitErr != nil {
 		return result, fmt.Errorf("fastchess exited with error: %w\nlast output:\n%s", waitErr, tail(rawLog.String(), 20))
+	}
+	if scanErr != nil {
+		return result, fmt.Errorf("failed to read fastchess output: %w", scanErr)
 	}
 	if parseErr != nil {
 		return result, fmt.Errorf("failed to parse fastchess output: %w", parseErr)
