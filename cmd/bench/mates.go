@@ -28,7 +28,7 @@ type mateResult struct {
 
 func runMates(args []string) error {
 	fs := flag.NewFlagSet("bench mates", flag.ExitOnError)
-	file := fs.String("file", defaultMatesFile, "matetrack-format EPD (see docs/sprt-testing.md for where to get it)")
+	file := fs.String("file", defaultMatesFile, "matetrack-format EPD (see README.md for where to get it)")
 	moveTime := fs.Duration("time", 200*time.Millisecond, "search time per position")
 	maxPositions := fs.Int("max", 0, "maximum number of positions to test (0 = all)")
 	concurrency := fs.Int("concurrency", 1, "positions searched in parallel, one engine each")

@@ -1,3 +1,6 @@
 # Go sources are always LF, so gofmt and golangci-lint behave the same on
 # Windows (core.autocrlf) and Linux checkouts.
 *.go text eol=lf
+
+# Bash cannot run a script with CRLF line endings.
+*.sh text eol=lf

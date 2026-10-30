@@ -146,7 +146,7 @@ change that alters the count changes search behaviour.
 ### SPRT regression testing
 
 SPRT runs a statistical A/B test between two engine builds through fastchess, using the pentanomial model and normalized
-Elo. See [docs/sprt-testing.md](docs/sprt-testing.md).
+Elo. See [the running-sprt skill](.claude/skills/running-sprt/SKILL.md).
 
 ### Go benchmarks
 
