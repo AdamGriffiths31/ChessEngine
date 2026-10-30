@@ -1,6 +1,7 @@
 package bench
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -21,18 +22,20 @@ func TestBuildSPRTArgs(t *testing.T) {
 
 	got := BuildSPRTArgs(cfg)
 	want := []string{
-		"-engine", "cmd=/bin/dev-uci", "name=Dev",
-		"-engine", "cmd=/bin/base-uci", "name=Base",
+		"-engine", "cmd=/bin/dev-uci", "name=Dev", "dir=" + filepath.Dir("/bin/dev-uci"),
+		"-engine", "cmd=/bin/base-uci", "name=Base", "dir=" + filepath.Dir("/bin/base-uci"),
 		"-each", "proto=uci", "tc=10+0.1",
-		"-games", "4000",
+		"-rounds", "2000",
+		"-games", "2",
 		"-repeat",
 		"-openings", "file=/data/openings.epd", "format=epd", "order=random",
 		"-concurrency", "1",
-		"-sprt", "elo0=0", "elo1=5", "alpha=0.05", "beta=0.05",
+		"-sprt", "elo0=0", "elo1=5", "alpha=0.05", "beta=0.05", "model=normalized",
 		"-maxmoves", "200",
 		"-recover",
 		"-draw", "movenumber=40", "movecount=8", "score=10",
 		"-resign", "movecount=6", "score=800",
+		"-autosaveinterval", "0",
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -57,19 +60,21 @@ func TestBuildSPRTArgsWithEngineOptions(t *testing.T) {
 
 	got := BuildSPRTArgs(cfg)
 	want := []string{
-		"-engine", "cmd=/bin/dev-uci", "name=Dev",
+		"-engine", "cmd=/bin/dev-uci", "name=Dev", "dir=" + filepath.Dir("/bin/dev-uci"),
 		"option.Skill Level=5", "option.Threads=1",
-		"-engine", "cmd=/bin/base-uci", "name=Base",
+		"-engine", "cmd=/bin/base-uci", "name=Base", "dir=" + filepath.Dir("/bin/base-uci"),
 		"-each", "proto=uci", "tc=10+0.1",
-		"-games", "4000",
+		"-rounds", "2000",
+		"-games", "2",
 		"-repeat",
 		"-openings", "file=/data/openings.epd", "format=epd", "order=random",
 		"-concurrency", "1",
-		"-sprt", "elo0=0", "elo1=5", "alpha=0.05", "beta=0.05",
+		"-sprt", "elo0=0", "elo1=5", "alpha=0.05", "beta=0.05", "model=normalized",
 		"-maxmoves", "200",
 		"-recover",
 		"-draw", "movenumber=40", "movecount=8", "score=10",
 		"-resign", "movecount=6", "score=800",
+		"-autosaveinterval", "0",
 	}
 
 	if !reflect.DeepEqual(got, want) {

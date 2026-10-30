@@ -6,20 +6,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
 
-// finishedGamePattern matches cutechess-cli's cumulative score line, e.g.
-// "Score of Dev vs Base: 13 - 10 - 17  [0.537] 40". cutechess-cli names the
-// first-registered engine first, so the captures are Dev's wins/losses/draws.
-var finishedGamePattern = regexp.MustCompile(`Score of Dev vs Base: (\d+) - (\d+) - (\d+)`)
-
-// RunSPRT runs cutechess-cli with cfg, streaming its stdout to os.Stdout
+// RunSPRT runs fastchess with cfg, streaming its stdout to os.Stdout
 // (so a long-running SPRT test is observable live) while tracking the
-// latest SPRT status and final score line. It returns once cutechess-cli's
+// latest SPRT status, score and pentanomial lines. It returns once fastchess's
 // process exits, which happens either when the SPRT bound is reached or
 // cfg.MaxGames is hit.
 func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
@@ -32,13 +25,13 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	if _, err := os.Stat(cfg.OpeningsFile); err != nil {
 		return nil, fmt.Errorf("openings file not found at %s: %w", cfg.OpeningsFile, err)
 	}
-	if _, err := os.Stat(cfg.CutechessCli); err != nil {
-		return nil, fmt.Errorf("cutechess-cli not found at %s: %w", cfg.CutechessCli, err)
+	if _, err := os.Stat(cfg.Fastchess); err != nil {
+		return nil, fmt.Errorf("fastchess not found at %s: %w", cfg.Fastchess, err)
 	}
 
 	start := time.Now()
 	args := BuildSPRTArgs(cfg)
-	cmd := exec.CommandContext(ctx, cfg.CutechessCli, args...) // #nosec G204 - binary/args built from local config, not untrusted input
+	cmd := exec.CommandContext(ctx, cfg.Fastchess, args...) // #nosec G204 - binary/args built from local config, not untrusted input
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -47,7 +40,7 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start cutechess-cli: %w", err)
+		return nil, fmt.Errorf("failed to start fastchess: %w", err)
 	}
 
 	var (
@@ -55,6 +48,7 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 		latestStatus               sprtStatus
 		haveStatus                 bool
 		wins, losses, draws, total int
+		pentanomial                [5]int
 	)
 
 	scanner := bufio.NewScanner(stdout)
@@ -69,14 +63,14 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 			latestStatus = status
 			haveStatus = true
 		}
-		if m := finishedGamePattern.FindStringSubmatch(line); m != nil {
-			w, _ := strconv.Atoi(m[1])
-			l, _ := strconv.Atoi(m[2])
-			d, _ := strconv.Atoi(m[3])
-			// Dev is engine 1 (see BuildSPRTArgs's doc comment), so these
-			// are directly Dev's wins/losses/draws.
-			wins, losses, draws = w, l, d
-			total = w + l + d
+		// Dev is engine 1 (see BuildSPRTArgs's doc comment), so these are
+		// directly Dev's results.
+		if m := gamesPattern.FindStringSubmatch(line); m != nil {
+			n := parseIntMatches(m)
+			total, wins, losses, draws = n[0], n[1], n[2], n[3]
+		}
+		if m := pentanomialPattern.FindStringSubmatch(line); m != nil {
+			copy(pentanomial[:], parseIntMatches(m))
 		}
 	}
 
@@ -84,14 +78,15 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 	duration := time.Since(start)
 
 	result := &SPRTResult{
-		Wins:       wins,
-		Losses:     losses,
-		Draws:      draws,
-		GamesTotal: total,
-		Config:     cfg,
-		Timestamp:  start.Format("20060102_150405"),
-		Duration:   duration,
-		RawLog:     rawLog.String(),
+		Wins:        wins,
+		Losses:      losses,
+		Draws:       draws,
+		GamesTotal:  total,
+		Pentanomial: pentanomial,
+		Config:      cfg,
+		Timestamp:   start.Format("20060102_150405"),
+		Duration:    duration,
+		RawLog:      rawLog.String(),
 	}
 	if haveStatus {
 		result.LLR = latestStatus.llr
@@ -106,7 +101,7 @@ func RunSPRT(ctx context.Context, cfg SPRTConfig) (*SPRTResult, error) {
 		return result, fmt.Errorf("SPRT run cancelled: %w", ctx.Err())
 	}
 	if waitErr != nil {
-		return result, fmt.Errorf("cutechess-cli exited with error: %w\nlast output:\n%s", waitErr, tail(rawLog.String(), 20))
+		return result, fmt.Errorf("fastchess exited with error: %w\nlast output:\n%s", waitErr, tail(rawLog.String(), 20))
 	}
 
 	return result, nil

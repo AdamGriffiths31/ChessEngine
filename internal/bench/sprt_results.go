@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // SPRTResultsLogger logs SPRT run results to markdown and JSONL files,
@@ -56,33 +57,54 @@ func (rl *SPRTResultsLogger) LogResult(result *SPRTResult) error {
 	return nil
 }
 
+// fastchessTableHeader starts the results table for fastchess runs
+// (pentanomial model, normalized Elo bounds). Runs logged before it used
+// cutechess-cli's trinomial model, so their LLRs are not comparable; a file
+// without this header gets it appended once, below the older table.
+const fastchessTableHeader = `## fastchess runs (pentanomial, normalized Elo)
+
+| Date | Verdict | LLR | Bounds | W-L-D | Ptnml(0-2) | Games | TC | nElo0/nElo1 |
+|------|---------|-----|--------|-------|------------|-------|-----|-------------|
+`
+
 func (rl *SPRTResultsLogger) ensureMarkdownFile() error {
 	if err := os.MkdirAll(filepath.Dir(rl.mdFile), 0750); err != nil {
 		return fmt.Errorf("failed to create results directory: %w", err)
 	}
-	if _, err := os.Stat(rl.mdFile); os.IsNotExist(err) {
+	existing, err := os.ReadFile(rl.mdFile)
+	if os.IsNotExist(err) {
 		content := `# SPRT Regression Test Results
 
 This file tracks SPRT (Sequential Probability Ratio Test) runs comparing
 a baseline and candidate ChessEngine build.
 
-| Date | Verdict | LLR | Bounds | W-L-D | Games | TC | Elo0/Elo1 |
-|------|---------|-----|--------|-------|-------|-----|-----------|
-`
-		if err := os.WriteFile(rl.mdFile, []byte(content), 0600); err != nil {
-			return err
-		}
+` + fastchessTableHeader
+		return os.WriteFile(rl.mdFile, []byte(content), 0600)
 	}
-	return nil
+	if err != nil {
+		return err
+	}
+	if strings.Contains(string(existing), fastchessTableHeader) {
+		return nil
+	}
+	f, err := os.OpenFile(rl.mdFile, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	_, err = f.WriteString("\n" + fastchessTableHeader)
+	return err
 }
 
 func (rl *SPRTResultsLogger) formatMarkdownEntry(result *SPRTResult) string {
-	return fmt.Sprintf("| %s | %s | %.2f | [%.2f, %.2f] | %d-%d-%d | %d | %s | %g/%g |",
+	p := result.Pentanomial
+	return fmt.Sprintf("| %s | %s | %.2f | [%.2f, %.2f] | %d-%d-%d | [%d, %d, %d, %d, %d] | %d | %s | %g/%g |",
 		result.Timestamp,
 		result.Verdict.String(),
 		result.LLR,
 		result.LBound, result.UBound,
 		result.Wins, result.Losses, result.Draws,
+		p[0], p[1], p[2], p[3], p[4],
 		result.GamesTotal,
 		result.Config.TimeControl,
 		result.Config.Elo0, result.Config.Elo1,

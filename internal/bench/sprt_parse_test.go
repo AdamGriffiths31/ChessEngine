@@ -1,6 +1,9 @@
 package bench
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestParseSPRTStatus(t *testing.T) {
 	tests := []struct {
@@ -11,19 +14,19 @@ func TestParseSPRTStatus(t *testing.T) {
 	}{
 		{
 			name:    "standard status line",
-			line:    "SPRT: llr 2.94 (100.0%), lbound -2.94, ubound 2.94",
+			line:    "LLR: 2.94 (100.0%) (-2.94, 2.94) [0.00, 2.00]",
 			wantOK:  true,
 			wantLLR: 2.94,
 		},
 		{
 			name:    "negative llr",
-			line:    "SPRT: llr -1.50 (-51.0%), lbound -2.94, ubound 2.94",
+			line:    "LLR: -1.50 (-51.0%) (-2.94, 2.94) [0.00, 2.00]",
 			wantOK:  true,
 			wantLLR: -1.50,
 		},
 		{
 			name:   "unrelated line",
-			line:   "Finished game 12 (Dev vs Base): 1-0 {White wins}",
+			line:   "Finished game 12 (Dev vs Base): 1-0 {White wins by adjudication}",
 			wantOK: false,
 		},
 	}
@@ -61,5 +64,25 @@ func TestVerdictFromStatus(t *testing.T) {
 				t.Errorf("verdictFromStatus(%+v) = %v, want %v", tc.status, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestScoreLinePatterns checks the score and pentanomial patterns against
+// lines captured from a real fastchess 1.8.2 run.
+func TestScoreLinePatterns(t *testing.T) {
+	games := gamesPattern.FindStringSubmatch("Games: 16, Wins: 11, Losses: 3, Draws: 2, Points: 12.0 (75.00 %)")
+	if games == nil {
+		t.Fatal("gamesPattern did not match a fastchess Games line")
+	}
+	if got, want := parseIntMatches(games), []int{16, 11, 3, 2}; !slices.Equal(got, want) {
+		t.Errorf("games = %v, want %v", got, want)
+	}
+
+	ptnml := pentanomialPattern.FindStringSubmatch("Ptnml(0-2): [0, 0, 3, 2, 3], WL/DD Ratio: inf")
+	if ptnml == nil {
+		t.Fatal("pentanomialPattern did not match a fastchess Ptnml line")
+	}
+	if got, want := parseIntMatches(ptnml), []int{0, 0, 3, 2, 3}; !slices.Equal(got, want) {
+		t.Errorf("ptnml = %v, want %v", got, want)
 	}
 }

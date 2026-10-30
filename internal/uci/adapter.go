@@ -158,11 +158,42 @@ func (ue *Engine) HandleCommand(input string) string {
 		return ue.handleSetOption(cmd.Args)
 	case "ucinewgame":
 		return ue.handleNewGame()
+	case "bench":
+		return ue.handleBench(cmd.Args)
 	case "quit":
 		return ""
 	default:
 		return ""
 	}
+}
+
+// handleBench runs the fixed bench suite ("bench [depth]") and reports the
+// total node count, the search signature quoted in commit messages.
+func (ue *Engine) handleBench(args []string) string {
+	report, err := BenchReport(args)
+	if err != nil {
+		slog.Error("bench failed", "error", err)
+		return ""
+	}
+	return report
+}
+
+// BenchReport runs search.RunBench at the depth given in args[0] (default
+// search.DefaultBenchDepth) and formats the result. The final line,
+// "Bench: <nodes> nodes <nps> nps", is the shape OpenBench-style tooling parses.
+func BenchReport(args []string) (string, error) {
+	depth := search.DefaultBenchDepth
+	if len(args) > 0 {
+		if _, err := fmt.Sscanf(args[0], "%d", &depth); err != nil || depth < 1 {
+			return "", fmt.Errorf("invalid bench depth %q", args[0])
+		}
+	}
+	result, err := search.RunBench(depth)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Depth: %d\nPositions: %d\nTime (ms): %d\nBench: %d nodes %d nps",
+		depth, len(search.BenchFENs), result.Elapsed.Milliseconds(), result.Nodes, result.NodesPerSecond()), nil
 }
 
 func (ue *Engine) handleUCI() string {

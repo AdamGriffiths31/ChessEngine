@@ -2,6 +2,7 @@ package uci
 
 import (
 	"reflect"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -354,5 +355,19 @@ func TestProtocolHandler_FormatInfo(t *testing.T) {
 	want := "info depth 6 score cp 50 nodes 1000000 time 2000 nps 500000 pv e2e4 e7e5"
 	if got != want {
 		t.Errorf("FormatInfo() = %q, want %q", got, want)
+	}
+}
+
+// TestEngine_BenchCommand checks "bench <depth>" reports the bench line, and
+// that a bad depth yields no output instead of a search.
+func TestEngine_BenchCommand(t *testing.T) {
+	engine := NewUCIEngine()
+
+	got := engine.HandleCommand("bench 2")
+	if !regexp.MustCompile(`(?m)^Bench: [1-9]\d* nodes \d+ nps$`).MatchString(got) {
+		t.Errorf("bench 2 output has no Bench line:\n%s", got)
+	}
+	if got := engine.HandleCommand("bench nope"); got != "" {
+		t.Errorf("bench with invalid depth = %q, want empty", got)
 	}
 }

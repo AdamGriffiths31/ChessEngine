@@ -5,6 +5,7 @@
 //	bench profile   - CPU/memory profiling utility (formerly cmd/profile)
 //	bench report    - regenerate the STS history table from tools/results/*.jsonl
 //	bench sprt      - SPRT regression test between two UCI binaries
+//	bench mates     - matetrack mate-finding suite
 package main
 
 import (
@@ -21,6 +22,7 @@ Subcommands:
   profile    CPU/memory profiling utility
   report     Regenerate the STS history table from tools/results/*.jsonl
   sprt       SPRT regression test between two UCI binaries
+  mates      Matetrack mate-finding suite
 
 Run "bench <subcommand> -h" for flags on a specific subcommand.`)
 }
@@ -41,6 +43,8 @@ func main() {
 		err = runProfile(os.Args[2:])
 	case "report":
 		err = runReport(os.Args[2:])
+	case "mates":
+		err = runMates(os.Args[2:])
 	case "sprt":
 		err = runSPRT(os.Args[2:])
 	default:

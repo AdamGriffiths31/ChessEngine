@@ -3,41 +3,42 @@ package bench
 import "time"
 
 // SPRTConfig configures an SPRT regression test between two UCI engine
-// binaries, run via cutechess-cli.
+// binaries, run via fastchess.
 type SPRTConfig struct {
 	BasePath     string   // path to the baseline UCI binary
 	DevPath      string   // path to the candidate UCI binary
 	BaseOptions  []string // UCI options for Base, each "Name=Value" (e.g. "Skill Level=5")
 	DevOptions   []string // UCI options for Dev, each "Name=Value"
-	Elo0         float64  // H1 rejected if the true Elo gain is below this
-	Elo1         float64  // H1 accepted if the true Elo gain is at or above this
+	Elo0         float64  // H1 rejected if the true normalized Elo gain is below this
+	Elo1         float64  // H1 accepted if the true normalized Elo gain is at or above this
 	Alpha        float64  // max probability of accepting H1 when H0 is true
 	Beta         float64  // max probability of accepting H0 when H1 is true
-	TimeControl  string   // cutechess-cli tc= syntax, e.g. "10+0.1"
+	TimeControl  string   // fastchess tc= syntax, e.g. "10+0.1"
 	OpeningsFile string   // path to an EPD opening book
 	Concurrency  int      // concurrent games; keep engine Threads=1 so games share cores
 	MaxGames     int      // safety cap if SPRT never reaches a bound
-	CutechessCli string   // path to the cutechess-cli binary
+	Fastchess    string   // path to the fastchess binary
 }
 
-// DefaultSPRTConfig returns the standard STC bounds. Concurrency defaults
+// DefaultSPRTConfig returns the standard STC bounds: normalized Elo [0, 2],
+// as used by fishtest and OpenBench for gainers. Concurrency defaults
 // to 1 for deterministic, low-interference runs; raise it via the -concurrency
 // flag to trade some determinism for wall-clock speed.
 func DefaultSPRTConfig(rootPath string) SPRTConfig {
 	return SPRTConfig{
 		Elo0:         0,
-		Elo1:         5,
+		Elo1:         2,
 		Alpha:        0.05,
 		Beta:         0.05,
 		TimeControl:  "10+0.1",
-		OpeningsFile: rootPath + "/testdata/sprt_openings.epd",
+		OpeningsFile: rootPath + "/testdata/8moves_v3.epd",
 		Concurrency:  1,
 		MaxGames:     4000,
-		CutechessCli: rootPath + "/tools/engines/cutechess-cli.exe",
+		Fastchess:    rootPath + "/tools/engines/fastchess.exe",
 	}
 }
 
-// SPRTVerdict mirrors cutechess-cli's sprt.h Result enum.
+// SPRTVerdict is the outcome of an SPRT run.
 type SPRTVerdict int
 
 const (
@@ -74,8 +75,10 @@ type SPRTResult struct {
 	Losses     int
 	Draws      int
 	GamesTotal int
-	Config     SPRTConfig
-	Timestamp  string
-	Duration   time.Duration
-	RawLog     string
+	// Pentanomial counts game pairs by Dev's pair score: 0, 0.5, 1, 1.5, 2.
+	Pentanomial [5]int
+	Config      SPRTConfig
+	Timestamp   string
+	Duration    time.Duration
+	RawLog      string
 }

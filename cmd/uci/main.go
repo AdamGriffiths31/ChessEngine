@@ -61,6 +61,17 @@ func run() error {
 	}
 	defer closeLog()
 
+	// "uci bench [depth]" prints the bench signature and exits, so scripts and
+	// OpenBench-style tooling can get it without a UCI session.
+	if flag.Arg(0) == "bench" {
+		report, err := uci.BenchReport(flag.Args()[1:])
+		if err != nil {
+			return err
+		}
+		fmt.Println(report)
+		return nil
+	}
+
 	engine := uci.NewUCIEngine()
 
 	if _, err := os.Stat(defaultBookPath); err == nil {

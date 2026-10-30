@@ -68,3 +68,6 @@ coverage/
 
 # Local secrets
 .env
+
+# fastchess writes its resumable tournament state here at the end of a match
+/config.json

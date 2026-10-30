@@ -1,7 +1,9 @@
 # SPRT Testing
 
 Compare two builds of the engine (baseline vs. candidate) with `bench sprt`,
-which drives `cutechess-cli`. Written to be followed step by step by a human or
+which drives [fastchess](https://github.com/Disservin/fastchess). Results use
+the pentanomial model (game pairs, one per colour from each opening) and
+normalized Elo bounds, as on fishtest and OpenBench. Written to be followed step by step by a human or
 an AI agent: every step is a literal command plus the output to expect.
 
 **Terms:** `base` = known-good build (usually `HEAD`). `dev` = candidate build
@@ -11,8 +13,8 @@ an AI agent: every step is a literal command plus the output to expect.
 
 | Need | How to check | If missing |
 |------|--------------|------------|
-| `cutechess-cli.exe` at `<repo root>/tools/engines/` | `ls tools/engines/cutechess-cli.exe` | See "Git worktrees" below |
-| Openings at `<repo root>/testdata/sprt_openings.epd` | `ls testdata/sprt_openings.epd` | Tracked in git; restore it |
+| `fastchess.exe` at `<repo root>/tools/engines/` | `ls tools/engines/fastchess.exe` | Download `fastchess-windows-x86-64.zip` from the fastchess GitHub releases and copy `fastchess.exe` there; in a worktree see "Git worktrees" below |
+| Openings at `<repo root>/testdata/8moves_v3.epd` | `ls testdata/8moves_v3.epd` | Tracked in git (force-added; `testdata/` is ignored); restore it |
 | Go toolchain | `go version` | Install Go |
 | Free cores | `nproc` | Lower `-concurrency` |
 
@@ -69,20 +71,18 @@ go run ./cmd/bench sprt \
   -tc 1+0.05 \
   -games 500 \
   -concurrency 8 \
-  -base-options "Threads=1" \
-  -dev-options  "Threads=1" \
   > "$S/sprt.log" 2>&1
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `-tc` | `10+0.1` | Time control, `seconds+increment`. `1+0.05` is the fast screening setting; use `10+0.1` for a production-representative result |
-| `-games` | `4000` | Cap on total games. SPRT can stop earlier if a bound is crossed |
+| `-games` | `4000` | Cap on total games, played as `games/2` opening pairs. SPRT can stop earlier if a bound is crossed |
 | `-concurrency` | `1` | Games in parallel. Use about half the logical core count (8 on a 16-thread machine) |
-| `-base-options`, `-dev-options` | none | Comma-separated UCI options. Keep `Threads=1` when `-concurrency` > 1 so games do not compete for cores |
-| `-elo0`, `-elo1` | `0`, `5` | SPRT hypotheses |
+| `-base-options`, `-dev-options` | none | Comma-separated UCI options, e.g. `Hash=64`. Our engine is single-threaded and has no `Threads` option; set `Threads=1` only for other engines such as Stockfish |
+| `-elo0`, `-elo1` | `0`, `2` | SPRT hypotheses in **normalized** Elo (nElo). `[0, 2]` for a gainer; `[-2, 0]` to check a simplification or refactor is not a regression |
 | `-alpha`, `-beta` | `0.05` each | Error rates |
-| `-openings` | `testdata/sprt_openings.epd` | EPD opening book |
+| `-openings` | `testdata/8moves_v3.epd` | EPD opening book: 34,700 balanced 8-move positions (Stockfish `8moves_v3`, CC0), picked at random |
 
 Run `go run ./cmd/bench sprt -h` for the full list.
 
@@ -118,7 +118,7 @@ keep, and never hand-edit older history entries.
 ## 3. Read the result
 
 ```bash
-grep "Elo difference\|LOS" "$S/sprt.log" | tail -3   # point estimate
+grep "^Elo:\|^LOS:\|^Ptnml" "$S/sprt.log" | tail -3   # point estimate
 tail -3 "$S/sprt.log"                                # SPRT verdict line
 ```
 
@@ -134,7 +134,9 @@ SPRT verdict: inconclusive (games cap reached) (llr=0.83, bounds=[-2.94, 2.94], 
 | `H0 accepted` | LLR crossed the lower bound: dev is not stronger |
 | `inconclusive (games cap reached)` | Cap hit before either bound; use the Elo estimate only as a hint |
 
-`Elo difference: X +/- Y, LOS: Z%` is the point estimate with its interval.
+`Elo: X +/- Y, nElo: N +/- M` and `LOS: Z%` are the point estimate with its
+interval. `Ptnml(0-2): [a, b, c, d, e]` counts game pairs by Dev's pair score
+(0, 0.5, 1, 1.5, 2); the history table records it.
 Judge it by these rules:
 
 - Interval clearly away from 0 and high LOS: probably real.
@@ -154,10 +156,16 @@ single clean answer, run one large batch (`-games 2000` or more).
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `cutechess-cli not found at .../tools/engines/cutechess-cli.exe` | Running from a worktree without the junction | See "Git worktrees" |
+| `fastchess not found at .../tools/engines/fastchess.exe` | Running from a worktree without the junction, or fastchess not installed | See "Prerequisites" and "Git worktrees" |
 | Exit code 1 with no games played | Missing `.exe`, bad path, or bad option string | Read the last 20 lines of the log |
 | Result near 0 Elo with huge `+/-` | Too few games | Raise `-games` |
 | Games lose to timeouts | `-concurrency` too high for the core count | Lower it |
+| `config.json` appears in the repo root | fastchess saves its tournament state at the end of a match | Ignored by git; delete it |
+
+Each engine runs with its binary's directory as working directory, so the
+engine's opening book (`internal/book/testdata/performance.bin`, loaded relative
+to the working directory) is **not** used during SPRT games. Keep the built
+binaries outside the repo root, as step 1 does.
 
 ## Rules for AI agents
 

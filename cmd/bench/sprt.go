@@ -22,7 +22,7 @@ func parseEngineOptions(s string) []string {
 }
 
 // runSPRT runs an SPRT regression test between two UCI engines via
-// cutechess-cli and logs the result. See docs/sprt-testing.md for the full
+// fastchess and logs the result. See docs/sprt-testing.md for the full
 // workflow; -base/-dev accept any UCI engine (e.g. handicapped Stockfish).
 func runSPRT(args []string) error {
 	rootPath, err := os.Getwd()
@@ -34,11 +34,11 @@ func runSPRT(args []string) error {
 	fs := flag.NewFlagSet("bench sprt", flag.ExitOnError)
 	base := fs.String("base", "", "path to the baseline UCI binary (required)")
 	dev := fs.String("dev", "", "path to the candidate UCI binary (required)")
-	elo0 := fs.Float64("elo0", cfg.Elo0, "SPRT elo0 bound")
-	elo1 := fs.Float64("elo1", cfg.Elo1, "SPRT elo1 bound")
+	elo0 := fs.Float64("elo0", cfg.Elo0, "SPRT elo0 bound (normalized Elo)")
+	elo1 := fs.Float64("elo1", cfg.Elo1, "SPRT elo1 bound (normalized Elo)")
 	alpha := fs.Float64("alpha", cfg.Alpha, "SPRT alpha (type I error)")
 	beta := fs.Float64("beta", cfg.Beta, "SPRT beta (type II error)")
-	tc := fs.String("tc", cfg.TimeControl, "cutechess-cli time control")
+	tc := fs.String("tc", cfg.TimeControl, "fastchess time control, seconds+increment")
 	openings := fs.String("openings", cfg.OpeningsFile, "EPD opening book path")
 	concurrency := fs.Int("concurrency", cfg.Concurrency, "concurrent games")
 	maxGames := fs.Int("games", cfg.MaxGames, "safety cap on total games")

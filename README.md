@@ -114,18 +114,28 @@ go build -o chessengine ./cmd/gchess
 
 ### Benchmarking
 ```bash
-# Build the bench multi-tool (sts/profile/report/sprt subcommands)
+# Build the bench multi-tool (sts/profile/report/sprt/mates subcommands)
 go build -o bench ./cmd/bench
 
 # Run Strategic Test Suite (STS)
 ./bench sts -file testdata/STS1.epd -timeout 5 -max 100
 
+# Run the matetrack mate-finding suite (testdata/matetrack.epd, not tracked:
+# download matetrack.epd from github.com/vondele/matetrack, GPL-3.0)
+./bench mates -time 200ms -concurrency 8
+
 # Run CPU/memory profiling
 ./bench profile -file testdata/STS1.epd
 ```
 
+**Bench signature:** `uci bench` (or `bench` inside a UCI session) searches a
+fixed position set to depth 9 and prints `Bench: <nodes> nodes <nps> nps`. The
+node count is deterministic, so put it in commit messages (`Bench: 1890275`):
+a change that alters it changes search behaviour.
+
 **SPRT regression testing** (statistical A/B between two engine builds via
-cutechess-cli): see [docs/sprt-testing.md](docs/sprt-testing.md).
+fastchess, pentanomial model, normalized Elo): see
+[docs/sprt-testing.md](docs/sprt-testing.md).
 
 **Dev note:** `make bench-save` runs the Go benchmark suite for
 `internal/movegen`/`internal/eval`/`internal/search` (`-count 10`) and saves
