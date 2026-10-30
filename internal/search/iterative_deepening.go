@@ -23,6 +23,12 @@ type rootSearch struct {
 	scores []eval.EvaluationScore
 	exact  []bool
 
+	// partialScore and partialMove hold the best root move that finished
+	// inside the window during the current iteration, so an interrupted
+	// iteration can still report it.
+	partialScore eval.EvaluationScore
+	partialMove  board.Move
+
 	startTime time.Time
 }
 
@@ -72,6 +78,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 
 	for currentDepth := 1; currentDepth <= config.MaxDepth; currentDepth++ {
 		m.searchState.searchCancelled = false
+		rs.partialScore = -eval.MateScore - 1
 
 		pv.reset()
 
@@ -120,6 +127,13 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				finalStats.StopReason = StopReasonTime
 				break
 			}
+		} else if rs.partialScore > lastCompletedScore {
+			// The iteration was interrupted, but a root move it finished beat
+			// the last completed iteration. That score is a real search result
+			// at a greater depth, so it is not thrown away with the rest.
+			lastCompletedBestMove = rs.partialMove
+			lastCompletedScore = rs.partialScore
+			finalStats.PrincipalVariation = []board.Move{rs.partialMove}
 		}
 	}
 
@@ -246,6 +260,10 @@ func (m *MinimaxEngine) searchRootMoves(ctx context.Context, rs *rootSearch, dep
 		b.UnmakeMove(undo)
 
 		m.removeHistory()
+
+		if !m.searchState.searchCancelled && score > alpha && score > rs.partialScore {
+			rs.partialScore, rs.partialMove = score, move
+		}
 
 		rs.scores[moveIdx] = score
 		rs.exact[moveIdx] = fullWindow && score > windowAlpha && score < beta

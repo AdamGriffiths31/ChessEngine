@@ -13,7 +13,7 @@ import (
 // Config configures the search parameters
 type Config struct {
 	MaxDepth int
-	// MaxTime is the hard limit; the running iteration is discarded. Zero means none.
+	// MaxTime is the hard limit; only root moves the running iteration finished survive it. Zero means none.
 	MaxTime time.Duration
 	// SoftTime is checked between iterations only; zero disables it.
 	SoftTime  time.Duration
