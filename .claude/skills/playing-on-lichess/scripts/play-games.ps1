@@ -8,12 +8,13 @@ param(
     [string]$BotDir = $env:LICHESS_BOT_DIR,
     [ValidateSet("casual", "rated", "random")][string]$Mode,
     [ValidatePattern('^\d+\+\d+$')][string]$TimeControl,
-    [string]$RunScript = (Join-Path $PSScriptRoot "..\..\..\..\tools\lichess\run.ps1"),
+    [string]$RunScript,
     [string]$BotName = "GolangChessBot",
     [int]$PollSeconds = 5
 )
 
 if (-not $BotDir) { Write-Error "Pass -BotDir or set LICHESS_BOT_DIR"; exit 1 }
+if (-not $RunScript) { $RunScript = Join-Path $PSScriptRoot "..\..\..\..\tools\lichess\run.ps1" }
 
 $records = Join-Path $BotDir "game_records"
 $logs = Join-Path $BotDir "logs"
