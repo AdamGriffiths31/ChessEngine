@@ -60,7 +60,7 @@ func TestEvaluateRooksForColor(t *testing.T) {
 				rooks = b.GetPieceBitboard(board.BlackRook)
 			}
 
-			score := evaluateRooksForColor(b, rooks, tt.isWhite)
+			score := evaluateRooksForColor(b, rooks, mobilityArea(b, tt.isWhite), tt.isWhite)
 			if score != tt.expected {
 				t.Errorf("%s: expected %d, got %d", tt.name, tt.expected, score)
 			}
@@ -101,7 +101,7 @@ func TestRookConnectedBehavior(t *testing.T) {
 
 			whiteRooks := b.GetPieceBitboard(board.WhiteRook)
 
-			fullScore := evaluateRooksForColor(b, whiteRooks, true)
+			fullScore := evaluateRooksForColor(b, whiteRooks, mobilityArea(b, true), true)
 
 			expectedWithoutConnection := 0
 			tempRooks := whiteRooks

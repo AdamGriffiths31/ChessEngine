@@ -47,7 +47,8 @@ func TestIsFileOpen(t *testing.T) {
 				t.Fatalf("Failed to create board from FEN: %v", err)
 			}
 
-			result := isFileOpen(b, tt.file)
+			allPawns := b.GetPieceBitboard(board.WhitePawn) | b.GetPieceBitboard(board.BlackPawn)
+			result := isFileOpen(allPawns, tt.file)
 			if result != tt.expected {
 				t.Errorf("%s: expected %t, got %t", tt.description, tt.expected, result)
 			}

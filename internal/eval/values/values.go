@@ -6,7 +6,6 @@ type Piece int
 
 // Piece constants matching board.Piece values
 const (
-	Empty       Piece = 0
 	WhitePawn   Piece = 'P'
 	WhiteRook   Piece = 'R'
 	WhiteKnight Piece = 'N'
@@ -34,8 +33,6 @@ func GetPieceValue(piece Piece) int {
 		return 500
 	case WhiteQueen:
 		return 900
-	case WhiteKing:
-		return 0
 	case BlackPawn:
 		return -100
 	case BlackKnight:
@@ -46,8 +43,6 @@ func GetPieceValue(piece Piece) int {
 		return -500
 	case BlackQueen:
 		return -900
-	case BlackKing:
-		return 0
 	default:
 		return 0
 	}
@@ -65,49 +60,46 @@ func GetPositionalBonusEndgame(piece Piece, rank, file int) int {
 }
 
 func positionalBonus(piece Piece, rank, file int, endgame bool) int {
+	square := rank*8 + file
+	flipped := square ^ 56
+
 	switch piece {
 	case WhiteKnight:
-		return KnightTable[rank*8+file]
+		return KnightTable[square]
 	case BlackKnight:
-		flippedRank := 7 - rank
-		return -KnightTable[flippedRank*8+file]
+		return -KnightTable[flipped]
 	case WhiteBishop:
-		return BishopTable[rank*8+file]
+		return BishopTable[square]
 	case BlackBishop:
-		flippedRank := 7 - rank
-		return -BishopTable[flippedRank*8+file]
+		return -BishopTable[flipped]
 	case WhiteRook:
-		return RookTable[rank*8+file]
+		return RookTable[square]
 	case BlackRook:
-		flippedRank := 7 - rank
-		return -RookTable[flippedRank*8+file]
+		return -RookTable[flipped]
 	case WhiteQueen:
-		return QueenTable[rank*8+file]
+		return QueenTable[square]
 	case BlackQueen:
-		flippedRank := 7 - rank
-		return -QueenTable[flippedRank*8+file]
+		return -QueenTable[flipped]
 	case WhitePawn:
 		if endgame {
-			return PawnTableEndgame[rank*8+file]
+			return PawnTableEndgame[square]
 		}
-		return PawnTable[rank*8+file]
+		return PawnTable[square]
 	case BlackPawn:
-		flippedRank := 7 - rank
 		if endgame {
-			return -PawnTableEndgame[flippedRank*8+file]
+			return -PawnTableEndgame[flipped]
 		}
-		return -PawnTable[flippedRank*8+file]
+		return -PawnTable[flipped]
 	case WhiteKing:
 		if endgame {
-			return KingTableEndgame[rank*8+file]
+			return KingTableEndgame[square]
 		}
-		return KingTable[rank*8+file]
+		return KingTable[square]
 	case BlackKing:
-		flippedRank := 7 - rank
 		if endgame {
-			return -KingTableEndgame[flippedRank*8+file]
+			return -KingTableEndgame[flipped]
 		}
-		return -KingTable[flippedRank*8+file]
+		return -KingTable[flipped]
 	default:
 		return 0
 	}

@@ -18,30 +18,30 @@ const (
 	RooksConnectedBonus = 8
 )
 
-func evaluateRooks(b *board.Board) int {
-	if b == nil {
-		return 0
-	}
-	whiteScore := evaluateRooksForColor(b, b.GetPieceBitboard(board.WhiteRook), true)
-	blackScore := evaluateRooksForColor(b, b.GetPieceBitboard(board.BlackRook), false)
+const seventhRank = 6
 
-	return whiteScore - blackScore
+func evaluateRooks(b *board.Board, whiteArea, blackArea board.Bitboard) int {
+	return evaluateRooksForColor(b, b.GetPieceBitboard(board.WhiteRook), whiteArea, true) -
+		evaluateRooksForColor(b, b.GetPieceBitboard(board.BlackRook), blackArea, false)
 }
 
-func evaluateRooksForColor(b *board.Board, rooks board.Bitboard, forWhite bool) int {
-	if b == nil || rooks == 0 {
+func evaluateRooksForColor(b *board.Board, rooks, area board.Bitboard, forWhite bool) int {
+	if rooks == 0 {
 		return 0
 	}
 
 	score := 0
-	rookCount := rooks.PopCount()
+
+	if rooks.PopCount() == 2 {
+		score += evaluateRookConnection(rooks.MSB(), rooks.LSB())
+	}
 
 	whitePawns := b.GetPieceBitboard(board.WhitePawn)
 	blackPawns := b.GetPieceBitboard(board.BlackPawn)
-
-	area := mobilityArea(b, forWhite)
-
-	firstRookSquare := -1
+	ownPawns := blackPawns
+	if forWhite {
+		ownPawns = whitePawns
+	}
 
 	for rooks != 0 {
 		square, remaining := rooks.PopLSB()
@@ -50,55 +50,32 @@ func evaluateRooksForColor(b *board.Board, rooks board.Bitboard, forWhite bool) 
 		file := square % 8
 		rank := square / 8
 
-		score += evaluateFileControl(file, whitePawns, blackPawns, forWhite)
+		score += evaluateFileControl(file, ownPawns, whitePawns|blackPawns)
 
-		score += evaluateRankPenetration(rank, forWhite)
-
-		score += rookMobilityScore(square, b.AllPieces, area)
-
-		if firstRookSquare != -1 && rookCount == 2 {
-			score += evaluateRookConnection(square, firstRookSquare)
+		if relativeRank(rank, forWhite) == seventhRank {
+			score += RookOn7thBonus
 		}
 
-		firstRookSquare = square
+		score += rookMobilityScore(square, b.AllPieces, area)
 	}
 
 	return score
 }
 
-func evaluateFileControl(file int, whitePawns, blackPawns board.Bitboard, forWhite bool) int {
-	fileMask := board.FileMask(file)
-	hasWhitePawns := (whitePawns & fileMask) != 0
-	hasBlackPawns := (blackPawns & fileMask) != 0
-
-	if !hasWhitePawns && !hasBlackPawns {
+func evaluateFileControl(file int, ownPawns, allPawns board.Bitboard) int {
+	if isFileOpen(allPawns, file) {
 		return RookOpenFileBonus
 	}
 
-	if forWhite && !hasWhitePawns {
-		return RookSemiOpenFileBonus
-	}
-	if !forWhite && !hasBlackPawns {
+	if isFileOpen(ownPawns, file) {
 		return RookSemiOpenFileBonus
 	}
 
 	return 0
 }
 
-func evaluateRankPenetration(rank int, forWhite bool) int {
-	if (forWhite && rank == 6) || (!forWhite && rank == 1) {
-		return RookOn7thBonus
-	}
-	return 0
-}
-
-func evaluateRookConnection(currentSquare, previousSquare int) int {
-	currentFile := currentSquare % 8
-	currentRank := currentSquare / 8
-	previousFile := previousSquare % 8
-	previousRank := previousSquare / 8
-
-	if currentRank == previousRank || currentFile == previousFile {
+func evaluateRookConnection(firstSquare, secondSquare int) int {
+	if firstSquare/8 == secondSquare/8 || firstSquare%8 == secondSquare%8 {
 		return RooksConnectedBonus
 	}
 

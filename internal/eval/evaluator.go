@@ -5,6 +5,12 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/eval/values"
 )
 
+const (
+	lazyEvalMargin      = 1000
+	pieceActivityMargin = 500
+	maxGamePhase        = 24
+)
+
 // GetPieceValue returns the value of a piece in centipawns.
 func GetPieceValue(piece board.Piece) int {
 	return values.GetPieceValue(values.Piece(piece))
@@ -18,7 +24,7 @@ type PawnHashEntry struct {
 
 // StandardEvaluator evaluates positions based on material balance and piece-square tables.
 type StandardEvaluator struct {
-	pawnHashTable [16384]PawnHashEntry
+	pawnHashTable [pawnHashSize]PawnHashEntry
 }
 
 // NewEvaluator creates a new evaluator.
@@ -33,19 +39,16 @@ func (e *StandardEvaluator) Evaluate(b *board.Board) EvaluationScore {
 		return EvaluationScore(0)
 	}
 
-	score := 0
+	score := evaluateMaterialAndPST(b)
 
-	score = e.evaluateMaterialAndPST(b)
-
-	if abs(score) > 1000 {
+	if abs(score) > lazyEvalMargin {
 		return EvaluationScore(score)
 	}
 
-	pawnScore := e.evaluatePawnStructure(b)
-	score += pawnScore
+	score += e.evaluatePawnStructure(b)
 
-	if abs(score) < 500 {
-		score += e.evaluatePieceActivity(b)
+	if abs(score) < pieceActivityMargin {
+		score += evaluatePieceActivity(b)
 	}
 
 	score += evaluateKings(b)
@@ -53,51 +56,30 @@ func (e *StandardEvaluator) Evaluate(b *board.Board) EvaluationScore {
 	return EvaluationScore(score)
 }
 
-func (e *StandardEvaluator) evaluateMaterialAndPST(b *board.Board) int {
-	if b == nil {
-		return 0
-	}
-
+func evaluateMaterialAndPST(b *board.Board) int {
 	mg := b.GetPSTScore()
 	eg := b.GetPSTScoreEndgame()
-	if mg == eg {
-		return b.GetMaterialScore() + mg
-	}
 	phase := computeGamePhase(b)
-	return b.GetMaterialScore() + (mg*phase+eg*(24-phase))/24
+	return b.GetMaterialScore() + (mg*phase+eg*(maxGamePhase-phase))/maxGamePhase
 }
 
 func computeGamePhase(b *board.Board) int {
-	phase := b.GetPieceBitboard(board.WhiteKnight).PopCount() +
-		b.GetPieceBitboard(board.BlackKnight).PopCount() +
-		b.GetPieceBitboard(board.WhiteBishop).PopCount() +
-		b.GetPieceBitboard(board.BlackBishop).PopCount() +
-		2*(b.GetPieceBitboard(board.WhiteRook).PopCount()+b.GetPieceBitboard(board.BlackRook).PopCount()) +
-		4*(b.GetPieceBitboard(board.WhiteQueen).PopCount()+b.GetPieceBitboard(board.BlackQueen).PopCount())
-	if phase > 24 {
-		phase = 24
-	}
-	return phase
+	minors := b.GetPieceBitboard(board.WhiteKnight) | b.GetPieceBitboard(board.BlackKnight) |
+		b.GetPieceBitboard(board.WhiteBishop) | b.GetPieceBitboard(board.BlackBishop)
+	rooks := b.GetPieceBitboard(board.WhiteRook) | b.GetPieceBitboard(board.BlackRook)
+	queens := b.GetPieceBitboard(board.WhiteQueen) | b.GetPieceBitboard(board.BlackQueen)
+
+	return min(minors.PopCount()+2*rooks.PopCount()+4*queens.PopCount(), maxGamePhase)
 }
 
-func (e *StandardEvaluator) evaluatePieceActivity(b *board.Board) int {
-	if b == nil {
-		return 0
-	}
+func evaluatePieceActivity(b *board.Board) int {
+	whiteArea := mobilityArea(b, true)
+	blackArea := mobilityArea(b, false)
 
-	score := 0
-
-	score += evaluateKnights(b)
-	score += evaluateBishops(b)
-	score += evaluateRooks(b)
-	score += evaluateQueens(b)
-
-	return score
-}
-
-// GetName returns the evaluator name.
-func (e *StandardEvaluator) GetName() string {
-	return "Evaluator"
+	return evaluateKnights(b, whiteArea, blackArea) +
+		evaluateBishops(b, whiteArea, blackArea) +
+		evaluateRooks(b, whiteArea, blackArea) +
+		evaluateQueens(b, whiteArea, blackArea)
 }
 
 func abs(x int) int {

@@ -15,18 +15,19 @@ const (
 	ConnectedPawnBonus = 8
 )
 
+const (
+	pawnHashBits       = 14
+	pawnHashSize       = 1 << pawnHashBits
+	pawnHashMultiplier = 0x9E3779B97F4A7C15
+)
+
 // PassedPawnBonus provides exponential bonuses for passed pawns by rank
 // Index represents rank (0-7), values increase exponentially toward promotion
 var PassedPawnBonus = [8]int{0, 10, 15, 25, 40, 60, 90, 0}
 
 func (e *StandardEvaluator) evaluatePawnStructure(b *board.Board) int {
-	if b == nil {
-		return 0
-	}
 	pawnHash := b.GetPawnHash()
-	hashIndex := pawnHash & 16383
-
-	entry := &e.pawnHashTable[hashIndex]
+	entry := &e.pawnHashTable[pawnHashIndex(pawnHash)]
 	cachedScore := entry.score
 	if entry.hash^uint64(int64(cachedScore)) == pawnHash {
 		return cachedScore
@@ -42,14 +43,13 @@ func (e *StandardEvaluator) evaluatePawnStructure(b *board.Board) int {
 	return score
 }
 
+func pawnHashIndex(pawnHash uint64) uint64 {
+	return (pawnHash * pawnHashMultiplier) >> (64 - pawnHashBits)
+}
+
 func evaluatePawnsSimple(whitePawns, blackPawns board.Bitboard) int {
-	score := 0
-
-	score += evaluatePawnsByColor(whitePawns, blackPawns, true)
-
-	score -= evaluatePawnsByColor(blackPawns, whitePawns, false)
-
-	return score
+	return evaluatePawnsByColor(whitePawns, blackPawns, true) -
+		evaluatePawnsByColor(blackPawns, whitePawns, false)
 }
 
 func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool) int {
@@ -72,11 +72,7 @@ func evaluatePawnsByColor(friendlyPawns, enemyPawns board.Bitboard, isWhite bool
 		filePawns[file]++
 
 		if isPassedPawn(square, enemyPawns, isWhite) {
-			if isWhite {
-				score += PassedPawnBonus[rank]
-			} else {
-				score += PassedPawnBonus[7-rank]
-			}
+			score += PassedPawnBonus[relativeRank(rank, isWhite)]
 		}
 
 		if isIsolatedPawn(friendlyPawns, file) {
@@ -103,104 +99,49 @@ func isPassedPawn(square int, enemyPawns board.Bitboard, isWhite bool) bool {
 	file := square % 8
 	rank := square / 8
 
-	if isWhite {
-		for r := rank + 1; r < 8; r++ {
-			for f := max(0, file-1); f <= min(7, file+1); f++ {
-				if hasPawnAt(enemyPawns, f, r) {
-					return false
-				}
-			}
-		}
-	} else {
-		for r := rank - 1; r >= 0; r-- {
-			for f := max(0, file-1); f <= min(7, file+1); f++ {
-				if hasPawnAt(enemyPawns, f, r) {
-					return false
-				}
-			}
-		}
-	}
-
-	return true
+	return enemyPawns&(board.FileMask(file)|adjacentFiles(file))&ranksAhead(rank, isWhite) == 0
 }
 
 func isIsolatedPawn(friendlyPawns board.Bitboard, file int) bool {
-	if file > 0 && (friendlyPawns&board.FileMask(file-1)) != 0 {
-		return false
-	}
-
-	if file < 7 && (friendlyPawns&board.FileMask(file+1)) != 0 {
-		return false
-	}
-
-	return true
+	return friendlyPawns&adjacentFiles(file) == 0
 }
 
 func isConnectedPawn(friendlyPawns board.Bitboard, square int, isWhite bool) bool {
-	file := square % 8
-	rank := square / 8
-
-	supportRank := rank - 1
-	if !isWhite {
-		supportRank = rank + 1
+	if isWhite {
+		return friendlyPawns&board.BlackPawnAttacks[square] != 0
 	}
-	if supportRank < 0 || supportRank > 7 {
-		return false
-	}
-
-	if file > 0 && friendlyPawns.HasBit(supportRank*8+(file-1)) {
-		return true
-	}
-
-	if file < 7 && friendlyPawns.HasBit(supportRank*8+(file+1)) {
-		return true
-	}
-
-	return false
+	return friendlyPawns&board.WhitePawnAttacks[square] != 0
 }
 
 func isBackwardPawn(square int, friendlyPawns, enemyPawns board.Bitboard, isWhite bool) bool {
 	file := square % 8
 	rank := square / 8
 
-	for _, f := range [2]int{file - 1, file + 1} {
-		if f < 0 || f > 7 {
-			continue
-		}
-		adjacentPawns := friendlyPawns & board.FileMask(f)
-		for adjacentPawns != 0 {
-			adjSquare, remaining := adjacentPawns.PopLSB()
-			adjacentPawns = remaining
-			adjRank := adjSquare / 8
-			if (isWhite && adjRank <= rank) || (!isWhite && adjRank >= rank) {
-				return false
-			}
-		}
-	}
-
-	var stopRank, attackerRank int
-	if isWhite {
-		stopRank = rank + 1
-		attackerRank = stopRank + 1
-	} else {
-		stopRank = rank - 1
-		attackerRank = stopRank - 1
-	}
-	if stopRank < 0 || stopRank > 7 || attackerRank < 0 || attackerRank > 7 {
+	if friendlyPawns&adjacentFiles(file)&^ranksAhead(rank, isWhite) != 0 {
 		return false
 	}
 
-	if file > 0 && enemyPawns.HasBit(attackerRank*8+(file-1)) {
-		return true
+	if isWhite {
+		return enemyPawns&board.GetPawnAttacks(square+8, board.BitboardWhite) != 0
 	}
-	if file < 7 && enemyPawns.HasBit(attackerRank*8+(file+1)) {
-		return true
-	}
-
-	return false
+	return enemyPawns&board.GetPawnAttacks(square-8, board.BitboardBlack) != 0
 }
 
-func hasPawnAt(pawns board.Bitboard, file, rank int) bool {
-	square := rank*8 + file
-	return pawns.HasBit(square)
+func adjacentFiles(file int) board.Bitboard {
+	mask := board.FileMask(file)
+	return mask.ShiftEast() | mask.ShiftWest()
+}
+
+func ranksAhead(rank int, isWhite bool) board.Bitboard {
+	if isWhite {
+		return board.Bitboard(^uint64(0)) << ((rank + 1) * 8)
+	}
+	return board.Bitboard(uint64(1)<<(rank*8) - 1)
+}
+
+func relativeRank(rank int, isWhite bool) int {
+	if isWhite {
+		return rank
+	}
+	return 7 - rank
 }

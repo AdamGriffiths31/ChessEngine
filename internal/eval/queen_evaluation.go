@@ -12,33 +12,18 @@ const (
 	QueenOnOpenFile = 10
 )
 
-func evaluateQueens(b *board.Board) int {
-	if b == nil {
-		return 0
-	}
-
-	score := 0
-
-	whiteQueens := b.GetPieceBitboard(board.WhiteQueen)
-	if whiteQueens != 0 {
-		score += evaluateQueensForColor(b, whiteQueens, true)
-	}
-
-	blackQueens := b.GetPieceBitboard(board.BlackQueen)
-	if blackQueens != 0 {
-		score -= evaluateQueensForColor(b, blackQueens, false)
-	}
-
-	return score
+func evaluateQueens(b *board.Board, whiteArea, blackArea board.Bitboard) int {
+	return evaluateQueensForColor(b, b.GetPieceBitboard(board.WhiteQueen), whiteArea, true) -
+		evaluateQueensForColor(b, b.GetPieceBitboard(board.BlackQueen), blackArea, false)
 }
 
-func evaluateQueensForColor(b *board.Board, queensBitboard board.Bitboard, isWhite bool) int {
-	if b == nil || queensBitboard == 0 {
+func evaluateQueensForColor(b *board.Board, queensBitboard, area board.Bitboard, isWhite bool) int {
+	if queensBitboard == 0 {
 		return 0
 	}
 
 	score := 0
-	area := mobilityArea(b, isWhite)
+	allPawns := b.GetPieceBitboard(board.WhitePawn) | b.GetPieceBitboard(board.BlackPawn)
 
 	for queensBitboard != 0 {
 		square, remaining := queensBitboard.PopLSB()
@@ -49,11 +34,11 @@ func evaluateQueensForColor(b *board.Board, queensBitboard board.Bitboard, isWhi
 
 		score += queenMobilityScore(square, b.AllPieces, area)
 
-		if (isWhite && rank == 6) || (!isWhite && rank == 1) {
+		if relativeRank(rank, isWhite) == seventhRank {
 			score += QueenOn7thRank
 		}
 
-		if isFileOpen(b, file) {
+		if isFileOpen(allPawns, file) {
 			score += QueenOnOpenFile
 		}
 	}
@@ -61,12 +46,6 @@ func evaluateQueensForColor(b *board.Board, queensBitboard board.Bitboard, isWhi
 	return score
 }
 
-func isFileOpen(b *board.Board, file int) bool {
-	if b == nil {
-		return false
-	}
-	fileMask := board.FileMask(file)
-	whitePawns := b.GetPieceBitboard(board.WhitePawn) & fileMask
-	blackPawns := b.GetPieceBitboard(board.BlackPawn) & fileMask
-	return whitePawns == 0 && blackPawns == 0
+func isFileOpen(pawns board.Bitboard, file int) bool {
+	return pawns&board.FileMask(file) == 0
 }

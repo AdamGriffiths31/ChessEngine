@@ -60,7 +60,7 @@ func TestKnightOutpostDetection(t *testing.T) {
 				isWhite = false
 			}
 
-			score := evaluateKnightsSimple(b, knights, isWhite)
+			score := evaluateKnightsSimple(b, knights, mobilityArea(b, isWhite), isWhite)
 
 			knightSquare, _ := knights.PopLSB()
 			expectedMobility := knightMobilityScore(knightSquare, mobilityArea(b, isWhite))

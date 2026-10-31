@@ -23,27 +23,15 @@ const (
 )
 
 func mobilityArea(b *board.Board, isWhite bool) board.Bitboard {
-	var ownPawns, ownKing, enemyPawns board.Bitboard
-	if isWhite {
-		ownPawns = b.GetPieceBitboard(board.WhitePawn)
-		ownKing = b.GetPieceBitboard(board.WhiteKing)
-		enemyPawns = b.GetPieceBitboard(board.BlackPawn)
-	} else {
-		ownPawns = b.GetPieceBitboard(board.BlackPawn)
-		ownKing = b.GetPieceBitboard(board.BlackKing)
-		enemyPawns = b.GetPieceBitboard(board.WhitePawn)
-	}
+	whitePawns := b.GetPieceBitboard(board.WhitePawn)
+	blackPawns := b.GetPieceBitboard(board.BlackPawn)
 
-	notFileA := ^board.FileMask(0)
-	notFileH := ^board.FileMask(7)
-	var enemyPawnAttacks board.Bitboard
 	if isWhite {
-		enemyPawnAttacks = (enemyPawns>>7)&notFileA | (enemyPawns>>9)&notFileH
-	} else {
-		enemyPawnAttacks = (enemyPawns<<7)&notFileH | (enemyPawns<<9)&notFileA
+		enemyPawnAttacks := blackPawns.ShiftSouthEast() | blackPawns.ShiftSouthWest()
+		return ^(whitePawns | b.GetPieceBitboard(board.WhiteKing) | enemyPawnAttacks)
 	}
-
-	return ^(ownPawns | ownKing | enemyPawnAttacks)
+	enemyPawnAttacks := whitePawns.ShiftNorthEast() | whitePawns.ShiftNorthWest()
+	return ^(blackPawns | b.GetPieceBitboard(board.BlackKing) | enemyPawnAttacks)
 }
 
 func mobilityScore(count, base, unit, neutral int) int {

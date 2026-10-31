@@ -25,37 +25,31 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 		return 0
 	}
 
-	target := move.To
 	depth := 0
 
 	see.gain[depth] = see.getPieceValue(move.Captured)
 
 	if move.IsEnPassant {
-		see.gain[depth] = 100
+		see.gain[depth] = see.getPieceValue(board.WhitePawn)
 	}
 
 	if move.HasPromotion() {
 		see.gain[depth] += see.getPieceValue(move.Promotion) - see.getPieceValue(move.Piece)
 	}
 
-	occupied := b.AllPieces
+	targetSquare := board.FileRankToSquare(move.To.File, move.To.Rank)
 
-	targetSquareIndex := board.FileRankToSquare(target.File, target.Rank)
-
-	whiteAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardWhite)
-	blackAttackers := b.GetAttackersToSquare(targetSquareIndex, board.BitboardBlack)
-
-	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
-	occupied = occupied.ClearBit(fromSquare)
+	occupied := b.AllPieces.ClearBit(board.FileRankToSquare(move.From.File, move.From.Rank))
 
 	if move.IsEnPassant {
 		capturedPawnSquare := board.FileRankToSquare(move.To.File, move.From.Rank)
 		occupied = occupied.ClearBit(capturedPawnSquare)
 	}
 
-	see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, occupied)
-
-	sideToMove := see.getOppositeSide(move.Piece)
+	sideToMove := board.BitboardWhite
+	if board.IsWhitePiece(move.Piece) {
+		sideToMove = board.BitboardBlack
+	}
 	attackingPiece := move.Piece
 	if move.HasPromotion() {
 		attackingPiece = move.Promotion
@@ -64,14 +58,9 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 	for {
 		depth++
 
-		var attackers *board.Bitboard
-		if sideToMove == "w" {
-			attackers = &whiteAttackers
-		} else {
-			attackers = &blackAttackers
-		}
+		attackers := b.GetAttackersToSquareWithOccupancy(targetSquare, sideToMove, occupied) & occupied
 
-		nextAttacker := see.getLeastValuableAttacker(b, attackers, sideToMove, occupied)
+		nextAttacker := getLeastValuableAttacker(b, attackers, sideToMove)
 
 		if nextAttacker.piece == board.Empty {
 			break
@@ -79,12 +68,7 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 
 		if nextAttacker.piece == board.WhiteKing || nextAttacker.piece == board.BlackKing {
 			occAfterKingCapture := occupied.ClearBit(nextAttacker.square)
-			var defenders board.Bitboard
-			if sideToMove == "w" {
-				defenders = b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardBlack, occAfterKingCapture) & occAfterKingCapture
-			} else {
-				defenders = b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardWhite, occAfterKingCapture) & occAfterKingCapture
-			}
+			defenders := b.GetAttackersToSquareWithOccupancy(targetSquare, board.OppositeBitboardColor(sideToMove), occAfterKingCapture) & occAfterKingCapture
 			if defenders != 0 {
 				break
 			}
@@ -96,13 +80,7 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 
 		occupied = occupied.ClearBit(nextAttacker.square)
 
-		see.updateAttackersAfterMove(b, &whiteAttackers, &blackAttackers, target, occupied)
-
-		if sideToMove == "w" {
-			sideToMove = "b"
-		} else {
-			sideToMove = "w"
-		}
+		sideToMove = board.OppositeBitboardColor(sideToMove)
 		attackingPiece = nextAttacker.piece
 	}
 
@@ -120,24 +98,30 @@ type attacker struct {
 	square int
 }
 
-func (see *SEECalculator) getLeastValuableAttacker(b *board.Board, attackers *board.Bitboard, side string, occupied board.Bitboard) attacker {
-	if b == nil || attackers == nil {
-		return attacker{piece: board.Empty, square: -1}
-	}
-	pieceOrder := see.getPieceOrderForSide(side)
+type seePiece struct {
+	piece board.Piece
+	index int
+}
 
-	for _, pieceType := range pieceOrder {
-		pieceBitboard := b.GetPieceBitboard(pieceType)
-		attackingPieces := pieceBitboard & *attackers & occupied
+var seePieceOrder = [2][6]seePiece{
+	board.BitboardWhite: {
+		{board.WhitePawn, board.WhitePawnIndex}, {board.WhiteKnight, board.WhiteKnightIndex}, {board.WhiteBishop, board.WhiteBishopIndex},
+		{board.WhiteRook, board.WhiteRookIndex}, {board.WhiteQueen, board.WhiteQueenIndex}, {board.WhiteKing, board.WhiteKingIndex},
+	},
+	board.BitboardBlack: {
+		{board.BlackPawn, board.BlackPawnIndex}, {board.BlackKnight, board.BlackKnightIndex}, {board.BlackBishop, board.BlackBishopIndex},
+		{board.BlackRook, board.BlackRookIndex}, {board.BlackQueen, board.BlackQueenIndex}, {board.BlackKing, board.BlackKingIndex},
+	},
+}
+
+func getLeastValuableAttacker(b *board.Board, attackers board.Bitboard, side board.BitboardColor) attacker {
+	for _, candidate := range &seePieceOrder[side] {
+		attackingPieces := b.PieceBitboards[candidate.index] & attackers
 
 		if attackingPieces != 0 {
-			square, _ := attackingPieces.PopLSB()
-
-			*attackers = attackers.ClearBit(square)
-
 			return attacker{
-				piece:  pieceType,
-				square: square,
+				piece:  candidate.piece,
+				square: attackingPieces.LSB(),
 			}
 		}
 	}
@@ -145,48 +129,10 @@ func (see *SEECalculator) getLeastValuableAttacker(b *board.Board, attackers *bo
 	return attacker{piece: board.Empty, square: -1}
 }
 
-func (see *SEECalculator) updateAttackersAfterMove(b *board.Board, whiteAttackers, blackAttackers *board.Bitboard, target board.Square, occupied board.Bitboard) {
-	targetSquareIndex := board.FileRankToSquare(target.File, target.Rank)
-
-	newWhiteAttackers := b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardWhite, occupied) & occupied
-	newBlackAttackers := b.GetAttackersToSquareWithOccupancy(targetSquareIndex, board.BitboardBlack, occupied) & occupied
-
-	*whiteAttackers = newWhiteAttackers
-	*blackAttackers = newBlackAttackers
-}
-
 func (see *SEECalculator) getPieceValue(piece board.Piece) int {
 	if piece == board.WhiteKing || piece == board.BlackKing {
 		return 10000
 	}
 
-	value := GetPieceValue(piece)
-	if value < 0 {
-		return -value
-	}
-	return value
-}
-
-func (see *SEECalculator) getPieceOrderForSide(side string) []board.Piece {
-	if side == "w" {
-		return []board.Piece{
-			board.WhitePawn, board.WhiteKnight, board.WhiteBishop,
-			board.WhiteRook, board.WhiteQueen, board.WhiteKing,
-		}
-	}
-	return []board.Piece{
-		board.BlackPawn, board.BlackKnight, board.BlackBishop,
-		board.BlackRook, board.BlackQueen, board.BlackKing,
-	}
-}
-
-func (see *SEECalculator) getOppositeSide(piece board.Piece) string {
-	if see.isWhitePiece(piece) {
-		return "b"
-	}
-	return "w"
-}
-
-func (see *SEECalculator) isWhitePiece(piece board.Piece) bool {
-	return board.IsWhitePiece(piece)
+	return abs(GetPieceValue(piece))
 }

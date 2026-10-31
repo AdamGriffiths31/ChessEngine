@@ -15,48 +15,39 @@ const (
 	FianchettoBishopBonus = 10
 )
 
-func evaluateBishops(b *board.Board) int {
-	if b == nil {
-		return 0
-	}
-	score := 0
-
+func evaluateBishops(b *board.Board, whiteArea, blackArea board.Bitboard) int {
 	whiteBishops := b.GetPieceBitboard(board.WhiteBishop)
 	blackBishops := b.GetPieceBitboard(board.BlackBishop)
 
-	score += evaluateBishopPairBonus(whiteBishops, blackBishops)
-
-	score += evaluateBishopsSimple(b, whiteBishops, true)
-	score -= evaluateBishopsSimple(b, blackBishops, false)
-
-	return score
+	return evaluateBishopPairBonus(whiteBishops, blackBishops) +
+		evaluateBishopsSimple(b, whiteBishops, whiteArea, true) -
+		evaluateBishopsSimple(b, blackBishops, blackArea, false)
 }
 
 func evaluateBishopPairBonus(whiteBishops, blackBishops board.Bitboard) int {
 	score := 0
 
-	whiteLightBishops := whiteBishops & board.LightSquares
-	whiteDarkBishops := whiteBishops & board.DarkSquares
-	if whiteLightBishops != 0 && whiteDarkBishops != 0 {
+	if hasBishopPair(whiteBishops) {
 		score += BishopPairBonus
 	}
 
-	blackLightBishops := blackBishops & board.LightSquares
-	blackDarkBishops := blackBishops & board.DarkSquares
-	if blackLightBishops != 0 && blackDarkBishops != 0 {
+	if hasBishopPair(blackBishops) {
 		score -= BishopPairBonus
 	}
 
 	return score
 }
 
-func evaluateBishopsSimple(b *board.Board, bishops board.Bitboard, isWhite bool) int {
-	if b == nil || bishops == 0 {
+func hasBishopPair(bishops board.Bitboard) bool {
+	return bishops&board.LightSquares != 0 && bishops&board.DarkSquares != 0
+}
+
+func evaluateBishopsSimple(b *board.Board, bishops, area board.Bitboard, isWhite bool) int {
+	if bishops == 0 {
 		return 0
 	}
 
 	score := 0
-	area := mobilityArea(b, isWhite)
 
 	var ownPawns board.Bitboard
 	if isWhite {
@@ -80,25 +71,21 @@ func evaluateBishopsSimple(b *board.Board, bishops board.Bitboard, isWhite bool)
 }
 
 func evaluateBadBishop(bishopSquare int, ownPawns board.Bitboard) int {
-	bishopOnLightSquare := board.LightSquares.HasBit(bishopSquare)
-
-	var pawnsOnSameColor int
-	if bishopOnLightSquare {
-		pawnsOnSameColor = (ownPawns & board.LightSquares).PopCount()
-	} else {
-		pawnsOnSameColor = (ownPawns & board.DarkSquares).PopCount()
+	sameColorSquares := board.DarkSquares
+	if board.LightSquares.HasBit(bishopSquare) {
+		sameColorSquares = board.LightSquares
 	}
 
-	return pawnsOnSameColor * BadBishopPenalty
+	return (ownPawns & sameColorSquares).PopCount() * BadBishopPenalty
 }
 
 func evaluateFianchetto(square int, isWhite bool) int {
 	if isWhite {
-		if square == 9 || square == 14 {
+		if square == board.B2 || square == board.G2 {
 			return FianchettoBishopBonus
 		}
 	} else {
-		if square == 49 || square == 54 {
+		if square == board.B7 || square == board.G7 {
 			return FianchettoBishopBonus
 		}
 	}

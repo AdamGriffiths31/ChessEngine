@@ -13,8 +13,6 @@ const (
 	MateScore EvaluationScore = 30000
 	// DrawScore represents a drawn position value
 	DrawScore EvaluationScore = 0
-	// UnknownScore represents an unknown or invalid position value
-	UnknownScore EvaluationScore = -32000
 )
 
 // Evaluator defines the interface for position evaluation
@@ -22,7 +20,4 @@ type Evaluator interface {
 	// Evaluate returns the score for the position from White's perspective
 	// Positive = good for White, Negative = good for Black
 	Evaluate(b *board.Board) EvaluationScore
-
-	// GetName returns the evaluator name
-	GetName() string
 }
