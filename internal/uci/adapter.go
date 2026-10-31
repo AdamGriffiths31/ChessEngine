@@ -397,7 +397,13 @@ func (ue *Engine) searchWithFallback(ctx context.Context, config search.Config, 
 		}
 	}()
 
-	result = ue.aiEngine.FindBestMove(ctx, ue.engine.GetState().Board, player, config)
+	searchBoard, err := board.FromFEN(ue.engine.GetCurrentFEN())
+	if err != nil {
+		slog.Error("search board copy failed; playing fallback move", "error", err)
+		return ue.fallbackResult(player)
+	}
+
+	result = ue.aiEngine.FindBestMove(ctx, searchBoard, player, config)
 	return result
 }
 

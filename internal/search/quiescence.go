@@ -33,8 +33,11 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 
 func (m *MinimaxEngine) quiescenceBody(ctx context.Context, player movegen.Player, alpha, beta evalpkg.EvaluationScore, ply int, hash uint64, inCheck bool) evalpkg.EvaluationScore {
 	b := m.searchState.board
+	if ply >= MaxKillerDepth-1 {
+		return sideRelative(m.evaluator.Evaluate(b), player)
+	}
+
 	originalAlpha := alpha
-	bufferPly := min(ply, MaxKillerDepth-1)
 
 	var standPat evalpkg.EvaluationScore
 	var movesToSearch *movegen.MoveList
@@ -43,7 +46,7 @@ func (m *MinimaxEngine) quiescenceBody(ctx context.Context, player movegen.Playe
 
 	if inCheck {
 		movesToSearch = m.generator.GeneratePseudoLegalMoves(b, player)
-		m.scoreMoves(b, movesToSearch, bufferPly, board.Move{})
+		m.scoreMoves(b, movesToSearch, ply, board.Move{})
 		evasions = m.generator.CheckEvasionMask(b, player)
 	} else {
 		standPat = sideRelative(m.evaluator.Evaluate(b), player)
@@ -54,14 +57,14 @@ func (m *MinimaxEngine) quiescenceBody(ctx context.Context, player movegen.Playe
 		bestScore = standPat
 
 		movesToSearch = m.generator.GenerateCaptures(b, player)
-		m.scoreCaptures(movesToSearch, bufferPly)
+		m.scoreCaptures(movesToSearch, ply)
 	}
 	defer movegen.ReleaseMoveList(movesToSearch)
 
 	legalMoveCount := 0
 
 	for i := range movesToSearch.Count {
-		m.pickNextMove(movesToSearch, i, bufferPly)
+		m.pickNextMove(movesToSearch, i, ply)
 		move := movesToSearch.Moves[i]
 
 		if m.searchState.searchCancelled {
