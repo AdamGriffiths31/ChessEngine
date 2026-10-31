@@ -46,5 +46,8 @@ func BuildSPRTArgs(cfg SPRTConfig) []string {
 		// working directory every 20 games.
 		"-autosaveinterval", "0",
 	)
+	if cfg.PGNFile != "" {
+		args = append(args, "-pgnout", fmt.Sprintf("file=%s", cfg.PGNFile), "notation=uci")
+	}
 	return args
 }

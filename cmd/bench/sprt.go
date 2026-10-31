@@ -38,6 +38,7 @@ func runSPRT(args []string) error {
 	maxGames := fs.Int("games", cfg.MaxGames, "safety cap on total games")
 	baseOptions := fs.String("base-options", "", `comma-separated UCI options for -base, e.g. "Skill Level=5,Threads=1"`)
 	devOptions := fs.String("dev-options", "", `comma-separated UCI options for -dev, e.g. "Skill Level=5,Threads=1"`)
+	pgn := fs.String("pgn", "", "file to save the games to, in UCI notation")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -59,6 +60,7 @@ func runSPRT(args []string) error {
 	cfg.OpeningsFile = *openings
 	cfg.Concurrency = *concurrency
 	cfg.MaxGames = *maxGames
+	cfg.PGNFile = *pgn
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

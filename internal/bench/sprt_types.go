@@ -18,6 +18,7 @@ type SPRTConfig struct {
 	Concurrency  int      // concurrent games
 	MaxGames     int      // safety cap if SPRT never reaches a bound
 	Fastchess    string   // path to the fastchess binary
+	PGNFile      string   // file to save the games to, in UCI notation; empty saves none
 }
 
 // DefaultSPRTConfig returns the standard STC bounds: normalized Elo [0, 2].

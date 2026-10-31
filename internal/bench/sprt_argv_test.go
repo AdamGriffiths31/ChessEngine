@@ -43,6 +43,25 @@ func TestBuildSPRTArgs(t *testing.T) {
 	}
 }
 
+func TestBuildSPRTArgsWithPGNFile(t *testing.T) {
+	cfg := SPRTConfig{
+		BasePath:     "/bin/base-uci",
+		DevPath:      "/bin/dev-uci",
+		TimeControl:  "10+0.1",
+		OpeningsFile: "/data/openings.epd",
+		Concurrency:  1,
+		MaxGames:     4000,
+		PGNFile:      "/tmp/games.pgn",
+	}
+
+	got := BuildSPRTArgs(cfg)
+	want := []string{"-pgnout", "file=/tmp/games.pgn", "notation=uci"}
+
+	if tail := got[len(got)-len(want):]; !reflect.DeepEqual(tail, want) {
+		t.Errorf("BuildSPRTArgs tail = %v, want %v", tail, want)
+	}
+}
+
 func TestBuildSPRTArgsWithEngineOptions(t *testing.T) {
 	cfg := SPRTConfig{
 		BasePath:     "/bin/base-uci",

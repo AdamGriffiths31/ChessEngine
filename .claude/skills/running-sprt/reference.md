@@ -13,6 +13,7 @@ Run `go run ./cmd/bench sprt -h` for the full list.
 | `-elo0`, `-elo1` | `0`, `2` | Bounds in normalized Elo. `[0, 2]` or `[0, 5]` for a gainer, `[-2, 0]` to show a refactor is not a regression |
 | `-alpha`, `-beta` | `0.05` | Error rates |
 | `-openings` | `testdata/8moves_v3.epd` | 34,700 balanced 8-move positions, picked at random |
+| `-pgn` | none | File to save the games to, in UCI notation. Use it to trace an illegal move. fastchess appends, so give each run its own file |
 
 ## Worktrees
 
