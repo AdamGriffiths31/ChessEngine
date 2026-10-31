@@ -198,26 +198,3 @@ var random64Poly = [781]uint64{
 	0xCF3145DE0ADD4289, 0xD0E4427A5514FB72, 0x77C621CC9FB3A483, 0x67A34DAC4356550B,
 	0xF8D626AAAF278509,
 }
-
-var officialPolyglotPieceKeys [64][12]uint64
-var officialPolyglotCastlingKeys [4]uint64
-var officialPolyglotEnPassantKeys [8]uint64
-
-const officialPolyglotSideKey = 0xF8D626AAAF278509
-
-func init() {
-	for piece := range 12 {
-		for square := range 64 {
-			index := piece*64 + square
-			officialPolyglotPieceKeys[square][piece] = random64Poly[index]
-		}
-	}
-
-	for i := range 4 {
-		officialPolyglotCastlingKeys[i] = random64Poly[768+i]
-	}
-
-	for i := range 8 {
-		officialPolyglotEnPassantKeys[i] = random64Poly[772+i]
-	}
-}

@@ -46,7 +46,7 @@ func (p *Prober) Probe(b *board.Board) (*board.Move, bool) {
 	}
 
 	move, err := p.service.FindBookMove(b)
-	if err != nil || move == nil {
+	if err != nil {
 		return nil, false
 	}
 	return move, true
@@ -59,7 +59,6 @@ func (p *Prober) ensureLoaded() {
 	p.attempted = true
 
 	cfg := Config{
-		Enabled:       true,
 		BookFiles:     p.files,
 		SelectionMode: SelectBest,
 	}

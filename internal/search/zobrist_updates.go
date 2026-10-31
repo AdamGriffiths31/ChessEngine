@@ -76,12 +76,11 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 		hashDelta ^= oldRights ^ newRights
 	}
 
-	newEP, newHasEP := b.GetEnPassantTarget()
-
 	if oldState.HasEnPassant && hadAdjacentCapturingPawnBeforeMove(b, move, oldState.EnPassantSquare, oldState.SideToMove) {
 		hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantSquare.File)
 	}
-	if newHasEP && hasAdjacentCapturingPawn(b, newEP, b.GetSideToMove()) {
+	if b.HasEnPassantCapturer() {
+		newEP, _ := b.GetEnPassantTarget()
 		hashDelta ^= m.zobrist.GetEnPassantKey(newEP.File)
 	}
 
@@ -96,25 +95,15 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 // null move clears that target.
 func (m *MinimaxEngine) GetNullMoveDelta(b *board.Board) uint64 {
 	delta := m.zobrist.GetSideKey()
-	if ep, hasEP := b.GetEnPassantTarget(); hasEP && hasAdjacentCapturingPawn(b, ep, b.GetSideToMove()) {
+	if b.HasEnPassantCapturer() {
+		ep, _ := b.GetEnPassantTarget()
 		delta ^= m.zobrist.GetEnPassantKey(ep.File)
 	}
 	return delta
 }
 
-func epCapturerRankAndPiece(sideToMove string) (int, board.Piece) {
-	if sideToMove == "w" {
-		return 4, board.WhitePawn
-	}
-	return 3, board.BlackPawn
-}
-
-func hasAdjacentCapturingPawn(b *board.Board, epTarget board.Square, sideToMove string) bool {
-	return hadAdjacentCapturingPawnBeforeMove(b, board.Move{}, epTarget, sideToMove)
-}
-
 func hadAdjacentCapturingPawnBeforeMove(b *board.Board, move board.Move, epTarget board.Square, sideToMove string) bool {
-	pawnRank, pawnPiece := epCapturerRankAndPiece(sideToMove)
+	pawnRank, pawnPiece := board.EnPassantCapturer(sideToMove)
 
 	for _, df := range []int{-1, 1} {
 		adjFile := epTarget.File + df

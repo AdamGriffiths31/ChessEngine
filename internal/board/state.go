@@ -25,6 +25,26 @@ func (b *Board) GetSideToMove() string {
 	return b.sideToMove
 }
 
+// EnPassantCapturer returns the rank and pawn from which the given side ("w"
+// or "b") could capture en passant.
+func EnPassantCapturer(side string) (rank int, pawn Piece) {
+	if side == "w" {
+		return 4, WhitePawn
+	}
+	return 3, BlackPawn
+}
+
+// HasEnPassantCapturer reports whether an en passant target is set and the side
+// to move has a pawn next to it. Hashes only include the target in that case.
+func (b *Board) HasEnPassantCapturer() bool {
+	if !b.hasEnPassant {
+		return false
+	}
+	rank, pawn := EnPassantCapturer(b.sideToMove)
+	file := b.enPassantSquare.File
+	return (file > 0 && b.GetPiece(rank, file-1) == pawn) || (file < 7 && b.GetPiece(rank, file+1) == pawn)
+}
+
 // SetCastlingRights sets the castling rights string
 func (b *Board) SetCastlingRights(rights string) {
 	b.castlingRights = rights

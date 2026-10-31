@@ -8,11 +8,11 @@ import (
 )
 
 func testBookConfig() Config {
-	return Config{Enabled: true, SelectionMode: SelectWeightedRandom, WeightThreshold: 1}
+	return Config{SelectionMode: SelectWeightedRandom, WeightThreshold: 1}
 }
 
 func TestBookManager(t *testing.T) {
-	manager := NewManager()
+	manager := &Manager{}
 
 	testBoard, err := board.FromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	if err != nil {
@@ -145,7 +145,6 @@ func TestWeightedRandomSelection(t *testing.T) {
 type MockBook struct {
 	loaded bool
 	moves  map[uint64][]Move
-	info   Info
 }
 
 func (mb *MockBook) LookupMove(hash uint64, _ *board.Board) ([]Move, error) {
@@ -159,18 +158,4 @@ func (mb *MockBook) LookupMove(hash uint64, _ *board.Board) ([]Move, error) {
 	}
 
 	return moves, nil
-}
-
-func (mb *MockBook) LoadFromFile(filename string) error {
-	mb.loaded = true
-	mb.info.Filename = filename
-	return nil
-}
-
-func (mb *MockBook) IsLoaded() bool {
-	return mb.loaded
-}
-
-func (mb *MockBook) GetBookInfo() Info {
-	return mb.info
 }

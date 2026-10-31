@@ -23,15 +23,6 @@ var (
 type OpeningBook interface {
 	// LookupMove finds book moves for the given position hash
 	LookupMove(hash uint64, b *board.Board) ([]Move, error)
-
-	// LoadFromFile loads the opening book from a file
-	LoadFromFile(filename string) error
-
-	// IsLoaded returns true if a book is currently loaded
-	IsLoaded() bool
-
-	// GetBookInfo returns information about the loaded book
-	GetBookInfo() Info
 }
 
 // Move represents a move from an opening book with associated metadata
@@ -39,17 +30,6 @@ type Move struct {
 	Move board.Move
 
 	Weight uint16
-
-	Learn uint32
-}
-
-// Info contains metadata about a loaded opening book
-type Info struct {
-	Filename string
-
-	EntryCount int
-
-	FileSize int64
 }
 
 // PolyglotEntry represents a single entry in a Polyglot opening book file
@@ -65,40 +45,20 @@ type PolyglotEntry struct {
 
 // Manager manages multiple opening books
 type Manager struct {
-	books   []OpeningBook
-	primary OpeningBook
-}
-
-// NewManager creates a new book manager
-func NewManager() *Manager {
-	return &Manager{
-		books: make([]OpeningBook, 0),
-	}
+	books []OpeningBook
 }
 
 // AddBook adds an opening book to the manager
 func (bm *Manager) AddBook(book OpeningBook) {
 	bm.books = append(bm.books, book)
-	if bm.primary == nil {
-		bm.primary = book
-	}
 }
 
-// LookupMove searches for moves in all loaded books, starting with primary
+// LookupMove searches the books in the order they were added
 func (bm *Manager) LookupMove(hash uint64, b *board.Board) ([]Move, error) {
-	if bm.primary != nil && bm.primary.IsLoaded() {
-		moves, err := bm.primary.LookupMove(hash, b)
+	for _, book := range bm.books {
+		moves, err := book.LookupMove(hash, b)
 		if err == nil && len(moves) > 0 {
 			return moves, nil
-		}
-	}
-
-	for _, book := range bm.books {
-		if book != bm.primary && book.IsLoaded() {
-			moves, err := book.LookupMove(hash, b)
-			if err == nil && len(moves) > 0 {
-				return moves, nil
-			}
 		}
 	}
 

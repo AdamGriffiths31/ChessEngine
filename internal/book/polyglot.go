@@ -14,83 +14,55 @@ const (
 	// PolyglotEntrySize is the size of each entry in bytes
 	PolyglotEntrySize = 16
 
-	// ToSquareMask represents bits 0-5 for destination square in move encoding
-	ToSquareMask = 0x003F
-	// FromSquareMask represents bits 6-11 for origin square in move encoding
-	FromSquareMask = 0x0FC0
-	// PromotionMask represents bits 12-14 for promotion piece in move encoding
-	PromotionMask = 0x7000
 	// FromSquareShift is the right shift amount to extract origin square
 	FromSquareShift = 6
 	// PromotionShift is the right shift amount to extract promotion piece
 	PromotionShift = 12
-
-	// PromotionKnight represents knight promotion in polyglot format
-	PromotionKnight = 1
-	// PromotionBishop represents bishop promotion in polyglot format
-	PromotionBishop = 2
-	// PromotionRook represents rook promotion in polyglot format
-	PromotionRook = 3
 	// PromotionQueen represents queen promotion in polyglot format
 	PromotionQueen = 4
+
+	squareMask    = 0x3F
+	promotionMask = 0x7
 )
+
+var promotionPieces = [PromotionQueen + 1][2]board.Piece{
+	1: {board.WhiteKnight, board.BlackKnight},
+	2: {board.WhiteBishop, board.BlackBishop},
+	3: {board.WhiteRook, board.BlackRook},
+	4: {board.WhiteQueen, board.BlackQueen},
+}
 
 // PolyglotBook implements the OpeningBook interface for Polyglot binary format
 type PolyglotBook struct {
 	entries  []PolyglotEntry
-	info     Info
 	isLoaded bool
-	zobrist  *ZobristHash
 }
 
 // NewPolyglotBook creates a new Polyglot opening book
 func NewPolyglotBook() *PolyglotBook {
-	return &PolyglotBook{
-		entries: make([]PolyglotEntry, 0),
-		zobrist: GetPolyglotHash(),
-	}
+	return &PolyglotBook{}
 }
 
 // LoadFromFile loads a Polyglot opening book from a binary file
 func (pb *PolyglotBook) LoadFromFile(filename string) error {
-	file, err := os.Open(filepath.Clean(filename))
+	data, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
-		return fmt.Errorf("failed to open book file: %w", err)
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-
-	stat, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to get file info: %w", err)
+		return fmt.Errorf("failed to read book file: %w", err)
 	}
 
-	fileSize := stat.Size()
-	if fileSize%PolyglotEntrySize != 0 {
+	if len(data)%PolyglotEntrySize != 0 {
 		return ErrInvalidBookFile
 	}
 
-	entryCount := int(fileSize / PolyglotEntrySize)
-	entries := make([]PolyglotEntry, entryCount)
-
-	for i := range entryCount {
-		var entry PolyglotEntry
-
-		if err := binary.Read(file, binary.BigEndian, &entry.Hash); err != nil {
-			return fmt.Errorf("failed to read hash at entry %d: %w", i, err)
+	entries := make([]PolyglotEntry, len(data)/PolyglotEntrySize)
+	for i := range entries {
+		record := data[i*PolyglotEntrySize:]
+		entries[i] = PolyglotEntry{
+			Hash:   binary.BigEndian.Uint64(record),
+			Move:   binary.BigEndian.Uint16(record[8:]),
+			Weight: binary.BigEndian.Uint16(record[10:]),
+			Learn:  binary.BigEndian.Uint32(record[12:]),
 		}
-		if err := binary.Read(file, binary.BigEndian, &entry.Move); err != nil {
-			return fmt.Errorf("failed to read move at entry %d: %w", i, err)
-		}
-		if err := binary.Read(file, binary.BigEndian, &entry.Weight); err != nil {
-			return fmt.Errorf("failed to read weight at entry %d: %w", i, err)
-		}
-		if err := binary.Read(file, binary.BigEndian, &entry.Learn); err != nil {
-			return fmt.Errorf("failed to read learn at entry %d: %w", i, err)
-		}
-
-		entries[i] = entry
 	}
 
 	if !sort.SliceIsSorted(entries, func(i, j int) bool {
@@ -100,11 +72,6 @@ func (pb *PolyglotBook) LoadFromFile(filename string) error {
 	}
 
 	pb.entries = entries
-	pb.info = Info{
-		Filename:   filename,
-		EntryCount: entryCount,
-		FileSize:   fileSize,
-	}
 	pb.isLoaded = true
 
 	return nil
@@ -120,10 +87,6 @@ func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]Move, error) 
 		return pb.entries[i].Hash >= hash
 	})
 
-	if startIdx >= len(pb.entries) || pb.entries[startIdx].Hash != hash {
-		return nil, ErrPositionNotFound
-	}
-
 	var bookMoves []Move
 	for i := startIdx; i < len(pb.entries) && pb.entries[i].Hash == hash; i++ {
 		entry := pb.entries[i]
@@ -133,13 +96,7 @@ func (pb *PolyglotBook) LookupMove(hash uint64, b *board.Board) ([]Move, error) 
 			continue
 		}
 
-		bookMove := Move{
-			Move:   move,
-			Weight: entry.Weight,
-			Learn:  entry.Learn,
-		}
-
-		bookMoves = append(bookMoves, bookMove)
+		bookMoves = append(bookMoves, Move{Move: move, Weight: entry.Weight})
 	}
 
 	if len(bookMoves) == 0 {
@@ -154,20 +111,13 @@ func (pb *PolyglotBook) IsLoaded() bool {
 	return pb.isLoaded
 }
 
-// GetBookInfo returns information about the loaded book
-func (pb *PolyglotBook) GetBookInfo() Info {
-	return pb.info
-}
-
 func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, error) {
-	toSquare := int(encoded & ToSquareMask)
-	fromSquare := int((encoded & FromSquareMask) >> FromSquareShift)
-	promotionPiece := int((encoded & PromotionMask) >> PromotionShift)
+	toSquare := int(encoded & squareMask)
+	fromSquare := int(encoded >> FromSquareShift & squareMask)
+	promotionPiece := int(encoded >> PromotionShift & promotionMask)
 
-	fromFile := fromSquare % 8
-	fromRank := fromSquare / 8
-	toFile := toSquare % 8
-	toRank := toSquare / 8
+	fromFile, fromRank := board.SquareToFileRank(fromSquare)
+	toFile, toRank := board.SquareToFileRank(toSquare)
 
 	movingPiece := b.GetPiece(fromRank, fromFile)
 	if movingPiece == board.Empty {
@@ -180,15 +130,12 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 	// board.Board.MakeMove executes a real castle instead of treating it
 	// as the king capturing its own rook.
 	isCastling := false
-	if (movingPiece == board.WhiteKing || movingPiece == board.BlackKing) && fromFile == 4 {
-		switch {
-		case fromRank == 0 && toRank == 0 && toFile == 7:
+	if (movingPiece == board.WhiteKing || movingPiece == board.BlackKing) && fromFile == 4 &&
+		fromRank == toRank && (fromRank == 0 || fromRank == 7) {
+		switch toFile {
+		case 7:
 			toFile, isCastling = 6, true
-		case fromRank == 0 && toRank == 0 && toFile == 0:
-			toFile, isCastling = 2, true
-		case fromRank == 7 && toRank == 7 && toFile == 7:
-			toFile, isCastling = 6, true
-		case fromRank == 7 && toRank == 7 && toFile == 0:
+		case 0:
 			toFile, isCastling = 2, true
 		}
 	}
@@ -208,28 +155,16 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 		Promotion:  board.Empty,
 	}
 
+	if promotionPiece > PromotionQueen {
+		return board.Move{}, fmt.Errorf("invalid promotion piece: %d", promotionPiece)
+	}
 	if promotionPiece > 0 {
-		isWhite := movingPiece >= 'A' && movingPiece <= 'Z'
-		switch promotionPiece {
-		case PromotionKnight:
-			move.Promotion = pieceForColor(isWhite, board.WhiteKnight, board.BlackKnight)
-		case PromotionBishop:
-			move.Promotion = pieceForColor(isWhite, board.WhiteBishop, board.BlackBishop)
-		case PromotionRook:
-			move.Promotion = pieceForColor(isWhite, board.WhiteRook, board.BlackRook)
-		case PromotionQueen:
-			move.Promotion = pieceForColor(isWhite, board.WhiteQueen, board.BlackQueen)
-		default:
-			return board.Move{}, fmt.Errorf("invalid promotion piece: %d", promotionPiece)
+		side := 1
+		if board.IsWhitePiece(movingPiece) {
+			side = 0
 		}
+		move.Promotion = promotionPieces[promotionPiece][side]
 	}
 
 	return move, nil
-}
-
-func pieceForColor(isWhite bool, whitePiece, blackPiece board.Piece) board.Piece {
-	if isWhite {
-		return whitePiece
-	}
-	return blackPiece
 }

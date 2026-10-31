@@ -82,8 +82,8 @@ func TestPolyglotBook_LoadFromFile(t *testing.T) {
 			if !pb.IsLoaded() {
 				t.Error("IsLoaded() = false after a successful load")
 			}
-			if got := pb.GetBookInfo().EntryCount; got != tt.wantEntries {
-				t.Errorf("EntryCount = %d, want %d", got, tt.wantEntries)
+			if got := len(pb.entries); got != tt.wantEntries {
+				t.Errorf("entries = %d, want %d", got, tt.wantEntries)
 			}
 		})
 	}
@@ -92,7 +92,7 @@ func TestPolyglotBook_LoadFromFile(t *testing.T) {
 		if _, err := os.Stat(performanceBin); os.IsNotExist(err) {
 			t.Skipf("%s not found", performanceBin)
 		}
-		if got := loadBook(t, performanceBin).GetBookInfo().EntryCount; got == 0 {
+		if got := len(loadBook(t, performanceBin).entries); got == 0 {
 			t.Error("performance.bin loaded with no entries")
 		}
 	})

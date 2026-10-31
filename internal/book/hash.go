@@ -1,15 +1,21 @@
 package book
 
 import (
-	"sync"
-
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-var (
-	polyglotZobrist *ZobristHash
-	polyglotOnce    sync.Once
-)
+var polyglotZobrist ZobristHash
+
+func init() {
+	for piece := range 12 {
+		for square := range 64 {
+			polyglotZobrist.pieceKeys[square][piece] = random64Poly[piece*64+square]
+		}
+	}
+	copy(polyglotZobrist.castleKeys[:], random64Poly[768:])
+	copy(polyglotZobrist.enPassantKeys[:], random64Poly[772:])
+	polyglotZobrist.sideKey = random64Poly[780]
+}
 
 // ZobristHash generates a Zobrist hash for a chess position
 // Compatible with Polyglot opening book format
@@ -22,15 +28,7 @@ type ZobristHash struct {
 
 // GetPolyglotHash returns the Zobrist hash instance for Polyglot compatibility
 func GetPolyglotHash() *ZobristHash {
-	polyglotOnce.Do(func() {
-		polyglotZobrist = &ZobristHash{
-			pieceKeys:     officialPolyglotPieceKeys,
-			castleKeys:    officialPolyglotCastlingKeys,
-			enPassantKeys: officialPolyglotEnPassantKeys,
-			sideKey:       officialPolyglotSideKey,
-		}
-	})
-	return polyglotZobrist
+	return &polyglotZobrist
 }
 
 // HashPosition generates a Zobrist hash for the given board position
@@ -38,53 +36,17 @@ func GetPolyglotHash() *ZobristHash {
 func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 	var hash uint64
 
-	for rank := range 8 {
-		for file := range 8 {
-			piece := b.GetPiece(rank, file)
-			if piece != board.Empty {
-				polyPiece := zh.getPieceIndex(piece)
-				square := rank*8 + file
-				hash ^= zh.pieceKeys[square][polyPiece]
-			}
+	for square, piece := range &b.Mailbox {
+		if piece != board.Empty {
+			hash ^= zh.pieceKeys[square][zh.GetPieceIndex(piece)]
 		}
 	}
 
-	castlingRights := b.GetCastlingRights()
-	for _, r := range castlingRights {
-		switch r {
-		case 'K':
-			hash ^= zh.castleKeys[0]
-		case 'Q':
-			hash ^= zh.castleKeys[1]
-		case 'k':
-			hash ^= zh.castleKeys[2]
-		case 'q':
-			hash ^= zh.castleKeys[3]
-		}
-	}
+	hash ^= zh.GetCastlingKey(b.GetCastlingRights())
 
-	ep, hasEnPassant := b.GetEnPassantTarget()
-	if hasEnPassant {
-		epFile := ep.File
-		side := b.GetSideToMove()
-		var pawnRank int
-		var pawnPiece board.Piece
-		if side == "w" {
-			pawnRank = 4
-			pawnPiece = board.WhitePawn
-		} else {
-			pawnRank = 3
-			pawnPiece = board.BlackPawn
-		}
-		for _, df := range []int{-1, 1} {
-			adjFile := epFile + df
-			if adjFile >= 0 && adjFile < 8 {
-				if b.GetPiece(pawnRank, adjFile) == pawnPiece {
-					hash ^= zh.enPassantKeys[epFile]
-					break
-				}
-			}
-		}
+	if b.HasEnPassantCapturer() {
+		ep, _ := b.GetEnPassantTarget()
+		hash ^= zh.enPassantKeys[ep.File]
 	}
 
 	if b.GetSideToMove() == "w" {
@@ -94,8 +56,9 @@ func (zh *ZobristHash) HashPosition(b *board.Board) uint64 {
 	return hash
 }
 
+// GetPieceIndex returns the piece index for zobrist hashing.
 // Official Polyglot order: BP(0), WP(1), BN(2), WN(3), BB(4), WB(5), BR(6), WR(7), BQ(8), WQ(9), BK(10), WK(11)
-func (zh *ZobristHash) getPieceIndex(piece board.Piece) int {
+func (zh *ZobristHash) GetPieceIndex(piece board.Piece) int {
 	switch piece {
 	case board.BlackPawn:
 		return 0
@@ -134,11 +97,6 @@ func (zh *ZobristHash) GetSideKey() uint64 {
 // GetPieceKey returns the zobrist key for a piece at a given square
 func (zh *ZobristHash) GetPieceKey(square int, pieceIndex int) uint64 {
 	return zh.pieceKeys[square][pieceIndex]
-}
-
-// GetPieceIndex returns the piece index for zobrist hashing
-func (zh *ZobristHash) GetPieceIndex(piece board.Piece) int {
-	return zh.getPieceIndex(piece)
 }
 
 // GetCastlingKey returns the combined zobrist key for a castling-rights
