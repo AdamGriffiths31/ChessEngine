@@ -28,13 +28,14 @@ func (m *MinimaxEngine) removeHistory() {
 	}
 }
 
-func (m *MinimaxEngine) isDrawByRepetition(currentHash uint64) bool {
+func (m *MinimaxEngine) isDrawByRepetition(currentHash uint64, halfMoveClock int) bool {
+	historyPly := int(m.zobristHistoryPly)
 	gameMatches := 0
-	for repPly := range m.zobristHistoryPly {
+	for repPly := max(historyPly-halfMoveClock, 0); repPly < historyPly; repPly++ {
 		if m.zobristHistory[repPly] != currentHash {
 			continue
 		}
-		if repPly >= m.repetitionRootPly {
+		if repPly >= int(m.repetitionRootPly) {
 			return true
 		}
 		gameMatches++

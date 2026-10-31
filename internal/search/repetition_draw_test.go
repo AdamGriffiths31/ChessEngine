@@ -49,7 +49,7 @@ func TestRepetitionHistory_DetectsRepeatViaMakeUnmake(t *testing.T) {
 		hash := b.GetHash()
 		engine.addHistory(hash)
 
-		got := engine.isDrawByRepetition(hash)
+		got := engine.isDrawByRepetition(hash, MaxGamePly)
 		want := wantRepeatAtPly[ply]
 		if got != want {
 			t.Errorf("ply %d: isDrawByRepetition = %v, want %v", ply, got, want)
@@ -174,7 +174,7 @@ func TestIsDrawByRepetition_GameHistoryNeedsThreefold(t *testing.T) {
 			var got bool
 			for _, hash := range tt.path {
 				engine.addHistory(hash)
-				got = engine.isDrawByRepetition(hash)
+				got = engine.isDrawByRepetition(hash, MaxGamePly)
 			}
 			if got != tt.want {
 				t.Errorf("isDrawByRepetition after path %v = %v, want %v", tt.path, got, tt.want)

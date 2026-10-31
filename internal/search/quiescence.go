@@ -8,13 +8,17 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, alpha, beta evalpkg.EvaluationScore, ply int) evalpkg.EvaluationScore {
-	b := m.searchState.board
-
+func (m *MinimaxEngine) enterQuiescenceNode(ctx context.Context) bool {
 	m.searchState.searchStats.NodesSearched++
 	m.searchState.searchStats.QNodes++
 
-	if m.pollCancel(ctx) {
+	return m.pollCancel(ctx)
+}
+
+func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, alpha, beta evalpkg.EvaluationScore, ply int) evalpkg.EvaluationScore {
+	b := m.searchState.board
+
+	if m.enterQuiescenceNode(ctx) {
 		return alpha
 	}
 
@@ -24,41 +28,37 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 		return score
 	}
 
-	inCheck := m.generator.IsKingInCheck(b, player)
+	return m.quiescenceBody(ctx, player, alpha, beta, ply, hash, m.generator.IsKingInCheck(b, player))
+}
+
+func (m *MinimaxEngine) quiescenceBody(ctx context.Context, player movegen.Player, alpha, beta evalpkg.EvaluationScore, ply int, hash uint64, inCheck bool) evalpkg.EvaluationScore {
+	b := m.searchState.board
 	originalAlpha := alpha
+	bufferPly := min(ply, MaxKillerDepth-1)
 
-	standPat := sideRelative(m.evaluator.Evaluate(b), player)
+	var standPat evalpkg.EvaluationScore
+	var movesToSearch *movegen.MoveList
+	bestScore := -scoreInfinity
+	evasions := allSquares
 
-	if !inCheck {
+	if inCheck {
+		movesToSearch = m.generator.GeneratePseudoLegalMoves(b, player)
+		m.scoreMoves(b, movesToSearch, bufferPly, board.Move{})
+		evasions = m.generator.CheckEvasionMask(b, player)
+	} else {
+		standPat = sideRelative(m.evaluator.Evaluate(b), player)
 		if standPat >= beta {
 			return beta
 		}
-		if standPat > alpha {
-			alpha = standPat
-		}
-	}
+		alpha = max(alpha, standPat)
+		bestScore = standPat
 
-	var movesToSearch *movegen.MoveList
-	if inCheck {
-		movesToSearch = m.generator.GeneratePseudoLegalMoves(b, player)
-	} else {
 		movesToSearch = m.generator.GenerateCaptures(b, player)
+		m.scoreCaptures(movesToSearch, bufferPly)
 	}
 	defer movegen.ReleaseMoveList(movesToSearch)
 
-	bufferPly := min(ply, MaxKillerDepth-1)
-
-	if inCheck {
-		m.scoreMoves(b, movesToSearch, bufferPly, board.Move{})
-	} else {
-		m.scoreCaptures(movesToSearch, bufferPly)
-	}
-
 	legalMoveCount := 0
-	bestScore := standPat
-	if inCheck {
-		bestScore = -evalpkg.MateScore - 1
-	}
 
 	for i := range movesToSearch.Count {
 		m.pickNextMove(movesToSearch, i, bufferPly)
@@ -66,6 +66,14 @@ func (m *MinimaxEngine) quiescence(ctx context.Context, player movegen.Player, a
 
 		if m.searchState.searchCancelled {
 			break
+		}
+
+		if cannotEvade(&move, evasions) {
+			continue
+		}
+
+		if legalMoveCount > 0 && !inCheck && move.IsCapture && m.isDeltaPruned(move, standPat, alpha) {
+			continue
 		}
 
 		undo, ok := m.tryMove(move, player)
@@ -116,9 +124,6 @@ func (m *MinimaxEngine) probeQuiescenceTT(hash uint64, ply int, alpha, beta eval
 		return 0, alpha, beta, false
 	}
 	m.searchState.searchStats.TTHits++
-	if entry.GetDepth() < 0 {
-		return 0, alpha, beta, false
-	}
 
 	ttScore := scoreFromTT(entry.Score, ply)
 	switch entry.GetType() {
@@ -138,7 +143,7 @@ func (m *MinimaxEngine) probeQuiescenceTT(hash uint64, ply int, alpha, beta eval
 	return 0, alpha, beta, false
 }
 
-func (m *MinimaxEngine) shouldPruneCapture(b *board.Board, move board.Move, standPat, alpha evalpkg.EvaluationScore) bool {
+func (m *MinimaxEngine) isDeltaPruned(move board.Move, standPat, alpha evalpkg.EvaluationScore) bool {
 	gain := deltaCaptureValue(move.Captured)
 	if move.HasPromotion() {
 		gain += QDeltaPromoBonus
@@ -147,7 +152,11 @@ func (m *MinimaxEngine) shouldPruneCapture(b *board.Board, move board.Move, stan
 		m.searchState.searchStats.DeltaPruned++
 		return true
 	}
-	return m.seeCalculator.SEE(b, move) < QSEEPruneThreshold
+	return false
+}
+
+func (m *MinimaxEngine) shouldPruneCapture(b *board.Board, move board.Move, standPat, alpha evalpkg.EvaluationScore) bool {
+	return m.isDeltaPruned(move, standPat, alpha) || m.seeCalculator.SEE(b, move) < QSEEPruneThreshold
 }
 
 func deltaCaptureValue(victim board.Piece) evalpkg.EvaluationScore {

@@ -51,7 +51,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 	lastCompletedDepth := 0
 	var finalStats Stats
 
-	m.searchState.pv = newPVTable(config.MaxDepth + PVArrayMargin)
+	m.searchState.pv = newPVTable(min(config.MaxDepth+PVArrayMargin, MaxKillerDepth+1))
 	pv := m.searchState.pv
 
 	rs := &rootSearch{
@@ -65,28 +65,11 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 
 	for currentDepth := 1; currentDepth <= config.MaxDepth; currentDepth++ {
 		m.searchState.searchCancelled = false
-		rs.partialScore = -eval.MateScore - 1
+		rs.partialScore = -scoreInfinity
 
 		pv.reset()
 
-		select {
-		case <-ctx.Done():
-			finalStats.Time = time.Since(startTime)
-			finalStats.Depth = lastCompletedDepth
-			finalStats.StopReason = StopReasonCancelled
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				finalStats.StopReason = StopReasonTime
-			}
-			return Result{
-				BestMove: lastCompletedBestMove,
-				Score:    lastCompletedScore,
-				Stats:    finalStats,
-			}
-		default:
-		}
-
-		if config.MaxTime > 0 && time.Since(startTime) >= config.MaxTime {
-			finalStats.StopReason = StopReasonTime
+		if ctx.Err() != nil || (config.MaxTime > 0 && time.Since(startTime) >= config.MaxTime) {
 			break
 		}
 
@@ -155,8 +138,8 @@ func (m *MinimaxEngine) searchWithAspiration(ctx context.Context, rs *rootSearch
 	window := eval.EvaluationScore(AspirationWindow)
 
 	for {
-		alpha := -eval.MateScore - 1
-		beta := eval.MateScore + 1
+		alpha := -scoreInfinity
+		beta := scoreInfinity
 		if useAspirationWindow {
 			alpha = prevScore - window
 			beta = prevScore + window
@@ -186,11 +169,11 @@ func (m *MinimaxEngine) searchRootMoves(ctx context.Context, rs *rootSearch, dep
 	pv := m.searchState.pv
 	maxTime := m.searchState.config.MaxTime
 
-	bestScore = -eval.MateScore - 1
+	bestScore = -scoreInfinity
 	searched := 0
 
 	for i := range rs.scores {
-		rs.scores[i] = -eval.MateScore - 1
+		rs.scores[i] = -scoreInfinity
 		rs.exact[i] = false
 	}
 
@@ -209,7 +192,6 @@ func (m *MinimaxEngine) searchRootMoves(ctx context.Context, rs *rootSearch, dep
 
 		pv.clearPly(1)
 
-		windowAlpha := alpha
 		score, fullWindow := m.searchRootMove(ctx, rs.opponent, depth, alpha, beta, searched == 0)
 
 		b.UnmakeMove(undo)
@@ -221,7 +203,7 @@ func (m *MinimaxEngine) searchRootMoves(ctx context.Context, rs *rootSearch, dep
 		}
 
 		rs.scores[moveIdx] = score
-		rs.exact[moveIdx] = fullWindow && score > windowAlpha && score < beta
+		rs.exact[moveIdx] = fullWindow && score > alpha && score < beta
 
 		if score > bestScore {
 			bestScore = score
@@ -311,10 +293,7 @@ func topRootMoves(moves *movegen.MoveList, scores []eval.EvaluationScore, exact 
 }
 
 func reorderRootMoves(moveList *movegen.MoveList, scores []eval.EvaluationScore) {
-	count := moveList.Count
-	if count > len(scores) {
-		count = len(scores)
-	}
+	count := min(moveList.Count, len(scores))
 	for i := 1; i < count; i++ {
 		mv, sc := moveList.Moves[i], scores[i]
 		j := i - 1

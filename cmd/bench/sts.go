@@ -71,9 +71,8 @@ func runSTS(args []string) error {
 	}
 
 	searchConfig := search.Config{
-		MaxDepth:  *depth,
-		MaxTime:   time.Duration(*timeout) * time.Second,
-		DebugMode: false,
+		MaxDepth: *depth,
+		MaxTime:  time.Duration(*timeout) * time.Second,
 	}
 
 	scorer := epd.NewSTSScorerWithTTClear(engine, searchConfig, *verbose, *clearTT)

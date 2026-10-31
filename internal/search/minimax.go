@@ -14,7 +14,7 @@ import (
 // State contains transient state for a single search operation
 type State struct {
 	killerTable      [MaxKillerDepth][2]board.Move
-	moveOrderBuffers [MaxKillerDepth][]moveScore
+	moveOrderBuffers [MaxKillerDepth][]int
 	searchStats      Stats
 	searchParams     Params
 	searchCancelled  bool
@@ -47,16 +47,12 @@ type MinimaxEngine struct {
 // NewMinimaxEngine creates a new minimax search engine
 func NewMinimaxEngine() *MinimaxEngine {
 	engine := &MinimaxEngine{
-		evaluator:          eval.NewEvaluator(),
-		generator:          movegen.NewGenerator(),
-		transpositionTable: nil,
-		zobrist:            book.GetPolyglotHash(),
-		historyTable:       NewHistoryTable(),
-		seeCalculator:      eval.NewSEECalculator(),
-		searchState: State{
-			killerTable:  [MaxKillerDepth][2]board.Move{},
-			searchParams: getParams(),
-		},
+		evaluator:     eval.NewEvaluator(),
+		generator:     movegen.NewGenerator(),
+		zobrist:       book.GetPolyglotHash(),
+		historyTable:  NewHistoryTable(),
+		seeCalculator: eval.NewSEECalculator(),
+		searchState:   State{searchParams: getParams()},
 	}
 
 	return engine
@@ -115,9 +111,7 @@ func (m *MinimaxEngine) FindBestMove(ctx context.Context, b *board.Board, player
 		m.transpositionTable.IncrementAge()
 	}
 
-	if m.historyTable != nil {
-		m.historyTable.Age()
-	}
+	m.historyTable.Age()
 
 	return m.runIterativeDeepening(ctx, b, player, config, startTime)
 }
@@ -145,18 +139,10 @@ func (m *MinimaxEngine) TTStats() TTStats {
 	return TTStats{}
 }
 
-// GetName returns the engine name
-func (m *MinimaxEngine) GetName() string {
-	return "Minimax Engine"
-}
-
 // ClearSearchState clears transient search state between different positions
 func (m *MinimaxEngine) ClearSearchState() {
-	for i := range MaxKillerDepth {
-		m.searchState.killerTable[i][0] = board.Move{}
-		m.searchState.killerTable[i][1] = board.Move{}
-		m.searchState.moveOrderBuffers[i] = nil
-	}
+	m.searchState.killerTable = [MaxKillerDepth][2]board.Move{}
+	m.searchState.moveOrderBuffers = [MaxKillerDepth][]int{}
 	m.searchState.searchStats = Stats{}
 	m.searchState.searchCancelled = false
 
@@ -170,7 +156,5 @@ func (m *MinimaxEngine) ClearSearchState() {
 	if m.transpositionTable != nil {
 		m.transpositionTable.Clear()
 	}
-	if m.historyTable != nil {
-		m.historyTable.Clear()
-	}
+	m.historyTable.Clear()
 }

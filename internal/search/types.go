@@ -15,8 +15,7 @@ type Config struct {
 	// MaxTime is the hard limit; only root moves the running iteration finished survive it. Zero means none.
 	MaxTime time.Duration
 	// SoftTime is checked between iterations only; zero disables it.
-	SoftTime  time.Duration
-	DebugMode bool
+	SoftTime time.Duration
 
 	UseOpeningBook bool
 	BookFiles      []string
@@ -46,6 +45,4 @@ type Engine interface {
 	FindBestMove(ctx context.Context, b *board.Board, player movegen.Player, config Config) Result
 
 	SetEvaluator(evaluator eval.Evaluator)
-
-	GetName() string
 }

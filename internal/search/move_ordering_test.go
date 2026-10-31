@@ -36,7 +36,7 @@ func TestScoreMoves_HistoryBeatsMereAttack(t *testing.T) {
 	scoreOf := func(want board.Move) int {
 		for i := range moves.Count {
 			if moves.Moves[i] == want {
-				return m.searchState.moveOrderBuffers[1][i].score
+				return m.searchState.moveOrderBuffers[1][i]
 			}
 		}
 		t.Fatalf("move %v not in list", want)

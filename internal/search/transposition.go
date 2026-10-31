@@ -15,6 +15,10 @@ const (
 	EntryUpperBound
 )
 
+func isMateScore(score eval.EvaluationScore) bool {
+	return score >= eval.MateScore-MateDistanceThreshold || score <= -eval.MateScore+MateDistanceThreshold
+}
+
 func scoreToTT(score eval.EvaluationScore, ply int) eval.EvaluationScore {
 	if score >= eval.MateScore-MateDistanceThreshold {
 		return score + eval.EvaluationScore(ply)
@@ -26,13 +30,7 @@ func scoreToTT(score eval.EvaluationScore, ply int) eval.EvaluationScore {
 }
 
 func scoreFromTT(score eval.EvaluationScore, ply int) eval.EvaluationScore {
-	if score >= eval.MateScore-MateDistanceThreshold {
-		return score - eval.EvaluationScore(ply)
-	}
-	if score <= -eval.MateScore+MateDistanceThreshold {
-		return score + eval.EvaluationScore(ply)
-	}
-	return score
+	return scoreToTT(score, -ply)
 }
 
 // TranspositionEntry represents a single entry in the transposition table.
@@ -46,7 +44,6 @@ type TranspositionEntry struct {
 // TranspositionTable implements a hash table for storing search results
 type TranspositionTable struct {
 	table           []TranspositionEntry
-	size            uint64
 	mask            uint64
 	hits            uint64
 	misses          uint64
@@ -68,16 +65,13 @@ func NewTranspositionTable(sizeMB int) *TranspositionTable {
 
 	return &TranspositionTable{
 		table: make([]TranspositionEntry, size),
-		size:  size,
 		mask:  size - 1,
 	}
 }
 
 // Clear clears all entries in the transposition table
 func (tt *TranspositionTable) Clear() {
-	for i := range tt.table {
-		tt.table[i] = TranspositionEntry{}
-	}
+	clear(tt.table)
 
 	tt.hits = 0
 	tt.misses = 0
@@ -102,8 +96,8 @@ func unpackDepthAge(depthAge uint8) (depth int, entryType EntryType, age uint32)
 }
 
 func packMove(move board.Move) uint32 {
-	from := uint32(move.From.Rank*8 + move.From.File)
-	to := uint32(move.To.Rank*8 + move.To.File)
+	from := uint32(board.FileRankToSquare(move.From.File, move.From.Rank))
+	to := uint32(board.FileRankToSquare(move.To.File, move.To.Rank))
 
 	packed := (from&0x3F)<<26 | (to&0x3F)<<20
 
@@ -130,11 +124,14 @@ func packMove(move board.Move) uint32 {
 		if move.IsEnPassant {
 			packed |= 1 << 16
 		}
-	default:
-		packed |= 0 << 18
 	}
 
 	return packed
+}
+
+var promotionPieces = [2][4]board.Piece{
+	{board.WhiteKnight, board.WhiteBishop, board.WhiteRook, board.WhiteQueen},
+	{board.BlackKnight, board.BlackBishop, board.BlackRook, board.BlackQueen},
 }
 
 func unpackMove(packed uint32) board.Move {
@@ -144,59 +141,23 @@ func unpackMove(packed uint32) board.Move {
 	flags := (packed >> 16) & 0x3
 
 	move := board.Move{
-		From: board.Square{File: from % 8, Rank: from / 8},
-		To:   board.Square{File: to % 8, Rank: to / 8},
+		From:      board.Square{File: from % 8, Rank: from / 8},
+		To:        board.Square{File: to % 8, Rank: to / 8},
+		Promotion: board.Empty,
 	}
 
 	switch moveType {
-	case 0:
-		move.IsCapture = false
-		move.IsCastling = false
-		move.IsEnPassant = false
-		move.Promotion = board.Empty
 	case 1:
 		move.IsCapture = true
-		move.IsCastling = false
 		move.IsEnPassant = flags == 1
-		move.Promotion = board.Empty
 	case 2:
-		move.IsCapture = false
 		move.IsCastling = true
-		move.IsEnPassant = false
-		move.Promotion = board.Empty
 	case 3:
-		move.IsCapture = false
-		move.IsCastling = false
-		move.IsEnPassant = false
-
-		isBlackPromotion := move.To.Rank == 0
-
-		switch flags {
-		case 0:
-			if isBlackPromotion {
-				move.Promotion = board.BlackKnight
-			} else {
-				move.Promotion = board.WhiteKnight
-			}
-		case 1:
-			if isBlackPromotion {
-				move.Promotion = board.BlackBishop
-			} else {
-				move.Promotion = board.WhiteBishop
-			}
-		case 2:
-			if isBlackPromotion {
-				move.Promotion = board.BlackRook
-			} else {
-				move.Promotion = board.WhiteRook
-			}
-		case 3:
-			if isBlackPromotion {
-				move.Promotion = board.BlackQueen
-			} else {
-				move.Promotion = board.WhiteQueen
-			}
+		side := 0
+		if move.To.Rank == 0 {
+			side = 1
 		}
+		move.Promotion = promotionPieces[side][flags]
 	}
 
 	return move
@@ -257,22 +218,15 @@ func (tt *TranspositionTable) shouldReplace(entry *TranspositionEntry, hash uint
 
 // Probe looks up a position in the transposition table using two-bucket collision resolution
 func (tt *TranspositionTable) Probe(hash uint64) (*TranspositionEntry, bool) {
-	firstIndex := hash & tt.mask
-	entry := &tt.table[firstIndex]
-	if entry.Hash != 0 && entry.Hash == hash {
-		if (hash & 0xFF) == 0 {
-			tt.hits += 256
+	firstIndex := tt.getFirstBucketIndex(hash)
+	for _, index := range [2]uint64{firstIndex, tt.getSecondBucketIndex(firstIndex)} {
+		entry := &tt.table[index]
+		if entry.Hash != 0 && entry.Hash == hash {
+			if (hash & 0xFF) == 0 {
+				tt.hits += 256
+			}
+			return entry, true
 		}
-		return entry, true
-	}
-
-	secondIndex := (firstIndex + 1) & tt.mask
-	entry = &tt.table[secondIndex]
-	if entry.Hash != 0 && entry.Hash == hash {
-		if (hash & 0xFF) == 0 {
-			tt.hits += 256
-		}
-		return entry, true
 	}
 
 	if (hash & 0xFF) == 0 {
@@ -333,9 +287,4 @@ func (tt *TranspositionTable) Stats() TTStats {
 	}
 
 	return stats
-}
-
-// GetSize returns the size of the transposition table
-func (tt *TranspositionTable) GetSize() uint64 {
-	return tt.size
 }

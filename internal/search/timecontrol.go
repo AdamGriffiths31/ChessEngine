@@ -23,7 +23,7 @@ func softTimeScale(iters []Iteration) float64 {
 
 	stable := 0
 	for i := n - 2; i >= 0 && stable < stabilityMaxIterations; i-- {
-		if !sameMove(iters[i].BestMove, last.BestMove) {
+		if !sameMove(&iters[i].BestMove, &last.BestMove) {
 			break
 		}
 		stable++
@@ -36,7 +36,7 @@ func softTimeScale(iters []Iteration) float64 {
 	return stability * trend
 }
 
-func sameMove(a, b board.Move) bool {
+func sameMove(a, b *board.Move) bool {
 	return a.From == b.From && a.To == b.To && a.Promotion == b.Promotion
 }
 

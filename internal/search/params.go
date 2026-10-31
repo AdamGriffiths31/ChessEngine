@@ -3,12 +3,11 @@ package search
 import (
 	"math"
 
+	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 )
 
 const (
-	// MinEval represents the minimum possible evaluation score
-	MinEval = eval.EvaluationScore(-32000)
 	// MaxKillerDepth is the maximum depth for killer move tables
 	MaxKillerDepth = 128
 	// MateDistanceThreshold is the threshold for detecting mate distances
@@ -28,6 +27,10 @@ const (
 
 	noStaticEval = eval.EvaluationScore(-32001)
 
+	scoreInfinity = eval.MateScore + 1
+
+	allSquares = ^board.Bitboard(0)
+
 	// FiftyMoveHalfMoves is the halfmove-clock value at which the fifty-move
 	// rule makes a position drawn (50 full moves = 100 plies without a pawn
 	// move or capture).
@@ -38,8 +41,6 @@ const (
 	NullMoveMinDepth = 3
 	// NullMoveDeepDepth is the depth at which the null-move reduction grows by one.
 	NullMoveDeepDepth = 6
-	// NullMoveMaxReduction caps the null-move reduction.
-	NullMoveMaxReduction = 3
 
 	// QDeltaMargin is added to the stand-pat eval and the victim's value. A
 	// capture is skipped when the total still falls below alpha.
@@ -74,8 +75,6 @@ type Params struct {
 	HistoryMedThreshold  int32
 	HistoryLowThreshold  int32
 
-	NullMoveEnabled bool
-
 	// Reverse futility pruning (static null move): in non-PV nodes at shallow
 	// depth, if the static eval is already above beta by a depth-scaled margin,
 	// assume the node fails high without searching it.
@@ -90,16 +89,13 @@ type Params struct {
 	// Internal futility pruning: at shallow depth, skip quiet moves when the
 	// static eval plus a depth-scaled margin still cannot reach alpha.
 	// Giving-check moves are exempt.
-	FutilityEnabled  bool
 	FutilityMaxDepth int
 	FutilityMargins  [6]eval.EvaluationScore // Indexed by depth (index 0 unused)
 
 	// Late Move Pruning (LMP): in quiet nodes, once enough quiet moves have
 	// been searched without improving alpha, skip remaining quiets outright.
-	LMPEnabled  bool
 	LMPMaxDepth int
 
-	LMREnabled  bool
 	LMRMinDepth int
 	LMRMinMoves int
 }
@@ -111,8 +107,6 @@ func getParams() Params {
 		HistoryMedThreshold:  500,
 		HistoryLowThreshold:  -500,
 
-		NullMoveEnabled: true,
-
 		RFPEnabled:  true,
 		RFPMaxDepth: 6,
 		RFPMargin:   90,
@@ -121,14 +115,11 @@ func getParams() Params {
 		RazoringMargins:  [5]eval.EvaluationScore{0, 125, 175, 225, 275},
 		RazoringMaxDepth: 1,
 
-		FutilityEnabled:  true,
 		FutilityMaxDepth: 4,
 		FutilityMargins:  [6]eval.EvaluationScore{0, 150, 250, 350, 450},
 
-		LMPEnabled:  true,
 		LMPMaxDepth: 5,
 
-		LMREnabled:  true,
 		LMRMinDepth: 3,
 		LMRMinMoves: 4,
 	}

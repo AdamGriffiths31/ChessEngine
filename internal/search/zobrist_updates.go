@@ -19,8 +19,8 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 
 	hashDelta ^= m.zobrist.GetSideKey()
 
-	fromSquare := move.From.Rank*8 + move.From.File
-	toSquare := move.To.Rank*8 + move.To.File
+	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
+	toSquare := board.FileRankToSquare(move.To.File, move.To.Rank)
 
 	if move.Piece != board.Empty {
 		pieceIndex := m.zobrist.GetPieceIndex(move.Piece)
@@ -41,13 +41,7 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 	if move.IsCapture && move.Captured != board.Empty {
 		capturedPieceIndex := m.zobrist.GetPieceIndex(move.Captured)
 		if move.IsEnPassant {
-			var captureRank int
-			if move.Piece == board.WhitePawn {
-				captureRank = 4
-			} else {
-				captureRank = 3
-			}
-			captureSquare := captureRank*8 + move.To.File
+			captureSquare := board.FileRankToSquare(move.To.File, move.From.Rank)
 			hashDelta ^= m.zobrist.GetPieceKey(captureSquare, capturedPieceIndex)
 		} else {
 			hashDelta ^= m.zobrist.GetPieceKey(toSquare, capturedPieceIndex)
@@ -116,18 +110,7 @@ func epCapturerRankAndPiece(sideToMove string) (int, board.Piece) {
 }
 
 func hasAdjacentCapturingPawn(b *board.Board, epTarget board.Square, sideToMove string) bool {
-	pawnRank, pawnPiece := epCapturerRankAndPiece(sideToMove)
-
-	for _, df := range []int{-1, 1} {
-		adjFile := epTarget.File + df
-		if adjFile >= 0 && adjFile < 8 {
-			if b.GetPiece(pawnRank, adjFile) == pawnPiece {
-				return true
-			}
-		}
-	}
-
-	return false
+	return hadAdjacentCapturingPawnBeforeMove(b, board.Move{}, epTarget, sideToMove)
 }
 
 func hadAdjacentCapturingPawnBeforeMove(b *board.Board, move board.Move, epTarget board.Square, sideToMove string) bool {
@@ -155,14 +138,8 @@ func pieceBeforeMove(b *board.Board, move board.Move, rank, file int) board.Piec
 		}
 		return board.Empty
 	}
-	if move.IsEnPassant {
-		captureRank := 3
-		if move.Piece == board.WhitePawn {
-			captureRank = 4
-		}
-		if rank == captureRank && file == move.To.File {
-			return move.Captured
-		}
+	if move.IsEnPassant && rank == move.From.Rank && file == move.To.File {
+		return move.Captured
 	}
 	return b.GetPiece(rank, file)
 }

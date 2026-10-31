@@ -89,6 +89,15 @@ func (g *Generator) GenerateCaptures(b *board.Board, player Player) *MoveList {
 	return moveList
 }
 
+// CheckEvasionMask returns the squares a non-king move must reach to answer a
+// check on the given player: the checker and the squares between it and the
+// king, or none on a double check. It returns every square when not in check.
+func (g *Generator) CheckEvasionMask(b *board.Board, player Player) board.Bitboard {
+	side := &sides[player]
+	kingSquare := b.GetPieceBitboard(side.king).LSB()
+	return checkEvasions(b.GetAttackersToSquare(kingSquare, side.enemy), kingSquare)
+}
+
 // IsKingInCheck checks if the king of the given player is currently in check.
 // Returns false if board is nil or king is not found.
 func (g *Generator) IsKingInCheck(b *board.Board, player Player) bool {

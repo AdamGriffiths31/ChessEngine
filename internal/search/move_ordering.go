@@ -6,10 +6,6 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 )
 
-type moveScore struct {
-	score int
-}
-
 const (
 	scoreTTMove        = 3000000
 	scoreGoodCapture   = 1000000
@@ -25,10 +21,10 @@ const (
 	worstCaptureOffset = 1000
 )
 
-func (m *MinimaxEngine) orderBuffer(ply, n int) []moveScore {
+func (m *MinimaxEngine) orderBuffer(ply, n int) []int {
 	buf := m.searchState.moveOrderBuffers[ply]
 	if cap(buf) < n {
-		buf = make([]moveScore, n)
+		buf = make([]int, n)
 	} else {
 		buf = buf[:n]
 	}
@@ -49,17 +45,13 @@ func (m *MinimaxEngine) pickNextMove(moveList *movegen.MoveList, startIndex, ply
 		return
 	}
 
-	if ply < 0 || ply >= MaxKillerDepth {
-		return
-	}
-
 	buffer := m.searchState.moveOrderBuffers[ply]
 	bestIdx := startIndex
-	bestScore := buffer[startIndex].score
+	bestScore := buffer[startIndex]
 
 	for i := startIndex + 1; i < moveList.Count; i++ {
-		if buffer[i].score > bestScore {
-			bestScore = buffer[i].score
+		if buffer[i] > bestScore {
+			bestScore = buffer[i]
 			bestIdx = i
 		}
 	}
@@ -73,21 +65,13 @@ func (m *MinimaxEngine) pickNextMove(moveList *movegen.MoveList, startIndex, ply
 }
 
 func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *movegen.MoveList, ply int, ttMove board.Move) {
-	if moveList.Count == 0 {
-		return
-	}
-
-	if ply < 0 || ply >= MaxKillerDepth {
-		return
-	}
-
 	buffer := m.orderBuffer(ply, moveList.Count)
 
 	for i := range moveList.Count {
 		move := moveList.Moves[i]
 		score := 0
 
-		if move.From == ttMove.From && move.To == ttMove.To && move.Promotion == ttMove.Promotion {
+		if sameMove(&move, &ttMove) {
 			score = scoreTTMove
 		} else {
 			if move.IsCapture {
@@ -114,7 +98,7 @@ func (m *MinimaxEngine) scoreMoves(b *board.Board, moveList *movegen.MoveList, p
 			}
 		}
 
-		buffer[i] = moveScore{score: score}
+		buffer[i] = score
 	}
 }
 
@@ -126,36 +110,27 @@ func (m *MinimaxEngine) orderMovesAtRoot(b *board.Board, moveList *movegen.MoveL
 }
 
 func (m *MinimaxEngine) scoreCaptures(moveList *movegen.MoveList, ply int) {
-	if moveList.Count == 0 {
-		return
-	}
-
-	if ply < 0 || ply >= MaxKillerDepth {
-		return
-	}
-
 	buffer := m.orderBuffer(ply, moveList.Count)
 
 	for i := range moveList.Count {
-		move := moveList.Moves[i]
-
-		victimValue := getAbsPieceValue(move.Captured)
-		attackerValue := getAbsPieceValue(move.Piece)
-
-		score := (victimValue * 10) - attackerValue
-		buffer[i] = moveScore{score: score}
+		move := &moveList.Moves[i]
+		buffer[i] = mvvLva(getAbsPieceValue(move.Captured), getAbsPieceValue(move.Piece))
 	}
 }
 
+func mvvLva(victimValue, attackerValue int) int {
+	return (victimValue * 10) - attackerValue
+}
+
 func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
-	if !move.IsCapture || move.Captured == board.Empty {
+	if move.Captured == board.Empty {
 		return 0
 	}
 
 	victimValue := getAbsPieceValue(move.Captured)
 	attackerValue := getAbsPieceValue(move.Piece)
 
-	mvvLvaScore := (victimValue * 10) - attackerValue
+	mvvLvaScore := mvvLva(victimValue, attackerValue)
 
 	if victimValue > attackerValue {
 		return scoreGoodCapture + mvvLvaScore
@@ -175,8 +150,5 @@ func (m *MinimaxEngine) getCaptureScore(b *board.Board, move board.Move) int {
 }
 
 func (m *MinimaxEngine) getHistoryScore(move board.Move) int32 {
-	if m.historyTable == nil {
-		return 0
-	}
 	return m.historyTable.GetHistoryScore(move)
 }

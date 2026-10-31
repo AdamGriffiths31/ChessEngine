@@ -45,7 +45,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, player movegen.Player, dept
 	b := m.searchState.board
 
 	m.searchState.searchStats.NodesSearched++
-	if ply >= 0 && ply < len(m.searchState.searchStats.NodesByDepth) {
+	if ply < len(m.searchState.searchStats.NodesByDepth) {
 		m.searchState.searchStats.NodesByDepth[ply]++
 	}
 
@@ -75,7 +75,20 @@ func (m *MinimaxEngine) negamax(ctx context.Context, player movegen.Player, dept
 	}
 	alpha, beta = ttAlpha, ttBeta
 
-	stmEval := sideRelative(m.evaluator.Evaluate(b), player)
+	if depth <= 0 {
+		if ply == 1 {
+			return m.quiescence(ctx, player, alpha, beta, ply)
+		}
+		if m.enterQuiescenceNode(ctx) {
+			return alpha
+		}
+		return m.quiescenceBody(ctx, player, alpha, beta, ply, hash, inCheck)
+	}
+
+	var stmEval eval.EvaluationScore
+	if !inCheck {
+		stmEval = sideRelative(m.evaluator.Evaluate(b), player)
+	}
 	improving := m.updateImproving(ply, inCheck, stmEval)
 
 	if score, done := m.tryReverseFutility(b, player, depth, alpha, beta, stmEval, inCheck); done {
@@ -90,16 +103,12 @@ func (m *MinimaxEngine) negamax(ctx context.Context, player movegen.Player, dept
 		return score
 	}
 
-	if depth <= 0 || ply >= MaxKillerDepth-1 {
+	if ply >= MaxKillerDepth-1 {
 		return m.quiescence(ctx, player, alpha, beta, ply)
 	}
 
 	pseudoMoves := m.generator.GeneratePseudoLegalMoves(b, player)
 	defer movegen.ReleaseMoveList(pseudoMoves)
-
-	if pseudoMoves.Count == 0 {
-		return m.handleNoLegalMoves(b, player, depth, ply, hash)
-	}
 
 	m.scoreMoves(b, pseudoMoves, ply, ttMove)
 
@@ -124,7 +133,7 @@ func (m *MinimaxEngine) negamax(ctx context.Context, player movegen.Player, dept
 }
 
 func (m *MinimaxEngine) isDrawNode(b *board.Board, hash uint64, inCheck bool) bool {
-	if m.isDrawByRepetition(hash) || isInsufficientMaterial(b) {
+	if m.isDrawByRepetition(hash, b.GetHalfMoveClock()) || isInsufficientMaterial(b) {
 		return true
 	}
 	return !inCheck && b.GetHalfMoveClock() >= FiftyMoveHalfMoves
@@ -154,7 +163,7 @@ func (m *MinimaxEngine) searchMoves(ctx context.Context, n *nodeInfo, hash uint6
 	b := m.searchState.board
 	pv := m.searchState.pv
 
-	bestScore := -eval.MateScore - 1
+	bestScore := -scoreInfinity
 	bestMove := board.Move{}
 	legalMoveCount := 0
 
@@ -164,6 +173,11 @@ func (m *MinimaxEngine) searchMoves(ctx context.Context, n *nodeInfo, hash uint6
 
 	alphaImproved := false
 
+	evasions := allSquares
+	if n.inCheck {
+		evasions = m.generator.CheckEvasionMask(b, n.player)
+	}
+
 	for i := range moves.Count {
 		m.pickNextMove(moves, i, n.ply)
 		move := moves.Moves[i]
@@ -172,7 +186,11 @@ func (m *MinimaxEngine) searchMoves(ctx context.Context, n *nodeInfo, hash uint6
 			break
 		}
 
-		givesCheck := board.MoveGivesCheck(b, move)
+		if cannotEvade(&move, evasions) {
+			continue
+		}
+
+		givesCheck := move.IsQuiet() && !n.inCheck && board.MoveGivesCheck(b, move)
 
 		if legalMoveCount > 0 && m.shouldPruneQuiet(n, move, givesCheck, alpha, quietsSearched) {
 			continue
@@ -228,7 +246,7 @@ func (m *MinimaxEngine) searchMoves(ctx context.Context, n *nodeInfo, hash uint6
 
 	if legalMoveCount == 0 {
 		if !quietMovesPruned {
-			return m.handleNoLegalMoves(b, n.player, n.depth, n.ply, hash)
+			return m.handleNoLegalMoves(n.inCheck, n.depth, n.ply, hash)
 		}
 		return alpha
 	}
@@ -237,21 +255,26 @@ func (m *MinimaxEngine) searchMoves(ctx context.Context, n *nodeInfo, hash uint6
 	return bestScore
 }
 
+func cannotEvade(move *board.Move, evasions board.Bitboard) bool {
+	if evasions == allSquares || move.IsEnPassant || move.Piece == board.WhiteKing || move.Piece == board.BlackKing {
+		return false
+	}
+	return !evasions.HasBit(board.FileRankToSquare(move.To.File, move.To.Rank))
+}
+
 func (m *MinimaxEngine) shouldPruneQuiet(n *nodeInfo, move board.Move, givesCheck bool, alpha eval.EvaluationScore, quietsSearched int) bool {
 	if n.sparseBoard || n.inCheck || !move.IsQuiet() ||
 		givesCheck || m.isKillerMove(move, n.ply) ||
-		alpha <= -eval.MateScore+MateDistanceThreshold ||
-		alpha >= eval.MateScore-MateDistanceThreshold {
+		isMateScore(alpha) {
 		return false
 	}
 
 	p := &m.searchState.searchParams
 	switch {
-	case p.FutilityEnabled && n.depth <= p.FutilityMaxDepth &&
-		n.stmEval+p.FutilityMargins[min(n.depth, len(p.FutilityMargins)-1)] <= alpha:
+	case n.depth <= p.FutilityMaxDepth && n.stmEval+p.FutilityMargins[n.depth] <= alpha:
 		m.searchState.searchStats.FutilityPrunes++
 		return true
-	case p.LMPEnabled && !n.isPV && n.depth <= p.LMPMaxDepth && quietsSearched >= n.lmpLimit:
+	case !n.isPV && n.depth <= p.LMPMaxDepth && quietsSearched >= n.lmpLimit:
 		m.searchState.searchStats.LMPPrunes++
 		return true
 	}
@@ -290,58 +313,61 @@ func (m *MinimaxEngine) storeNodeResult(hash uint64, depth, ply int, bestScore e
 }
 
 func (m *MinimaxEngine) probeTT(hash uint64, depth, ply int, alpha, beta eval.EvaluationScore) (ttMove board.Move, score, alphaOut, betaOut eval.EvaluationScore, done bool) {
-	alphaOut, betaOut = alpha, beta
+	if m.transpositionTable == nil {
+		return ttMove, 0, alpha, beta, false
+	}
+
+	m.searchState.searchStats.TTProbes++
+	entry, found := m.transpositionTable.Probe(hash)
+	if !found {
+		return ttMove, 0, alpha, beta, false
+	}
+
+	m.searchState.searchStats.TTHits++
+	ttMove = entry.GetMove()
+	if !ttMove.IsValid() {
+		ttMove = board.Move{}
+	}
+
+	if entry.GetDepth() < depth {
+		return ttMove, 0, alpha, beta, false
+	}
+
 	rootChild := ply == 1
-	if m.transpositionTable != nil {
-		m.searchState.searchStats.TTProbes++
-		if entry, found := m.transpositionTable.Probe(hash); found {
-			m.searchState.searchStats.TTHits++
-			ttMove = entry.GetMove()
-
-			if !ttMove.IsValid() {
-				ttMove = board.Move{}
-			}
-
-			if entry.GetDepth() >= depth {
-				ttScore := scoreFromTT(entry.Score, ply)
-				switch entry.GetType() {
-				case EntryExact:
-					if !rootChild {
-						m.searchState.searchStats.TTCutoffs++
-						m.searchState.searchStats.PVNodes++
-						return ttMove, ttScore, alphaOut, betaOut, true
-					}
-				case EntryLowerBound:
-					if ttScore >= beta {
-						if !rootChild {
-							m.searchState.searchStats.TTCutoffs++
-							m.searchState.searchStats.CutNodes++
-							return ttMove, ttScore, alphaOut, betaOut, true
-						}
-					} else if ttScore > alpha {
-						alphaOut = ttScore
-					}
-				case EntryUpperBound:
-					if ttScore <= alpha {
-						if !rootChild {
-							m.searchState.searchStats.AllNodes++
-							return ttMove, ttScore, alphaOut, betaOut, true
-						}
-					} else if ttScore < beta {
-						betaOut = ttScore
-					}
-				}
-			}
+	ttScore := scoreFromTT(entry.Score, ply)
+	switch entry.GetType() {
+	case EntryExact:
+		if !rootChild {
+			m.searchState.searchStats.TTCutoffs++
+			m.searchState.searchStats.PVNodes++
+			return ttMove, ttScore, alpha, beta, true
+		}
+	case EntryLowerBound:
+		switch {
+		case ttScore < beta:
+			alpha = max(alpha, ttScore)
+		case !rootChild:
+			m.searchState.searchStats.TTCutoffs++
+			m.searchState.searchStats.CutNodes++
+			return ttMove, ttScore, alpha, beta, true
+		}
+	case EntryUpperBound:
+		switch {
+		case ttScore > alpha:
+			beta = min(beta, ttScore)
+		case !rootChild:
+			m.searchState.searchStats.AllNodes++
+			return ttMove, ttScore, alpha, beta, true
 		}
 	}
-	return ttMove, 0, alphaOut, betaOut, false
+	return ttMove, 0, alpha, beta, false
 }
 
 func (m *MinimaxEngine) tryReverseFutility(b *board.Board, player movegen.Player, depth int, alpha, beta, stmEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
 	p := &m.searchState.searchParams
 	if !p.RFPEnabled || inCheck || depth <= 0 || depth > p.RFPMaxDepth ||
 		beta-alpha != 1 ||
-		beta >= eval.MateScore-MateDistanceThreshold || beta <= -eval.MateScore+MateDistanceThreshold ||
+		isMateScore(beta) ||
 		!hasNonPawnMaterial(b, player) {
 		return 0, false
 	}
@@ -355,40 +381,36 @@ func (m *MinimaxEngine) tryReverseFutility(b *board.Board, player movegen.Player
 }
 
 func (m *MinimaxEngine) tryNullMove(ctx context.Context, b *board.Board, player movegen.Player, depth int, beta eval.EvaluationScore, ply int, stmEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
-	if m.searchState.searchParams.NullMoveEnabled &&
-		depth >= NullMoveMinDepth &&
-		stmEval >= beta &&
-		beta < eval.MateScore-MateDistanceThreshold &&
-		beta > -eval.MateScore+MateDistanceThreshold {
-		if !inCheck {
-			switch {
-			case !hasNonPawnMaterial(b, player):
-				m.searchState.searchStats.NullMoveZugzwangSkipped++
-			case b.AllPieces.PopCount() <= NullMoveMaxPieces:
-				m.searchState.searchStats.NullMoveSparseSkipped++
-			default:
-				nullReduction := m.searchState.searchParams.NullMoveReduction
-				if depth >= NullMoveDeepDepth && nullReduction < NullMoveMaxReduction {
-					nullReduction++
-				}
+	if inCheck || depth < NullMoveMinDepth || stmEval < beta || isMateScore(beta) {
+		return 0, false
+	}
 
-				m.searchState.searchStats.NullMoves++
+	if !hasNonPawnMaterial(b, player) {
+		m.searchState.searchStats.NullMoveZugzwangSkipped++
+		return 0, false
+	}
+	if b.AllPieces.PopCount() <= NullMoveMaxPieces {
+		m.searchState.searchStats.NullMoveSparseSkipped++
+		return 0, false
+	}
 
-				nullUndo := b.MakeNullMove()
+	nullReduction := m.searchState.searchParams.NullMoveReduction
+	if depth >= NullMoveDeepDepth {
+		nullReduction++
+	}
 
-				nullScore := -m.negamax(ctx, oppositePlayer(player), depth-1-nullReduction, -beta, -beta+1, ply+1, false)
+	m.searchState.searchStats.NullMoves++
 
-				b.UnmakeNullMove(nullUndo)
+	nullUndo := b.MakeNullMove()
 
-				if nullScore >= beta {
-					if nullScore < eval.MateScore-MateDistanceThreshold {
-						m.searchState.searchStats.NullCutoffs++
-						m.searchState.searchStats.CutNodes++
-						return beta, true
-					}
-				}
-			}
-		}
+	nullScore := -m.negamax(ctx, oppositePlayer(player), depth-1-nullReduction, -beta, -beta+1, ply+1, false)
+
+	b.UnmakeNullMove(nullUndo)
+
+	if nullScore >= beta && nullScore < eval.MateScore-MateDistanceThreshold {
+		m.searchState.searchStats.NullCutoffs++
+		m.searchState.searchStats.CutNodes++
+		return beta, true
 	}
 	return 0, false
 }
@@ -416,28 +438,22 @@ func hasNonPawnMaterial(b *board.Board, player movegen.Player) bool {
 }
 
 func (m *MinimaxEngine) tryRazoring(ctx context.Context, player movegen.Player, depth int, alpha, beta eval.EvaluationScore, ply int, stmEval eval.EvaluationScore, inCheck bool) (score eval.EvaluationScore, done bool) {
-	if m.searchState.searchParams.RazoringEnabled &&
-		!inCheck &&
-		depth <= m.searchState.searchParams.RazoringMaxDepth &&
-		depth > 0 &&
-		alpha < eval.MateScore-MateDistanceThreshold &&
-		alpha > -eval.MateScore+MateDistanceThreshold {
-
-		razoringMargin := m.searchState.searchParams.RazoringMargins[depth]
-
-		if stmEval+razoringMargin < alpha {
-			m.searchState.searchStats.RazoringAttempts++
-
-			qScore := m.quiescence(ctx, player, alpha, beta, ply)
-
-			if qScore <= alpha {
-				m.searchState.searchStats.RazoringCutoffs++
-				m.searchState.searchStats.AllNodes++
-				return qScore, true
-			}
-			m.searchState.searchStats.RazoringFailed++
-		}
+	p := &m.searchState.searchParams
+	if !p.RazoringEnabled || inCheck || depth > p.RazoringMaxDepth || depth <= 0 ||
+		isMateScore(alpha) || stmEval+p.RazoringMargins[depth] >= alpha {
+		return 0, false
 	}
+
+	m.searchState.searchStats.RazoringAttempts++
+
+	qScore := m.quiescence(ctx, player, alpha, beta, ply)
+
+	if qScore <= alpha {
+		m.searchState.searchStats.RazoringCutoffs++
+		m.searchState.searchStats.AllNodes++
+		return qScore, true
+	}
+	m.searchState.searchStats.RazoringFailed++
 	return 0, false
 }
 
@@ -455,20 +471,15 @@ func (m *MinimaxEngine) recordCutoff(move board.Move, depth, ply, legalMoveCount
 		m.storeKiller(move, ply)
 	}
 
-	if m.historyTable != nil {
-		if !move.IsCapture {
-			m.historyTable.Bonus(move, depth)
+	if !move.IsCapture {
+		m.historyTable.Bonus(move, depth)
+	}
+	for j := range triedIndex {
+		earlier := &moveList.Moves[j]
+		if !earlier.IsQuiet() || sameMove(earlier, &move) {
+			continue
 		}
-		for j := range triedIndex {
-			earlier := moveList.Moves[j]
-			if !earlier.IsQuiet() {
-				continue
-			}
-			if earlier.From == move.From && earlier.To == move.To && earlier.Promotion == move.Promotion {
-				continue
-			}
-			m.historyTable.Malus(earlier, depth)
-		}
+		m.historyTable.Malus(*earlier, depth)
 	}
 
 	if m.transpositionTable != nil && !m.searchState.searchCancelled {
@@ -476,23 +487,19 @@ func (m *MinimaxEngine) recordCutoff(move board.Move, depth, ply, legalMoveCount
 	}
 }
 
-func (m *MinimaxEngine) handleNoLegalMoves(b *board.Board, player movegen.Player, depth, ply int, hash uint64) eval.EvaluationScore {
-	if m.generator.IsKingInCheck(b, player) {
-		score := -eval.MateScore + eval.EvaluationScore(ply)
-		if m.transpositionTable != nil {
-			m.transpositionTable.Store(hash, depth, scoreToTT(score, ply), EntryExact, board.Move{})
-		}
-		return score
+func (m *MinimaxEngine) handleNoLegalMoves(inCheck bool, depth, ply int, hash uint64) eval.EvaluationScore {
+	score := eval.DrawScore
+	if inCheck {
+		score = -eval.MateScore + eval.EvaluationScore(ply)
 	}
 	if m.transpositionTable != nil {
-		m.transpositionTable.Store(hash, depth, eval.DrawScore, EntryExact, board.Move{})
+		m.transpositionTable.Store(hash, depth, scoreToTT(score, ply), EntryExact, board.Move{})
 	}
-	return eval.DrawScore
+	return score
 }
 
 func (m *MinimaxEngine) calculateLMRReduction(depth, legalMoveCount int, inCheck, givesCheck bool, move board.Move, ply int) int {
-	if !m.searchState.searchParams.LMREnabled ||
-		depth < m.searchState.searchParams.LMRMinDepth ||
+	if depth < m.searchState.searchParams.LMRMinDepth ||
 		legalMoveCount <= m.searchState.searchParams.LMRMinMoves ||
 		inCheck ||
 		!move.IsQuiet() ||
@@ -500,24 +507,19 @@ func (m *MinimaxEngine) calculateLMRReduction(depth, legalMoveCount int, inCheck
 		return 0
 	}
 
-	tableDepth := min(depth, lmrTableDepths-1)
-	tableMoveCount := min(legalMoveCount, lmrTableMoves-1)
-	if tableDepth < 1 || tableMoveCount < 1 {
-		return 0
-	}
-	reduction := LMRTable[tableDepth][tableMoveCount]
+	reduction := LMRTable[min(depth, lmrTableDepths-1)][min(legalMoveCount, lmrTableMoves-1)]
 
 	historyScore := m.getHistoryScore(move)
 	switch {
 	case historyScore > m.searchState.searchParams.HistoryHighThreshold:
 		return 0
-	case historyScore > m.searchState.searchParams.HistoryMedThreshold && reduction > 0:
+	case historyScore > m.searchState.searchParams.HistoryMedThreshold:
 		reduction = reduction * 2 / 3
 	case historyScore < m.searchState.searchParams.HistoryLowThreshold:
 		reduction = reduction * 4 / 3
 	}
 
-	reduction = max(0, min(reduction, depth-1))
+	reduction = min(reduction, depth-1)
 
 	if givesCheck {
 		reduction = min(reduction, 1)

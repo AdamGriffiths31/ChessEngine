@@ -22,7 +22,7 @@ func TestTranspositionTableEntryCount(t *testing.T) {
 
 	budgetBytes := uint64(sizeMB) * 1024 * 1024
 	entrySize := uint64(unsafe.Sizeof(TranspositionEntry{}))
-	usedBytes := tt.size * entrySize
+	usedBytes := uint64(len(tt.table)) * entrySize
 
 	if usedBytes > budgetBytes {
 		t.Errorf("table uses %d bytes, exceeds %dMB budget", usedBytes, sizeMB)

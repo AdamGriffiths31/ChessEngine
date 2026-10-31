@@ -191,9 +191,8 @@ func (sm *STSMode) runSTSBenchmark(config STSConfig, epdFiles []string) (*STSRes
 	engine.SetTranspositionTableSize(256)
 
 	searchConfig := search.Config{
-		MaxDepth:  config.Depth,
-		MaxTime:   time.Duration(config.Timeout) * time.Second,
-		DebugMode: false,
+		MaxDepth: config.Depth,
+		MaxTime:  time.Duration(config.Timeout) * time.Second,
 	}
 
 	scorer := epd.NewSTSScorerWithTTClear(engine, searchConfig, config.Verbose, true)

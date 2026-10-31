@@ -25,7 +25,6 @@ func (m *mockEngine) FindBestMove(_ context.Context, _ *board.Board, _ movegen.P
 }
 
 func (m *mockEngine) SetEvaluator(_ eval.Evaluator) {}
-func (m *mockEngine) GetName() string               { return "mock" }
 
 func TestCalculateScore(t *testing.T) {
 	t.Parallel()

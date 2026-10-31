@@ -331,7 +331,6 @@ func (ue *Engine) buildSearchConfig(params SearchParams) search.Config {
 	config := search.Config{
 		MaxDepth:          DefaultMaxDepth,
 		MaxTime:           DefaultMoveTime,
-		DebugMode:         false,
 		UseOpeningBook:    len(bookFiles) > 0,
 		BookFiles:         bookFiles,
 		RepetitionHistory: ue.engine.HashHistory(),
