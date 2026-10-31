@@ -4,113 +4,50 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func (bmg *BitboardMoveGenerator) generateBishopMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
-	var bishopPiece board.Piece
-	var bitboardColor, enemyColor board.BitboardColor
-
-	if player == White {
-		bishopPiece = board.WhiteBishop
-		bitboardColor = board.BitboardWhite
-		enemyColor = board.BitboardBlack
-	} else {
-		bishopPiece = board.BlackBishop
-		bitboardColor = board.BitboardBlack
-		enemyColor = board.BitboardWhite
-	}
-
-	bishops := b.GetPieceBitboard(bishopPiece)
-	if bishops == 0 {
-		return
-	}
-
-	friendlyPieces := b.GetColorBitboard(bitboardColor)
-	enemyPieces := b.GetColorBitboard(enemyColor)
-	occupancy := b.AllPieces
+func generateBishopMoves(b *board.Board, side *sideInfo, targets board.Bitboard, moveList *MoveList) {
+	bishops := b.GetPieceBitboard(side.bishop)
+	enemyPieces := b.GetColorBitboard(side.enemy)
 
 	for bishops != 0 {
 		fromSquare, newBitboard := bishops.PopLSB()
 		bishops = newBitboard
 
-		attacks := board.GetBishopAttacks(fromSquare, occupancy)
-		validMoves := attacks &^ friendlyPieces
-
-		bmg.addSlidingPieceMoves(b, moveList, fromSquare, validMoves, enemyPieces, bishopPiece)
+		attacks := board.GetBishopAttacks(fromSquare, b.AllPieces)
+		addSlidingPieceMoves(b, moveList, fromSquare, attacks&targets, enemyPieces, side.bishop)
 	}
 }
 
-func (bmg *BitboardMoveGenerator) generateRookMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
-	var rookPiece board.Piece
-	var bitboardColor, enemyColor board.BitboardColor
-
-	if player == White {
-		rookPiece = board.WhiteRook
-		bitboardColor = board.BitboardWhite
-		enemyColor = board.BitboardBlack
-	} else {
-		rookPiece = board.BlackRook
-		bitboardColor = board.BitboardBlack
-		enemyColor = board.BitboardWhite
-	}
-
-	rooks := b.GetPieceBitboard(rookPiece)
-	if rooks == 0 {
-		return
-	}
-
-	friendlyPieces := b.GetColorBitboard(bitboardColor)
-	enemyPieces := b.GetColorBitboard(enemyColor)
-	occupancy := b.AllPieces
+func generateRookMoves(b *board.Board, side *sideInfo, targets board.Bitboard, moveList *MoveList) {
+	rooks := b.GetPieceBitboard(side.rook)
+	enemyPieces := b.GetColorBitboard(side.enemy)
 
 	for rooks != 0 {
 		fromSquare, newBitboard := rooks.PopLSB()
 		rooks = newBitboard
 
-		attacks := board.GetRookAttacks(fromSquare, occupancy)
-		validMoves := attacks &^ friendlyPieces
-
-		bmg.addSlidingPieceMoves(b, moveList, fromSquare, validMoves, enemyPieces, rookPiece)
+		attacks := board.GetRookAttacks(fromSquare, b.AllPieces)
+		addSlidingPieceMoves(b, moveList, fromSquare, attacks&targets, enemyPieces, side.rook)
 	}
 }
 
-func (bmg *BitboardMoveGenerator) generateQueenMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
-	var queenPiece board.Piece
-	var bitboardColor, enemyColor board.BitboardColor
-
-	if player == White {
-		queenPiece = board.WhiteQueen
-		bitboardColor = board.BitboardWhite
-		enemyColor = board.BitboardBlack
-	} else {
-		queenPiece = board.BlackQueen
-		bitboardColor = board.BitboardBlack
-		enemyColor = board.BitboardWhite
-	}
-
-	queens := b.GetPieceBitboard(queenPiece)
-	if queens == 0 {
-		return
-	}
-
-	friendlyPieces := b.GetColorBitboard(bitboardColor)
-	enemyPieces := b.GetColorBitboard(enemyColor)
-	occupancy := b.AllPieces
+func generateQueenMoves(b *board.Board, side *sideInfo, targets board.Bitboard, moveList *MoveList) {
+	queens := b.GetPieceBitboard(side.queen)
+	enemyPieces := b.GetColorBitboard(side.enemy)
 
 	for queens != 0 {
 		fromSquare, newBitboard := queens.PopLSB()
 		queens = newBitboard
 
-		rookAttacks := board.GetRookAttacks(fromSquare, occupancy)
-		rookValidMoves := rookAttacks &^ friendlyPieces
-		bmg.addSlidingPieceMoves(b, moveList, fromSquare, rookValidMoves, enemyPieces, queenPiece)
+		rookAttacks := board.GetRookAttacks(fromSquare, b.AllPieces)
+		addSlidingPieceMoves(b, moveList, fromSquare, rookAttacks&targets, enemyPieces, side.queen)
 
-		bishopAttacks := board.GetBishopAttacks(fromSquare, occupancy)
-		bishopValidMoves := bishopAttacks &^ friendlyPieces
-		bmg.addSlidingPieceMoves(b, moveList, fromSquare, bishopValidMoves, enemyPieces, queenPiece)
+		bishopAttacks := board.GetBishopAttacks(fromSquare, b.AllPieces)
+		addSlidingPieceMoves(b, moveList, fromSquare, bishopAttacks&targets, enemyPieces, side.queen)
 	}
 }
 
-func (bmg *BitboardMoveGenerator) addSlidingPieceMoves(b *board.Board, moveList *MoveList, fromSquare int, validMoves, enemyPieces board.Bitboard, piece board.Piece) {
-	fromFile, fromRank := board.SquareToFileRank(fromSquare)
+func addSlidingPieceMoves(b *board.Board, moveList *MoveList, fromSquare int, validMoves, enemyPieces board.Bitboard, piece board.Piece) {
+	from := squareOf(fromSquare)
 
 	for validMoves != 0 {
 		toSquare, newValidMoves := validMoves.PopLSB()
@@ -122,18 +59,13 @@ func (bmg *BitboardMoveGenerator) addSlidingPieceMoves(b *board.Board, moveList 
 			capturedPiece = b.GetPieceOnSquare(toSquare)
 		}
 
-		toFile, toRank := board.SquareToFileRank(toSquare)
-
-		move := board.Move{
-			From:        board.Square{File: fromFile, Rank: fromRank},
-			To:          board.Square{File: toFile, Rank: toRank},
-			Piece:       piece,
-			Captured:    capturedPiece,
-			Promotion:   board.Empty,
-			IsCapture:   isCapture,
-			IsCastling:  false,
-			IsEnPassant: false,
-		}
-		moveList.AddMove(move)
+		moveList.AddMove(board.Move{
+			From:      from,
+			To:        squareOf(toSquare),
+			Piece:     piece,
+			Captured:  capturedPiece,
+			Promotion: board.Empty,
+			IsCapture: isCapture,
+		})
 	}
 }

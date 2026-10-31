@@ -273,26 +273,11 @@ func (b *Board) IsSquareEmptyBitboard(square int) bool {
 	return !b.AllPieces.HasBit(square)
 }
 
-// GetPieceOnSquare returns the piece on a square using bitboards
+// GetPieceOnSquare returns the piece on a square
 func (b *Board) GetPieceOnSquare(square int) Piece {
 	if square < 0 || square > 63 {
 		return Empty
 	}
 
-	if !b.AllPieces.HasBit(square) {
-		return Empty
-	}
-
-	pieces := []Piece{
-		WhitePawn, WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing,
-		BlackPawn, BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing,
-	}
-
-	for _, piece := range pieces {
-		if b.GetPieceBitboard(piece).HasBit(square) {
-			return piece
-		}
-	}
-
-	return Empty
+	return b.Mailbox[square]
 }

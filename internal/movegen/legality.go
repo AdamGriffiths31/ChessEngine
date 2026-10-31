@@ -4,33 +4,24 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func (bmg *BitboardMoveGenerator) filterLegalMovesInPlace(b *board.Board, player Player, moves *MoveList) {
-	var ourKingPiece board.Piece
-	var opponentColor board.BitboardColor
-	if player == White {
-		ourKingPiece = board.WhiteKing
-		opponentColor = board.BitboardBlack
-	} else {
-		ourKingPiece = board.BlackKing
-		opponentColor = board.BitboardWhite
-	}
-
-	ourKingBitboard := b.GetPieceBitboard(ourKingPiece)
+func filterLegalMovesInPlace(b *board.Board, side *sideInfo, moves *MoveList) {
+	ourKingBitboard := b.GetPieceBitboard(side.king)
 	if ourKingBitboard == 0 {
-		moves.Count = 0
+		moves.Clear()
 		return
 	}
 	kingSquare := ourKingBitboard.LSB()
 
-	pinnedPieces := bmg.calculatePinnedPieces(b, kingSquare, opponentColor)
-
-	inCheck := b.IsSquareAttackedByColor(kingSquare, opponentColor)
+	enemy := &sides[side.enemy]
+	pinnedPieces := calculatePinnedPieces(b, kingSquare, enemy)
+	checkers := b.GetAttackersToSquare(kingSquare, side.enemy)
+	evasions := checkEvasions(checkers, kingSquare)
 
 	writeIndex := 0
 	for readIndex := range moves.Count {
 		move := moves.Moves[readIndex]
 
-		if bmg.isMoveLegal(b, move, kingSquare, pinnedPieces, inCheck, opponentColor) {
+		if isMoveLegal(b, move, kingSquare, pinnedPieces, checkers != 0, evasions, enemy) {
 			moves.Moves[writeIndex] = move
 			writeIndex++
 		}
@@ -40,321 +31,77 @@ func (bmg *BitboardMoveGenerator) filterLegalMovesInPlace(b *board.Board, player
 	moves.Moves = moves.Moves[:writeIndex]
 }
 
-func (bmg *BitboardMoveGenerator) calculatePinnedPieces(b *board.Board, kingSquare int, opponentColor board.BitboardColor) board.Bitboard {
+func calculatePinnedPieces(b *board.Board, kingSquare int, enemy *sideInfo) board.Bitboard {
 	var pinnedPieces board.Bitboard
 
-	var opponentRooks, opponentBishops, opponentQueens board.Bitboard
-	if opponentColor == board.BitboardWhite {
-		opponentRooks = b.GetPieceBitboard(board.WhiteRook)
-		opponentBishops = b.GetPieceBitboard(board.WhiteBishop)
-		opponentQueens = b.GetPieceBitboard(board.WhiteQueen)
-	} else {
-		opponentRooks = b.GetPieceBitboard(board.BlackRook)
-		opponentBishops = b.GetPieceBitboard(board.BlackBishop)
-		opponentQueens = b.GetPieceBitboard(board.BlackQueen)
-	}
+	queens := b.GetPieceBitboard(enemy.queen)
+	snipers := board.GetRookAttacks(kingSquare, 0)&(b.GetPieceBitboard(enemy.rook)|queens) |
+		board.GetBishopAttacks(kingSquare, 0)&(b.GetPieceBitboard(enemy.bishop)|queens)
 
-	rookAttackers := opponentRooks | opponentQueens
-	for rookAttackers != 0 {
-		attackerSquare, newBitboard := rookAttackers.PopLSB()
-		rookAttackers = newBitboard
+	for snipers != 0 {
+		attackerSquare, newBitboard := snipers.PopLSB()
+		snipers = newBitboard
 
-		if bmg.areOnSameRankOrFile(attackerSquare, kingSquare) {
-			between := board.GetBetween(attackerSquare, kingSquare)
-			blockers := between & b.AllPieces
-			if blockers.PopCount() == 1 {
-				pinnedPieces |= blockers
-			}
-		}
-	}
-
-	bishopAttackers := opponentBishops | opponentQueens
-	for bishopAttackers != 0 {
-		attackerSquare, newBitboard := bishopAttackers.PopLSB()
-		bishopAttackers = newBitboard
-
-		if bmg.areOnSameDiagonal(attackerSquare, kingSquare) {
-			between := board.GetBetween(attackerSquare, kingSquare)
-			blockers := between & b.AllPieces
-			if blockers.PopCount() == 1 {
-				pinnedPieces |= blockers
-			}
+		blockers := board.GetBetween(attackerSquare, kingSquare) & b.AllPieces
+		if blockers.PopCount() == 1 {
+			pinnedPieces |= blockers
 		}
 	}
 
 	return pinnedPieces
 }
 
-func (bmg *BitboardMoveGenerator) enPassantCapturesAttacker(move board.Move, attackerSquare int) bool {
-	toSquare := move.To.Rank*8 + move.To.File
-
-	var capturedPawnSquare int
-	if move.Piece == board.WhitePawn {
-		capturedPawnSquare = toSquare - 8
-	} else {
-		capturedPawnSquare = toSquare + 8
+func checkEvasions(checkers board.Bitboard, kingSquare int) board.Bitboard {
+	switch checkers.PopCount() {
+	case 0:
+		return ^board.Bitboard(0)
+	case 1:
+		return checkers | board.GetBetween(checkers.LSB(), kingSquare)
+	default:
+		return 0
 	}
-
-	return capturedPawnSquare == attackerSquare
 }
 
-func (bmg *BitboardMoveGenerator) areOnSameRankOrFile(square1, square2 int) bool {
-	file1 := square1 % 8
-	rank1 := square1 / 8
-	file2 := square2 % 8
-	rank2 := square2 / 8
-
-	return file1 == file2 || rank1 == rank2
+func enPassantCapturedSquare(move board.Move) int {
+	return board.FileRankToSquare(move.To.File, move.From.Rank)
 }
 
-func (bmg *BitboardMoveGenerator) areOnSameDiagonal(square1, square2 int) bool {
-	file1 := square1 % 8
-	rank1 := square1 / 8
-	file2 := square2 % 8
-	rank2 := square2 / 8
-
-	fileDiff := file1 - file2
-	rankDiff := rank1 - rank2
-
-	if fileDiff < 0 {
-		fileDiff = -fileDiff
-	}
-	if rankDiff < 0 {
-		rankDiff = -rankDiff
-	}
-
-	return fileDiff == rankDiff && fileDiff != 0
-}
-
-func (bmg *BitboardMoveGenerator) isMoveLegal(b *board.Board, move board.Move, kingSquare int, pinnedPieces board.Bitboard, inCheck bool, opponentColor board.BitboardColor) bool {
-	fromSquare := move.From.Rank*8 + move.From.File
-	toSquare := move.To.Rank*8 + move.To.File
+func isMoveLegal(b *board.Board, move board.Move, kingSquare int, pinnedPieces board.Bitboard, inCheck bool, evasions board.Bitboard, enemy *sideInfo) bool {
+	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
+	toSquare := board.FileRankToSquare(move.To.File, move.To.Rank)
 
 	if move.Piece == board.WhiteKing || move.Piece == board.BlackKing {
-		return bmg.isKingMoveIntoSafety(b, kingSquare, toSquare, opponentColor)
+		return b.GetAttackersToSquareWithOccupancy(toSquare, enemy.color, b.AllPieces.ClearBit(kingSquare)) == 0
 	}
 
-	if inCheck {
-		attackers := bmg.getAttackersToSquare(b, kingSquare, opponentColor)
-		if attackers.PopCount() > 1 {
-			return false
-		}
-
-		attackerSquare := attackers.LSB()
-
-		if toSquare == attackerSquare || (move.IsEnPassant && bmg.enPassantCapturesAttacker(move, attackerSquare)) {
-			if pinnedPieces.HasBit(fromSquare) {
-				pinRay := board.GetLine(kingSquare, bmg.findPinningPiece(b, fromSquare, kingSquare, opponentColor))
-				return pinRay.HasBit(toSquare)
-			}
-			return true
-		}
-
-		between := board.GetBetween(attackerSquare, kingSquare)
-		if between.HasBit(toSquare) {
-			if pinnedPieces.HasBit(fromSquare) {
-				pinRay := board.GetLine(kingSquare, bmg.findPinningPiece(b, fromSquare, kingSquare, opponentColor))
-				return pinRay.HasBit(toSquare)
-			}
-			return true
-		}
-
+	if !evasions.HasBit(toSquare) && !(move.IsEnPassant && evasions.HasBit(enPassantCapturedSquare(move))) {
 		return false
 	}
 
 	if pinnedPieces.HasBit(fromSquare) {
-		pinningPieceSquare := bmg.findPinningPiece(b, fromSquare, kingSquare, opponentColor)
-		if pinningPieceSquare == -1 {
-			return false
-		}
-
-		pinRay := board.GetLine(kingSquare, pinningPieceSquare)
-		return pinRay.HasBit(toSquare)
+		return board.GetLine(kingSquare, fromSquare).HasBit(toSquare) || board.GetLine(kingSquare, toSquare).HasBit(fromSquare)
 	}
 
-	if move.IsEnPassant {
-		return bmg.isEnPassantLegal(b, move, kingSquare, opponentColor)
+	if move.IsEnPassant && !inCheck {
+		return isEnPassantLegal(b, move, kingSquare, enemy)
 	}
 
 	return true
 }
 
-func (bmg *BitboardMoveGenerator) getAttackersToSquare(b *board.Board, square int, attackerColor board.BitboardColor) board.Bitboard {
-	var attackers board.Bitboard
-
-	if attackerColor == board.BitboardWhite {
-		whitePawnAttacks := board.GetPawnAttacks(square, board.BitboardBlack)
-		attackers |= whitePawnAttacks & b.GetPieceBitboard(board.WhitePawn)
-
-		knightAttacks := board.GetKnightAttacks(square)
-		attackers |= knightAttacks & b.GetPieceBitboard(board.WhiteKnight)
-
-		rookAttacks := board.GetRookAttacks(square, b.AllPieces)
-		attackers |= rookAttacks & (b.GetPieceBitboard(board.WhiteRook) | b.GetPieceBitboard(board.WhiteQueen))
-
-		bishopAttacks := board.GetBishopAttacks(square, b.AllPieces)
-		attackers |= bishopAttacks & (b.GetPieceBitboard(board.WhiteBishop) | b.GetPieceBitboard(board.WhiteQueen))
-
-		kingAttacks := board.GetKingAttacks(square)
-		attackers |= kingAttacks & b.GetPieceBitboard(board.WhiteKing)
-	} else {
-		blackPawnAttacks := board.GetPawnAttacks(square, board.BitboardWhite)
-		attackers |= blackPawnAttacks & b.GetPieceBitboard(board.BlackPawn)
-
-		knightAttacks := board.GetKnightAttacks(square)
-		attackers |= knightAttacks & b.GetPieceBitboard(board.BlackKnight)
-
-		rookAttacks := board.GetRookAttacks(square, b.AllPieces)
-		attackers |= rookAttacks & (b.GetPieceBitboard(board.BlackRook) | b.GetPieceBitboard(board.BlackQueen))
-
-		bishopAttacks := board.GetBishopAttacks(square, b.AllPieces)
-		attackers |= bishopAttacks & (b.GetPieceBitboard(board.BlackBishop) | b.GetPieceBitboard(board.BlackQueen))
-
-		kingAttacks := board.GetKingAttacks(square)
-		attackers |= kingAttacks & b.GetPieceBitboard(board.BlackKing)
-	}
-
-	return attackers
-}
-
-func (bmg *BitboardMoveGenerator) findPinningPiece(b *board.Board, pinnedSquare, kingSquare int, opponentColor board.BitboardColor) int {
-	var opponentSliders board.Bitboard
-	if opponentColor == board.BitboardWhite {
-		opponentSliders = b.GetPieceBitboard(board.WhiteRook) | b.GetPieceBitboard(board.WhiteBishop) | b.GetPieceBitboard(board.WhiteQueen)
-	} else {
-		opponentSliders = b.GetPieceBitboard(board.BlackRook) | b.GetPieceBitboard(board.BlackBishop) | b.GetPieceBitboard(board.BlackQueen)
-	}
-
-	for opponentSliders != 0 {
-		attackerSquare, newBitboard := opponentSliders.PopLSB()
-		opponentSliders = newBitboard
-
-		line := board.GetLine(attackerSquare, kingSquare)
-		if line != 0 {
-			between := board.GetBetween(attackerSquare, kingSquare)
-			blockers := between & b.AllPieces
-
-			if blockers.PopCount() == 1 && blockers.HasBit(pinnedSquare) {
-				return attackerSquare
-			}
-		}
-	}
-
-	return -1
-}
-
-func (bmg *BitboardMoveGenerator) isEnPassantLegal(b *board.Board, move board.Move, kingSquare int, opponentColor board.BitboardColor) bool {
-	fromSquare := move.From.Rank*8 + move.From.File
-	toSquare := move.To.Rank*8 + move.To.File
-
-	var capturedPawnSquare int
-	if move.Piece == board.WhitePawn {
-		capturedPawnSquare = toSquare - 8
-	} else {
-		capturedPawnSquare = toSquare + 8
-	}
-
-	kingRank := kingSquare / 8
-	moveRank := fromSquare / 8
-	if kingRank != moveRank {
+func isEnPassantLegal(b *board.Board, move board.Move, kingSquare int, enemy *sideInfo) bool {
+	if kingSquare/8 != move.From.Rank {
 		return true
 	}
 
-	var opponentRooksQueens board.Bitboard
-	if opponentColor == board.BitboardWhite {
-		opponentRooksQueens = b.GetPieceBitboard(board.WhiteRook) | b.GetPieceBitboard(board.WhiteQueen)
-	} else {
-		opponentRooksQueens = b.GetPieceBitboard(board.BlackRook) | b.GetPieceBitboard(board.BlackQueen)
-	}
-
-	rankMask := board.RankMask(kingRank)
-	rankAttackers := opponentRooksQueens & rankMask
-
+	rankAttackers := (b.GetPieceBitboard(enemy.rook) | b.GetPieceBitboard(enemy.queen)) & board.RankMask(move.From.Rank)
 	if rankAttackers == 0 {
 		return true
 	}
 
-	occupancyAfterMove := b.AllPieces
-	occupancyAfterMove = occupancyAfterMove.ClearBit(fromSquare)
-	occupancyAfterMove = occupancyAfterMove.ClearBit(capturedPawnSquare)
-	occupancyAfterMove = occupancyAfterMove.SetBit(toSquare)
+	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
+	toSquare := board.FileRankToSquare(move.To.File, move.To.Rank)
+	occupancyAfterMove := b.AllPieces.ClearBit(fromSquare).ClearBit(enPassantCapturedSquare(move)).SetBit(toSquare)
 
-	for rankAttackers != 0 {
-		attackerSquare, newBitboard := rankAttackers.PopLSB()
-		rankAttackers = newBitboard
-
-		attackRay := board.GetRookAttacks(attackerSquare, occupancyAfterMove)
-		if attackRay.HasBit(kingSquare) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (bmg *BitboardMoveGenerator) isKingMoveIntoSafety(b *board.Board, fromSquare, toSquare int, opponentColor board.BitboardColor) bool {
-	modifiedOccupancy := b.AllPieces
-	modifiedOccupancy = modifiedOccupancy.ClearBit(fromSquare)
-
-	return !bmg.isSquareAttackedByColorWithOccupancy(b, toSquare, opponentColor, modifiedOccupancy)
-}
-
-func (bmg *BitboardMoveGenerator) isSquareAttackedByColorWithOccupancy(b *board.Board, square int, attackerColor board.BitboardColor, occupancy board.Bitboard) bool {
-	if square < 0 || square > 63 {
-		return false
-	}
-
-	if attackerColor == board.BitboardWhite {
-		whitePawnAttacks := board.GetPawnAttacks(square, board.BitboardBlack)
-		if (whitePawnAttacks & b.GetPieceBitboard(board.WhitePawn)) != 0 {
-			return true
-		}
-
-		knightAttacks := board.GetKnightAttacks(square)
-		if (knightAttacks & b.GetPieceBitboard(board.WhiteKnight)) != 0 {
-			return true
-		}
-
-		rookAttacks := board.GetRookAttacks(square, occupancy)
-		if (rookAttacks & (b.GetPieceBitboard(board.WhiteRook) | b.GetPieceBitboard(board.WhiteQueen))) != 0 {
-			return true
-		}
-
-		bishopAttacks := board.GetBishopAttacks(square, occupancy)
-		if (bishopAttacks & (b.GetPieceBitboard(board.WhiteBishop) | b.GetPieceBitboard(board.WhiteQueen))) != 0 {
-			return true
-		}
-
-		kingAttacks := board.GetKingAttacks(square)
-		if (kingAttacks & b.GetPieceBitboard(board.WhiteKing)) != 0 {
-			return true
-		}
-	} else {
-		blackPawnAttacks := board.GetPawnAttacks(square, board.BitboardWhite)
-		if (blackPawnAttacks & b.GetPieceBitboard(board.BlackPawn)) != 0 {
-			return true
-		}
-
-		knightAttacks := board.GetKnightAttacks(square)
-		if (knightAttacks & b.GetPieceBitboard(board.BlackKnight)) != 0 {
-			return true
-		}
-
-		rookAttacks := board.GetRookAttacks(square, occupancy)
-		if (rookAttacks & (b.GetPieceBitboard(board.BlackRook) | b.GetPieceBitboard(board.BlackQueen))) != 0 {
-			return true
-		}
-
-		bishopAttacks := board.GetBishopAttacks(square, occupancy)
-		if (bishopAttacks & (b.GetPieceBitboard(board.BlackBishop) | b.GetPieceBitboard(board.BlackQueen))) != 0 {
-			return true
-		}
-
-		kingAttacks := board.GetKingAttacks(square)
-		if (kingAttacks & b.GetPieceBitboard(board.BlackKing)) != 0 {
-			return true
-		}
-	}
-
-	return false
+	return board.GetRookAttacks(kingSquare, occupancyAfterMove)&rankAttackers == 0
 }

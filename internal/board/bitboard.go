@@ -146,8 +146,7 @@ func (b Bitboard) PopLSB() (int, Bitboard) {
 	if b == 0 {
 		return -1, b
 	}
-	lsb := b.LSB()
-	return lsb, b.ClearBit(lsb)
+	return b.LSB(), b & (b - 1)
 }
 
 // FileRankToSquare converts file (0-7) and rank (0-7) to square index (0-63)

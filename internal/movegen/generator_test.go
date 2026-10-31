@@ -55,7 +55,7 @@ func TestGenerateCapturesMatchesFilteredPseudoLegal(t *testing.T) {
 
 			for _, player := range []Player{White, Black} {
 				t.Run(fmt.Sprintf("%s_to_move", player.String()), func(t *testing.T) {
-					generator := NewBitboardMoveGenerator()
+					generator := NewGenerator()
 
 					allMoves := generator.GeneratePseudoLegalMoves(b, player)
 					defer ReleaseMoveList(allMoves)

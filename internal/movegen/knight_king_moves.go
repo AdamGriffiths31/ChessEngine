@@ -4,107 +4,46 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func (bmg *BitboardMoveGenerator) generateKnightMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
-	var knightPiece board.Piece
-	var bitboardColor board.BitboardColor
-
-	if player == White {
-		knightPiece = board.WhiteKnight
-		bitboardColor = board.BitboardWhite
-	} else {
-		knightPiece = board.BlackKnight
-		bitboardColor = board.BitboardBlack
-	}
-
-	knights := b.GetPieceBitboard(knightPiece)
-	if knights == 0 {
-		return
-	}
-
-	friendlyPieces := b.GetColorBitboard(bitboardColor)
+func generateKnightMoves(b *board.Board, side *sideInfo, targets board.Bitboard, moveList *MoveList) {
+	knights := b.GetPieceBitboard(side.knight)
 
 	for knights != 0 {
 		fromSquare, newBitboard := knights.PopLSB()
 		knights = newBitboard
 
-		attacks := board.GetKnightAttacks(fromSquare)
-		validMoves := attacks &^ friendlyPieces
-
-		for validMoves != 0 {
-			toSquare, newValidMoves := validMoves.PopLSB()
-			validMoves = newValidMoves
-
-			capturedPiece := b.GetPieceOnSquare(toSquare)
-			isCapture := capturedPiece != board.Empty
-
-			toFile, toRank := board.SquareToFileRank(toSquare)
-			fromFile, fromRank := board.SquareToFileRank(fromSquare)
-
-			move := board.Move{
-				From:        board.Square{File: fromFile, Rank: fromRank},
-				To:          board.Square{File: toFile, Rank: toRank},
-				Piece:       knightPiece,
-				Captured:    capturedPiece,
-				Promotion:   board.Empty,
-				IsCapture:   isCapture,
-				IsCastling:  false,
-				IsEnPassant: false,
-			}
-			moveList.AddMove(move)
-		}
+		addStepMoves(b, moveList, fromSquare, board.GetKnightAttacks(fromSquare)&targets, side.knight)
 	}
 }
 
-func (bmg *BitboardMoveGenerator) generateKingMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
-	var kingPiece board.Piece
-	var bitboardColor board.BitboardColor
-
-	if player == White {
-		kingPiece = board.WhiteKing
-		bitboardColor = board.BitboardWhite
-	} else {
-		kingPiece = board.BlackKing
-		bitboardColor = board.BitboardBlack
-	}
-
-	kings := b.GetPieceBitboard(kingPiece)
+func generateKingMoves(b *board.Board, side *sideInfo, moveList *MoveList) {
+	kings := b.GetPieceBitboard(side.king)
 	if kings == 0 {
 		return
 	}
 
-	friendlyPieces := b.GetColorBitboard(bitboardColor)
-
 	kingSquare := kings.LSB()
-	if kingSquare == -1 {
-		return
-	}
 
-	attacks := board.GetKingAttacks(kingSquare)
-	validMoves := attacks &^ friendlyPieces
+	addStepMoves(b, moveList, kingSquare, board.GetKingAttacks(kingSquare)&^b.GetColorBitboard(side.color), side.king)
 
-	fromFile, fromRank := board.SquareToFileRank(kingSquare)
+	generateCastlingMoves(b, side, kingSquare, moveList)
+}
+
+func addStepMoves(b *board.Board, moveList *MoveList, fromSquare int, validMoves board.Bitboard, piece board.Piece) {
+	from := squareOf(fromSquare)
 
 	for validMoves != 0 {
 		toSquare, newValidMoves := validMoves.PopLSB()
 		validMoves = newValidMoves
 
 		capturedPiece := b.GetPieceOnSquare(toSquare)
-		isCapture := capturedPiece != board.Empty
 
-		toFile, toRank := board.SquareToFileRank(toSquare)
-
-		move := board.Move{
-			From:        board.Square{File: fromFile, Rank: fromRank},
-			To:          board.Square{File: toFile, Rank: toRank},
-			Piece:       kingPiece,
-			Captured:    capturedPiece,
-			Promotion:   board.Empty,
-			IsCapture:   isCapture,
-			IsCastling:  false,
-			IsEnPassant: false,
-		}
-		moveList.AddMove(move)
+		moveList.AddMove(board.Move{
+			From:      from,
+			To:        squareOf(toSquare),
+			Piece:     piece,
+			Captured:  capturedPiece,
+			Promotion: board.Empty,
+			IsCapture: capturedPiece != board.Empty,
+		})
 	}
-
-	bmg.generateCastlingMovesBitboard(b, player, kingSquare, moveList)
 }

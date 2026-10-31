@@ -4,234 +4,118 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
-func (bmg *BitboardMoveGenerator) generatePawnMovesBitboard(b *board.Board, player Player, moveList *MoveList) {
-	var pawnPiece board.Piece
-	var bitboardColor board.BitboardColor
-	var startRank, promotionRank int
-
-	if player == White {
-		pawnPiece = board.WhitePawn
-		bitboardColor = board.BitboardWhite
-		startRank = 1
-		promotionRank = 7
-	} else {
-		pawnPiece = board.BlackPawn
-		bitboardColor = board.BitboardBlack
-		startRank = 6
-		promotionRank = 0
-	}
-
-	pawns := b.GetPieceBitboard(pawnPiece)
+func generatePawnMoves(b *board.Board, side *sideInfo, moveList *MoveList) {
+	pawns := b.GetPieceBitboard(side.pawn)
 	if pawns == 0 {
 		return
 	}
 
 	emptySquares := ^b.AllPieces
-	enemyPieces := b.GetColorBitboard(board.OppositeBitboardColor(bitboardColor))
 
-	var singlePushes board.Bitboard
-	if player == White {
-		singlePushes = pawns.ShiftNorth() & emptySquares
-	} else {
-		singlePushes = pawns.ShiftSouth() & emptySquares
-	}
+	singlePushes := side.pushPawns(pawns) & emptySquares
+	startingPawnPushes := side.pushPawns(pawns&board.RankMask(side.startRank)) & emptySquares
+	doublePushes := side.pushPawns(startingPawnPushes) & emptySquares
 
 	for singlePushes != 0 {
 		toSquare, newBitboard := singlePushes.PopLSB()
 		singlePushes = newBitboard
 
-		var fromSquare int
-		if player == White {
-			fromSquare = toSquare - 8
-		} else {
-			fromSquare = toSquare + 8
-		}
+		fromSquare := toSquare - side.push
 
-		toFile, toRank := board.SquareToFileRank(toSquare)
-		if toRank == promotionRank {
-			bmg.addPromotionMoves(moveList, fromSquare, toSquare, pawnPiece, board.Empty, player)
+		if toSquare/8 == side.promotionRank {
+			addPromotionMoves(moveList, fromSquare, toSquare, side, board.Empty)
 		} else {
-			move := board.Move{
-				From:        board.Square{File: fromSquare % 8, Rank: fromSquare / 8},
-				To:          board.Square{File: toFile, Rank: toRank},
-				Piece:       pawnPiece,
-				Captured:    board.Empty,
-				Promotion:   board.Empty,
-				IsCapture:   false,
-				IsCastling:  false,
-				IsEnPassant: false,
-			}
-			moveList.AddMove(move)
+			addPawnPush(moveList, fromSquare, toSquare, side.pawn)
 		}
-	}
-
-	var doublePushes board.Bitboard
-	if player == White {
-		startingPawns := pawns & board.RankMask(startRank)
-		singlePushClear := startingPawns.ShiftNorth() & emptySquares
-		doublePushes = singlePushClear.ShiftNorth() & emptySquares
-	} else {
-		startingPawns := pawns & board.RankMask(startRank)
-		singlePushClear := startingPawns.ShiftSouth() & emptySquares
-		doublePushes = singlePushClear.ShiftSouth() & emptySquares
 	}
 
 	for doublePushes != 0 {
 		toSquare, newBitboard := doublePushes.PopLSB()
 		doublePushes = newBitboard
 
-		var fromSquare int
-		if player == White {
-			fromSquare = toSquare - 16
-		} else {
-			fromSquare = toSquare + 16
-		}
-
-		toFile, toRank := board.SquareToFileRank(toSquare)
-		move := board.Move{
-			From:        board.Square{File: fromSquare % 8, Rank: fromSquare / 8},
-			To:          board.Square{File: toFile, Rank: toRank},
-			Piece:       pawnPiece,
-			Captured:    board.Empty,
-			Promotion:   board.Empty,
-			IsCapture:   false,
-			IsCastling:  false,
-			IsEnPassant: false,
-		}
-		moveList.AddMove(move)
+		addPawnPush(moveList, toSquare-2*side.push, toSquare, side.pawn)
 	}
 
-	bmg.generatePawnCapturesBitboard(b, player, pawns, enemyPieces, moveList, promotionRank)
-	bmg.generateEnPassantCapturesBitboard(b, player, pawns, moveList)
+	generatePawnCaptures(b, side, pawns, b.GetColorBitboard(side.enemy), moveList)
+	generateEnPassantCaptures(b, side, pawns, moveList)
 }
 
-func (bmg *BitboardMoveGenerator) generatePawnCapturesBitboard(b *board.Board, player Player, pawns board.Bitboard, enemyPieces board.Bitboard, moveList *MoveList, promotionRank int) {
-	var pawnPiece board.Piece
+func addPawnPush(moveList *MoveList, fromSquare, toSquare int, pawnPiece board.Piece) {
+	moveList.AddMove(board.Move{
+		From:      squareOf(fromSquare),
+		To:        squareOf(toSquare),
+		Piece:     pawnPiece,
+		Captured:  board.Empty,
+		Promotion: board.Empty,
+	})
+}
 
-	if player == White {
-		pawnPiece = board.WhitePawn
-	} else {
-		pawnPiece = board.BlackPawn
-	}
+func generatePawnCaptures(b *board.Board, side *sideInfo, pawns, enemyPieces board.Bitboard, moveList *MoveList) {
+	capturingPawns := pawns & side.pawnsAttacking(enemyPieces)
 
-	tempPawns := pawns
-	for tempPawns != 0 {
-		fromSquare, newBitboard := tempPawns.PopLSB()
-		tempPawns = newBitboard
+	for capturingPawns != 0 {
+		fromSquare, newBitboard := capturingPawns.PopLSB()
+		capturingPawns = newBitboard
 
-		var bitboardColor board.BitboardColor
-		if player == White {
-			bitboardColor = board.BitboardWhite
-		} else {
-			bitboardColor = board.BitboardBlack
-		}
-		attacks := board.GetPawnAttacks(fromSquare, bitboardColor)
-		captures := attacks & enemyPieces
+		captures := board.GetPawnAttacks(fromSquare, side.color) & enemyPieces
 
 		for captures != 0 {
 			toSquare, newCaptures := captures.PopLSB()
 			captures = newCaptures
 
 			capturedPiece := b.GetPieceOnSquare(toSquare)
-			toFile, toRank := board.SquareToFileRank(toSquare)
 
-			if toRank == promotionRank {
-				bmg.addPromotionMoves(moveList, fromSquare, toSquare, pawnPiece, capturedPiece, player)
+			if toSquare/8 == side.promotionRank {
+				addPromotionMoves(moveList, fromSquare, toSquare, side, capturedPiece)
 			} else {
-				move := board.Move{
-					From:        board.Square{File: fromSquare % 8, Rank: fromSquare / 8},
-					To:          board.Square{File: toFile, Rank: toRank},
-					Piece:       pawnPiece,
-					Captured:    capturedPiece,
-					Promotion:   board.Empty,
-					IsCapture:   true,
-					IsCastling:  false,
-					IsEnPassant: false,
-				}
-				moveList.AddMove(move)
+				moveList.AddMove(board.Move{
+					From:      squareOf(fromSquare),
+					To:        squareOf(toSquare),
+					Piece:     side.pawn,
+					Captured:  capturedPiece,
+					Promotion: board.Empty,
+					IsCapture: true,
+				})
 			}
 		}
 	}
 }
 
-func (bmg *BitboardMoveGenerator) generateEnPassantCapturesBitboard(b *board.Board, player Player, pawns board.Bitboard, moveList *MoveList) {
+func generateEnPassantCaptures(b *board.Board, side *sideInfo, pawns board.Bitboard, moveList *MoveList) {
 	enPassantTarget, hasEnPassant := b.GetEnPassantTarget()
 	if !hasEnPassant {
 		return
 	}
 
 	targetSquare := board.FileRankToSquare(enPassantTarget.File, enPassantTarget.Rank)
-	var pawnPiece board.Piece
-	var capturedPiece board.Piece
 
-	if player == White {
-		pawnPiece = board.WhitePawn
-		capturedPiece = board.BlackPawn
-	} else {
-		pawnPiece = board.BlackPawn
-		capturedPiece = board.WhitePawn
-	}
+	attackers := pawns & board.RankMask(side.enPassantRank) & board.GetPawnAttacks(targetSquare, side.enemy)
 
-	var enPassantRank int
-	if player == White {
-		enPassantRank = 4
-	} else {
-		enPassantRank = 3
-	}
+	for attackers != 0 {
+		fromSquare, newBitboard := attackers.PopLSB()
+		attackers = newBitboard
 
-	enPassantPawns := pawns & board.RankMask(enPassantRank)
-
-	for enPassantPawns != 0 {
-		fromSquare, newBitboard := enPassantPawns.PopLSB()
-		enPassantPawns = newBitboard
-
-		var bitboardColor board.BitboardColor
-		if player == White {
-			bitboardColor = board.BitboardWhite
-		} else {
-			bitboardColor = board.BitboardBlack
-		}
-		attacks := board.GetPawnAttacks(fromSquare, bitboardColor)
-		if attacks.HasBit(targetSquare) {
-			toFile, toRank := board.SquareToFileRank(targetSquare)
-			move := board.Move{
-				From:        board.Square{File: fromSquare % 8, Rank: fromSquare / 8},
-				To:          board.Square{File: toFile, Rank: toRank},
-				Piece:       pawnPiece,
-				Captured:    capturedPiece,
-				Promotion:   board.Empty,
-				IsCapture:   true,
-				IsCastling:  false,
-				IsEnPassant: true,
-			}
-			moveList.AddMove(move)
-		}
+		moveList.AddMove(board.Move{
+			From:        squareOf(fromSquare),
+			To:          squareOf(targetSquare),
+			Piece:       side.pawn,
+			Captured:    sides[side.enemy].pawn,
+			Promotion:   board.Empty,
+			IsCapture:   true,
+			IsEnPassant: true,
+		})
 	}
 }
 
-func (bmg *BitboardMoveGenerator) addPromotionMoves(moveList *MoveList, fromSquare, toSquare int, pawnPiece, capturedPiece board.Piece, player Player) {
-	toFile, toRank := board.SquareToFileRank(toSquare)
-	fromFile, fromRank := board.SquareToFileRank(fromSquare)
-	isCapture := capturedPiece != board.Empty
-
-	var promotionPieces []board.Piece
-	if player == White {
-		promotionPieces = []board.Piece{board.WhiteQueen, board.WhiteRook, board.WhiteBishop, board.WhiteKnight}
-	} else {
-		promotionPieces = []board.Piece{board.BlackQueen, board.BlackRook, board.BlackBishop, board.BlackKnight}
-	}
-
-	for _, promotion := range promotionPieces {
-		move := board.Move{
-			From:        board.Square{File: fromFile, Rank: fromRank},
-			To:          board.Square{File: toFile, Rank: toRank},
-			Piece:       pawnPiece,
-			Captured:    capturedPiece,
-			Promotion:   promotion,
-			IsCapture:   isCapture,
-			IsCastling:  false,
-			IsEnPassant: false,
-		}
-		moveList.AddMove(move)
+func addPromotionMoves(moveList *MoveList, fromSquare, toSquare int, side *sideInfo, capturedPiece board.Piece) {
+	for _, promotion := range &side.promotions {
+		moveList.AddMove(board.Move{
+			From:      squareOf(fromSquare),
+			To:        squareOf(toSquare),
+			Piece:     side.pawn,
+			Captured:  capturedPiece,
+			Promotion: promotion,
+			IsCapture: capturedPiece != board.Empty,
+		})
 	}
 }
