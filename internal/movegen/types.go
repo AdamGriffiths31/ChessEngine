@@ -61,7 +61,7 @@ func (ml *MoveList) Clear() {
 }
 
 type castleWing struct {
-	right  rune
+	right  board.CastlingRights
 	rookAt int
 	kingTo int
 	rookTo int
@@ -93,8 +93,8 @@ var sides = [2]sideInfo{
 		enPassantRank: 4,
 		push:          8,
 		kingStart:     board.E1,
-		kingside:      castleWing{right: 'K', rookAt: board.H1, kingTo: board.G1, rookTo: board.F1},
-		queenside:     castleWing{right: 'Q', rookAt: board.A1, kingTo: board.C1, rookTo: board.D1},
+		kingside:      castleWing{right: board.WhiteKingside, rookAt: board.H1, kingTo: board.G1, rookTo: board.F1},
+		queenside:     castleWing{right: board.WhiteQueenside, rookAt: board.A1, kingTo: board.C1, rookTo: board.D1},
 	},
 	Black: {
 		color:         board.BitboardBlack,
@@ -111,8 +111,8 @@ var sides = [2]sideInfo{
 		enPassantRank: 3,
 		push:          -8,
 		kingStart:     board.E8,
-		kingside:      castleWing{right: 'k', rookAt: board.H8, kingTo: board.G8, rookTo: board.F8},
-		queenside:     castleWing{right: 'q', rookAt: board.A8, kingTo: board.C8, rookTo: board.D8},
+		kingside:      castleWing{right: board.BlackKingside, rookAt: board.H8, kingTo: board.G8, rookTo: board.F8},
+		queenside:     castleWing{right: board.BlackQueenside, rookAt: board.A8, kingTo: board.C8, rookTo: board.D8},
 	},
 }
 

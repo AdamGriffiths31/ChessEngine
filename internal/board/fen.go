@@ -65,10 +65,10 @@ func FromFEN(fen string) (*Board, error) {
 	}
 
 	if len(parts) >= 2 {
-		board.sideToMove = parts[1]
+		board.blackToMove = parts[1] == "b"
 	}
 	if len(parts) >= 3 {
-		board.castlingRights = parts[2]
+		board.castlingRights = ParseCastlingRights(parts[2])
 	}
 	if len(parts) >= 4 {
 		enPassantStr := parts[3]

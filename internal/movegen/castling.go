@@ -1,14 +1,12 @@
 package movegen
 
 import (
-	"strings"
-
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 )
 
 func generateCastlingMoves(b *board.Board, side *sideInfo, kingSquare int, moveList *MoveList) {
-	castlingRights := b.GetCastlingRights()
-	if castlingRights == "-" || kingSquare != side.kingStart {
+	castlingRights := b.GetCastlingSet()
+	if castlingRights == 0 || kingSquare != side.kingStart {
 		return
 	}
 
@@ -16,8 +14,8 @@ func generateCastlingMoves(b *board.Board, side *sideInfo, kingSquare int, moveL
 	addCastlingMove(b, side, castlingRights, &side.queenside, moveList)
 }
 
-func addCastlingMove(b *board.Board, side *sideInfo, castlingRights string, wing *castleWing, moveList *MoveList) {
-	if !strings.ContainsRune(castlingRights, wing.right) {
+func addCastlingMove(b *board.Board, side *sideInfo, castlingRights board.CastlingRights, wing *castleWing, moveList *MoveList) {
+	if castlingRights&wing.right == 0 {
 		return
 	}
 

@@ -79,12 +79,12 @@ type EvalState struct {
 
 // Board represents a chess board with piece positions and game state
 type Board struct {
-	castlingRights  string
+	castlingRights  CastlingRights
 	enPassantSquare Square
 	hasEnPassant    bool
 	halfMoveClock   int
 	fullMoveNumber  int
-	sideToMove      string
+	blackToMove     bool
 
 	PieceBitboards [12]Bitboard
 
@@ -126,11 +126,10 @@ func init() {
 // NewBoard creates a new chess board with the standard starting position
 func NewBoard() *Board {
 	board := &Board{
-		castlingRights: "KQkq",
+		castlingRights: allCastlingRights,
 		hasEnPassant:   false,
 		halfMoveClock:  0,
 		fullMoveNumber: 1,
-		sideToMove:     "w",
 	}
 
 	for i := range 12 {
@@ -226,17 +225,19 @@ func (b *Board) PopEvalState() {
 	}
 }
 
-func (b *Board) updateEvalScoresForPiece(rank, file int, oldPiece, newPiece Piece) {
-	if oldPiece != Empty {
-		b.materialScore -= values.GetPieceValue(values.Piece(oldPiece))
-		b.pstScore -= values.GetPositionalBonus(values.Piece(oldPiece), rank, file)
-		b.pstScoreEG -= values.GetPositionalBonusEndgame(values.Piece(oldPiece), rank, file)
+func (b *Board) updateEvalScoresForPiece(square int, oldPiece, newPiece Piece) {
+	if index := int(pieceIndexes[oldPiece]); index != -1 {
+		score := &pieceScores[index][square]
+		b.materialScore -= int(score.material)
+		b.pstScore -= int(score.pst)
+		b.pstScoreEG -= int(score.pstEndgame)
 	}
 
-	if newPiece != Empty {
-		b.materialScore += values.GetPieceValue(values.Piece(newPiece))
-		b.pstScore += values.GetPositionalBonus(values.Piece(newPiece), rank, file)
-		b.pstScoreEG += values.GetPositionalBonusEndgame(values.Piece(newPiece), rank, file)
+	if index := int(pieceIndexes[newPiece]); index != -1 {
+		score := &pieceScores[index][square]
+		b.materialScore += int(score.material)
+		b.pstScore += int(score.pst)
+		b.pstScoreEG += int(score.pstEndgame)
 	}
 }
 
@@ -280,10 +281,10 @@ type HashUpdater interface {
 
 // State captures the board state before a move for hash calculation
 type State struct {
-	CastlingRights  string
+	CastlingRights  CastlingRights
 	EnPassantSquare Square
 	HasEnPassant    bool
-	SideToMove      string
+	BlackToMove     bool
 }
 
 // GetPawnHash returns a hash of only pawn positions for pawn structure caching
@@ -305,11 +306,62 @@ func (b *Board) GetCurrentBoardState() State {
 		CastlingRights:  b.castlingRights,
 		EnPassantSquare: b.enPassantSquare,
 		HasEnPassant:    b.hasEnPassant,
-		SideToMove:      b.sideToMove,
+		BlackToMove:     b.blackToMove,
 	}
 }
 
-// PieceToBitboardIndex returns the bitboard index for a given piece
+// pieceScore is a piece's signed material and PST contribution on one square.
+type pieceScore struct {
+	material, pst, pstEndgame int32
+}
+
+var (
+	pieceIndexes = buildPieceIndexes()
+	pieceScores  = buildPieceScores()
+)
+
+func buildPieceIndexes() [256]int8 {
+	var indexes [256]int8
+	for i := range indexes {
+		indexes[i] = -1
+	}
+	indexes[WhitePawn] = WhitePawnIndex
+	indexes[WhiteRook] = WhiteRookIndex
+	indexes[WhiteKnight] = WhiteKnightIndex
+	indexes[WhiteBishop] = WhiteBishopIndex
+	indexes[WhiteQueen] = WhiteQueenIndex
+	indexes[WhiteKing] = WhiteKingIndex
+	indexes[BlackPawn] = BlackPawnIndex
+	indexes[BlackRook] = BlackRookIndex
+	indexes[BlackKnight] = BlackKnightIndex
+	indexes[BlackBishop] = BlackBishopIndex
+	indexes[BlackQueen] = BlackQueenIndex
+	indexes[BlackKing] = BlackKingIndex
+	return indexes
+}
+
+func buildPieceScores() [12][64]pieceScore {
+	var scores [12][64]pieceScore
+	for piece, index := range pieceIndexes {
+		if index == -1 {
+			continue
+		}
+		valuePiece := values.Piece(piece)
+		for square := range 64 {
+			file, rank := SquareToFileRank(square)
+			scores[index][square] = pieceScore{
+				material:   int32(values.GetPieceValue(valuePiece)),
+				pst:        int32(values.GetPositionalBonus(valuePiece, rank, file)),
+				pstEndgame: int32(values.GetPositionalBonusEndgame(valuePiece, rank, file)),
+			}
+		}
+	}
+	return scores
+}
+
+// PieceToBitboardIndex returns the bitboard index for a given piece, or -1
+// when it is not a piece. It stays a switch so that calls with a constant
+// piece compile to a direct index.
 func PieceToBitboardIndex(piece Piece) int {
 	switch piece {
 	case WhitePawn:
@@ -358,9 +410,8 @@ func (b *Board) GetColorBitboard(color BitboardColor) Bitboard {
 	return b.BlackPieces
 }
 
-func (b *Board) setPieceBitboard(rank, file int, piece Piece) {
-	square := FileRankToSquare(file, rank)
-	index := PieceToBitboardIndex(piece)
+func (b *Board) setPieceBitboard(square int, piece Piece) {
+	index := int(pieceIndexes[piece])
 
 	if index != -1 {
 		squareBit := Bitboard(1) << square
@@ -375,9 +426,8 @@ func (b *Board) setPieceBitboard(rank, file int, piece Piece) {
 	}
 }
 
-func (b *Board) removePieceBitboard(rank, file int, piece Piece) {
-	square := FileRankToSquare(file, rank)
-	index := PieceToBitboardIndex(piece)
+func (b *Board) removePieceBitboard(square int, piece Piece) {
+	index := int(pieceIndexes[piece])
 
 	if index != -1 {
 		squareBit := Bitboard(1) << square
@@ -418,17 +468,28 @@ func (b *Board) SetPiece(rank, file int, piece Piece) {
 
 	oldPiece := b.Mailbox[square]
 
-	b.updateEvalScoresForPiece(rank, file, oldPiece, piece)
+	b.updateEvalScoresForPiece(square, oldPiece, piece)
 
+	b.placePiece(square, oldPiece, piece)
+}
+
+func (b *Board) placePiece(square int, oldPiece, piece Piece) {
 	b.Mailbox[square] = piece
 
 	if oldPiece != Empty {
-		b.removePieceBitboard(rank, file, oldPiece)
+		b.removePieceBitboard(square, oldPiece)
 	}
 
 	if piece != Empty {
-		b.setPieceBitboard(rank, file, piece)
+		b.setPieceBitboard(square, piece)
 	}
+}
+
+// restorePiece places a piece without updating the eval scores, for unmake,
+// which restores them from history.
+func (b *Board) restorePiece(s Square, piece Piece) {
+	square := s.Index()
+	b.placePiece(square, b.Mailbox[square], piece)
 }
 
 func (b *Board) getPieceCountFromBitboard(piece Piece) int {

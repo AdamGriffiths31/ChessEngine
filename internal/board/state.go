@@ -2,6 +2,11 @@ package board
 
 // GetCastlingRights returns the current castling rights as a string
 func (b *Board) GetCastlingRights() string {
+	return b.castlingRights.String()
+}
+
+// GetCastlingSet returns the current castling rights as a set
+func (b *Board) GetCastlingSet() CastlingRights {
 	return b.castlingRights
 }
 
@@ -22,16 +27,19 @@ func (b *Board) GetFullMoveNumber() int {
 
 // GetSideToMove returns which side is to move ("w" or "b")
 func (b *Board) GetSideToMove() string {
-	return b.sideToMove
+	if b.blackToMove {
+		return "b"
+	}
+	return "w"
 }
 
-// EnPassantCapturer returns the rank and pawn from which the given side ("w"
-// or "b") could capture en passant.
-func EnPassantCapturer(side string) (rank int, pawn Piece) {
-	if side == "w" {
-		return 4, WhitePawn
+// EnPassantCapturer returns the rank and pawn from which the given side could
+// capture en passant.
+func EnPassantCapturer(blackToMove bool) (rank int, pawn Piece) {
+	if blackToMove {
+		return 3, BlackPawn
 	}
-	return 3, BlackPawn
+	return 4, WhitePawn
 }
 
 // HasEnPassantCapturer reports whether an en passant target is set and the side
@@ -40,14 +48,14 @@ func (b *Board) HasEnPassantCapturer() bool {
 	if !b.hasEnPassant {
 		return false
 	}
-	rank, pawn := EnPassantCapturer(b.sideToMove)
+	rank, pawn := EnPassantCapturer(b.blackToMove)
 	file := int(b.enPassantSquare.File)
 	return (file > 0 && b.GetPiece(rank, file-1) == pawn) || (file < 7 && b.GetPiece(rank, file+1) == pawn)
 }
 
 // SetCastlingRights sets the castling rights string
 func (b *Board) SetCastlingRights(rights string) {
-	b.castlingRights = rights
+	b.castlingRights = ParseCastlingRights(rights)
 }
 
 // SetEnPassantTarget sets the en passant target square
@@ -68,5 +76,5 @@ func (b *Board) SetFullMoveNumber(num int) {
 
 // SetSideToMove sets which side is to move
 func (b *Board) SetSideToMove(side string) {
-	b.sideToMove = side
+	b.blackToMove = side == "b"
 }

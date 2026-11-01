@@ -61,12 +61,12 @@ func (m Move) UCI() string {
 type MoveUndo struct {
 	Move            Move
 	CapturedPiece   Piece
-	CastlingRights  string
+	CastlingRights  CastlingRights
 	EnPassantSquare Square
 	HasEnPassant    bool
 	HalfMoveClock   int
 	FullMoveNumber  int
-	SideToMove      string
+	BlackToMove     bool
 	Hash            uint64
 }
 
@@ -107,7 +107,7 @@ func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 		HasEnPassant:    b.hasEnPassant,
 		HalfMoveClock:   b.halfMoveClock,
 		FullMoveNumber:  b.fullMoveNumber,
-		SideToMove:      b.sideToMove,
+		BlackToMove:     b.blackToMove,
 		Hash:            b.GetHash(),
 	}
 
@@ -137,7 +137,7 @@ func (b *Board) MakeNullMove() MoveUndo {
 		HasEnPassant:    b.hasEnPassant,
 		HalfMoveClock:   b.halfMoveClock,
 		FullMoveNumber:  b.fullMoveNumber,
-		SideToMove:      b.sideToMove,
+		BlackToMove:     b.blackToMove,
 		Hash:            b.GetHash(),
 	}
 
@@ -148,12 +148,10 @@ func (b *Board) MakeNullMove() MoveUndo {
 		nullDelta = b.hashUpdater.GetNullMoveDelta(b)
 	}
 
-	if b.sideToMove == "w" {
-		b.sideToMove = "b"
-	} else {
-		b.sideToMove = "w"
+	if b.blackToMove {
 		b.fullMoveNumber++
 	}
+	b.blackToMove = !b.blackToMove
 
 	b.hasEnPassant = false
 
@@ -171,7 +169,7 @@ func (b *Board) UnmakeNullMove(undo MoveUndo) {
 	b.hasEnPassant = undo.HasEnPassant
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
-	b.sideToMove = undo.SideToMove
+	b.blackToMove = undo.BlackToMove
 
 	b.SetHash(undo.Hash)
 }
@@ -253,12 +251,10 @@ func (b *Board) handleEnPassant(move Move) error {
 }
 
 func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
-	if b.sideToMove == "w" {
-		b.sideToMove = "b"
-	} else {
-		b.sideToMove = "w"
+	if b.blackToMove {
 		b.fullMoveNumber++
 	}
+	b.blackToMove = !b.blackToMove
 
 	if piece == WhitePawn || piece == BlackPawn || capturedPiece != Empty || move.IsEnPassant {
 		b.halfMoveClock = 0
@@ -275,46 +271,47 @@ func (b *Board) updateGameState(move Move, piece Piece, capturedPiece Piece) {
 // the king or rook moving, or a rook being captured on its home square by
 // any piece.
 func (b *Board) UpdateCastlingRights(move Move, piece Piece) {
+	if b.castlingRights == 0 {
+		return
+	}
+
 	switch piece {
 	case WhiteKing:
-		b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
-		b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "")
+		b.castlingRights &^= WhiteKingside
+		b.castlingRights &^= WhiteQueenside
 	case BlackKing:
-		b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "")
-		b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
+		b.castlingRights &^= BlackKingside
+		b.castlingRights &^= BlackQueenside
 	}
 
 	switch piece {
 	case WhiteRook:
 		if move.From.Rank == 0 && move.From.File == 0 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "")
+			b.castlingRights &^= WhiteQueenside
 		} else if move.From.Rank == 0 && move.From.File == 7 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
+			b.castlingRights &^= WhiteKingside
 		}
 	case BlackRook:
 		if move.From.Rank == 7 && move.From.File == 0 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
+			b.castlingRights &^= BlackQueenside
 		} else if move.From.Rank == 7 && move.From.File == 7 {
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "")
+			b.castlingRights &^= BlackKingside
 		}
 	}
 
 	if move.IsCapture {
 		switch {
 		case move.To.Rank == 0 && move.To.File == 0:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "Q", "")
+			b.castlingRights &^= WhiteQueenside
 		case move.To.Rank == 0 && move.To.File == 7:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "K", "")
+			b.castlingRights &^= WhiteKingside
 		case move.To.Rank == 7 && move.To.File == 0:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "q", "")
+			b.castlingRights &^= BlackQueenside
 		case move.To.Rank == 7 && move.To.File == 7:
-			b.castlingRights = strings.ReplaceAll(b.castlingRights, "k", "")
+			b.castlingRights &^= BlackKingside
 		}
 	}
 
-	if b.castlingRights == "" {
-		b.castlingRights = "-"
-	}
 }
 
 func (b *Board) updateEnPassantTarget(move Move, piece Piece) {
@@ -361,12 +358,12 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 		b.undoEnPassant(move, undo.CapturedPiece)
 	}
 
-	b.SetPieceAt(move.From, movedPiece)
+	b.restorePiece(move.From, movedPiece)
 
 	if move.IsEnPassant {
-		b.SetPieceAt(move.To, Empty)
+		b.restorePiece(move.To, Empty)
 	} else {
-		b.SetPieceAt(move.To, undo.CapturedPiece)
+		b.restorePiece(move.To, undo.CapturedPiece)
 	}
 
 	b.castlingRights = undo.CastlingRights
@@ -374,7 +371,7 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 	b.hasEnPassant = undo.HasEnPassant
 	b.halfMoveClock = undo.HalfMoveClock
 	b.fullMoveNumber = undo.FullMoveNumber
-	b.sideToMove = undo.SideToMove
+	b.blackToMove = undo.BlackToMove
 
 	b.PopHash()
 
@@ -394,12 +391,12 @@ func (b *Board) undoCastling(move Move) {
 	}
 
 	rook := b.PieceAt(rookFrom)
-	b.SetPieceAt(rookFrom, Empty)
-	b.SetPieceAt(rookTo, rook)
+	b.restorePiece(rookFrom, Empty)
+	b.restorePiece(rookTo, rook)
 }
 
 func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
-	b.SetPieceAt(move.EnPassantCapturedSquare(), capturedPiece)
+	b.restorePiece(move.EnPassantCapturedSquare(), capturedPiece)
 }
 
 // ToFEN converts the board position to FEN (Forsyth-Edwards Notation) string
@@ -434,13 +431,9 @@ func (b *Board) ToFEN() string {
 	}
 
 	fen.WriteString(" ")
-	fen.WriteString(b.sideToMove)
+	fen.WriteString(b.GetSideToMove())
 	fen.WriteString(" ")
-	if b.castlingRights != "" {
-		fen.WriteString(b.castlingRights)
-	} else {
-		fen.WriteString("-")
-	}
+	fen.WriteString(b.castlingRights.String())
 	fen.WriteString(" ")
 	if b.hasEnPassant {
 		fen.WriteString(b.enPassantSquare.String())

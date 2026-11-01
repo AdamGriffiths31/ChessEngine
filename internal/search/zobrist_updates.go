@@ -71,13 +71,13 @@ func (m *MinimaxEngine) GetHashDelta(b *board.Board, move board.Move, oldState b
 		hashDelta ^= m.zobrist.GetPieceKey(rookTo, rookIndex)
 	}
 
-	if oldState.CastlingRights != b.GetCastlingRights() {
-		oldRights := m.zobrist.GetCastlingKey(oldState.CastlingRights)
+	if oldState.CastlingRights != b.GetCastlingSet() {
+		oldRights := m.zobrist.GetCastlingKey(oldState.CastlingRights.String())
 		newRights := m.zobrist.GetCastlingKey(b.GetCastlingRights())
 		hashDelta ^= oldRights ^ newRights
 	}
 
-	if oldState.HasEnPassant && hadAdjacentCapturingPawnBeforeMove(b, move, oldState.EnPassantSquare, oldState.SideToMove) {
+	if oldState.HasEnPassant && hadAdjacentCapturingPawnBeforeMove(b, move, oldState.EnPassantSquare, oldState.BlackToMove) {
 		hashDelta ^= m.zobrist.GetEnPassantKey(oldState.EnPassantSquare.File)
 	}
 	if b.HasEnPassantCapturer() {
@@ -103,8 +103,8 @@ func (m *MinimaxEngine) GetNullMoveDelta(b *board.Board) uint64 {
 	return delta
 }
 
-func hadAdjacentCapturingPawnBeforeMove(b *board.Board, move board.Move, epTarget board.Square, sideToMove string) bool {
-	pawnRank, pawnPiece := board.EnPassantCapturer(sideToMove)
+func hadAdjacentCapturingPawnBeforeMove(b *board.Board, move board.Move, epTarget board.Square, blackToMove bool) bool {
+	pawnRank, pawnPiece := board.EnPassantCapturer(blackToMove)
 
 	for _, df := range []int{-1, 1} {
 		adjFile := int(epTarget.File) + df
