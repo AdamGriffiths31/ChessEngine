@@ -37,13 +37,6 @@ func addStepMoves(b *board.Board, moveList *MoveList, fromSquare int, validMoves
 
 		capturedPiece := b.GetPieceOnSquare(toSquare)
 
-		moveList.AddMove(board.Move{
-			From:      from,
-			To:        squareOf(toSquare),
-			Piece:     piece,
-			Captured:  capturedPiece,
-			Promotion: board.Empty,
-			IsCapture: capturedPiece != board.Empty,
-		})
+		moveList.add(from, squareOf(toSquare), piece, capturedPiece, board.Empty, capturedPiece != board.Empty)
 	}
 }

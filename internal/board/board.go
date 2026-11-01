@@ -7,7 +7,7 @@ import (
 )
 
 // Piece represents a chess piece using standard FEN notation
-type Piece rune
+type Piece byte
 
 const (
 	// Empty represents an empty square
@@ -56,8 +56,18 @@ const (
 
 // Square represents a position on the chess board
 type Square struct {
-	File int // 0-7 (a-h)
-	Rank int // 0-7 (1-8)
+	File int8 // 0-7 (a-h)
+	Rank int8 // 0-7 (1-8)
+}
+
+// NewSquare builds a Square from file and rank indexes.
+func NewSquare(file, rank int) Square {
+	return Square{File: int8(file), Rank: int8(rank)}
+}
+
+// Index returns the square's 0-63 board index.
+func (s Square) Index() int {
+	return FileRankToSquare(int(s.File), int(s.Rank))
 }
 
 // EvalState stores incremental evaluation scores for undo operations.
@@ -380,6 +390,16 @@ func (b *Board) removePieceBitboard(rank, file int, piece Piece) {
 		}
 		b.AllPieces &= ^squareBit
 	}
+}
+
+// PieceAt returns the piece on the given square.
+func (b *Board) PieceAt(s Square) Piece {
+	return b.GetPiece(int(s.Rank), int(s.File))
+}
+
+// SetPieceAt places a piece on the given square.
+func (b *Board) SetPieceAt(s Square, piece Piece) {
+	b.SetPiece(int(s.Rank), int(s.File), piece)
 }
 
 // GetPiece returns the piece at the specified rank and file coordinates

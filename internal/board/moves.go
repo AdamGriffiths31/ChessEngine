@@ -29,6 +29,11 @@ func (m Move) IsQuiet() bool {
 	return !m.IsCapture && !m.HasPromotion()
 }
 
+// EnPassantCapturedSquare returns the square of the pawn an en passant move captures.
+func (m Move) EnPassantCapturedSquare() Square {
+	return Square{File: m.To.File, Rank: m.From.Rank}
+}
+
 // IsValid reports whether m looks like a plausible, non-degenerate move.
 func (m Move) IsValid() bool {
 	return m.onBoard() && m.From != m.To
@@ -84,20 +89,14 @@ func (s Square) String() string {
 // MakeMoveWithUndo makes a move and returns undo information
 func (b *Board) MakeMoveWithUndo(move Move) (MoveUndo, error) {
 	if move.Piece == Empty || move.Piece == 0 {
-		move.Piece = b.GetPiece(move.From.Rank, move.From.File)
+		move.Piece = b.PieceAt(move.From)
 	}
 
 	var capturedPiece Piece
 	if move.IsEnPassant {
-		var captureRank int
-		if move.Piece == WhitePawn {
-			captureRank = 4
-		} else {
-			captureRank = 3
-		}
-		capturedPiece = b.GetPiece(captureRank, move.To.File)
+		capturedPiece = b.PieceAt(move.EnPassantCapturedSquare())
 	} else {
-		capturedPiece = b.GetPiece(move.To.Rank, move.To.File)
+		capturedPiece = b.PieceAt(move.To)
 	}
 
 	undo := MoveUndo{
@@ -183,14 +182,14 @@ func (b *Board) MakeMove(move Move) error {
 	if move.Piece != Empty {
 		piece = move.Piece
 	} else {
-		piece = b.GetPiece(move.From.Rank, move.From.File)
+		piece = b.PieceAt(move.From)
 		if piece == Empty {
 			return errors.New("no piece at from square")
 		}
 	}
 
 	if !move.IsEnPassant && (piece == WhitePawn || piece == BlackPawn) {
-		targetPiece := b.GetPiece(move.To.Rank, move.To.File)
+		targetPiece := b.PieceAt(move.To)
 		if targetPiece == Empty && move.From.File != move.To.File {
 			if b.hasEnPassant && b.enPassantSquare.File == move.To.File && b.enPassantSquare.Rank == move.To.Rank {
 				move.IsEnPassant = true
@@ -198,14 +197,14 @@ func (b *Board) MakeMove(move Move) error {
 		}
 	}
 
-	capturedPiece := b.GetPiece(move.To.Rank, move.To.File)
+	capturedPiece := b.PieceAt(move.To)
 
-	b.SetPiece(move.From.Rank, move.From.File, Empty)
+	b.SetPieceAt(move.From, Empty)
 
 	if move.Promotion != Empty && move.Promotion != 0 {
-		b.SetPiece(move.To.Rank, move.To.File, move.Promotion)
+		b.SetPieceAt(move.To, move.Promotion)
 	} else {
-		b.SetPiece(move.To.Rank, move.To.File, piece)
+		b.SetPieceAt(move.To, piece)
 	}
 
 	if move.IsCastling {
@@ -241,22 +240,15 @@ func (b *Board) handleCastling(move Move) error {
 		return errors.New("invalid castling move")
 	}
 
-	rook := b.GetPiece(rookFrom.Rank, rookFrom.File)
-	b.SetPiece(rookFrom.Rank, rookFrom.File, Empty)
-	b.SetPiece(rookTo.Rank, rookTo.File, rook)
+	rook := b.PieceAt(rookFrom)
+	b.SetPieceAt(rookFrom, Empty)
+	b.SetPieceAt(rookTo, rook)
 
 	return nil
 }
 
 func (b *Board) handleEnPassant(move Move) error {
-	var captureRank int
-	if move.Piece == WhitePawn {
-		captureRank = 4
-	} else {
-		captureRank = 3
-	}
-
-	b.SetPiece(captureRank, move.To.File, Empty)
+	b.SetPieceAt(move.EnPassantCapturedSquare(), Empty)
 	return nil
 }
 
@@ -369,12 +361,12 @@ func (b *Board) UnmakeMove(undo MoveUndo) {
 		b.undoEnPassant(move, undo.CapturedPiece)
 	}
 
-	b.SetPiece(move.From.Rank, move.From.File, movedPiece)
+	b.SetPieceAt(move.From, movedPiece)
 
 	if move.IsEnPassant {
-		b.SetPiece(move.To.Rank, move.To.File, Empty)
+		b.SetPieceAt(move.To, Empty)
 	} else {
-		b.SetPiece(move.To.Rank, move.To.File, undo.CapturedPiece)
+		b.SetPieceAt(move.To, undo.CapturedPiece)
 	}
 
 	b.castlingRights = undo.CastlingRights
@@ -401,20 +393,13 @@ func (b *Board) undoCastling(move Move) {
 		rookTo = Square{File: 0, Rank: move.From.Rank}
 	}
 
-	rook := b.GetPiece(rookFrom.Rank, rookFrom.File)
-	b.SetPiece(rookFrom.Rank, rookFrom.File, Empty)
-	b.SetPiece(rookTo.Rank, rookTo.File, rook)
+	rook := b.PieceAt(rookFrom)
+	b.SetPieceAt(rookFrom, Empty)
+	b.SetPieceAt(rookTo, rook)
 }
 
 func (b *Board) undoEnPassant(move Move, capturedPiece Piece) {
-	var captureRank int
-	if move.Piece == WhitePawn || (move.Piece == Empty && move.From.Rank < move.To.Rank) {
-		captureRank = 4
-	} else {
-		captureRank = 3
-	}
-
-	b.SetPiece(captureRank, move.To.File, capturedPiece)
+	b.SetPieceAt(move.EnPassantCapturedSquare(), capturedPiece)
 }
 
 // ToFEN converts the board position to FEN (Forsyth-Edwards Notation) string

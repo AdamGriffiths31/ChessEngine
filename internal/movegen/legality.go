@@ -62,19 +62,15 @@ func checkEvasions(checkers board.Bitboard, kingSquare int) board.Bitboard {
 	}
 }
 
-func enPassantCapturedSquare(move board.Move) int {
-	return board.FileRankToSquare(move.To.File, move.From.Rank)
-}
-
 func isMoveLegal(b *board.Board, move board.Move, kingSquare int, pinnedPieces board.Bitboard, inCheck bool, evasions board.Bitboard, enemy *sideInfo) bool {
-	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
-	toSquare := board.FileRankToSquare(move.To.File, move.To.Rank)
+	fromSquare := move.From.Index()
+	toSquare := move.To.Index()
 
 	if move.Piece == board.WhiteKing || move.Piece == board.BlackKing {
 		return b.GetAttackersToSquareWithOccupancy(toSquare, enemy.color, b.AllPieces.ClearBit(kingSquare)) == 0
 	}
 
-	if !evasions.HasBit(toSquare) && !(move.IsEnPassant && evasions.HasBit(enPassantCapturedSquare(move))) {
+	if !evasions.HasBit(toSquare) && !(move.IsEnPassant && evasions.HasBit(move.EnPassantCapturedSquare().Index())) {
 		return false
 	}
 
@@ -90,18 +86,18 @@ func isMoveLegal(b *board.Board, move board.Move, kingSquare int, pinnedPieces b
 }
 
 func isEnPassantLegal(b *board.Board, move board.Move, kingSquare int, enemy *sideInfo) bool {
-	if kingSquare/8 != move.From.Rank {
+	if kingSquare/8 != int(move.From.Rank) {
 		return true
 	}
 
-	rankAttackers := (b.GetPieceBitboard(enemy.rook) | b.GetPieceBitboard(enemy.queen)) & board.RankMask(move.From.Rank)
+	rankAttackers := (b.GetPieceBitboard(enemy.rook) | b.GetPieceBitboard(enemy.queen)) & board.RankMask(int(move.From.Rank))
 	if rankAttackers == 0 {
 		return true
 	}
 
-	fromSquare := board.FileRankToSquare(move.From.File, move.From.Rank)
-	toSquare := board.FileRankToSquare(move.To.File, move.To.Rank)
-	occupancyAfterMove := b.AllPieces.ClearBit(fromSquare).ClearBit(enPassantCapturedSquare(move)).SetBit(toSquare)
+	fromSquare := move.From.Index()
+	toSquare := move.To.Index()
+	occupancyAfterMove := b.AllPieces.ClearBit(fromSquare).ClearBit(move.EnPassantCapturedSquare().Index()).SetBit(toSquare)
 
 	return board.GetRookAttacks(kingSquare, occupancyAfterMove)&rankAttackers == 0
 }

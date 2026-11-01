@@ -122,6 +122,6 @@ func (zh *ZobristHash) GetCastlingKey(castlingRights string) uint64 {
 }
 
 // GetEnPassantKey returns the zobrist key for en passant file
-func (zh *ZobristHash) GetEnPassantKey(file int) uint64 {
+func (zh *ZobristHash) GetEnPassantKey(file int8) uint64 {
 	return zh.enPassantKeys[file]
 }

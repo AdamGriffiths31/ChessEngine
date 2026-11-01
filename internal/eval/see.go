@@ -37,12 +37,12 @@ func (see *SEECalculator) SEE(b *board.Board, move board.Move) int {
 		see.gain[depth] += see.getPieceValue(move.Promotion) - see.getPieceValue(move.Piece)
 	}
 
-	targetSquare := board.FileRankToSquare(move.To.File, move.To.Rank)
+	targetSquare := move.To.Index()
 
-	occupied := b.AllPieces.ClearBit(board.FileRankToSquare(move.From.File, move.From.Rank))
+	occupied := b.AllPieces.ClearBit(move.From.Index())
 
 	if move.IsEnPassant {
-		capturedPawnSquare := board.FileRankToSquare(move.To.File, move.From.Rank)
+		capturedPawnSquare := move.EnPassantCapturedSquare().Index()
 		occupied = occupied.ClearBit(capturedPawnSquare)
 	}
 

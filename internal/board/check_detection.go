@@ -2,7 +2,7 @@ package board
 
 // MoveGivesCheck determines if a move puts the opponent's king in check
 func MoveGivesCheck(b *Board, move Move) bool {
-	piece := b.GetPiece(move.From.Rank, move.From.File)
+	piece := b.PieceAt(move.From)
 	if piece == Empty {
 		return false
 	}
@@ -19,8 +19,8 @@ func MoveGivesCheck(b *Board, move Move) bool {
 	}
 
 	kingSquare := enemyKingBB.LSB()
-	toSquare := move.To.Rank*8 + move.To.File
-	fromSquare := move.From.Rank*8 + move.From.File
+	toSquare := move.To.Index()
+	fromSquare := move.From.Index()
 
 	if isDirectCheck(b, piece, toSquare, kingSquare, fromSquare) {
 		return true
@@ -95,12 +95,12 @@ func isDiscoveredCheck(b *Board, fromSquare, toSquare, kingSquare int, movingPie
 }
 
 func isEnPassantCheck(b *Board, move Move, kingSquare int) bool {
-	fromSquare := move.From.Rank*8 + move.From.File
-	toSquare := move.To.Rank*8 + move.To.File
-	capturedPawnSquare := move.From.Rank*8 + move.To.File
+	fromSquare := move.From.Index()
+	toSquare := move.To.Index()
+	capturedPawnSquare := move.EnPassantCapturedSquare().Index()
 
 	occupancy := b.AllPieces.ClearBit(fromSquare).ClearBit(capturedPawnSquare).SetBit(toSquare)
-	rooksQueens, bishopsQueens := sliders(b, IsWhitePiece(b.GetPiece(move.From.Rank, move.From.File)))
+	rooksQueens, bishopsQueens := sliders(b, IsWhitePiece(b.PieceAt(move.From)))
 
 	return rookSliderAttacks(rooksQueens, kingSquare, occupancy) || bishopSliderAttacks(bishopsQueens, kingSquare, occupancy)
 }

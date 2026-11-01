@@ -15,7 +15,7 @@ import (
 func testMove(toSquare int) board.Move {
 	return board.Move{
 		From: board.Square{File: 0, Rank: 0},
-		To:   board.Square{File: toSquare % 8, Rank: toSquare / 8},
+		To:   board.NewSquare(toSquare%8, toSquare/8),
 	}
 }
 

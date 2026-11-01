@@ -38,12 +38,12 @@ func (mc *MoveConverter) FromUCI(uciMove string, b *board.Board) (board.Move, er
 		return board.Move{}, fmt.Errorf("invalid to square in UCI move %s: %w", uciMove, err)
 	}
 
-	piece := b.GetPiece(fromSquare.Rank, fromSquare.File)
+	piece := b.PieceAt(fromSquare)
 	if piece == board.Empty {
 		return board.Move{}, fmt.Errorf("no piece at from square %s", uciMove[0:2])
 	}
 
-	captured := b.GetPiece(toSquare.Rank, toSquare.File)
+	captured := b.PieceAt(toSquare)
 
 	move := board.Move{
 		From:      fromSquare,
@@ -77,7 +77,7 @@ func parseUCISquare(uciSquare string) (board.Square, error) {
 		return board.Square{}, fmt.Errorf("square out of bounds: %s", uciSquare)
 	}
 
-	return board.Square{File: file, Rank: rank}, nil
+	return board.NewSquare(file, rank), nil
 }
 
 func parsePromotionPiece(promotionChar byte, originalPiece board.Piece) board.Piece {
@@ -114,7 +114,7 @@ func parsePromotionPiece(promotionChar byte, originalPiece board.Piece) board.Pi
 
 func (mc *MoveConverter) isCastlingMove(move board.Move, piece board.Piece) bool {
 	if piece == board.WhiteKing || piece == board.BlackKing {
-		if abs(move.To.File-move.From.File) == 2 && move.To.Rank == move.From.Rank {
+		if abs(int(move.To.File-move.From.File)) == 2 && move.To.Rank == move.From.Rank {
 			return true
 		}
 	}
@@ -128,7 +128,7 @@ func (mc *MoveConverter) isEnPassantMove(move board.Move, piece board.Piece, b *
 	if piece != board.WhitePawn && piece != board.BlackPawn {
 		return false
 	}
-	if abs(move.To.File-move.From.File) != 1 {
+	if abs(int(move.To.File-move.From.File)) != 1 {
 		return false
 	}
 	if move.Captured != board.Empty {

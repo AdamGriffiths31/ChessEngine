@@ -17,7 +17,7 @@ func iterations(moves []board.Move, scores []eval.EvaluationScore) []Iteration {
 }
 
 func tcMove(from, to int) board.Move {
-	return board.Move{From: board.Square{File: from, Rank: 1}, To: board.Square{File: to, Rank: 3}}
+	return board.Move{From: board.NewSquare(from, 1), To: board.NewSquare(to, 3)}
 }
 
 func TestSoftTimeScaleTooFewIterations(t *testing.T) {

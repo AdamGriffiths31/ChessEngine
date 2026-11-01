@@ -96,8 +96,8 @@ func unpackDepthAge(depthAge uint8) (depth int, entryType EntryType, age uint32)
 }
 
 func packMove(move board.Move) uint32 {
-	from := uint32(board.FileRankToSquare(move.From.File, move.From.Rank))
-	to := uint32(board.FileRankToSquare(move.To.File, move.To.Rank))
+	from := uint32(move.From.Index())
+	to := uint32(move.To.Index())
 
 	packed := (from&0x3F)<<26 | (to&0x3F)<<20
 
@@ -141,8 +141,8 @@ func unpackMove(packed uint32) board.Move {
 	flags := (packed >> 16) & 0x3
 
 	move := board.Move{
-		From:      board.Square{File: from % 8, Rank: from / 8},
-		To:        board.Square{File: to % 8, Rank: to / 8},
+		From:      board.NewSquare(board.SquareToFileRank(from)),
+		To:        board.NewSquare(board.SquareToFileRank(to)),
 		Promotion: board.Empty,
 	}
 

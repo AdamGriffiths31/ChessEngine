@@ -9,7 +9,7 @@ import (
 )
 
 func sq(file, rank int) board.Square {
-	return board.Square{File: file, Rank: rank}
+	return board.NewSquare(file, rank)
 }
 
 func playerFromSide(side string) movegen.Player {

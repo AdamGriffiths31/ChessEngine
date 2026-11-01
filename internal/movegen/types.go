@@ -32,6 +32,28 @@ func (ml *MoveList) AddMove(move board.Move) {
 	ml.Count++
 }
 
+// add appends a move with no castling or en passant flag, writing its fields
+// in place to avoid copying a temporary Move.
+func (ml *MoveList) add(from, to board.Square, piece, captured, promotion board.Piece, isCapture bool) {
+	n := len(ml.Moves)
+	if n == cap(ml.Moves) {
+		ml.Moves = append(ml.Moves, board.Move{})
+	} else {
+		ml.Moves = ml.Moves[:n+1]
+	}
+	ml.Count = n + 1
+
+	m := &ml.Moves[n]
+	m.From = from
+	m.To = to
+	m.Piece = piece
+	m.Captured = captured
+	m.Promotion = promotion
+	m.IsCapture = isCapture
+	m.IsCastling = false
+	m.IsEnPassant = false
+}
+
 // Clear empties the move list
 func (ml *MoveList) Clear() {
 	ml.Moves = ml.Moves[:0]
@@ -109,5 +131,5 @@ func (s *sideInfo) pawnsAttacking(targets board.Bitboard) board.Bitboard {
 }
 
 func squareOf(square int) board.Square {
-	return board.Square{File: square % 8, Rank: square / 8}
+	return board.NewSquare(board.SquareToFileRank(square))
 }

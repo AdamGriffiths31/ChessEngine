@@ -41,13 +41,7 @@ func generatePawnMoves(b *board.Board, side *sideInfo, moveList *MoveList) {
 }
 
 func addPawnPush(moveList *MoveList, fromSquare, toSquare int, pawnPiece board.Piece) {
-	moveList.AddMove(board.Move{
-		From:      squareOf(fromSquare),
-		To:        squareOf(toSquare),
-		Piece:     pawnPiece,
-		Captured:  board.Empty,
-		Promotion: board.Empty,
-	})
+	moveList.add(squareOf(fromSquare), squareOf(toSquare), pawnPiece, board.Empty, board.Empty, false)
 }
 
 func generatePawnCaptures(b *board.Board, side *sideInfo, pawns, enemyPieces board.Bitboard, moveList *MoveList) {
@@ -68,14 +62,7 @@ func generatePawnCaptures(b *board.Board, side *sideInfo, pawns, enemyPieces boa
 			if toSquare/8 == side.promotionRank {
 				addPromotionMoves(moveList, fromSquare, toSquare, side, capturedPiece)
 			} else {
-				moveList.AddMove(board.Move{
-					From:      squareOf(fromSquare),
-					To:        squareOf(toSquare),
-					Piece:     side.pawn,
-					Captured:  capturedPiece,
-					Promotion: board.Empty,
-					IsCapture: true,
-				})
+				moveList.add(squareOf(fromSquare), squareOf(toSquare), side.pawn, capturedPiece, board.Empty, true)
 			}
 		}
 	}
@@ -87,7 +74,7 @@ func generateEnPassantCaptures(b *board.Board, side *sideInfo, pawns board.Bitbo
 		return
 	}
 
-	targetSquare := board.FileRankToSquare(enPassantTarget.File, enPassantTarget.Rank)
+	targetSquare := enPassantTarget.Index()
 
 	attackers := pawns & board.RankMask(side.enPassantRank) & board.GetPawnAttacks(targetSquare, side.enemy)
 
@@ -109,13 +96,6 @@ func generateEnPassantCaptures(b *board.Board, side *sideInfo, pawns board.Bitbo
 
 func addPromotionMoves(moveList *MoveList, fromSquare, toSquare int, side *sideInfo, capturedPiece board.Piece) {
 	for _, promotion := range &side.promotions {
-		moveList.AddMove(board.Move{
-			From:      squareOf(fromSquare),
-			To:        squareOf(toSquare),
-			Piece:     side.pawn,
-			Captured:  capturedPiece,
-			Promotion: promotion,
-			IsCapture: capturedPiece != board.Empty,
-		})
+		moveList.add(squareOf(fromSquare), squareOf(toSquare), side.pawn, capturedPiece, promotion, capturedPiece != board.Empty)
 	}
 }

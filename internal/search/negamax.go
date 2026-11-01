@@ -259,7 +259,7 @@ func cannotEvade(move *board.Move, evasions board.Bitboard) bool {
 	if evasions == allSquares || move.IsEnPassant || move.Piece == board.WhiteKing || move.Piece == board.BlackKing {
 		return false
 	}
-	return !evasions.HasBit(board.FileRankToSquare(move.To.File, move.To.Rank))
+	return !evasions.HasBit(move.To.Index())
 }
 
 func (m *MinimaxEngine) shouldPruneQuiet(n *nodeInfo, move board.Move, givesCheck bool, alpha eval.EvaluationScore, quietsSearched int) bool {

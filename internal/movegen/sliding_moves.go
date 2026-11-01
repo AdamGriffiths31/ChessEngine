@@ -59,13 +59,6 @@ func addSlidingPieceMoves(b *board.Board, moveList *MoveList, fromSquare int, va
 			capturedPiece = b.GetPieceOnSquare(toSquare)
 		}
 
-		moveList.AddMove(board.Move{
-			From:      from,
-			To:        squareOf(toSquare),
-			Piece:     piece,
-			Captured:  capturedPiece,
-			Promotion: board.Empty,
-			IsCapture: isCapture,
-		})
+		moveList.add(from, squareOf(toSquare), piece, capturedPiece, board.Empty, isCapture)
 	}
 }

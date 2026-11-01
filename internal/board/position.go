@@ -101,7 +101,7 @@ func (b *Board) GetAllPiecesOfType(piece Piece) []Square {
 	for rank := range 8 {
 		for file := range 8 {
 			if b.GetPiece(rank, file) == piece {
-				squares = append(squares, Square{File: file, Rank: rank})
+				squares = append(squares, NewSquare(file, rank))
 			}
 		}
 	}
@@ -115,7 +115,7 @@ func (b *Board) GetAllPiecesOfColor(color PieceColor) []Square {
 		for file := range 8 {
 			piece := b.GetPiece(rank, file)
 			if GetPieceColor(piece) == color {
-				squares = append(squares, Square{File: file, Rank: rank})
+				squares = append(squares, NewSquare(file, rank))
 			}
 		}
 	}

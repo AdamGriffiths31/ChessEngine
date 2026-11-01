@@ -77,7 +77,7 @@ func TestFromFEN_EnPassantField(t *testing.T) {
 				t.Fatalf("FromFEN(%q): hasEnPassant = %v, want %v", tc.fen, hasEnPassant, tc.wantHasEnPassant)
 			}
 			if hasEnPassant {
-				if square.File != tc.wantFile || square.Rank != tc.wantRank {
+				if square != NewSquare(tc.wantFile, tc.wantRank) {
 					t.Errorf("FromFEN(%q): en passant square = %+v, want {File:%d Rank:%d}", tc.fen, square, tc.wantFile, tc.wantRank)
 				}
 			}

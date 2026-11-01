@@ -40,8 +40,8 @@ func (h *HistoryTable) apply(move board.Move, bonus int32) {
 }
 
 func (h *HistoryTable) entry(move board.Move) *int32 {
-	from := board.FileRankToSquare(move.From.File, move.From.Rank)
-	to := board.FileRankToSquare(move.To.File, move.To.Rank)
+	from := move.From.Index()
+	to := move.To.Index()
 	return &h.table[from][to]
 }
 

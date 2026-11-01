@@ -156,7 +156,7 @@ func (scorer *STSScorer) moveMatches(engineMove board.Move, expectedMove string)
 	return matchesSAN(engineMove, expectedMove)
 }
 
-func isCastlingTo(move board.Move, kingFile int) bool {
+func isCastlingTo(move board.Move, kingFile int8) bool {
 	return (move.Piece == board.WhiteKing || move.Piece == board.BlackKing) &&
 		move.From.File == 4 && move.To.File == kingFile && move.From.Rank == move.To.Rank
 }
@@ -168,13 +168,13 @@ func matchesSAN(move board.Move, san string) bool {
 	}
 	piece, fromFile, fromRank, to, promotion := m[1], m[2], m[3], m[4], m[5]
 
-	if move.To.File != int(to[0]-'a') || move.To.Rank != int(to[1]-'1') {
+	if move.To != board.NewSquare(int(to[0]-'a'), int(to[1]-'1')) {
 		return false
 	}
-	if fromFile != "" && move.From.File != int(fromFile[0]-'a') {
+	if fromFile != "" && move.From.File != int8(fromFile[0]-'a') {
 		return false
 	}
-	if fromRank != "" && move.From.Rank != int(fromRank[0]-'1') {
+	if fromRank != "" && move.From.Rank != int8(fromRank[0]-'1') {
 		return false
 	}
 
@@ -267,7 +267,7 @@ func (scorer *STSScorer) printPositionResult(posNum int, result STSResult) {
 }
 
 func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) string {
-	piece := board.GetPiece(move.From.Rank, move.From.File)
+	piece := board.PieceAt(move.From)
 
 	if move.IsCastling {
 		if move.To.File == 6 {
@@ -294,7 +294,7 @@ func (scorer *STSScorer) moveToAlgebraic(board *board.Board, move board.Move) st
 
 	toSquare := move.To.String()
 
-	isCapture := board.GetPiece(move.To.Rank, move.To.File) != '.' || move.IsEnPassant
+	isCapture := board.PieceAt(move.To) != '.' || move.IsEnPassant
 
 	algebraic := pieceChar
 

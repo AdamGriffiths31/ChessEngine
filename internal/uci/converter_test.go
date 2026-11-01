@@ -16,7 +16,7 @@ const (
 )
 
 func sq(name string) board.Square {
-	return board.Square{File: int(name[0] - 'a'), Rank: int(name[1] - '1')}
+	return board.NewSquare(int(name[0]-'a'), int(name[1]-'1'))
 }
 
 func mv(from, to string, piece board.Piece, mods ...func(*board.Move)) board.Move {

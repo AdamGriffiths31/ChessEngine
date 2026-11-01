@@ -10,7 +10,7 @@ import (
 func pvMove(file int) board.Move {
 	return board.Move{
 		From: board.Square{File: 0, Rank: 1},
-		To:   board.Square{File: file, Rank: 3},
+		To:   board.NewSquare(file, 3),
 	}
 }
 

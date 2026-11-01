@@ -9,8 +9,8 @@ import (
 func fillMoves(ml *MoveList, n int) {
 	for i := range n {
 		ml.AddMove(board.Move{
-			From: board.Square{File: i % 8, Rank: 0},
-			To:   board.Square{File: i % 8, Rank: 1},
+			From: board.NewSquare(i%8, 0),
+			To:   board.NewSquare(i%8, 1),
 		})
 	}
 }

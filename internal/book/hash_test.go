@@ -14,8 +14,8 @@ func parseTestMove(s string) (board.Move, error) {
 	file := func(c byte) int { return int(c - 'a') }
 	rank := func(c byte) int { return int(c - '1') }
 	return board.Move{
-		From:      board.Square{File: file(s[0]), Rank: rank(s[1])},
-		To:        board.Square{File: file(s[2]), Rank: rank(s[3])},
+		From:      board.NewSquare(file(s[0]), rank(s[1])),
+		To:        board.NewSquare(file(s[2]), rank(s[3])),
 		Promotion: board.Empty,
 		Piece:     board.Empty,
 	}, nil

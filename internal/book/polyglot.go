@@ -146,8 +146,8 @@ func (pb *PolyglotBook) decodeMove(encoded uint16, b *board.Board) (board.Move, 
 	}
 
 	move := board.Move{
-		From:       board.Square{File: fromFile, Rank: fromRank},
-		To:         board.Square{File: toFile, Rank: toRank},
+		From:       board.NewSquare(fromFile, fromRank),
+		To:         board.NewSquare(toFile, toRank),
 		Piece:      movingPiece,
 		Captured:   capturedPiece,
 		IsCapture:  capturedPiece != board.Empty,

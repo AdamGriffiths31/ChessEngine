@@ -81,7 +81,7 @@ func FromFEN(fen string) (*Board, error) {
 			if file < 0 || file > 7 || (rank != 2 && rank != 5) {
 				return nil, errors.New("invalid FEN: invalid en passant square")
 			}
-			board.enPassantSquare = Square{File: file, Rank: rank}
+			board.enPassantSquare = NewSquare(file, rank)
 			board.hasEnPassant = true
 		}
 	}

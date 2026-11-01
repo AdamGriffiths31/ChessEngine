@@ -41,7 +41,7 @@ func (b *Board) HasEnPassantCapturer() bool {
 		return false
 	}
 	rank, pawn := EnPassantCapturer(b.sideToMove)
-	file := b.enPassantSquare.File
+	file := int(b.enPassantSquare.File)
 	return (file > 0 && b.GetPiece(rank, file-1) == pawn) || (file < 7 && b.GetPiece(rank, file+1) == pawn)
 }
 

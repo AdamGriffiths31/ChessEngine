@@ -78,7 +78,7 @@ func (e *Engine) GetState() *State {
 // MakeMove applies a move to the game board.
 func (e *Engine) MakeMove(move board.Move) error {
 	if move.Piece == board.Empty || move.Piece == 0 {
-		move.Piece = e.state.Board.GetPiece(move.From.Rank, move.From.File)
+		move.Piece = e.state.Board.PieceAt(move.From)
 	}
 
 	err := e.state.Board.MakeMove(move)
