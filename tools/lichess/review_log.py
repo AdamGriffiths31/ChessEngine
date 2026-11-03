@@ -75,7 +75,7 @@ def main():
     moves = []
     for line in open(args.log, encoding="utf-8"):
         r = json.loads(line)
-        if r["msg"] == "move" and not r["book"]["used"]:
+        if r["msg"] == "move" and not r["book"]["used"] and r.get("ponder") != "miss":
             moves.append(r)
 
     total = agree = 0

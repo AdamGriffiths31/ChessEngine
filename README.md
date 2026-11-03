@@ -28,6 +28,7 @@ Current bullet rating: 2393 (October 2026).
 - Transposition tables with Zobrist hashing
 - Polyglot opening book support
 - Iterative deepening with time management
+- Pondering on the opponent's time (UCI `Ponder` option, off by default)
 
 ### Board representation
 
@@ -56,7 +57,7 @@ Current bullet rating: 2393 (October 2026).
 - Object pools for move lists, which reduce garbage collection
 - Pre-computed tables for piece attacks and evaluation
 - Incremental updates for Zobrist hashes, material balance, and piece-square scores
-- Two-bucket transposition table with age-based replacement
+- Two-bucket transposition table that evicts the older, shallower entry
 - Moves packed from 80 to 32 bits in the transposition table
 - Pawn hash table that caches pawn structure scores
 - Lazy evaluation, which skips pawn and king terms above 1000cp and piece activity above 500cp

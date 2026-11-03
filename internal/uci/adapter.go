@@ -38,6 +38,8 @@ type Engine struct {
 	options          map[string]string
 	cancelSearch     context.CancelFunc
 	searchDone       chan struct{}
+	ponder           *ponderState
+	ponderTimer      *time.Timer
 	outputMu         sync.Mutex
 	output           io.Writer
 	moveNumber       int
@@ -105,6 +107,9 @@ func (ue *Engine) Run(input io.Reader, output io.Writer) error {
 		case "go":
 			ue.startSearch(cmd.Args)
 			continue
+		case "ponderhit":
+			ue.handlePonderHit()
+			continue
 		case "quit":
 			ue.handleStop()
 			ue.waitForSearch()
@@ -130,6 +135,11 @@ func (ue *Engine) startSearch(args []string) {
 	ue.cancelSearch = cancel
 	ue.searchDone = done
 
+	if params := ue.protocol.ParseGo(args); params.Ponder {
+		budget := ue.searchTimeout(params, ue.engine.GetCurrentPlayer())
+		ue.ponder = &ponderState{cancel: cancel, hitLimit: budget.Soft}
+	}
+
 	go func() {
 		defer close(done)
 		defer cancel()
@@ -139,9 +149,17 @@ func (ue *Engine) startSearch(args []string) {
 
 func (ue *Engine) waitForSearch() {
 	if ue.searchDone != nil {
+		if ue.ponder != nil {
+			ue.ponder.cancelUnlessHit()
+		}
 		<-ue.searchDone
 		ue.searchDone = nil
 		ue.cancelSearch = nil
+		ue.ponder = nil
+		if ue.ponderTimer != nil {
+			ue.ponderTimer.Stop()
+			ue.ponderTimer = nil
+		}
 	}
 }
 
@@ -222,6 +240,7 @@ func (ue *Engine) handleUCI() string {
 		"id author Adam Griffiths",
 		"option name Hash type spin default 128 min 1 max 1024",
 		"option name Move Overhead type spin default 50 min 0 max 5000",
+		"option name Ponder type check default false",
 		"option name BookFile type string default " + emptyOptionValue,
 		"uciok",
 	}
@@ -271,14 +290,30 @@ func (ue *Engine) handleGo(ctx context.Context, args []string) {
 	config.MaxTime = budget.Hard
 	config.SoftTime = budget.Soft
 
-	ctx, cancel := context.WithTimeout(ctx, config.MaxTime)
-	defer cancel()
+	ponder := ue.ponder
+	if ponder != nil {
+		config.MaxTime = 0
+		config.SoftElapsed = ponder.softElapsed
+	} else {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.MaxTime)
+		defer cancel()
+	}
 
 	ue.moveNumber++
 
 	searchFEN := ue.engine.GetCurrentFEN()
 	searchStart := time.Now()
+	prevMoveFromBook := ue.prevMoveFromBook
 	result, bookOutcome := ue.runSearch(ctx, config, player)
+	if ponder != nil {
+		if ponder.markReadyAndCheckHeld() {
+			<-ctx.Done()
+		}
+		if !ponder.wasHit() {
+			ue.prevMoveFromBook = prevMoveFromBook
+		}
+	}
 	searchDuration := time.Since(searchStart)
 
 	bestMoveUCI := ue.converter.ToUCI(result.BestMove)
@@ -295,19 +330,26 @@ func (ue *Engine) handleGo(ctx context.Context, args []string) {
 	infoMessage := ue.protocol.FormatInfo(result.Stats.Depth, int(result.Score), result.Stats.NodesSearched, searchDuration, pvString)
 	ue.send(infoMessage)
 
-	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI)
+	formattedBestMove := ue.protocol.FormatBestMove(bestMoveUCI, ue.ponderMove(result))
+
+	ponderOutcome := ponder.outcome()
 
 	ue.logMove(moveLog{
 		fen:     searchFEN,
 		player:  player,
 		params:  params,
-		budget:  config.MaxTime,
+		budget:  budget.Hard,
 		soft:    config.SoftTime,
 		elapsed: searchDuration,
 		move:    bestMoveUCI,
 		result:  result,
 		book:    bookOutcome,
+		ponder:  ponderOutcome,
 	})
+
+	if ponderOutcome == PonderMiss {
+		ue.moveNumber--
+	}
 
 	if ue.moveNumber%10 == 0 {
 		if minimaxEngine, ok := ue.aiEngine.(*search.MinimaxEngine); ok {

@@ -15,6 +15,8 @@ const (
 	EntryUpperBound
 )
 
+const ttAgePenalty = 8
+
 func isMateScore(score eval.EvaluationScore) bool {
 	return score >= eval.MateScore-MateDistanceThreshold || score <= -eval.MateScore+MateDistanceThreshold
 }
@@ -163,22 +165,41 @@ func unpackMove(packed uint32) board.Move {
 	return move
 }
 
-// Store stores a position in the transposition table using two-bucket collision resolution
+// Store stores a position in the transposition table using two-bucket collision resolution.
+// A position already in the table keeps its deeper result, refreshed to the current age.
+// A new position takes an empty bucket, or else evicts the bucket worth less.
 func (tt *TranspositionTable) Store(hash uint64, depth int, score eval.EvaluationScore,
 	entryType EntryType, bestMove board.Move) {
 
 	firstIndex := tt.getFirstBucketIndex(hash)
-	if tt.shouldReplace(&tt.table[firstIndex], hash, depth) {
-		tt.storeEntry(&tt.table[firstIndex], hash, depth, score, entryType, bestMove)
-		tt.totalStores++
+	first := &tt.table[firstIndex]
+	second := &tt.table[tt.getSecondBucketIndex(firstIndex)]
+
+	target := second
+	switch {
+	case first.Hash == hash:
+		target = first
+	case second.Hash == hash:
+	case first.Hash == 0:
+		target = first
+	case second.Hash == 0:
+		tt.collisions++
+	default:
+		tt.collisions += 2
+		if tt.keepValue(first) <= tt.keepValue(second) {
+			target = first
+		}
+	}
+
+	if target.Hash == hash && depth < target.GetDepth() {
+		tt.refreshAge(target)
 		return
 	}
 
-	secondIndex := tt.getSecondBucketIndex(firstIndex)
-	if tt.shouldReplace(&tt.table[secondIndex], hash, depth) {
-		tt.storeEntry(&tt.table[secondIndex], hash, depth, score, entryType, bestMove)
+	tt.storeEntry(target, hash, depth, score, entryType, bestMove)
+	tt.totalStores++
+	if target == second {
 		tt.secondBucketUse++
-		tt.totalStores++
 	}
 }
 
@@ -194,26 +215,22 @@ func (tt *TranspositionTable) storeEntry(entry *TranspositionEntry, hash uint64,
 	score eval.EvaluationScore, entryType EntryType, bestMove board.Move) {
 	currentAge := tt.age & 3
 
+	if entry.Hash != hash || bestMove.IsValid() {
+		entry.Move = packMove(bestMove)
+	}
 	entry.Hash = hash
 	entry.Score = score
-	entry.Move = packMove(bestMove)
 	entry.DepthAge = packDepthAge(depth, entryType, currentAge)
 }
 
-func (tt *TranspositionTable) shouldReplace(entry *TranspositionEntry, hash uint64, depth int) bool {
-	if entry.Hash == 0 {
-		return true
-	}
+func (tt *TranspositionTable) refreshAge(entry *TranspositionEntry) {
+	depth, entryType, _ := unpackDepthAge(entry.DepthAge)
+	entry.DepthAge = packDepthAge(depth, entryType, tt.age&3)
+}
 
-	curDepth, _, curAge := unpackDepthAge(entry.DepthAge)
-
-	if entry.Hash == hash {
-		return depth > curDepth
-	}
-
-	tt.collisions++
-
-	return (tt.age & 3) != curAge
+func (tt *TranspositionTable) keepValue(entry *TranspositionEntry) int {
+	depth, _, age := unpackDepthAge(entry.DepthAge)
+	return depth - ttAgePenalty*int((tt.age-age)&3)
 }
 
 // Probe looks up a position in the transposition table using two-bucket collision resolution

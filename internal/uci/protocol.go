@@ -22,6 +22,7 @@ type SearchParams struct {
 	Depth     int
 	MoveTime  time.Duration
 	Infinite  bool
+	Ponder    bool
 	WTime     time.Duration
 	BTime     time.Duration
 	WInc      time.Duration
@@ -102,6 +103,8 @@ func (ph *ProtocolHandler) ParseGo(args []string) SearchParams {
 			}
 		case "infinite":
 			params.Infinite = true
+		case "ponder":
+			params.Ponder = true
 		case "wtime":
 			if i+1 < len(args) {
 				if ms, err := strconv.Atoi(args[i+1]); err == nil {
@@ -155,8 +158,11 @@ func (ph *ProtocolHandler) FormatReadyOK() string {
 	return "readyok"
 }
 
-// FormatBestMove formats the bestmove response.
-func (ph *ProtocolHandler) FormatBestMove(move string) string {
+// FormatBestMove formats the bestmove response. An empty ponder move is omitted.
+func (ph *ProtocolHandler) FormatBestMove(move, ponder string) string {
+	if ponder != "" {
+		return fmt.Sprintf("bestmove %s ponder %s", move, ponder)
+	}
 	return fmt.Sprintf("bestmove %s", move)
 }
 

@@ -16,6 +16,9 @@ type Config struct {
 	MaxTime time.Duration
 	// SoftTime is checked between iterations only; zero disables it.
 	SoftTime time.Duration
+	// SoftElapsed, when set, replaces the time since the search started in the
+	// soft limit check, for a search whose clock starts later.
+	SoftElapsed func() time.Duration
 
 	UseOpeningBook bool
 	BookFiles      []string

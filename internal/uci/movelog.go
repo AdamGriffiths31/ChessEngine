@@ -21,6 +21,16 @@ const (
 	BookLeft = "left_book"
 )
 
+// Ponder outcomes reported in the "ponder" field of a move record.
+const (
+	// PonderNone means the move came from a normal search.
+	PonderNone = "none"
+	// PonderHit means the opponent played the pondered move.
+	PonderHit = "hit"
+	// PonderMiss means the search was stopped, so its move was never played.
+	PonderMiss = "miss"
+)
+
 type bookOutcome struct {
 	Used   bool
 	Reason string
@@ -36,6 +46,7 @@ type moveLog struct {
 	move    string
 	result  search.Result
 	book    bookOutcome
+	ponder  string
 }
 
 func (ue *Engine) logMove(m moveLog) {
@@ -62,6 +73,7 @@ func (ue *Engine) logMove(m moveLog) {
 		slog.String("fen", m.fen),
 		slog.String("side", side),
 		slog.String("move", m.move),
+		slog.String("ponder", m.ponder),
 		slog.Int("score_cp_stm", int(m.result.Score)),
 		slog.Int("depth", stats.Depth),
 		slog.Int64("nodes", stats.NodesSearched),

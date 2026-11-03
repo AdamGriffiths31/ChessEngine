@@ -89,7 +89,7 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				break
 			}
 
-			if shouldStopOnSoftTime(config.SoftTime, time.Since(startTime), finalStats.Iterations) {
+			if shouldStopOnSoftTime(config.SoftTime, softElapsed(config, startTime), finalStats.Iterations) {
 				finalStats.StopReason = StopReasonTime
 				break
 			}

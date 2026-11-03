@@ -16,6 +16,7 @@ lichess-bot has no game limit. `play-games.ps1` counts new files in `<lichess-bo
 |---------|-------|---------|
 | `engine.working_dir` | this repo's path | The opening book loads relative to it |
 | `engine.uci_options` | `Hash: 128` | Transposition table size in MB |
+| `engine.ponder` | `true` | Thinks on the opponent's time. Needs a free CPU core. Each engine log record has a `ponder` field of `hit`, `miss` or `none` |
 | `challenge.modes` | see `config.yml` | Modes accepted from incoming challenges |
 | `challenge.concurrency` | `1` | One game at a time |
 | `matchmaking.allow_matchmaking` | `true` | Challenges other bots after `challenge_timeout` idle minutes |

@@ -311,7 +311,41 @@ func TestScoreToFromTT_NonMateScoresPassThrough(t *testing.T) {
 	}
 }
 
-func TestShouldReplace_SameHashGatedByDepthOnly(t *testing.T) {
+func TestStore_SameHashKeepsMoveWhenNewResultHasNone(t *testing.T) {
+	tt := NewTranspositionTable(1)
+	hash := uint64(778)
+	move := board.Move{From: sq(4, 1), To: sq(4, 3), Promotion: board.Empty}
+
+	tt.Store(hash, 0, 100, EntryLowerBound, move)
+	tt.Store(hash, 0, 120, EntryExact, board.Move{})
+
+	entry, found := tt.Probe(hash)
+	if !found || entry.Score != 120 {
+		t.Fatalf("same-depth store did not replace: entry=%+v found=%v", entry, found)
+	}
+	if got := entry.GetMove(); got.From != move.From || got.To != move.To {
+		t.Errorf("GetMove() = %+v, want the earlier move %+v kept", got, move)
+	}
+}
+
+func TestStore_ShallowerSameHashRefreshesAge(t *testing.T) {
+	tt := NewTranspositionTable(1)
+	hash := uint64(779)
+
+	tt.Store(hash, 6, 100, EntryExact, board.Move{})
+	tt.IncrementAge()
+	tt.Store(hash, 2, 999, EntryExact, board.Move{})
+
+	entry, found := tt.Probe(hash)
+	if !found || entry.Score != 100 || entry.GetDepth() != 6 {
+		t.Fatalf("deeper entry was not kept: entry=%+v found=%v", entry, found)
+	}
+	if got := tt.keepValue(entry); got != 6 {
+		t.Errorf("keepValue = %d, want 6 (age refreshed to current)", got)
+	}
+}
+
+func TestStore_SameHashGatedByDepthOnly(t *testing.T) {
 	tt := NewTranspositionTable(1)
 	hash := uint64(777)
 
@@ -330,7 +364,7 @@ func TestShouldReplace_SameHashGatedByDepthOnly(t *testing.T) {
 	}
 }
 
-func TestShouldReplace_CollisionGatedByAgeNotDepth(t *testing.T) {
+func TestStore_CollisionEvictsShallowerEntryOfSameAge(t *testing.T) {
 	tt := NewTranspositionTable(1)
 	tableSize := tt.mask + 1
 
@@ -339,54 +373,77 @@ func TestShouldReplace_CollisionGatedByAgeNotDepth(t *testing.T) {
 	hashC := hashA + 2*tableSize
 
 	tt.Store(hashA, 5, 100, EntryExact, board.Move{})
-
 	tt.Store(hashB, 1, 200, EntryExact, board.Move{})
 
 	entryA, foundA := tt.Probe(hashA)
 	if !foundA || entryA.Score != 100 {
-		t.Fatalf("hashA was evicted by a same-generation collision: found=%v entry=%+v", foundA, entryA)
+		t.Fatalf("hashA was evicted while a bucket was empty: found=%v entry=%+v", foundA, entryA)
 	}
 	entryB, foundB := tt.Probe(hashB)
 	if !foundB || entryB.Score != 200 {
-		t.Fatalf("hashB (same-generation collider) was not stored anywhere: found=%v entry=%+v", foundB, entryB)
+		t.Fatalf("hashB was not stored anywhere: found=%v entry=%+v", foundB, entryB)
 	}
 	if tt.collisions == 0 {
 		t.Fatalf("expected the hashA/hashB collision to be counted, collisions=%d", tt.collisions)
 	}
 
-	tt.IncrementAge()
+	tt.Store(hashC, 3, 300, EntryExact, board.Move{})
 
-	tt.Store(hashC, 1, 300, EntryExact, board.Move{})
-
-	if _, found := tt.Probe(hashA); found {
-		t.Error("hashA should have been evicted by a new-generation colliding store, regardless of its shallower depth")
+	if _, found := tt.Probe(hashA); !found {
+		t.Error("deep hashA was evicted while a shallower entry shared its buckets")
+	}
+	if _, found := tt.Probe(hashB); found {
+		t.Error("shallow hashB should have been evicted")
 	}
 	entryC, foundC := tt.Probe(hashC)
 	if !foundC || entryC.Score != 300 {
-		t.Fatalf("hashC (new-generation collider) did not replace hashA: found=%v entry=%+v", foundC, entryC)
+		t.Fatalf("hashC was dropped: found=%v entry=%+v", foundC, entryC)
 	}
 }
 
-func TestShouldReplace_AgingSurvivesTwoGenerations(t *testing.T) {
+func TestStore_CollisionNeverDropsNewDeepResult(t *testing.T) {
+	tt := NewTranspositionTable(1)
+	tableSize := tt.mask + 1
+
+	hashA := uint64(6)
+	hashB := hashA + tableSize
+	hashC := hashA + 2*tableSize
+
+	tt.Store(hashA, 0, 100, EntryExact, board.Move{})
+	tt.Store(hashB, 0, 200, EntryExact, board.Move{})
+	tt.Store(hashC, 9, 300, EntryExact, board.Move{})
+
+	entryC, foundC := tt.Probe(hashC)
+	if !foundC || entryC.Score != 300 {
+		t.Fatalf("deep result lost to same-age quiescence entries: found=%v entry=%+v", foundC, entryC)
+	}
+}
+
+func TestStore_OlderEntryEvictedBeforeDeeperOne(t *testing.T) {
 	tt := NewTranspositionTable(1)
 	tableSize := tt.mask + 1
 
 	hashA := uint64(7)
-	hashD := hashA + tableSize
+	hashB := hashA + tableSize
+	hashC := hashA + 2*tableSize
 
 	tt.Store(hashA, 5, 100, EntryExact, board.Move{})
 
 	tt.IncrementAge()
 	tt.IncrementAge()
 
-	tt.Store(hashD, 1, 200, EntryExact, board.Move{})
+	tt.Store(hashB, 1, 200, EntryExact, board.Move{})
+	tt.Store(hashC, 1, 300, EntryExact, board.Move{})
 
 	if _, found := tt.Probe(hashA); found {
-		t.Error("hashA from generation 0 survived a generation-2 colliding store; aging is frozen every other search")
+		t.Error("hashA from generation 0 survived; aging is frozen every other search")
 	}
-	entryD, foundD := tt.Probe(hashD)
-	if !foundD || entryD.Score != 200 {
-		t.Fatalf("hashD was not stored anywhere: found=%v entry=%+v", foundD, entryD)
+	if _, found := tt.Probe(hashB); !found {
+		t.Error("current-generation hashB was evicted before the stale hashA")
+	}
+	entryC, foundC := tt.Probe(hashC)
+	if !foundC || entryC.Score != 300 {
+		t.Fatalf("hashC was not stored anywhere: found=%v entry=%+v", foundC, entryC)
 	}
 }
 

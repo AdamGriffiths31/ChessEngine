@@ -40,6 +40,13 @@ func sameMove(a, b *board.Move) bool {
 	return a.From == b.From && a.To == b.To && a.Promotion == b.Promotion
 }
 
+func softElapsed(config Config, startTime time.Time) time.Duration {
+	if config.SoftElapsed != nil {
+		return config.SoftElapsed()
+	}
+	return time.Since(startTime)
+}
+
 func shouldStopOnSoftTime(soft, elapsed time.Duration, iters []Iteration) bool {
 	if soft <= 0 || len(iters) < softTimeMinDepth {
 		return false
