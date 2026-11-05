@@ -32,6 +32,10 @@ func (m *MinimaxEngine) pollCancel(ctx context.Context) bool {
 	if m.searchState.searchStats.NodesSearched&1023 != 0 {
 		return false
 	}
+	if maxNodes := m.searchState.config.MaxNodes; maxNodes > 0 && m.searchState.searchStats.NodesSearched >= maxNodes {
+		m.searchState.searchCancelled = true
+		return true
+	}
 	select {
 	case <-ctx.Done():
 		m.searchState.searchCancelled = true

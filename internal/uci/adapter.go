@@ -381,6 +381,9 @@ func (ue *Engine) buildSearchConfig(params SearchParams) search.Config {
 	if params.Depth > 0 {
 		config.MaxDepth = params.Depth
 	}
+	if params.Nodes > 0 {
+		config.MaxNodes = params.Nodes
+	}
 
 	return config
 }

@@ -22,6 +22,9 @@ const (
 	StopReasonNoLegalMoves = "no_legal_moves"
 	// StopReasonBook means the move came from the opening book, with no search.
 	StopReasonBook = "book"
+	// StopReasonNodes means an iteration ended past Config.SoftNodes, or the
+	// search was cut off at Config.MaxNodes.
+	StopReasonNodes = "nodes"
 )
 
 // Iteration records one completed iterative-deepening pass.

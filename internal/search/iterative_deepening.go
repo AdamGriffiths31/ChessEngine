@@ -69,7 +69,8 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 
 		pv.reset()
 
-		if ctx.Err() != nil || (config.MaxTime > 0 && time.Since(startTime) >= config.MaxTime) {
+		if ctx.Err() != nil || (config.MaxTime > 0 && time.Since(startTime) >= config.MaxTime) ||
+			(config.MaxNodes > 0 && m.searchState.searchStats.NodesSearched >= config.MaxNodes) {
 			break
 		}
 
@@ -93,6 +94,11 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 				finalStats.StopReason = StopReasonTime
 				break
 			}
+
+			if config.SoftNodes > 0 && finalStats.NodesSearched >= config.SoftNodes {
+				finalStats.StopReason = StopReasonNodes
+				break
+			}
 		} else if rs.partialScore > lastCompletedScore {
 			lastCompletedBestMove = rs.partialMove
 			lastCompletedScore = rs.partialScore
@@ -106,6 +112,8 @@ func (m *MinimaxEngine) runIterativeDeepening(ctx context.Context, b *board.Boar
 			finalStats.StopReason = StopReasonDepth
 		case errors.Is(ctx.Err(), context.Canceled):
 			finalStats.StopReason = StopReasonCancelled
+		case config.MaxNodes > 0 && finalStats.NodesSearched >= config.MaxNodes:
+			finalStats.StopReason = StopReasonNodes
 		default:
 			finalStats.StopReason = StopReasonTime
 		}

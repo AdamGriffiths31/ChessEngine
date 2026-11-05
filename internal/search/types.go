@@ -19,6 +19,12 @@ type Config struct {
 	// SoftElapsed, when set, replaces the time since the search started in the
 	// soft limit check, for a search whose clock starts later.
 	SoftElapsed func() time.Duration
+	// SoftNodes stops the search after the first iteration that ends past
+	// this many nodes; zero disables it.
+	SoftNodes int64
+	// MaxNodes cancels the search once it passes this many nodes; zero
+	// means none.
+	MaxNodes int64
 
 	UseOpeningBook bool
 	BookFiles      []string
