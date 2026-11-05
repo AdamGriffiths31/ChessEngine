@@ -96,31 +96,30 @@ func (n *Network) Write(w io.Writer) error {
 	return binary.Write(w, binary.LittleEndian, n)
 }
 
-// Evaluator scores positions with a network. It rebuilds both hidden
-// layers on every call and keeps scratch buffers, so one Evaluator serves
-// one search at a time.
+// Evaluator scores positions with a network. It keeps state between calls,
+// so one Evaluator serves one search at a time.
 type Evaluator struct {
-	net *Network
-	acc [2][Hidden]int16
+	net    *Network
+	acc    [2][Hidden]int16
+	pieces [12]board.Bitboard
 }
 
 // NewEvaluator returns an evaluator for net.
 func NewEvaluator(net *Network) *Evaluator {
-	return &Evaluator{net: net}
+	e := &Evaluator{net: net}
+	e.acc[0] = net.FeatureBias
+	e.acc[1] = net.FeatureBias
+	return e
+}
+
+// NewDefaultEvaluator returns an evaluator for the built-in network.
+func NewDefaultEvaluator() *Evaluator {
+	return NewEvaluator(Default())
 }
 
 // Evaluate returns the score from White's side, as eval.Evaluator requires.
 func (e *Evaluator) Evaluate(b *board.Board) eval.EvaluationScore {
-	e.acc[0] = e.net.FeatureBias
-	e.acc[1] = e.net.FeatureBias
-	for piece, bb := range b.PieceBitboards {
-		for bb != 0 {
-			var square int
-			square, bb = bb.PopLSB()
-			addColumn(&e.acc[0], e.column(FeatureIndex(piece, square, 0)))
-			addColumn(&e.acc[1], e.column(FeatureIndex(piece, square, 1)))
-		}
-	}
+	e.update(&b.PieceBitboards)
 
 	us, them := 0, 1
 	whiteToMove := b.GetSideToMove() == "w"
@@ -134,10 +133,58 @@ func (e *Evaluator) Evaluate(b *board.Board) eval.EvaluationScore {
 	return eval.EvaluationScore(score)
 }
 
+const refreshAbove = 24
+
+func (e *Evaluator) update(pieces *[12]board.Bitboard) {
+	changed := 0
+	for piece := range pieces {
+		changed += (pieces[piece] ^ e.pieces[piece]).PopCount()
+	}
+	if changed > refreshAbove {
+		e.refresh(pieces)
+		return
+	}
+	for piece := range pieces {
+		for removed := e.pieces[piece] &^ pieces[piece]; removed != 0; {
+			var square int
+			square, removed = removed.PopLSB()
+			e.subFeature(piece, square)
+		}
+		for added := pieces[piece] &^ e.pieces[piece]; added != 0; {
+			var square int
+			square, added = added.PopLSB()
+			e.addFeature(piece, square)
+		}
+		e.pieces[piece] = pieces[piece]
+	}
+}
+
+func (e *Evaluator) refresh(pieces *[12]board.Bitboard) {
+	e.acc[0] = e.net.FeatureBias
+	e.acc[1] = e.net.FeatureBias
+	for piece, bb := range pieces {
+		for bb != 0 {
+			var square int
+			square, bb = bb.PopLSB()
+			e.addFeature(piece, square)
+		}
+	}
+	e.pieces = *pieces
+}
+
+func (e *Evaluator) addFeature(piece, square int) {
+	addColumn(&e.acc[0], e.column(FeatureIndex(piece, square, 0)))
+	addColumn(&e.acc[1], e.column(FeatureIndex(piece, square, 1)))
+}
+
+func (e *Evaluator) subFeature(piece, square int) {
+	subColumn(&e.acc[0], e.column(FeatureIndex(piece, square, 0)))
+	subColumn(&e.acc[1], e.column(FeatureIndex(piece, square, 1)))
+}
+
 func (e *Evaluator) output(us, them *[Hidden]int16) int {
 	w := &e.net.OutputWeights
-	sum := screluDot(us, (*[Hidden]int16)(w[:Hidden])) + screluDot(them, (*[Hidden]int16)(w[Hidden:]))
-	sum = sum/QA + int64(e.net.OutputBias)
+	sum := screluDot(us, them, (*[Hidden]int16)(w[:Hidden]), (*[Hidden]int16)(w[Hidden:]))/QA + int64(e.net.OutputBias)
 	return int(sum * Scale / (QA * QB))
 }
 

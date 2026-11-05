@@ -59,7 +59,7 @@ type Engine struct {
 func NewUCIEngine() *Engine {
 	minimaxEngine := search.NewMinimaxEngine()
 	minimaxEngine.SetTranspositionTableSize(256)
-	minimaxEngine.SetEvaluator(nnue.NewEvaluator(nnue.Default()))
+	minimaxEngine.SetEvaluator(nnue.NewDefaultEvaluator())
 
 	engine := &Engine{
 		engine:        game.NewEngine(),
@@ -538,7 +538,7 @@ func (ue *Engine) handleSetOption(args []string) string {
 func (ue *Engine) setEvalFile(path string) {
 	switch path {
 	case "", emptyOptionValue:
-		ue.aiEngine.SetEvaluator(nnue.NewEvaluator(nnue.Default()))
+		ue.aiEngine.SetEvaluator(nnue.NewDefaultEvaluator())
 		return
 	case handWrittenEval:
 		ue.aiEngine.SetEvaluator(eval.NewEvaluator())

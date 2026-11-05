@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
+	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
@@ -71,5 +72,46 @@ func TestDefault_EmbeddedNetworkLoads(t *testing.T) {
 	score := NewEvaluator(Default()).Evaluate(testutil.MustFromFEN(t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
 	if score < -100 || score > 100 {
 		t.Errorf("embedded network scores the start position %d, want within ±100", score)
+	}
+}
+
+func TestEvaluate_IncrementalUpdatesMatchAFreshEvaluator(t *testing.T) {
+	fens := []string{
+		"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+		"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+		"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+	}
+	net := randomNetwork(4)
+	incremental := NewEvaluator(net)
+	gen := movegen.NewGenerator()
+	for seed, fen := range fens {
+		rng := rand.New(rand.NewPCG(uint64(seed), 7))
+		b := testutil.MustFromFEN(t, fen)
+		for ply := 0; ply < 80; ply++ {
+			player := movegen.White
+			if b.GetSideToMove() == "b" {
+				player = movegen.Black
+			}
+			legal := gen.GenerateAllMoves(b, player)
+			if legal.Count == 0 {
+				movegen.ReleaseMoveList(legal)
+				break
+			}
+			for i := 0; i < legal.Count; i++ {
+				undo, err := b.MakeMoveWithUndo(legal.Moves[i])
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got, want := incremental.Evaluate(b), NewEvaluator(net).Evaluate(b); got != want {
+					t.Fatalf("%s ply %d: incremental eval %d, fresh eval %d", fen, ply, got, want)
+				}
+				b.UnmakeMove(undo)
+			}
+			move := legal.Moves[rng.IntN(legal.Count)]
+			movegen.ReleaseMoveList(legal)
+			if _, err := b.MakeMoveWithUndo(move); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
 }

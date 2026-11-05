@@ -13,6 +13,7 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/epd"
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
+	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
@@ -28,6 +29,7 @@ func runProfile(args []string) error {
 		memProfile  = fs.String("memprofile", "", "Write memory profile to file")
 		ttSize      = fs.Int("tt", 256, "Transposition table size in MB")
 		showDetails = fs.Bool("details", false, "Show detailed search information")
+		hce         = fs.Bool("hce", false, "Use the hand-written eval instead of the built-in network")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -48,7 +50,7 @@ func runProfile(args []string) error {
 	}
 
 	if *count > 1 {
-		return runProfileSample(positions, *stsFile, *count, *searchTime, *cpuProfile, *memProfile, *ttSize, *showDetails)
+		return runProfileSample(positions, *stsFile, *count, *searchTime, *cpuProfile, *memProfile, *ttSize, *hce, *showDetails)
 	}
 
 	if *position < 1 || *position > len(positions) {
@@ -89,8 +91,7 @@ func runProfile(args []string) error {
 		defer pprof.StopCPUProfile()
 	}
 
-	engine := search.NewMinimaxEngine()
-	engine.SetTranspositionTableSize(*ttSize)
+	engine := newProfileEngine(*ttSize, *hce)
 
 	config := search.Config{
 		MaxDepth: 999,
@@ -174,7 +175,7 @@ func runProfile(args []string) error {
 	return nil
 }
 
-func runProfileSample(positions []*epd.Position, fileName string, requestedCount int, searchTime time.Duration, cpuProfile, memProfile string, ttSize int, showDetails bool) error {
+func runProfileSample(positions []*epd.Position, fileName string, requestedCount int, searchTime time.Duration, cpuProfile, memProfile string, ttSize int, hce, showDetails bool) error {
 	indices := evenlySpacedIndices(requestedCount, len(positions))
 	fmt.Printf("\nProfiling %d position(s) sampled from %s (of %d total)\n", len(indices), fileName, len(positions))
 	fmt.Printf("Search time per position: %v, TT: %dMB\n\n", searchTime, ttSize)
@@ -204,8 +205,7 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 			player = movegen.Black
 		}
 
-		engine := search.NewMinimaxEngine()
-		engine.SetTranspositionTableSize(ttSize)
+		engine := newProfileEngine(ttSize, hce)
 		config := search.Config{MaxDepth: 999, MaxTime: searchTime}
 
 		start := time.Now()
@@ -289,6 +289,15 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 	}
 
 	return nil
+}
+
+func newProfileEngine(ttSize int, hce bool) *search.MinimaxEngine {
+	engine := search.NewMinimaxEngine()
+	engine.SetTranspositionTableSize(ttSize)
+	if !hce {
+		engine.SetEvaluator(nnue.NewDefaultEvaluator())
+	}
+	return engine
 }
 
 func evenlySpacedIndices(count, total int) []int {
