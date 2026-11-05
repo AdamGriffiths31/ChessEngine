@@ -103,8 +103,9 @@ internal/
 ### UCI mode (chess GUIs)
 
 ```bash
-# Build UCI executable
-go build -o chessengine-uci ./cmd/uci
+# Build UCI executable. GOEXPERIMENT=simd selects the SIMD kernels for the
+# built-in NNUE; without it the network runs about 3.7x slower.
+GOEXPERIMENT=simd go build -o chessengine-uci ./cmd/uci
 
 # Use with chess GUIs like Arena, ChessBase, or Cute Chess
 ./chessengine-uci

@@ -13,8 +13,10 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 	"github.com/AdamGriffiths31/ChessEngine/internal/book"
+	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 	"github.com/AdamGriffiths31/ChessEngine/internal/game"
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
+	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
@@ -27,6 +29,7 @@ const (
 	DefaultMoveTime = 5 * time.Second
 
 	emptyOptionValue = "<empty>"
+	handWrittenEval  = "hce"
 )
 
 // Engine wraps the chess engine with UCI protocol support.
@@ -56,6 +59,7 @@ type Engine struct {
 func NewUCIEngine() *Engine {
 	minimaxEngine := search.NewMinimaxEngine()
 	minimaxEngine.SetTranspositionTableSize(256)
+	minimaxEngine.SetEvaluator(nnue.NewEvaluator(nnue.Default()))
 
 	engine := &Engine{
 		engine:        game.NewEngine(),
@@ -242,6 +246,7 @@ func (ue *Engine) handleUCI() string {
 		"option name Move Overhead type spin default 50 min 0 max 5000",
 		"option name Ponder type check default false",
 		"option name BookFile type string default " + emptyOptionValue,
+		"option name EvalFile type string default " + emptyOptionValue,
 		"uciok",
 	}
 
@@ -520,9 +525,34 @@ func (ue *Engine) handleSetOption(args []string) string {
 			value = ""
 		}
 		ue.SetBookFile(value)
+	case "EvalFile":
+		ue.setEvalFile(value)
 	}
 
 	return ""
+}
+
+// setEvalFile picks the evaluation: the embedded network when path is
+// empty, the hand-written eval for "hce", otherwise the network at path,
+// falling back to the embedded one if it cannot be loaded.
+func (ue *Engine) setEvalFile(path string) {
+	switch path {
+	case "", emptyOptionValue:
+		ue.aiEngine.SetEvaluator(nnue.NewEvaluator(nnue.Default()))
+		return
+	case handWrittenEval:
+		ue.aiEngine.SetEvaluator(eval.NewEvaluator())
+		slog.Info("using the hand-written eval")
+		return
+	}
+	net, err := nnue.Load(path)
+	if err != nil {
+		slog.Error("loading EvalFile failed; using the embedded network", "path", path, "error", err)
+		net = nnue.Default()
+	} else {
+		slog.Info("loaded EvalFile", "path", path)
+	}
+	ue.aiEngine.SetEvaluator(nnue.NewEvaluator(net))
 }
 
 func (ue *Engine) handleNewGame() string {

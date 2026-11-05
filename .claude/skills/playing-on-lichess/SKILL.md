@@ -28,10 +28,10 @@ The engine plays on Lichess as GolangChessBot through lichess-bot, which is inst
 
    Rated and random games change the bot's public rating, so state that when the user picks one.
 
-2. **Build the engine** from this checkout, so every run uses a fresh build:
+2. **Build the engine** from this checkout, so every run uses a fresh build. `GOEXPERIMENT=simd` selects the SIMD network kernels; without it the network runs about 3.7× slower:
 
    ```powershell
-   go build -o "D:\Documents\VS Code\lichess-bot\engines\chessengine.exe" .\cmd\uci
+   $env:GOEXPERIMENT = "simd"; go build -o "D:\Documents\VS Code\lichess-bot\engines\chessengine.exe" .\cmd\uci
    ```
 
 3. **Start the games** in the background, leaving out `-Mode` and `-TimeControl` when using the config's values:

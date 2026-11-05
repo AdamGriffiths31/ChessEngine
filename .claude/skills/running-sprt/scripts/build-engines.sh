@@ -15,7 +15,7 @@ dev_ref=${3:-}
 repo=$(git rev-parse --show-toplevel)
 
 build_tree() {
-	go -C "$1" build -trimpath -buildvcs=false -o "$scratch/$2-uci.exe" ./cmd/uci
+	GOEXPERIMENT=simd go -C "$1" build -trimpath -buildvcs=false -o "$scratch/$2-uci.exe" ./cmd/uci
 }
 
 build_ref() {
