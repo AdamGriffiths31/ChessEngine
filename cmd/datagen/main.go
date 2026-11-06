@@ -22,6 +22,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/game"
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
+	"github.com/AdamGriffiths31/ChessEngine/internal/nnue/trainingdata"
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
@@ -274,7 +275,7 @@ func playGame(ctx context.Context, engine *search.MinimaxEngine, rng *rand.Rand,
 
 	lines = make([]string, len(records))
 	for i, r := range records {
-		lines[i] = fmt.Sprintf("%s | %d | %s\n", r.fen, r.score, result)
+		lines[i] = trainingdata.FormatLine(r.fen, r.score, result)
 	}
 	return lines, searched, nodes
 }
@@ -305,14 +306,14 @@ func gameResult(state *game.State) string {
 	if state.GameOver && !state.IsDraw {
 		return winFor(state.Winner == movegen.White)
 	}
-	return "0.5"
+	return trainingdata.ResultDraw
 }
 
 func winFor(white bool) string {
 	if white {
-		return "1.0"
+		return trainingdata.ResultWhiteWins
 	}
-	return "0.0"
+	return trainingdata.ResultBlackWins
 }
 
 func sameSign(a, b int) bool {

@@ -51,7 +51,8 @@ Current bullet rating: about 2487 (November 2026).
 - An accumulator that adds and subtracts only the pieces that changed since the last evaluation
 - SIMD kernels for the hidden layer and output, compiled when `GOEXPERIMENT=simd` is set
 - The hand-written evaluation as a fallback, selected with the UCI option `EvalFile=hce`
-- Training pipeline: self-play data generation (`cmd/datagen`) and a CPU trainer (`cmd/nnuetrain`)
+- Training pipeline: self-play data generation (`cmd/datagen`), packing into binary records (`cmd/nnuepack`) and a
+  CPU trainer (`cmd/nnuetrain`)
 
 ### Performance optimizations
 
@@ -75,6 +76,7 @@ cmd/
   ├── uci/        # UCI engine binary for chess GUIs
   ├── bench/      # Bench multi-tool: sts/profile/report/sprt/mates subcommands
   ├── datagen/    # Self-play training data generator for the NNUE
+  ├── nnuepack/   # Converts datagen text into packed binary training files
   └── nnuetrain/  # NNUE trainer
 internal/
   ├── board/      # Board representation and bitboard operations
@@ -155,10 +157,15 @@ GOEXPERIMENT=simd go build -o bench ./cmd/bench
 GOEXPERIMENT=simd go build -o datagen ./cmd/datagen
 ./datagen -positions 60000000 -nodes 2500 -out data.txt
 
-# Train for 30 epochs and write a quantized network. 120M positions need
-# about 10 GB of RAM.
+# Pack one or more text files into 32-byte binary records. The trainer loads
+# a packed file in seconds and holds 120M positions in about 4.5 GB of RAM.
+go build -o nnuepack ./cmd/nnuepack
+./nnuepack -out data.bin data.txt more.txt
+
+# Train for 30 epochs and write a quantized network. -data also accepts a
+# text file, which loads slower and needs far more memory.
 GOEXPERIMENT=simd go build -o nnuetrain ./cmd/nnuetrain
-./nnuetrain -data data.txt -out net.nnue -epochs 30
+./nnuetrain -data data.bin -out net.nnue -epochs 30
 ```
 
 Test a new network against the current one with an SPRT, passing `EvalFile=<path>` through `-base-options` and

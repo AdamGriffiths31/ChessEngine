@@ -3,21 +3,17 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"math"
 	"math/rand/v2"
 	"os"
 	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
+	"github.com/AdamGriffiths31/ChessEngine/internal/nnue/trainingdata"
 )
 
 const (
@@ -50,17 +46,31 @@ type options struct {
 }
 
 type dataset struct {
-	features    []uint16
-	offsets     []uint32
-	blackToMove []bool
-	targets     []float32
-	fens        []string
+	records trainingdata.Records
+	wdl     float64
 }
 
-func (d *dataset) len() int { return len(d.targets) }
+func (d *dataset) len() int { return d.records.Len() }
 
-func (d *dataset) active(i int) []uint16 {
-	return d.features[d.offsets[i]:d.offsets[i+1]]
+func (d *dataset) sample(i uint32, buf *[]uint16) (active []uint16, blackToMove bool, target float32) {
+	record := d.records.At(int(i))
+	score, result := float64(record.Score()), record.Result()
+	blackToMove = record.BlackToMove()
+	if blackToMove {
+		score, result = -score, 1-result
+	}
+	target = float32((1-d.wdl)*sigmoid(score/nnue.Scale) + d.wdl*result)
+	*buf = record.AppendFeatures((*buf)[:0])
+	return *buf, blackToMove, target
+}
+
+func shuffledIndexes(n int, rng *rand.Rand) []uint32 {
+	order := make([]uint32, n)
+	for i := range order {
+		order[i] = uint32(i)
+	}
+	rng.Shuffle(n, func(i, j int) { order[i], order[j] = order[j], order[i] })
+	return order
 }
 
 type model struct {
@@ -132,7 +142,7 @@ func newLike(m *model) *model {
 
 func main() {
 	var opts options
-	flag.StringVar(&opts.data, "data", "data.txt", "datagen output to train on")
+	flag.StringVar(&opts.data, "data", "data.bin", "nnuepack output, or datagen text, to train on")
 	flag.StringVar(&opts.out, "out", "net.nnue", "quantized network to write")
 	flag.IntVar(&opts.epochs, "epochs", 30, "passes over the training data")
 	flag.IntVar(&opts.batch, "batch", 16384, "positions per optimizer step")
@@ -162,10 +172,10 @@ func run(opts options) error {
 	fmt.Printf("loaded %d positions in %s\n", data.len(), time.Since(start).Round(time.Second))
 
 	rng := rand.New(rand.NewPCG(1, 2))
-	order := rng.Perm(data.len())
+	order := shuffledIndexes(data.len(), rng)
 	validCount := int(float64(data.len()) * opts.validFrac)
 	valid, trainOrder := order[:validCount], order[validCount:]
-	train := make([]int, len(trainOrder))
+	train := make([]uint32, len(trainOrder))
 
 	m := newModel(rng)
 	adamM, adamV := newLike(m), newLike(m)
@@ -229,7 +239,8 @@ func run(opts options) error {
 		return err
 	}
 	fmt.Printf("wrote %s\n", opts.out)
-	return verify(m, net, data)
+	verify(m, net, data)
+	return nil
 }
 
 func learningRate(base float64, epoch, epochs int) float64 {
@@ -243,78 +254,14 @@ func learningRate(base float64, epoch, epochs int) float64 {
 }
 
 func load(path string, wdl float64) (*dataset, error) {
-	f, err := os.Open(path)
+	records, skipped, err := trainingdata.Load(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-
-	d := &dataset{offsets: []uint32{0}}
-	reader := bufio.NewReaderSize(f, 1<<20)
-	for {
-		line, err := reader.ReadString('\n')
-		if err == io.EOF {
-			if line != "" {
-				fmt.Println("skipping a cut-off last line")
-			}
-			return d, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		d.add(strings.TrimRight(line, "\r\n"), wdl)
+	if skipped > 0 {
+		fmt.Printf("skipped %d lines that did not parse\n", skipped)
 	}
-}
-
-func (d *dataset) add(line string, wdl float64) {
-	parts := strings.Split(line, " | ")
-	if len(parts) != 3 {
-		return
-	}
-	score, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return
-	}
-	result, err := strconv.ParseFloat(parts[2], 64)
-	if err != nil {
-		return
-	}
-	fields := strings.Fields(parts[0])
-	if len(fields) < 2 {
-		return
-	}
-	d.features = appendFeatures(d.features, fields[0])
-	d.offsets = append(d.offsets, uint32(len(d.features)))
-
-	blackToMove := fields[1] == "b"
-	if blackToMove {
-		score, result = -score, 1-result
-	}
-	target := (1-wdl)*sigmoid(float64(score)/nnue.Scale) + wdl*result
-	d.blackToMove = append(d.blackToMove, blackToMove)
-	d.targets = append(d.targets, float32(target))
-	if len(d.fens) < verifySample {
-		d.fens = append(d.fens, parts[0])
-	}
-}
-
-func appendFeatures(features []uint16, placement string) []uint16 {
-	rank, file := 7, 0
-	for i := 0; i < len(placement); i++ {
-		c := placement[i]
-		switch {
-		case c == '/':
-			rank, file = rank-1, 0
-		case c >= '1' && c <= '8':
-			file += int(c - '0')
-		default:
-			if piece := board.PieceToBitboardIndex(board.Piece(c)); piece >= 0 {
-				features = append(features, uint16(nnue.FeatureIndex(piece, rank*8+file, 0)))
-			}
-			file++
-		}
-	}
-	return features
+	return &dataset{records: records, wdl: wdl}, nil
 }
 
 var blackView = func() (view [nnue.Inputs]uint16) {
@@ -355,7 +302,7 @@ func (m *model) forward(active []uint16, blackToMove bool, a *activations) float
 	return out
 }
 
-func parallelSum(positions []int, workers int, fn func(worker int, share []int) float64) float64 {
+func parallelSum(positions []uint32, workers int, fn func(worker int, share []uint32) float64) float64 {
 	sums := make([]float64, workers)
 	var wg sync.WaitGroup
 	chunk := (len(positions) + workers - 1) / workers
@@ -371,16 +318,18 @@ func parallelSum(positions []int, workers int, fn func(worker int, share []int) 
 	return total
 }
 
-func accumulateInto(grads []*model, m *model, data *dataset, batch []int) float64 {
-	loss := parallelSum(batch, len(grads), func(w int, share []int) float64 {
+func accumulateInto(grads []*model, m *model, data *dataset, batch []uint32) float64 {
+	loss := parallelSum(batch, len(grads), func(w int, share []uint32) float64 {
 		g := grads[w]
 		for _, p := range g.params() {
 			clear(p)
 		}
 		var a activations
+		var buf []uint16
 		var sum float64
 		for _, i := range share {
-			sum += backward(m, g, data.active(i), data.blackToMove[i], data.targets[i], &a)
+			active, blackToMove, target := data.sample(i, &buf)
+			sum += backward(m, g, active, blackToMove, target, &a)
 		}
 		return sum
 	})
@@ -441,13 +390,15 @@ func adamStep(m, g, adamM, adamV *model, lr float64, step, batchSize int) {
 	}
 }
 
-func evaluateLoss(m *model, data *dataset, positions []int, workers int) float64 {
-	loss := parallelSum(positions, workers, func(_ int, share []int) float64 {
+func evaluateLoss(m *model, data *dataset, positions []uint32, workers int) float64 {
+	loss := parallelSum(positions, workers, func(_ int, share []uint32) float64 {
 		var a activations
+		var buf []uint16
 		var sum float64
 		for _, i := range share {
-			pred := float32(sigmoid(float64(m.forward(data.active(i), data.blackToMove[i], &a))))
-			d := pred - data.targets[i]
+			active, blackToMove, target := data.sample(i, &buf)
+			pred := float32(sigmoid(float64(m.forward(active, blackToMove, &a))))
+			d := pred - target
 			sum += float64(d * d)
 		}
 		return sum
@@ -470,29 +421,27 @@ func quantize(m *model) *nnue.Network {
 	return n
 }
 
-func verify(m *model, net *nnue.Network, data *dataset) error {
+func verify(m *model, net *nnue.Network, data *dataset) {
 	evaluator := nnue.NewEvaluator(net)
 	rounded := dequantize(net)
 	var a activations
+	var buf []uint16
 	var sumDiff, maxDiff, sumImpl float64
-	for i, fen := range data.fens {
-		b, err := board.FromFEN(fen)
-		if err != nil {
-			return fmt.Errorf("verify: %w", err)
-		}
-		blackToMove := data.blackToMove[i]
-		floatCP := whiteCP(m.forward(data.active(i), blackToMove, &a), blackToMove)
-		roundedCP := whiteCP(rounded.forward(data.active(i), blackToMove, &a), blackToMove)
+	count := min(verifySample, data.len())
+	for i := range count {
+		record := data.records.At(i)
+		b := record.Board()
+		active, blackToMove, _ := data.sample(uint32(i), &buf)
+		floatCP := whiteCP(m.forward(active, blackToMove, &a), blackToMove)
+		roundedCP := whiteCP(rounded.forward(active, blackToMove, &a), blackToMove)
 		engineCP := float64(evaluator.Evaluate(b))
 		diff := math.Abs(floatCP - engineCP)
 		sumDiff += diff
 		maxDiff = max(maxDiff, diff)
 		sumImpl += math.Abs(roundedCP - engineCP)
 	}
-	count := float64(len(data.fens))
 	fmt.Printf("verify: %d positions, mean |float - engine| %.2f cp (max %.2f), mean |dequantized float - engine| %.2f cp\n",
-		len(data.fens), sumDiff/count, maxDiff, sumImpl/count)
-	return nil
+		count, sumDiff/float64(count), maxDiff, sumImpl/float64(count))
 }
 
 func whiteCP(out float32, blackToMove bool) float64 {
