@@ -8,7 +8,7 @@ The engine plays on Lichess as the bot account [GolangChessBot](https://lichess.
 [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot). While it runs, it challenges other bots, accepts
 challenges, and plays rated and casual games.
 
-Current bullet rating: 2393 (October 2026).
+Current bullet rating: about 2487 (November 2026).
 
 ### What the bot does
 
@@ -47,10 +47,11 @@ Current bullet rating: 2393 (October 2026).
 
 ### Position evaluation
 
-- Material balance and piece-square tables
-- Pawn structure, including passed and connected pawns
-- King safety from open files near the king and enemy pieces in the king zone
-- Piece mobility
+- NNUE built into the binary, with 768 inputs, a 128-neuron hidden layer for each side and SCReLU activation
+- An accumulator that adds and subtracts only the pieces that changed since the last evaluation
+- SIMD kernels for the hidden layer and output, compiled when `GOEXPERIMENT=simd` is set
+- The hand-written evaluation as a fallback, selected with the UCI option `EvalFile=hce`
+- Training pipeline: self-play data generation (`cmd/datagen`) and a CPU trainer (`cmd/nnuetrain`)
 
 ### Performance optimizations
 
@@ -72,12 +73,15 @@ cmd/
   ├── gchess/     # Benchmark launcher entry point
   │   └── modes/  # Benchmark mode implementations (STS)
   ├── uci/        # UCI engine binary for chess GUIs
-  └── bench/      # Bench multi-tool: sts/profile/report subcommands
+  ├── bench/      # Bench multi-tool: sts/profile/report/sprt/mates subcommands
+  ├── datagen/    # Self-play training data generator for the NNUE
+  └── nnuetrain/  # NNUE trainer
 internal/
   ├── board/      # Board representation and bitboard operations
   ├── movegen/    # Legal move generation with magic bitboards and object pooling
   ├── search/     # Negamax, iterative deepening, quiescence, transposition tables
-  ├── eval/       # Position evaluation with pawn hash table
+  ├── nnue/       # NNUE evaluator, SIMD kernels and the built-in network
+  ├── eval/       # Hand-written evaluation with pawn hash table, plus SEE
   │   └── values/ # Piece values and piece-square tables
   ├── book/       # Polyglot opening book support
   ├── epd/        # EPD file parsing and STS scoring
@@ -92,7 +96,8 @@ internal/
 
 - `internal/search/` runs negamax with alpha-beta, LMR, null move pruning, and quiescence search.
 - `internal/search/transposition.go` holds the two-bucket transposition table with 32-bit packed moves.
-- `internal/eval/` scores positions with lazy evaluation and a pawn hash table.
+- `internal/nnue/` scores positions with the built-in network and an incrementally updated accumulator.
+- `internal/eval/` holds the hand-written fallback evaluation and static exchange evaluation.
 - `internal/movegen/` generates legal moves with magic bitboards and object pools.
 - `internal/search/move_ordering.go` orders moves with SEE, killer moves, and the history heuristic.
 - `internal/book/` reads Polyglot opening books.
@@ -111,11 +116,14 @@ GOEXPERIMENT=simd go build -o chessengine-uci ./cmd/uci
 ./chessengine-uci
 ```
 
+The UCI `EvalFile` option picks the evaluation: empty uses the built-in network, a path loads another network
+file, and `hce` selects the hand-written evaluation.
+
 ### Benchmark launcher
 
 ```bash
 # Build and run the gchess benchmark launcher
-go build -o chessengine ./cmd/gchess
+GOEXPERIMENT=simd go build -o chessengine ./cmd/gchess
 ./chessengine
 
 # Choose mode:
@@ -126,7 +134,7 @@ go build -o chessengine ./cmd/gchess
 
 ```bash
 # Build the bench multi-tool (sts/profile/report/sprt/mates subcommands)
-go build -o bench ./cmd/bench
+GOEXPERIMENT=simd go build -o bench ./cmd/bench
 
 # Run Strategic Test Suite (STS)
 ./bench sts -file testdata/STS1.epd -timeout 5 -max 100
@@ -135,9 +143,26 @@ go build -o bench ./cmd/bench
 # download matetrack.epd from github.com/vondele/matetrack, GPL-3.0)
 ./bench mates -time 200ms -concurrency 8
 
-# Run CPU/memory profiling
+# Run CPU and memory profiling. -hce profiles the hand-written evaluation.
 ./bench profile -file testdata/STS1.epd
 ```
+
+### Training a network
+
+```bash
+# Generate self-play positions that the built-in network scores. -eval takes a
+# network file or hce instead. A rerun with the same -out resumes the file.
+GOEXPERIMENT=simd go build -o datagen ./cmd/datagen
+./datagen -positions 60000000 -nodes 2500 -out data.txt
+
+# Train for 30 epochs and write a quantized network. 120M positions need
+# about 10 GB of RAM.
+GOEXPERIMENT=simd go build -o nnuetrain ./cmd/nnuetrain
+./nnuetrain -data data.txt -out net.nnue -epochs 30
+```
+
+Test a new network against the current one with an SPRT, passing `EvalFile=<path>` through `-base-options` and
+`-dev-options`. To make it the default, replace `internal/nnue/default.nnue`.
 
 ### Bench signature
 
@@ -160,7 +185,7 @@ compares two saves with [benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/ben
 
 ### Test suite
 
-- Unit tests in 54 test files
+- Unit tests in 60 test files
 - Perft tests that check move generation at depths 1-6
 - Integration tests for the UCI protocol and game flow
 - Strategic Test Suite (STS) with 600 positions that test positional evaluation
@@ -176,8 +201,8 @@ compares two saves with [benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/ben
 ### Run tests
 
 ```bash
-# Run all tests
-go test ./...
+# Run all tests. Run them again without GOEXPERIMENT=simd to cover the scalar kernels.
+GOEXPERIMENT=simd go test ./...
 
 # Run tests with coverage
 go test -v -race -coverprofile=coverage.out ./...
@@ -193,15 +218,15 @@ go test -run TestPerft ./internal/movegen
 
 ### Search performance
 
-- Node rate: 1.0-1.4M nodes/second in recent STS runs (hardware dependent)
+- Node rate: about 1.4M nodes/second in recent STS runs with the network, on the development machine
 - Search depth: typically 8-12 ply at tournament time controls
 - Memory: 128MB transposition table by default (set with the UCI `Hash` option), about 256KB for the pawn hash table
 - Transposition table hit rate: about 70-80% in middlegame positions
 
 ### Engine strength
 
-- Lichess bullet rating: 2393 (see [Live on Lichess](#live-on-lichess))
-- STS score: 426/600 (71%), STS rating about 3000, from 10 positions per file across STS1-6
+- Lichess bullet rating: about 2487 (see [Live on Lichess](#live-on-lichess))
+- STS score: 510/600 (85%), STS rating about 3210, from 10 positions per file across STS1-6 at 5 seconds a move
 
 ## Technical details
 
@@ -219,6 +244,18 @@ Comment conventions are in [docs/comment-guidelines.md](docs/comment-guidelines.
 - Quiescence search with delta pruning and SEE capture filtering
 
 ### Evaluation
+
+The built-in network evaluates by default. Each side's 128-value accumulator sums the weight columns for its pieces
+from that side's point of view, and the output layer applies SCReLU to both accumulators. The trainer quantizes the
+weights to int16, with a scale of 255 for the hidden layer and 256 for the output. Each network trained on more
+self-play data than the one before:
+
+| Network | Training positions | SPRT result |
+|---------|--------------------|-------------|
+| net3 | 60M | +191.9 Elo vs net2 |
+| net5 (built in) | 120M | +97.6 Elo vs net3 |
+
+`EvalFile=hce` selects the hand-written evaluation, which scores these terms:
 
 - Tapered evaluation that blends middlegame and endgame piece-square scores by game phase
 - Piece-square tables with incremental updates

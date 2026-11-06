@@ -12,7 +12,6 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/bench"
 	"github.com/AdamGriffiths31/ChessEngine/internal/epd"
-	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 	"github.com/AdamGriffiths31/ChessEngine/internal/ui"
 )
@@ -186,8 +185,6 @@ func (sm *STSMode) runSTSBenchmark(config STSConfig, epdFiles []string) (*STSRes
 	startTime := time.Now()
 
 	engine := search.NewMinimaxEngine()
-	evaluator := eval.NewEvaluator()
-	engine.SetEvaluator(evaluator)
 	engine.SetTranspositionTableSize(256)
 
 	searchConfig := search.Config{

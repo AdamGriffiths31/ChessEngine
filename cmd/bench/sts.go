@@ -10,7 +10,6 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/bench"
 	"github.com/AdamGriffiths31/ChessEngine/internal/epd"
-	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
@@ -62,8 +61,6 @@ func runSTS(args []string) error {
 	}
 
 	engine := search.NewMinimaxEngine()
-	evaluator := eval.NewEvaluator()
-	engine.SetEvaluator(evaluator)
 
 	if *ttSize > 0 {
 		engine.SetTranspositionTableSize(*ttSize)

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/epd"
+	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
-	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
@@ -294,8 +294,8 @@ func runProfileSample(positions []*epd.Position, fileName string, requestedCount
 func newProfileEngine(ttSize int, hce bool) *search.MinimaxEngine {
 	engine := search.NewMinimaxEngine()
 	engine.SetTranspositionTableSize(ttSize)
-	if !hce {
-		engine.SetEvaluator(nnue.NewDefaultEvaluator())
+	if hce {
+		engine.SetEvaluator(eval.NewEvaluator())
 	}
 	return engine
 }

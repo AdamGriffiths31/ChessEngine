@@ -9,6 +9,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/book"
 	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
+	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
 )
 
 // State contains transient state for a single search operation
@@ -44,10 +45,10 @@ type MinimaxEngine struct {
 	repetitionRootPly uint16
 }
 
-// NewMinimaxEngine creates a new minimax search engine
+// NewMinimaxEngine creates a search engine that evaluates with the built-in network.
 func NewMinimaxEngine() *MinimaxEngine {
 	engine := &MinimaxEngine{
-		evaluator:     eval.NewEvaluator(),
+		evaluator:     nnue.NewDefaultEvaluator(),
 		generator:     movegen.NewGenerator(),
 		zobrist:       book.GetPolyglotHash(),
 		historyTable:  NewHistoryTable(),

@@ -21,6 +21,7 @@ import (
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 	"github.com/AdamGriffiths31/ChessEngine/internal/game"
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
+	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
 	"github.com/AdamGriffiths31/ChessEngine/internal/search"
 )
 
@@ -41,6 +42,7 @@ type options struct {
 	randomPlies int
 	hashMB      int
 	out         string
+	eval        string
 }
 
 type counters struct {
@@ -64,6 +66,7 @@ func main() {
 	flag.IntVar(&opts.randomPlies, "random-plies", 8, "random moves played at the start of each game")
 	flag.IntVar(&opts.hashMB, "hash", 16, "transposition table size per thread in MB")
 	flag.StringVar(&opts.out, "out", "datagen.txt", "output file; a rerun resumes by appending to it")
+	flag.StringVar(&opts.eval, "eval", "", `network file to search with; empty uses the built-in network, "hce" the hand-written eval`)
 	flag.Parse()
 
 	if err := run(opts); err != nil {
@@ -73,6 +76,9 @@ func main() {
 }
 
 func run(opts options) error {
+	if _, err := nnue.EvaluatorFor(opts.eval); err != nil {
+		return err
+	}
 	existing, err := trimAndCountLines(opts.out)
 	if err != nil {
 		return err
@@ -114,6 +120,8 @@ func run(opts options) error {
 			rng := rand.New(rand.NewPCG(uint64(start.UnixNano()), uint64(worker)))
 			engine := search.NewMinimaxEngine()
 			engine.SetTranspositionTableSize(opts.hashMB)
+			evaluator, _ := nnue.EvaluatorFor(opts.eval)
+			engine.SetEvaluator(evaluator)
 			for ctx.Err() == nil {
 				lines, searched, nodes := playGame(ctx, engine, rng, opts)
 				stats.games.Add(1)

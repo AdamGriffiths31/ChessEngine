@@ -14,7 +14,7 @@ The standard STS run tests the first 10 positions of each of the 6 STS files at 
 2. **Run it in the background** from the repo root and wait for the notification:
 
    ```bash
-   printf '1\n5\n10\nn\ny\n' | go run ./cmd/gchess > <scratch>/sts.log 2>&1
+   printf '1\n5\n10\nn\ny\n' | GOEXPERIMENT=simd go run ./cmd/gchess > <scratch>/sts.log 2>&1
    ```
 
    The answers select STS mode, 5 seconds, 10 positions per file, no verbose output, and proceed.

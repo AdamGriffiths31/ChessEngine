@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 	"github.com/AdamGriffiths31/ChessEngine/internal/testutil"
 )
 
@@ -60,6 +61,7 @@ var goldenTestFENs = []string{
 
 func TestSearchGolden(t *testing.T) {
 	engine := NewMinimaxEngine()
+	engine.SetEvaluator(eval.NewEvaluator())
 	engine.SetTranspositionTableSize(64)
 
 	var golden []goldenRecord

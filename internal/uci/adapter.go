@@ -13,7 +13,6 @@ import (
 
 	"github.com/AdamGriffiths31/ChessEngine/internal/board"
 	"github.com/AdamGriffiths31/ChessEngine/internal/book"
-	"github.com/AdamGriffiths31/ChessEngine/internal/eval"
 	"github.com/AdamGriffiths31/ChessEngine/internal/game"
 	"github.com/AdamGriffiths31/ChessEngine/internal/movegen"
 	"github.com/AdamGriffiths31/ChessEngine/internal/nnue"
@@ -29,7 +28,6 @@ const (
 	DefaultMoveTime = 5 * time.Second
 
 	emptyOptionValue = "<empty>"
-	handWrittenEval  = "hce"
 )
 
 // Engine wraps the chess engine with UCI protocol support.
@@ -59,7 +57,6 @@ type Engine struct {
 func NewUCIEngine() *Engine {
 	minimaxEngine := search.NewMinimaxEngine()
 	minimaxEngine.SetTranspositionTableSize(256)
-	minimaxEngine.SetEvaluator(nnue.NewDefaultEvaluator())
 
 	engine := &Engine{
 		engine:        game.NewEngine(),
@@ -536,23 +533,15 @@ func (ue *Engine) handleSetOption(args []string) string {
 // empty, the hand-written eval for "hce", otherwise the network at path,
 // falling back to the embedded one if it cannot be loaded.
 func (ue *Engine) setEvalFile(path string) {
-	switch path {
-	case "", emptyOptionValue:
-		ue.aiEngine.SetEvaluator(nnue.NewDefaultEvaluator())
-		return
-	case handWrittenEval:
-		ue.aiEngine.SetEvaluator(eval.NewEvaluator())
-		slog.Info("using the hand-written eval")
-		return
+	if path == emptyOptionValue {
+		path = ""
 	}
-	net, err := nnue.Load(path)
+	evaluator, err := nnue.EvaluatorFor(path)
 	if err != nil {
 		slog.Error("loading EvalFile failed; using the embedded network", "path", path, "error", err)
-		net = nnue.Default()
-	} else {
-		slog.Info("loaded EvalFile", "path", path)
+		evaluator = nnue.NewDefaultEvaluator()
 	}
-	ue.aiEngine.SetEvaluator(nnue.NewEvaluator(net))
+	ue.aiEngine.SetEvaluator(evaluator)
 }
 
 func (ue *Engine) handleNewGame() string {
